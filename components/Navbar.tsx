@@ -1,94 +1,166 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import {
   Menu,
   X,
-  MapPin,
   User,
   Search,
   Home,
-  Heart,
-  Briefcase,
+  LayoutGrid,
+  Workflow,
   Info,
+  Phone,
+  MapPin,
   ChevronRight,
-  ShieldAlert,
+  ArrowRight,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 
+/** Below this many viewport-pixels the hero is gone and the bar turns solid. */
+const HERO_CLEAR = 44;
+
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrollY, setScrollY] = useState(0);
+  const [heroBottom, setHeroBottom] = useState(1000);
   const pathname = usePathname();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin } = useAuth();
 
+  useEffect(() => {
+    const measure = () => {
+      setScrollY(window.scrollY);
+      if (pathname !== '/') return;
+      // Pick whichever hero stage is currently visible (mobile vs desktop) —
+      // hidden ones report zero height.
+      let bottom = 0;
+      document.querySelectorAll('[data-hero]').forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        if (rect.height > 4) bottom = Math.max(bottom, rect.top + rect.height);
+      });
+      setHeroBottom(bottom);
+    };
+    measure();
+    window.addEventListener('scroll', measure, { passive: true });
+    window.addEventListener('resize', measure);
+    const interval = window.setInterval(measure, 1200); // catch late image/font layout shifts
+    return () => {
+      window.removeEventListener('scroll', measure);
+      window.removeEventListener('resize', measure);
+      window.clearInterval(interval);
+    };
+  }, [pathname]);
+
+  // Homepage: the navbar floats transparently over the full-bleed hero image
+  // (top never "cut"), then turns into a solid white bar once the hero has
+  // scrolled past. On other pages it stays a solid sticky bar.
+  const isHome = pathname === '/';
+  const navSolid = isHome ? heroBottom <= HERO_CLEAR : true;
+  const overHero = isHome && !navSolid;
+
   const navLinks = [
-    { name: 'সেবাসমূহ', href: '/services', icon: Briefcase },
-    { name: 'বাসা ভাড়া', href: '/tolet', icon: Home },
-    { name: 'রক্তদাতা', href: '/blood-donor', icon: Heart },
+    { name: 'হোম', href: '/', icon: Home },
+    { name: 'সেবা সমূহ', href: '/services', icon: LayoutGrid },
+    { name: 'কিভাবে কাজ করে', href: '/#how-it-works', icon: Workflow },
     { name: 'আমাদের সম্পর্কে', href: '/about', icon: Info },
+    { name: 'যোগাযোগ', href: '/contact', icon: Phone },
   ];
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
+    if (href.startsWith('/#')) return pathname === '/';
     return pathname.startsWith(href);
   };
 
-  return (
-    <header className="sticky top-0 z-50 w-full border-b border-emerald-900/10 bg-white/95 backdrop-blur-md transition-all">
-      {/* Top micro-bar showing local MCC coverage */}
-      <div className="bg-emerald-950 text-emerald-100 text-[13px] py-1.5 px-4">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-1.5 font-medium">
-            <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-            <span>শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশন এলাকার জন্য</span>
-          </div>
-          <div className="hidden sm:flex items-center gap-4 text-emerald-200/80 text-xs">
-            <Link href="/safety" className="hover:text-white transition-colors">
-              নিরাপত্তা নীতি
-            </Link>
-            <span>•</span>
-            <Link href="/help" className="hover:text-white transition-colors">
-              সহায়তা
-            </Link>
-          </div>
-        </div>
-      </div>
+  const roleLabel = isAdmin
+    ? 'অ্যাডমিন'
+    : toletProfile
+      ? 'বাসা মালিক'
+      : homeTutorProfile
+        ? 'গৃহশিক্ষক'
+        : bloodDonorProfile
+          ? 'রক্তদাতা'
+          : 'কাস্টমার';
 
-      {/* Main Navbar */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-18">
-          {/* Logo & Local Identity */}
+  // Over the hero: light text on a dark scrim. Scrolled / other pages: dark text.
+  const logoTitle = overHero ? 'text-white' : 'text-ink-900';
+  const logoSub = overHero ? 'text-brand-100' : 'text-brand-700';
+  const navLink =
+    overHero
+      ? 'text-white/85 hover:bg-white/10 hover:text-white'
+      : 'text-ink-500 hover:bg-mist-50 hover:text-ink-900';
+  const navLinkActive =
+    overHero ? 'bg-white/20 font-semibold text-white' : 'bg-brand-50 font-semibold text-brand-800';
+  const iconBtn =
+    overHero ? 'text-white hover:bg-white/10' : 'text-ink-500 hover:bg-mist-50 hover:text-brand-700';
+  const materialBtn = overHero
+    ? 'text-white hover:bg-white/10'
+    : 'text-ink-700 hover:bg-mist-50';
+
+  return (
+    <header
+      className={
+        isHome
+          ? `fixed inset-x-0 top-0 z-50 transition-colors duration-300 ${
+              navSolid ? 'border-b border-brand-100 bg-white/95 shadow-md shadow-brand-900/5 backdrop-blur-md' : 'border-b border-transparent'
+            }`
+          : 'sticky top-0 z-50 border-b border-brand-100 bg-white/95 shadow-sm shadow-brand-900/5 backdrop-blur-md'
+      }
+    >
+      {/* Legibility scrim over the hero image (homepage only, bar height) */}
+      {isHome && (
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 top-0 h-16 overflow-hidden transition-opacity duration-300 sm:h-[4.5rem]"
+          style={{ opacity: overHero ? 1 : 0 }}
+        >
+          <div className="h-full w-full bg-gradient-to-b from-black/45 via-black/15 to-transparent" />
+        </div>
+      )}
+
+      <div className="relative z-10 mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-3 sm:h-[4.5rem]">
+          {/* Logo — compact word mark on small screens (no layout squeeze at 320px) */}
           <Link
             href="/"
-            className="flex items-center gap-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 rounded-lg p-1"
+            className="group flex shrink-0 items-center gap-2 rounded-lg p-1 pr-2 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
           >
-            <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center font-bold text-xl shadow-xs group-hover:bg-emerald-700 transition-colors">
-              ম
+            <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-brand-100 transition-transform duration-300 group-hover:scale-105 sm:h-10 sm:w-10">
+              <Image
+                src="/logo.png"
+                alt="Mymensingh Sheba লোগো"
+                width={230}
+                height={230}
+                className="h-full w-full object-contain"
+              />
             </div>
-            <div className="flex flex-col">
-              <span className="font-bold text-slate-900 text-lg sm:text-xl tracking-tight leading-tight">
+            <div className="flex min-w-0 flex-col">
+              <span
+                className={`truncate text-[15px] font-extrabold leading-tight tracking-tight transition-colors sm:text-lg ${logoTitle}`}
+              >
                 Mymensingh Sheba
               </span>
-              <span className="text-xs text-emerald-800 font-medium">
+              <span
+                className={`hidden text-[11px] font-semibold transition-colors min-[400px]:block ${logoSub}`}
+              >
                 ময়মনসিংহ সেবা
               </span>
             </div>
           </Link>
 
-          {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+          {/* Desktop links */}
+          <nav className="hidden items-center gap-1 lg:flex">
             {navLinks.map((link) => {
               const active = isActive(link.href);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`px-3.5 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    active
-                      ? 'text-emerald-800 bg-emerald-50 font-semibold'
-                      : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+                    active ? navLinkActive : navLink
                   }`}
                 >
                   {link.name}
@@ -97,189 +169,141 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right Action & Profile CTA */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Right actions (desktop) */}
+          <div className="hidden items-center gap-2 lg:flex">
+            <Link
+              href="/services"
+              aria-label="সেবা খোঁজ"
+              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${iconBtn}`}
+            >
+              <Search className="h-5 w-5" />
+            </Link>
+
             {user ? (
               <Link
                 href="/profile"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-emerald-200/80 bg-emerald-50/50 hover:bg-emerald-50 text-emerald-950 text-sm font-medium transition-colors"
+                className="flex items-center gap-2 rounded-xl border border-brand-100 bg-mist-50/60 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-brand-50"
               >
-                <div className="w-7 h-7 rounded-lg bg-emerald-800 text-white text-xs font-bold flex items-center justify-center">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-700 text-xs font-bold text-white">
                   {user.fullName.charAt(0)}
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="font-semibold text-xs leading-tight">
+                  <span className="text-xs font-bold leading-tight text-ink-900">
                     {user.fullName.split(' ')[0]}
                   </span>
-                  <span className="text-[10px] text-emerald-800">
-                    {isAdmin
-                      ? 'অ্যাডমিন'
-                      : toletProfile
-                      ? 'বাসা মালিক'
-                      : homeTutorProfile
-                      ? 'গৃহশিক্ষক'
-                      : bloodDonorProfile
-                      ? 'রক্তদাতা'
-                      : 'কাস্টমার'}
+                  <span className="text-[10px] font-medium leading-tight text-brand-700">
+                    {roleLabel}
                   </span>
                 </div>
               </Link>
             ) : (
               <Link
                 href="/login"
-                className="flex items-center gap-2 px-3.5 py-2 rounded-lg text-sm font-medium text-slate-700 hover:text-emerald-800 hover:bg-slate-50 transition-colors"
+                aria-label="লগইন"
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${iconBtn}`}
               >
-                <User className="w-4 h-4 text-slate-500" />
-                <span>লগইন</span>
+                <User className="h-5 w-5" />
               </Link>
             )}
 
             <Link
               href="/services"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-medium text-sm transition-all shadow-xs active:scale-[0.98]"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-brand-800 active:scale-[0.98]"
             >
-              <Search className="w-4 h-4" />
-              <span>সেবা খুঁজুন</span>
+              সেবা নিন
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
-          {/* Mobile Menu Trigger Button */}
-          <div className="flex md:hidden items-center gap-2">
+          {/* Mobile actions — compact: logo + search + hamburger (44px targets) */}
+          <div className="flex items-center gap-1 lg:hidden">
             <Link
-              href="/profile"
-              className="p-1.5 text-slate-700 hover:text-emerald-800 rounded-lg hover:bg-slate-50 flex items-center gap-1.5"
-              aria-label="Profile"
+              href="/services"
+              aria-label="সেবা খোঁজ"
+              className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${materialBtn}`}
             >
-              {user ? (
-                <div className="w-7 h-7 rounded-lg bg-emerald-800 text-white text-xs font-bold flex items-center justify-center">
-                  {user.fullName.charAt(0)}
-                </div>
-              ) : (
-                <User className="w-5 h-5" />
-              )}
+              <Search className="h-5 w-5" />
             </Link>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="p-2 rounded-lg text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-emerald-600"
+              className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors ${materialBtn}`}
               aria-label={mobileMenuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
             >
-              {mobileMenuOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
             </button>
           </div>
         </div>
       </div>
 
-      {/* Mobile Drawer Menu */}
+      {/* Mobile drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-slate-200 bg-white px-4 pt-3 pb-6 shadow-xl animate-in slide-in-from-top-2 duration-200">
-          <div className="space-y-1.5 mb-4">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const active = isActive(link.href);
-              return (
+        <div
+          id="mobile-menu"
+          className="relative z-10 max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-slate-200 bg-white px-4 pb-8 pt-3 shadow-xl animate-in slide-in-from-top-2 fade-in duration-200 lg:hidden"
+        >
+          <nav className="space-y-1">
+              {navLinks.map((link) => {
+                const Icon = link.icon;
+                const active = isActive(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center justify-between rounded-xl px-3.5 py-3 text-[15px] font-medium transition-colors ${
+                      active
+                        ? 'bg-brand-50 font-semibold text-brand-800'
+                        : 'text-ink-700 hover:bg-mist-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : 'text-ink-400'}`} />
+                      {link.name}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-ink-400" />
+                  </Link>
+                );
+              })}
+            </nav>
+
+            <div className="mt-4 flex flex-col gap-2.5 border-t border-slate-100 pt-4">
+              {!user && (
                 <Link
-                  key={link.href}
-                  href={link.href}
+                  href="/login"
                   onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between px-3.5 py-3 rounded-xl text-base font-medium transition-colors ${
-                    active
-                      ? 'bg-emerald-50 text-emerald-800 font-semibold'
-                      : 'text-slate-700 hover:bg-slate-50'
-                  }`}
+                  className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-4 py-3 text-[15px] font-semibold text-brand-800 hover:bg-brand-50"
                 >
-                  <div className="flex items-center gap-3">
-                    <Icon
-                      className={`w-5 h-5 ${
-                        active ? 'text-emerald-700' : 'text-slate-500'
-                      }`}
-                    />
-                    <span>{link.name}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                  <User className="h-5 w-5" />
+                  লগইন / রেজিস্ট্রেশন
                 </Link>
-              );
-            })}
-          </div>
-
-          <div className="pt-3 border-t border-slate-100 flex flex-col gap-2.5">
-            {user ? (
+              )}
               <Link
-                href="/profile"
+                href="/services"
                 onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-between w-full py-3 px-4 rounded-xl border border-emerald-200 bg-emerald-50/50 text-emerald-950 font-medium text-base hover:bg-emerald-50"
+                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-[15px] font-bold text-white shadow-sm hover:bg-brand-800"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-emerald-800 text-white text-sm font-bold flex items-center justify-center">
-                    {user.fullName.charAt(0)}
-                  </div>
-                  <div className="flex flex-col text-left">
-                    <span className="font-bold text-sm leading-tight text-slate-900">
-                      {user.fullName}
-                    </span>
-                    <span className="text-xs text-emerald-800 font-medium">
-                      {isAdmin
-                        ? 'অ্যাডমিন মডারেটর'
-                        : toletProfile
-                        ? 'বাসা মালিক প্রোফাইল'
-                        : homeTutorProfile
-                        ? 'গৃহশিক্ষক প্রোফাইল'
-                        : bloodDonorProfile
-                        ? 'রক্তদাতা প্রোফাইল'
-                        : 'কাস্টমার অ্যাকাউন্ট'}
-                    </span>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-emerald-700" />
-              </Link>
-            ) : (
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl border border-slate-200 text-slate-800 font-medium text-base hover:bg-slate-50"
-              >
-                <User className="w-5 h-5 text-slate-500" />
-                <span>লগইন / নতুন অ্যাকাউন্ট</span>
-              </Link>
-            )}
-
-            <Link
-              href="/services"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex items-center justify-center gap-2 w-full py-3 px-4 rounded-xl bg-emerald-700 text-white font-medium text-base hover:bg-emerald-800 active:scale-[0.99] transition-all shadow-xs"
-            >
-              <Search className="w-5 h-5" />
-              <span>সেবা খুঁজুন</span>
-            </Link>
-          </div>
-
-          {/* City Corporation Badge & Links */}
-          <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="flex items-center gap-1 text-emerald-800 font-medium">
-              <MapPin className="w-3.5 h-3.5" />
-              ময়মনসিংহ সিটি কর্পোরেশন
-            </span>
-            <div className="flex gap-3">
-              <Link
-                href="/safety"
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:underline"
-              >
-                নিরাপত্তা
-              </Link>
-              <Link
-                href="/help"
-                onClick={() => setMobileMenuOpen(false)}
-                className="hover:underline"
-              >
-                সহায়তা
+                সেবা নিন
+                <ArrowRight className="h-4 w-4" />
               </Link>
             </div>
-          </div>
+
+            <div className="mt-4 flex items-center justify-between gap-2 border-t border-slate-100 pt-4 text-xs text-ink-500">
+              <span className="flex items-center gap-1 font-semibold text-brand-800">
+                <MapPin className="h-3.5 w-3.5 shrink-0" />
+                ময়মনসিংহ সিটি কর্পোরেশন
+              </span>
+              <div className="flex gap-3">
+                <Link href="/safety" onClick={() => setMobileMenuOpen(false)} className="hover:underline">
+                  নিরাপত্তা
+                </Link>
+                <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="hover:underline">
+                  সহায়তা
+                </Link>
+              </div>
+            </div>
         </div>
       )}
     </header>

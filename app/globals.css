@@ -1,1 +1,86 @@
 @import "tailwindcss";
+
+@theme {
+  --font-sans: 'Noto Sans Bengali', ui-sans-serif, system-ui, -apple-system,
+    'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  --font-display: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
+
+  /* Brand green scale (emerald-tuned for premium green + white identity) */
+  --color-brand-50: #f0fdf4;
+  --color-brand-100: #dcfce7;
+  --color-brand-200: #bbf7d0;
+  --color-brand-300: #86efac;
+  --color-brand-400: #4ade80;
+  --color-brand-500: #22c55e;
+  --color-brand-600: #16a34a;
+  --color-brand-700: #15803d;
+  --color-brand-800: #166534;
+  --color-brand-900: #14532d;
+  --color-brand-950: #052e16;
+
+  --color-ink-900: #0f172a;
+  --color-ink-700: #334155;
+  --color-ink-500: #64748b;
+  --color-ink-400: #94a3b8;
+
+  --color-mist-50: #f7faf8;
+  --color-mist-100: #eef4f0;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: #ffffff;
+    color: var(--color-ink-900);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-100);
+    color: var(--color-brand-900);
+  }
+}
+
+@layer utilities {
+  /* Hide scrollbar for horizontal carousels while keeping scrollability */
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Thin auto-hiding scrollbar for horizontal rails (desktop) */
+  .rail-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: var(--color-brand-200) transparent;
+  }
+  .rail-scrollbar::-webkit-scrollbar {
+    height: 6px;
+  }
+  .rail-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--color-brand-200);
+    border-radius: 9999px;
+  }
+  .rail-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@keyframes heroFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -476,5 +476,17 @@ and staff-services systems use their in-memory mock stores in that mode.
 Green at time of writing (`lib/staff-service.ts` + `lib/tolet-service.ts` + `lib/home-moving-service.ts` + `lib/home-tutor-service.ts` + `lib/blood-donor-service.ts` + `lib/admin-service.ts` + `lib/notification-service.ts` + all routes):
 
 - `npx tsc --noEmit` — clean
-- `npm run lint` — clean (0 errors, 3 pre-existing warnings)
-- `npm run build` — passes; all 52 routes compile (including new `/admin/users`, `/admin/settings`, `/admin/reports`, `/admin/reviews`, `/admin/notifications`)
+- `npm run lint` — clean (0 errors; 4 pre-existing/intentional warnings — native `<img>` with `onError` fallback for hero + card media)
+- `npm run build` — passes; all 62 routes compile (including new `/admin/users`, `/admin/settings`, `/admin/reports`, `/admin/reviews`, `/admin/notifications` and the SSG `/services/[slug]` aliases → `/tolet`, `/electrician`, `/plumber`, `/kajer-bua`, `/home-tutor`, `/blood-donor`)
+
+## 16. Homepage redesign (premium UI)
+
+- Brand: Noto Sans Bengali via `next/font/google`; green + white tokens in `app/globals.css` (`--color-brand-*`, `--color-ink-*`, `--color-mist-*`).
+- Hero — two dedicated layouts in `HeroSection.tsx` + `HeroCarousel.tsx` (`variant`): desktop (lg+) is a full-bleed text-free carousel sized to the image's intrinsic ratio (`aspect-[1672/941]`, so never cropped); mobile/tablet is a tall image band (`h-[78svh] min-h-[600px]`, object-cover, gradient scrim) with the active slide's tag/headline/supporting text and a `HeroSearchBar` overlay. Both share autoplay, swipe, dots (mobile arrows hidden < sm). Images `/sheba1.jpg`…`/sheba4.jpg` accept `.png` too (both in `/public/`); probing both extensions then a branded gradient panel.
+- Fixed overlay `Navbar` on the homepage: transparent + top scrim over the hero, measured via `[data-hero]` element bottom → solid white once scrolled past; other pages keep the sticky white bar. Mobile actions are logo + search + hamburger (44px targets, drawer animated via tw-animate-css, scrollable), compact word-mark so no 320px overflow.
+- `ServiceCategoryBar` right below the hero: floating white card overlapping the hero edge; 2-col mobile / 4-col sm / 7-col lg grid of service categories with icons; each links to `/services/<slug>` aliases → canonical pages.
+- Six data-driven preview sections (বাসা ভাড়া, Electrician, Plumber, কাজের বুয়া, গৃহশিক্ষক, ব্লাড ডোনার) via `HomeServiceSection` + shared facades (mock fallback). Mappers live in `lib/home-preview.ts`, stable loaders in `components/home/section-loaders.ts`. `ServiceCarousel`: horizontal snap rail on mobile (~1.4 cards visible) → grid on lg+; "আরও দেখুন" is full-width on mobile.
+- Section spacing deliberately compact (`py-9 sm:py-12`) — no large empty gaps.
+- Premium `Navbar` (হোম / সেবা সমূহ / কিভাবে কাজ করে / আমাদের সম্পর্কে / যোগাযোগ + সেবা নিন CTA, search + user icons on desktop, mobile drawer), dark-green `Footer` (2-col mobile / 12-col lg: সেবা / কোম্পানি / সহায়তা), fixed mobile bottom nav (হোম / সেবা / বুকিং / প্রোফাইল) with safe-area padding (home root reserves `env(safe-area-inset-bottom)+5.5rem`), plus: কেন ময়মনসিংহ সেবা? stats, 3-step how-it-works, testimonials (mobile carousel), final CTA.
+- `/services` reads a `q` param (hero search lands here, pre-filled); explicit `viewport` meta exported from `app/layout.tsx`.
+- Old home-only sections (`HeroServiceFinder`, `ServiceCardsSection`, `ToletPreviewSection`, `TrustSection`, `HowItWorksSection`, `EmergencyBloodSection`) are no longer imported by `app/page.tsx`.

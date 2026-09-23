@@ -32,8 +32,9 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
 function ServicesContent() {
   const searchParams = useSearchParams();
   const initialArea = searchParams.get('area') || '';
+  const initialQuery = searchParams.get('q') || '';
   const [selectedArea, setSelectedArea] = useState<string>(initialArea);
-  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [searchQuery, setSearchQuery] = useState<string>(initialQuery);
 
   const mccAreas = getAllMCCAreas();
 
