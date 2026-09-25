@@ -5,26 +5,51 @@
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-display: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand green scale (emerald-tuned for premium green + white identity) */
-  --color-brand-50: #f0fdf4;
-  --color-brand-100: #dcfce7;
-  --color-brand-200: #bbf7d0;
-  --color-brand-300: #86efac;
-  --color-brand-400: #4ade80;
-  --color-brand-500: #22c55e;
-  --color-brand-600: #16a34a;
-  --color-brand-700: #15803d;
-  --color-brand-800: #166534;
-  --color-brand-900: #14532d;
-  --color-brand-950: #052e16;
+  /* Brand green scale (Deep Forest + Secondary, warm) */
+  --color-brand-50: #f3f6f3;
+  --color-brand-100: #e3e7e2;
+  --color-brand-200: #c9d4cc;
+  --color-brand-300: #a4b8ac;
+  --color-brand-400: #7c9a8b;
+  --color-brand-500: #4f846f;
+  --color-brand-600: #176b57; /* Secondary Green */
+  --color-brand-700: #123c32; /* Deep Forest Green */
+  --color-brand-800: #0e3028;
+  --color-brand-900: #0a241d;
+  --color-brand-950: #071713;
 
-  --color-ink-900: #0f172a;
-  --color-ink-700: #334155;
-  --color-ink-500: #64748b;
-  --color-ink-400: #94a3b8;
+  /* Lime accent — small highlights / CTAs only */
+  --color-accent-100: #f2fbd9;
+  --color-accent-200: #e4f8b0;
+  --color-accent-300: #d1f173;
+  --color-accent-400: #b8e94e; /* Lime Accent */
+  --color-accent-500: #9ed72a;
+  --color-accent-600: #7fb51c;
+  --color-accent-700: #62891a;
 
-  --color-mist-50: #f7faf8;
-  --color-mist-100: #eef4f0;
+  /* Text */
+  --color-ink-900: #17201d; /* Main Text */
+  --color-ink-700: #3a4641;
+  --color-ink-500: #66736e; /* Muted Text */
+  --color-ink-400: #8a9791;
+
+  /* Warm neutral surfaces */
+  --color-mist-50: #f7f7f2; /* Warm Ivory */
+  --color-mist-100: #ecefe9;
+
+  /* Legacy pages still use emerald-*: alias it to the same brand scale so the
+     whole app (not just the homepage) shares one consistent green identity. */
+  --color-emerald-50: #f3f6f3;
+  --color-emerald-100: #e3e7e2;
+  --color-emerald-200: #c9d4cc;
+  --color-emerald-300: #a4b8ac;
+  --color-emerald-400: #7c9a8b;
+  --color-emerald-500: #4f846f;
+  --color-emerald-600: #176b57;
+  --color-emerald-700: #123c32;
+  --color-emerald-800: #0e3028;
+  --color-emerald-900: #0a241d;
+  --color-emerald-950: #071713;
 }
 
 @layer base {
@@ -35,15 +60,15 @@
   }
 
   body {
-    background-color: #ffffff;
+    background-color: var(--color-mist-50);
     color: var(--color-ink-900);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
   }
 
   ::selection {
-    background-color: var(--color-brand-100);
-    color: var(--color-brand-900);
+    background-color: var(--color-accent-200);
+    color: var(--color-brand-800);
   }
 }
 
@@ -71,16 +96,5 @@
   }
   .rail-scrollbar::-webkit-scrollbar-track {
     background: transparent;
-  }
-}
-
-@keyframes heroFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
   }
 }

@@ -17,7 +17,7 @@ interface ServiceSectionProps {
 const BG_CLASS: Record<NonNullable<ServiceSectionProps['background']>, string> = {
   white: 'bg-white',
   soft: 'bg-mist-50',
-  tint: 'bg-gradient-to-b from-mist-50 to-white',
+  tint: 'bg-mist-50',
 };
 
 export default function ServiceSection({
@@ -39,7 +39,7 @@ export default function ServiceSection({
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
             <div className="max-w-2xl">
               <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600">
-                <span className="h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
+                <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
                 {eyebrow}
               </span>
               <h2 className="mt-1.5 text-xl font-bold leading-tight text-ink-900 sm:text-2xl">

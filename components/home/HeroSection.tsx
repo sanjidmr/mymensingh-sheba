@@ -1,54 +1,39 @@
 'use client';
 
 import HeroCarousel, { type HeroSlide } from '@/components/home/HeroCarousel';
-import HeroSearchBar from '@/components/home/HeroSearchBar';
 
 /**
- * Hero section in two dedicated layouts:
- * - Desktop (lg+): full-bleed text-free carousel — /sheba1…4 fill the section
- *   edge-to-edge at their own aspect ratio (never cropped).
- * - Mobile/tablet: tall image band with Bengali headline, supporting text and
- *   a search bar overlaid; swipe + dots keep the carousel intact.
+ * Hero copy — warm, place-rooted (Mymensingh), premium and human.
+ * Layout lives in HeroCarousel: desktop (image-first hero + intro block below)
+ * and mobile (headline → swipeable carousel → thumb-friendly search).
  */
 export const HERO_SLIDES: HeroSlide[] = [
   {
     src: '/sheba1.png',
-    tag: 'বাসা ভাড়া',
-    title: 'ময়মনসিংহ সিটিতে বাসা ভাড়া',
-    subtitle: 'ফ্ল্যাট, রুম, ব্যাচেলর ও মেস সিট এক জায়গায়।',
+    tag: 'সেবা খুঁজুন',
+    title: 'ময়মনসিংহের ভিতরে আপনার পছন্দের সেবা খুঁজে নিন',
+    subtitle: 'ফ্ল্যাট, রুম, ব্যাচেলর, মেস-হোস্টেলসহ সব সেবা এক জায়গায় — এলাকা ও বাজেট অনুযায়ী যাচাইকৃত তালিকা।',
   },
   {
     src: '/sheba2.png',
-    tag: 'Electrician • Plumber',
-    title: 'জরুরি মেরামতে অভিজ্ঞ টেকনিশিয়ান',
-    subtitle: 'যাচাইকৃত সেবাদাতা, দরজায় দরজায়।',
+    tag: 'বাসা • মেস • হোস্টেল',
+    title: 'আপনার পছন্দের বাসা, মেস, হোস্টেল খুঁজে নিন',
+    subtitle: 'ঘর খোঁজা এখন আরও সহজ — ফ্ল্যাট, রুম, ব্যাচেলর, মেস ও হোস্টেলের নির্ভরযোগ্য তালিকা।',
   },
   {
     src: '/sheba3.png',
-    tag: 'কাজের বুয়া • গৃহশিক্ষক',
-    title: 'যাচাইকৃত গৃহকর্মী ও গৃহশিক্ষক',
-    subtitle: 'রেটিং ও শিক্ষাগত যোগ্যতা অনুযায়ী বেছে নিন।',
+    tag: 'মেরামত • গৃহকর্মী',
+    title: 'জরুরি মেরামতে অভিজ্ঞ টেকনিশিয়ান এবং বাসায় চাওয়া গৃহকর্মী খুঁজে নিন',
+    subtitle: 'শর্ট সার্কিট থেকে পাইপ-লিক, আর বাসায় এবার নিয়মিত গৃহকর্মী — সবকিছু দরজায় দরজায়।',
   },
   {
     src: '/sheba4.png',
-    tag: 'জরুরি রক্তদান',
-    title: 'রক্তদাতা — সম্পূর্ণ বিনামূল্যে',
-    subtitle: 'রক্তদান একটি মানবিক সেবা, এখানে কোনো ফি নেই।',
+    tag: 'গৃহশিক্ষক • রক্তদাতা',
+    title: 'গৃহশিক্ষক এবং জরুরি রক্তদাতা খুঁজে নিন',
+    subtitle: 'পড়াশোনার জন্য অভিজ্ঞ গৃহশিক্ষক, আর জরুরি রক্তের প্রয়োজনে সম্পূর্ণ বিনামূল্যে রক্তদাতা।',
   },
 ];
 
 export default function HeroSection() {
-  return (
-    <>
-      {/* Desktop (lg+): full-bleed text-free carousel, images never cropped */}
-      <div className="hidden lg:block">
-        <HeroCarousel slides={HERO_SLIDES} interval={4500} variant="bleed" />
-      </div>
-
-      {/* Mobile / tablet: tall image band with headline + search overlay */}
-      <div className="lg:hidden">
-        <HeroCarousel slides={HERO_SLIDES} interval={4500} variant="mobile" search={<HeroSearchBar />} />
-      </div>
-    </>
-  );
+  return <HeroCarousel slides={HERO_SLIDES} interval={4800} />;
 }

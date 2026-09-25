@@ -12,6 +12,7 @@ export interface ServiceCategory {
   categoryType: 'user_profile' | 'admin_managed' | 'community';
   tagBadge?: string;
   searchPlaceholder?: string;
+  coverImage?: string;
 }
 
 export const LAUNCH_SERVICES: ServiceCategory[] = [
@@ -21,10 +22,11 @@ export const LAUNCH_SERVICES: ServiceCategory[] = [
     nameBn: 'বাসা ভাড়া (To-Let)',
     nameEn: 'To-Let',
     shortDesc: 'ফ্যামিলি ফ্ল্যাট, ব্যাচেলর মেস, সাবলেট ও সিট ভাড়া সরাসরি ভেরিফাইড পোস্ট থেকে',
-    iconName: 'Home',
+iconName: 'Home',
     categoryType: 'user_profile',
-    tagBadge: 'জনপ্রিয়',
+    tagBadge: 'জনপ্রিয়',
     searchPlaceholder: 'ফ্ল্যাট, মেস বা সিট খুঁজুন...',
+    coverImage: '/home.jpg',
   },
   {
     id: 'kajer-bua',
@@ -32,10 +34,11 @@ export const LAUNCH_SERVICES: ServiceCategory[] = [
     nameBn: 'কাজের বুয়া',
     nameEn: 'Domestic Helper',
     shortDesc: 'বাসার রান্না, কাপড় ধোয়া ও ঘর মোছার নির্ভরযোগ্য পার্ট-টাইম বা ফুল-টাইম গৃহকর্মী',
-    iconName: 'Sparkles',
+iconName: 'Sparkles',
     categoryType: 'admin_managed',
     tagBadge: 'ভেরিফাইড কর্মী',
-    searchPlaceholder: 'কাজের সময় ও এলাকা বেছে নিন...',
+    searchPlaceholder: 'কাজের সময় ও এলাকা বেছে নিন...',
+    coverImage: '/kajerbua.jpg',
   },
   {
     id: 'electrician',
@@ -47,6 +50,7 @@ export const LAUNCH_SERVICES: ServiceCategory[] = [
     categoryType: 'admin_managed',
     tagBadge: 'দ্রুত সেবা',
     searchPlaceholder: 'সমস্যা বা কাজ উল্লেখ করুন...',
+    coverImage: '/e&p.jpg',
   },
   {
     id: 'plumber',
@@ -58,6 +62,7 @@ export const LAUNCH_SERVICES: ServiceCategory[] = [
     categoryType: 'admin_managed',
     tagBadge: 'দক্ষ মিস্ত্রি',
     searchPlaceholder: 'প্লাম্বিং সমস্যার বিবরণ দিন...',
+    coverImage: '/e&p.jpg',
   },
   {
     id: 'home-moving',
@@ -69,6 +74,7 @@ export const LAUNCH_SERVICES: ServiceCategory[] = [
     categoryType: 'admin_managed',
     tagBadge: 'নিরাপদ শিফটিং',
     searchPlaceholder: 'বর্তমান ও নতুন এলাকা নির্বাচন করুন...',
+    coverImage: '/homechange.jpg',
   },
   {
     id: 'home-tutor',
@@ -76,10 +82,11 @@ export const LAUNCH_SERVICES: ServiceCategory[] = [
     nameBn: 'গৃহশিক্ষক',
     nameEn: 'Home Tutor',
     shortDesc: 'ময়মনসিংহ শহরের আনন্দ মোহন, মেডিকেল ও কৃষি বিশ্ববিদ্যালয়ের অভিজ্ঞ টিউটর',
-    iconName: 'GraduationCap',
+iconName: 'GraduationCap',
     categoryType: 'user_profile',
     tagBadge: 'অভিজ্ঞ টিউটর',
-    searchPlaceholder: 'ক্লাস, মাধ্যম বা বিষয় খুঁজুন...',
+    searchPlaceholder: 'ক্লাস, মাধ্যম বা বিষয় খুঁজুন...',
+    coverImage: '/tutor.jpg',
   },
   {
     id: 'blood-donor',
@@ -91,6 +98,7 @@ export const LAUNCH_SERVICES: ServiceCategory[] = [
     categoryType: 'community',
     tagBadge: 'জরুরি সেবা',
     searchPlaceholder: 'রক্তের গ্রুপ ও এলাকা নির্বাচন করুন...',
+    coverImage: '/doner.jpg',
   },
 ];
 

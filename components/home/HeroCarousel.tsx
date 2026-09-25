@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
+import HeroSearchBar from '@/components/home/HeroSearchBar';
 
 export interface HeroSlide {
   src: string;
@@ -13,28 +14,23 @@ export interface HeroSlide {
 interface HeroCarouselProps {
   slides: HeroSlide[];
   interval?: number;
-  /** 'bleed' = desktop full-width image (sheet edge-to-edge); 'mobile' = tall image band + overlay content */
-  variant?: 'bleed' | 'mobile';
-  /** Optional search UI — rendered inside the overlay for the 'mobile' variant */
-  search?: React.ReactNode;
 }
 
 /**
- * Hero carousel with two layouts:
- * - bleed: full-bleed text-free sheet; stage sized to the image's intrinsic
- *   aspect ratio so nothing is cropped on desktop.
- * - mobile: a portrait-friendly image band (object-cover) with the active
- *   slide headline + supporting text + search bar overlaid, touch swipe, dots.
- * Images live in /public as /sheba1.png … /sheba4.png (jpg/png both accepted);
- * each slide probes one extension then the other before falling back to a
- * branded gradient panel.
+ * Hero — a section of its own, always below the sticky navbar (never behind it).
+ *
+ * Desktop (lg+): the /sheba1…4 carousel fills the full hero width (cinematic
+ * image only — arrows + small indicators overlay). Below the hero sits a
+ * clean, centered intro block with the eyebrow/tag, headline, subtitle and the
+ * search bar, so the hero itself stays image-pure.
+ *
+ * Mobile/tablet: an intentional app-like stack — headline block → swipeable
+ * rounded photo card (dots overlay) → the search band comes right after as its
+ * own section.
+ *
+ * Images probe `.png` → `.jpg`, then return a branded fallback panel.
  */
-export default function HeroCarousel({
-  slides,
-  interval = 4500,
-  variant = 'bleed',
-  search,
-}: HeroCarouselProps) {
+export default function HeroCarousel({ slides, interval = 4800 }: HeroCarouselProps) {
   const [index, setIndex] = useState(0);
   const [attempt, setAttempt] = useState<number[]>(() => slides.map(() => 0));
   const [paused, setPaused] = useState(false);
@@ -42,13 +38,16 @@ export default function HeroCarousel({
   const touchX = useRef<number | null>(null);
 
   const total = slides.length;
-  const isMobile = variant === 'mobile';
+  const slide = slides[index];
 
-  const candidates = (i: number): string[] => {
-    const base = slides[i].src.replace(/\.(jpg|png)$/i, '');
-    const other = slides[i].src.endsWith('.png') ? '.jpg' : '.png';
-    return [slides[i].src, `${base}${other}`];
-  };
+  const candidates = useCallback(
+    (i: number): string[] => {
+      const base = slides[i].src.replace(/\.(jpg|png)$/i, '');
+      const other = slides[i].src.endsWith('.png') ? '.jpg' : '.png';
+      return [slides[i].src, `${base}${other}`];
+    },
+    [slides]
+  );
 
   const srcFor = (i: number): string => {
     const list = candidates(i);
@@ -93,90 +92,73 @@ export default function HeroCarousel({
     if (Math.abs(delta) > 40) go(delta < 0 ? 1 : -1);
   };
 
-  const slide = slides[index];
-  const stageClass = isMobile
-    ? 'relative h-[78svh] min-h-[600px] w-full sm:h-[70svh] sm:max-h-[860px]'
-    : 'relative aspect-[1672/941] w-full';
-  const imgClass = isMobile
-    ? 'absolute inset-0 h-full w-full object-cover object-center'
-    : 'absolute inset-0 h-full w-full object-cover';
+  const pauseHandlers = {
+    onMouseEnter: () => setPaused(true),
+    onMouseLeave: () => setPaused(false),
+    onFocusCapture: () => setPaused(true),
+    onBlurCapture: () => setPaused(false),
+  };
 
-  return (
-    <div
-      className="relative w-full overflow-hidden bg-brand-900"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={(e) => {
-        if (e.target === e.currentTarget) setPaused(true);
-      }}
-      onBlur={() => setPaused(false)}
-      onTouchStart={onTouchStart}
-      onTouchEnd={onTouchEnd}
-      role="region"
-      aria-roledescription="carousel"
-      aria-label="ফিচারড সেবা"
-    >
+  const failed = (attempt[index] ?? 0) >= candidates(index).length;
+
+  const photoMarkup = failed ? (
+    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-brand-800 px-8 text-center">
+      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white/80">
+        <ImageOff className="h-7 w-7" />
+      </span>
+      <span className="text-[11px] font-bold uppercase tracking-widest text-accent-300">
+        {slide.tag}
+      </span>
+      <p className="max-w-md text-base font-bold leading-snug text-white sm:text-lg">{slide.title}</p>
+    </div>
+  ) : (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      key={srcFor(index)}
+      src={srcFor(index)}
+      alt={slide.title}
+      className="absolute inset-0 h-full w-full object-cover"
+      onError={markFailed}
+    />
+  );
+
+  const dots = (
+    <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-1.5">
       <div
-        data-hero="true"
-        className={variant === 'bleed' ? stageClass : `${stageClass} flex items-center justify-center`}
-        key={index}
-        style={{ animation: 'heroFadeIn 600ms ease-out' }}
+        className="flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-0.5"
+        role="group"
+        aria-label="স্লাইড নিয়ন্ত্রণ"
       >
-        {(attempt[index] ?? 0) >= candidates(index).length ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-brand-600 via-brand-700 to-brand-900 px-8 text-center">
-            <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white/80">
-              <ImageOff className="h-7 w-7" />
-            </span>
-            <span className="text-[11px] font-bold uppercase tracking-widest text-brand-200">
-              {slide.tag}
-            </span>
-            <p className="max-w-md text-lg font-bold leading-snug text-white sm:text-xl">
-              {slide.title}
-            </p>
-          </div>
-        ) : (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={srcFor(index)}
-            alt={slide.title}
-            className={imgClass}
-            onError={markFailed}
-          />
-        )}
-
-        {/* Mobile overlay: headline, supporting text + search bar */}
-        {isMobile && (
-          <>
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/60 via-black/20 to-black/75"
+        {slides.map((s, i) => (
+          <button
+            key={s.src}
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setIndex(i);
+            }}
+            aria-label={`স্লাইড ${i + 1}`}
+            aria-current={i === index}
+            className="grid h-6 w-7 place-items-center rounded-full"
+          >
+            <span
+              className={`block h-1.5 rounded-full transition-all duration-300 ${
+                i === index ? 'w-5 bg-accent-400' : 'w-2 bg-white/70'
+              }`}
             />
-            <div className="pointer-events-none absolute inset-0 flex flex-col justify-end pb-24 sm:pb-20 lg:pb-24">
-              <div className="px-5 sm:px-10">
-                <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-3 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
-                  {slide.tag}
-                </span>
-                <h1 className="mt-3 max-w-xl text-[26px] font-extrabold leading-tight text-white sm:text-4xl">
-                  {slide.title}
-                </h1>
-                <p className="mt-2 max-w-md text-sm leading-relaxed text-white/85 sm:text-base">
-                  {slide.subtitle}
-                </p>
-                {search && <div className="pointer-events-auto mt-5 w-full max-w-xl">{search}</div>}
-              </div>
-            </div>
-          </>
-        )}
+          </button>
+        ))}
       </div>
+    </div>
+  );
 
-      {/* Arrows */}
+  const arrows = (
+    <>
       <button
         type="button"
         onClick={() => go(-1)}
         aria-label="পূর্ববর্তী ছবি"
-        className={`absolute left-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:h-11 sm:w-11 sm:left-5 ${
-          isMobile ? 'hidden sm:flex' : ''
-        }`}
+        className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-300"
       >
         <ChevronLeft className="h-5 w-5" />
       </button>
@@ -184,28 +166,104 @@ export default function HeroCarousel({
         type="button"
         onClick={() => go(1)}
         aria-label="পরবর্তী ছবি"
-        className={`absolute right-3 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-sm transition-colors hover:bg-white/30 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:h-11 sm:w-11 sm:right-5 ${
-          isMobile ? 'hidden sm:flex' : ''
-        }`}
+        className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-300"
       >
         <ChevronRight className="h-5 w-5" />
       </button>
+    </>
+  );
 
-      {/* Dots */}
-      <div className="absolute inset-x-0 bottom-5 flex items-center justify-center gap-1.5">
-        {slides.map((s, i) => (
-          <button
-            key={s.src}
-            type="button"
-            onClick={() => setIndex(i)}
-            aria-label={`স্লাইড ${i + 1}`}
-            aria-current={i === index}
-            className={`h-2 rounded-full transition-all duration-300 ${
-              i === index ? 'w-6 bg-white' : 'w-2 bg-white/50 hover:bg-white/80'
-            }`}
-          />
-        ))}
-      </div>
+  const eyebrow = (
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600">
+        <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
+        ময়মনসিংহ সেবা
+      </span>
+      <span className="inline-flex items-center rounded-full bg-accent-400 px-2.5 py-0.5 text-[11px] font-bold text-brand-800">
+        {slide.tag}
+      </span>
     </div>
+  );
+
+  return (
+    <section className="bg-white lg:bg-brand-950" aria-label="প্রধান সেবার হাইলাইট">
+      {/* ——— Desktop: full-width image carousel only (no overlay text) ——— */}
+      <div
+        className="relative hidden aspect-[17/9] w-full max-h-[calc(100vh-4.5rem)] overflow-hidden bg-brand-950 lg:block"
+        {...pauseHandlers}
+      >
+        {photoMarkup}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/30 to-transparent"
+        />
+        {arrows}
+        {dots}
+      </div>
+
+      {/* ——— Desktop: intro block with headline + search, below the hero ——— */}
+      <div className="hidden border-b border-brand-100 bg-white lg:block">
+        <div className="mx-auto w-full max-w-7xl px-6 py-12 xl:px-8 xl:py-14">
+          <div className="mx-auto max-w-3xl text-center">
+            {eyebrow}
+            <h1
+              key={`di-${index}`}
+              className="mt-3 text-balance text-3xl font-extrabold leading-[1.2] tracking-tight text-ink-900 xl:text-[42px]"
+            >
+              {slide.title}
+            </h1>
+            <p
+              key={`dp-${index}`}
+              className="mt-3 text-balance text-base leading-relaxed text-ink-500"
+            >
+              {slide.subtitle}
+            </p>
+
+            <div className="mx-auto mt-7 max-w-xl">
+              <HeroSearchBar />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ——— Mobile / tablet: compact app-like stack ——— */}
+      <div className="border-b border-brand-100 bg-white py-6 lg:hidden">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600">
+            <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
+            ময়মনসিংহ সেবা
+          </span>
+          <span className="inline-flex items-center rounded-full bg-accent-400 px-2.5 py-0.5 text-[11px] font-bold text-brand-800">
+            {slide.tag}
+          </span>
+        </div>
+        <h1
+          key={`mh-${index}`}
+          className="mt-2.5 text-balance text-[24px] font-extrabold leading-[1.25] tracking-tight text-ink-900 sm:text-[28px]"
+        >
+          {slide.title}
+        </h1>
+        <p
+          key={`mp-${index}`}
+          className="mt-1.5 line-clamp-2 text-[14px] leading-relaxed text-ink-500 sm:text-[15px]"
+        >
+          {slide.subtitle}
+        </p>
+
+        <div
+          className="relative mt-4 aspect-video overflow-hidden rounded-2xl bg-brand-950 shadow-sm"
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          {...pauseHandlers}
+        >
+          {photoMarkup}
+          <div
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/25 to-transparent"
+          />
+          {dots}
+        </div>
+      </div>
+    </section>
   );
 }

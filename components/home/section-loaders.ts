@@ -18,6 +18,10 @@ export const loadElectricianCards = makeLoadStaffCards('electrician');
 export const loadPlumberCards = makeLoadStaffCards('plumber');
 export const loadMaidCards = makeLoadStaffCards('kajer-bua');
 
+/** Electrician + Plumber শো-কেস মিশ্রণ — হোমে এক কার্ড হিসেবে দেখানো হয়। */
+export const loadRepairCards = (): Promise<HomePreviewCard[]> =>
+  Promise.all([loadElectricianCards(), loadPlumberCards()]).then(([e, p]) => [...e, ...p]);
+
 export const loadTutorCards = (): Promise<HomePreviewCard[]> =>
   fetchPublishedTutors().then((tutors) => tutors.map(tutorToPreviewCard));
 

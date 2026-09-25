@@ -6,7 +6,7 @@ import { ClientProviders } from '@/components/ClientProviders';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#ffffff',
+  themeColor: '#f7f7f2',
 };
 
 const notoBengali = Noto_Sans_Bengali({
@@ -43,7 +43,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="bn" className={`${notoBengali.variable} scroll-smooth`}>
-      <body className="min-h-screen bg-white text-ink-900 antialiased font-sans selection:bg-brand-100 selection:text-brand-900">
+      <body className="min-h-screen bg-mist-50 text-ink-900 antialiased font-sans selection:bg-accent-200 selection:text-brand-800">
         <ClientProviders>{children}</ClientProviders>
       </body>
     </html>

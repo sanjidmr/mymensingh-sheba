@@ -50,8 +50,8 @@ export default function WhySection() {
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
             <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600">
-              <span className="h-1.5 w-1.5 rounded-full bg-brand-500" aria-hidden="true" />
-              কেন ময়মনসিংহ সেবা?
+              <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
+              কেন Mymensingh Sheba?
             </span>
             <h2 className="mt-1.5 text-xl font-bold leading-tight text-ink-900 sm:text-2xl">
               নিছক তালিকা নয় — আস্থা ও যাচাই-কর্মীর নিশ্চয়তা
@@ -79,7 +79,7 @@ export default function WhySection() {
 
         {/* Stats strip */}
         <Reveal delay={120}>
-          <div className="mt-8 grid grid-cols-2 gap-3 rounded-3xl border border-brand-100 bg-gradient-to-br from-brand-50 to-mist-50 p-5 sm:gap-4 sm:p-8 lg:grid-cols-4">
+          <div className="mt-8 grid grid-cols-2 gap-3 rounded-2xl border border-brand-100 bg-white p-5 sm:gap-4 sm:p-8 lg:grid-cols-4">
             {STATS.map((stat) => (
               <div key={stat.label} className="text-center lg:px-4">
                 <p className="text-[26px] font-extrabold tracking-tight text-brand-800 sm:text-4xl">

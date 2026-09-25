@@ -18,9 +18,9 @@ export interface HomeServiceSectionProps {
 
 function SkeletonCard() {
   return (
-    <div className="w-[72%] shrink-0 snap-start sm:w-[46%] lg:w-auto">
+    <div className="w-[80%] shrink-0 snap-start sm:w-[52%] lg:w-auto">
       <div className="animate-pulse overflow-hidden rounded-2xl border border-brand-100 bg-white">
-        <div className="aspect-[4/3] w-full bg-mist-100" />
+        <div className="aspect-[3/2] w-full bg-mist-100" />
         <div className="space-y-3 p-4">
           <div className="h-4 w-3/4 rounded bg-mist-100" />
           <div className="h-3 w-1/2 rounded bg-mist-50" />
@@ -79,7 +79,7 @@ export default function HomeServiceSection({
           </p>
         </div>
       ) : (
-        <ServiceCarousel cards={cards} columns={id === 'blood-donor-preview' ? 5 : 4} />
+        <ServiceCarousel cards={cards} />
       )}
     </ServiceSection>
   );

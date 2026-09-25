@@ -10,7 +10,7 @@ interface ServiceCarouselProps {
 
 /**
  * Responsive service rail:
- * - mobile: horizontal snap carousel (~1.3–1.5 cards visible, so swiping is obvious)
+ * - mobile: horizontal snap carousel (~1.2 cards visible, clearly large cards)
  * - lg+: fluid grid up to `columns`
  */
 export default function ServiceCarousel({ cards, columns = 4 }: ServiceCarouselProps) {
@@ -25,7 +25,7 @@ export default function ServiceCarousel({ cards, columns = 4 }: ServiceCarouselP
       aria-label="সেবা প্রোফাইলের তালিকা"
     >
       {cards.map((card) => (
-        <div key={card.id} className="w-[72%] shrink-0 snap-start sm:w-[46%] lg:w-auto">
+        <div key={card.id} className="w-[80%] shrink-0 snap-start sm:w-[52%] lg:w-auto">
           <ServiceCard card={card} />
         </div>
       ))}

@@ -109,40 +109,58 @@ function ServicesContent() {
             <Link
               key={service.id}
               href={href}
-              className="group flex flex-col justify-between p-6 bg-white rounded-2xl border border-slate-200 hover:border-emerald-700/40 hover:shadow-md transition-all duration-200"
+              className="group flex flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
             >
-              <div>
-                <div className="flex items-center justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-800 flex items-center justify-center group-hover:bg-emerald-100 transition-colors">
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  {service.tagBadge && (
-                    <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-emerald-100 text-emerald-900">
-                      {service.tagBadge}
-                    </span>
-                  )}
-                </div>
-
-                <h3 className="text-xl font-bold text-slate-900 group-hover:text-emerald-800 transition-colors">
-                  {service.nameBn}
-                </h3>
-                <p className="mt-2 text-sm text-slate-600 leading-relaxed">
-                  {service.shortDesc}
-                </p>
+              <div className="relative aspect-[16/10] w-full overflow-hidden bg-brand-800">
+                {service.coverImage && (
+                  <img
+                    src={service.coverImage}
+                    alt={service.nameBn}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  />
+                )}
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent"
+                />
+                {service.tagBadge && (
+                  <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-accent-400 px-2.5 py-1 text-[11px] font-bold text-brand-900 shadow-sm">
+                    {service.tagBadge}
+                  </span>
+                )}
+                <span className="absolute bottom-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-brand-700 text-white shadow-md">
+                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                </span>
               </div>
 
-              <div className="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between text-sm">
-                <span className="text-xs text-slate-500">
-                  {service.categoryType === 'admin_managed'
-                    ? 'অ্যাডমিন পরিচালিত'
-                    : service.categoryType === 'user_profile'
-                    ? 'ভেরিফাইড প্রোফাইল'
-                    : 'স্বেচ্ছাসেবী'}
-                </span>
-                <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 group-hover:translate-x-0.5 transition-transform">
-                  <span>প্রবেশ করুন</span>
-                  <ArrowRight className="w-4 h-4" />
-                </span>
+              <div className="flex flex-1 flex-col p-5">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-mist-50 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
+                    <Icon className="h-5 w-5" />
+                  </span>
+                  <h3 className="line-clamp-2 text-lg font-bold leading-snug text-ink-900 transition-colors group-hover:text-brand-800">
+                    {service.nameBn}
+                  </h3>
+                </div>
+
+                <p className="mt-3 text-sm leading-relaxed text-ink-500">
+                  {service.shortDesc}
+                </p>
+
+                <div className="mt-5 flex items-center justify-between border-t border-brand-100 pt-4 text-sm">
+                  <span className="text-xs font-medium text-ink-500">
+                    {service.categoryType === 'admin_managed'
+                      ? 'অ্যাডমিন পরিচালিত'
+                      : service.categoryType === 'user_profile'
+                        ? 'ভেরিফাইড প্রোফাইল'
+                        : 'স্বেচ্ছাসেবী'}
+                  </span>
+                  <span className="inline-flex items-center gap-1 font-bold text-brand-700 transition-transform group-hover:translate-x-0.5">
+                    <span>প্রবেশ করুন</span>
+                    <ArrowRight className="h-4 w-4" />
+                  </span>
+                </div>
               </div>
             </Link>
           );

@@ -21,8 +21,8 @@ function AvatarFallback({
     <div
       className={`flex h-full w-full items-center justify-center text-4xl font-bold ${
         tone === 'rose'
-          ? 'bg-gradient-to-br from-rose-50 via-rose-100 to-emerald-100 text-rose-700'
-          : 'bg-gradient-to-br from-emerald-50 via-emerald-100 to-emerald-50 text-emerald-800'
+          ? 'bg-rose-50 text-rose-700'
+          : 'bg-mist-100 text-brand-800'
       }`}
       aria-hidden="true"
     >
@@ -36,17 +36,15 @@ export default function ServiceCard({ card, className = '' }: ServiceCardProps) 
   const showImage = card.imageUrl && !imgError;
   const showRating = typeof card.rating === 'number' && (card.ratingCount || 0) > 0;
 
-  const toneClass =
-    card.avatarTone === 'rose'
-      ? 'from-rose-500/90 via-rose-600/90 to-emerald-700/90'
-      : 'from-emerald-500/80 via-emerald-600/85 to-emerald-900/90';
+  const arrowBoxClass =
+    card.avatarTone === 'rose' ? 'bg-rose-700' : 'bg-brand-700';
 
   return (
     <Link
       href={card.href}
       className={`group flex flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${className}`}
     >
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-mist-100">
+      <div className="relative aspect-[3/2] w-full overflow-hidden bg-mist-100">
         {showImage ? (
           <img
             src={card.imageUrl}
@@ -58,10 +56,10 @@ export default function ServiceCard({ card, className = '' }: ServiceCardProps) 
         ) : (
           <AvatarFallback label={card.avatarLabel} tone={card.avatarTone || 'green'} />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent" />
 
         {card.verified && (
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/35 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur-sm">
+          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full border border-white/20 bg-black/40 px-2.5 py-1 text-[11px] font-semibold text-white">
             <BadgeCheck className="h-3.5 w-3.5" />
             যাচাইকৃত
           </span>
@@ -69,18 +67,18 @@ export default function ServiceCard({ card, className = '' }: ServiceCardProps) 
 
         {card.availability && (
           <span
-            className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold backdrop-blur-sm ${
+            className={`absolute bottom-3 left-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${
               card.availability.tone === 'green'
-                ? 'border-emerald-200 bg-emerald-50/95 text-emerald-800'
+                ? 'border-brand-200 bg-white text-brand-800'
                 : card.availability.tone === 'amber'
-                  ? 'border-amber-200 bg-amber-50/95 text-amber-800'
-                  : 'border-slate-200 bg-white/90 text-slate-600'
+                  ? 'border-amber-200 bg-white text-amber-800'
+                  : 'border-slate-200 bg-white text-slate-600'
             }`}
           >
             <span
               className={`h-1.5 w-1.5 rounded-full ${
                 card.availability.tone === 'green'
-                  ? 'bg-emerald-500'
+                  ? 'bg-brand-600'
                   : card.availability.tone === 'amber'
                     ? 'bg-amber-500'
                     : 'bg-slate-400'
@@ -92,19 +90,17 @@ export default function ServiceCard({ card, className = '' }: ServiceCardProps) 
         )}
 
         <span
-          className={`absolute bottom-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br text-white shadow-md ${
-            toneClass
-          }`}
+          className={`absolute bottom-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-lg text-white shadow-md ${arrowBoxClass}`}
           aria-hidden="true"
         >
           <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
         </span>
       </div>
 
-      <div className="flex flex-1 flex-col gap-3 p-4">
+      <div className="flex flex-1 flex-col gap-3.5 p-4 sm:p-5">
         <div className="flex flex-1 flex-col gap-1.5">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="line-clamp-2 text-[15px] font-bold leading-snug text-ink-900">
+            <h3 className="line-clamp-2 text-[15px] font-bold leading-snug text-ink-900 sm:text-base">
               {card.title}
             </h3>
             {showRating && card.rating != null && (
@@ -115,7 +111,7 @@ export default function ServiceCard({ card, className = '' }: ServiceCardProps) 
             )}
           </div>
           {card.subtitle && (
-            <p className="line-clamp-1 text-[13px] text-ink-500">{card.subtitle}</p>
+            <p className="line-clamp-1 text-[13px] text-ink-500 sm:text-sm">{card.subtitle}</p>
           )}
           {card.location && (
             <p className="flex items-center gap-1 text-xs text-ink-400">
@@ -133,7 +129,7 @@ export default function ServiceCard({ card, className = '' }: ServiceCardProps) 
               .map((chip) => (
                 <span
                   key={chip}
-                  className="rounded-md border border-brand-100 bg-mist-50 px-2 py-1 text-[11px] font-medium text-ink-700"
+                  className="rounded-md border border-brand-100 bg-mist-50 px-2 py-1 text-[11px] font-medium text-ink-700 sm:text-xs"
                 >
                   {chip}
                 </span>
@@ -142,7 +138,7 @@ export default function ServiceCard({ card, className = '' }: ServiceCardProps) 
         )}
 
         <div className="mt-auto flex items-center justify-between border-t border-slate-100 pt-3">
-          <span className="text-[13px] font-bold text-brand-700">{card.footer}</span>
+          <span className="text-sm font-bold text-brand-700 sm:text-[15px]">{card.footer}</span>
           <span className="text-xs font-medium text-brand-600 opacity-0 transition-opacity duration-300 group-hover:opacity-100">
             {card.footerLabel}
           </span>
