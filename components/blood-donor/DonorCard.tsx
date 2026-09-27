@@ -46,7 +46,9 @@ export default function DonorCard({ donor }: { donor: BloodDonorProfile }) {
       {/* Profile header */}
       <div className="relative w-full bg-gradient-to-br from-rose-700 via-rose-600 to-red-700 px-4 pt-4 pb-12">
         <div className="flex items-center gap-3">
-          <DonorAvatar donor={donor} className="w-14 h-14 text-2xl" />
+          <span className="flex w-14 h-14 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/15">
+            <Droplets className="w-7 h-7 text-white" aria-hidden="true" />
+          </span>
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
               <h3 className="font-bold text-white text-base sm:text-lg leading-tight truncate">

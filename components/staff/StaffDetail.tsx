@@ -16,9 +16,10 @@ import { StaffReportSheet } from './StaffReportSheet';
 interface StaffDetailProps {
   profile: StaffProfile;
   serviceUi: StaffServiceUiConfig;
+  imageless?: boolean;
 }
 
-export function StaffDetail({ profile, serviceUi }: StaffDetailProps) {
+export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDetailProps) {
   const { user } = useAuth();
   const accent = STAFF_ACCENT_CLASSES[serviceUi.accent] || STAFF_ACCENT_CLASSES.emerald;
 
@@ -36,8 +37,29 @@ export function StaffDetail({ profile, serviceUi }: StaffDetailProps) {
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
-      {/* Image header */}
-      <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">
+      {imageless ? (
+        <div className={`relative flex items-center justify-between gap-3 bg-gradient-to-r ${accent.gradient} px-5 py-3.5`}>
+          <div className="flex items-center gap-2 flex-wrap">
+            {profile.isVerified && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full border border-white/30">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                ভেরিফাইড
+              </span>
+            )}
+            {profile.isEmergency && (
+              <span className="inline-flex items-center gap-1 text-xs font-bold text-rose-100 bg-rose-700/90 px-2.5 py-1 rounded-full border border-white/30">
+                <Zap className="w-3.5 h-3.5" />
+                জরুরি সার্ভিস
+              </span>
+            )}
+          </div>
+          <span className="inline-flex items-center gap-1 text-xs font-semibold text-white bg-slate-900/40 px-2.5 py-1 rounded-full shrink-0">
+            <Clock className="w-3.5 h-3.5" />
+            {STAFF_AVAILABILITY_LABELS[profile.availability] || 'সীমিত সময়ে'}
+          </span>
+        </div>
+      ) : (
+        <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">
         {profile.imageUrl ? (
           <Image
             src={resolveStaffImageUrl(profile.imageUrl)}
@@ -79,6 +101,7 @@ export function StaffDetail({ profile, serviceUi }: StaffDetailProps) {
           {STAFF_AVAILABILITY_LABELS[profile.availability] || 'সীমিত সময়ে'}
         </span>
       </div>
+      )}
 
       {/* Body */}
       <div className="p-5 sm:p-6">

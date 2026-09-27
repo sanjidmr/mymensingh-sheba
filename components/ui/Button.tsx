@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 
 export type ButtonVariant =
   | 'primary'
+  | 'important'
   | 'secondary'
   | 'outline'
   | 'ghost'
@@ -47,18 +48,21 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       'inline-flex items-center justify-center font-semibold transition-all duration-150 rounded-xl cursor-pointer select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-55 disabled:cursor-not-allowed disabled:pointer-events-none active:scale-[0.98] active:transition-none whitespace-nowrap';
 
     const variantStyles: Record<ButtonVariant, string> = {
-      // Primary: Deep trustworthy Green
+      // Primary: Deep Forest Green — the core action
       primary:
-        'bg-emerald-800 text-white hover:bg-emerald-900 active:bg-emerald-950 focus-visible:ring-emerald-700 shadow-xs',
-      // Secondary: Soft light green tint
+        'bg-emerald-700 text-white hover:bg-emerald-800 active:bg-emerald-900 focus-visible:ring-emerald-700 shadow-xs',
+      // Important: Warm Golden Yellow with forest text — the "attention" action
+      important:
+        'bg-accent-400 text-emerald-900 hover:bg-accent-500 active:bg-accent-600 focus-visible:ring-accent-500 shadow-xs',
+      // Secondary: Soft sage tint
       secondary:
         'bg-emerald-50 text-emerald-900 hover:bg-emerald-100 active:bg-emerald-200/80 focus-visible:ring-emerald-600 border border-emerald-200/80',
-      // Outline: Slate border with clean hover
+      // Outline: Subtle — cream surface, forest text, bronze hairline
       outline:
-        'bg-white text-slate-800 hover:bg-slate-50 hover:text-slate-900 border border-slate-300/90 active:bg-slate-100 focus-visible:ring-emerald-700 shadow-2xs',
+        'bg-white text-emerald-800 hover:bg-mist-50 hover:text-emerald-900 border border-bronze-200 active:bg-mist-100 focus-visible:ring-emerald-700 shadow-2xs',
       // Ghost: Borderless
       ghost:
-        'bg-transparent text-slate-700 hover:bg-slate-100 active:bg-slate-200/70 focus-visible:ring-emerald-700',
+        'bg-transparent text-emerald-800 hover:bg-emerald-50/70 active:bg-emerald-100 focus-visible:ring-emerald-700',
       // Danger: Soft or solid red for cancel/delete/report
       danger:
         'bg-rose-700 text-white hover:bg-rose-800 active:bg-rose-900 focus-visible:ring-rose-600 shadow-xs',
@@ -67,7 +71,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         'bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800 focus-visible:ring-emerald-600 shadow-xs',
       // Icon: Square/circle button
       icon:
-        'bg-white text-slate-700 hover:bg-slate-100 border border-slate-200 active:bg-slate-200/70 focus-visible:ring-emerald-700 p-2.5',
+        'bg-white text-emerald-800 hover:bg-mist-50 border border-brand-200 active:bg-mist-100 focus-visible:ring-emerald-700 p-2.5',
     };
 
     const sizeStyles: Record<ButtonSize, string> = {

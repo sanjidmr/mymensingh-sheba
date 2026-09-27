@@ -75,7 +75,7 @@ function BloodDonorContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FBFDFB]">
+      <div className="min-h-screen bg-mist-50">
         <Navbar />
         <div className="max-w-7xl mx-auto px-4 py-20 flex flex-col items-center justify-center gap-3 text-slate-500">
           <Loader2 className="w-6 h-6 animate-spin text-rose-700" />
@@ -87,7 +87,7 @@ function BloodDonorContent() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FBFDFB]">
+    <div className="min-h-screen bg-mist-50">
       <Navbar />
       <main className="max-w-7xl mx-auto px-4 py-6 sm:py-10">
         {/* Header */}
@@ -161,7 +161,7 @@ export default function BloodDonorPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FBFDFB]">
+        <div className="min-h-screen bg-mist-50">
           <Navbar />
           <div className="max-w-7xl mx-auto px-4 py-20 text-center text-slate-500 text-sm">
             রক্তদাতাদের তালিকা লোড হচ্ছে...

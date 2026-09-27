@@ -6,7 +6,7 @@ import { ClientProviders } from '@/components/ClientProviders';
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
-  themeColor: '#f7f7f2',
+  themeColor: '#faf8f2',
 };
 
 const notoBengali = Noto_Sans_Bengali({

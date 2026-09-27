@@ -54,7 +54,7 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FBFDFB]">
+      <div className="min-h-screen bg-mist-50">
         <Navbar />
         <div className="max-w-5xl mx-auto px-4 py-20 flex flex-col items-center gap-3 text-slate-500">
           <Loader2 className="w-6 h-6 animate-spin text-emerald-700" />
@@ -67,7 +67,7 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
 
   if (!tutor) {
     return (
-      <div className="min-h-screen bg-[#FBFDFB]">
+      <div className="min-h-screen bg-mist-50">
         <Navbar />
         <div className="max-w-5xl mx-auto px-4 py-20 text-center">
           <GraduationCap className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -94,7 +94,7 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
   const availability = TUTOR_AVAILABILITY_LABELS[tutor.availability];
 
   return (
-    <div className="min-h-screen bg-[#FBFDFB]">
+    <div className="min-h-screen bg-mist-50">
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 py-6 sm:py-10">

@@ -97,7 +97,7 @@ export default function MyToletListingsPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FBFDFB]">
+    <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 sm:py-12">
         <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">

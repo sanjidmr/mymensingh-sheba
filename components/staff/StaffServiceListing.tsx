@@ -167,7 +167,7 @@ export default function StaffServiceListing({ serviceSlug }: { serviceSlug: Staf
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((profile) => (
-              <StaffProfileCard key={profile.id} profile={profile} serviceUi={serviceUi} />
+              <StaffProfileCard key={profile.id} profile={profile} serviceUi={serviceUi} imageless={serviceSlug === 'kajer-bua'} />
             ))}
           </div>
         )}

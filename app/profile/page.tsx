@@ -46,7 +46,7 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#FBFDFB]">
+      <div className="min-h-screen flex flex-col bg-mist-50">
         <Navbar />
         <main className="flex-1 flex items-center justify-center p-6">
           <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-sm w-full">
@@ -85,7 +85,7 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FBFDFB]">
+    <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
 <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-6 sm:py-10">

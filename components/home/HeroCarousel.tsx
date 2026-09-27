@@ -1,267 +1,184 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, ImageOff } from 'lucide-react';
-import HeroSearchBar from '@/components/home/HeroSearchBar';
-
-export interface HeroSlide {
-  src: string;
-  tag: string;
-  title: string;
-  subtitle: string;
-}
-
-interface HeroCarouselProps {
-  slides: HeroSlide[];
-  interval?: number;
-}
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
- * Hero — a section of its own, always below the sticky navbar (never behind it).
+ * HeroCarousel — a premium, calm homepage banner.
  *
- * Desktop (lg+): the /sheba1…4 carousel fills the full hero width (cinematic
- * image only — arrows + small indicators overlay). Below the hero sits a
- * clean, centered intro block with the eyebrow/tag, headline, subtitle and the
- * search bar, so the hero itself stays image-pure.
+ * One image slides horizontally out while the next enters seamlessly from the
+ * side (a behind-the-scenes cloned-track loop, so there is never a wrap snap).
+ * Gentle autoplay, pause on hover/focus, ghost arrows (desktop) and small dots.
+ * Respects `prefers-reduced-motion` (autoplay off, no transitions).
  *
- * Mobile/tablet: an intentional app-like stack — headline block → swipeable
- * rounded photo card (dots overlay) → the search band comes right after as its
- * own section.
- *
- * Images probe `.png` → `.jpg`, then return a branded fallback panel.
+ * Imagery: the four existing `/sheba*.png` files — replace the file paths below.
  */
-export default function HeroCarousel({ slides, interval = 4800 }: HeroCarouselProps) {
-  const [index, setIndex] = useState(0);
-  const [attempt, setAttempt] = useState<number[]>(() => slides.map(() => 0));
-  const [paused, setPaused] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const touchX = useRef<number | null>(null);
+const SLIDES = [
+  { image: '/sheba1.png', caption: 'প্রতিদিনের সেবা, এক জায়গায়' },
+  { image: '/sheba2.png', caption: 'বাসা থেকে মেরামত — সবই স্থানীয়' },
+  { image: '/sheba3.png', caption: 'ময়মনসিংহের মানুষের হাতেই গড়া' },
+  { image: '/sheba4.png', caption: 'জরুরি সেবা, সঠিক নম্বরে' },
+];
 
-  const total = slides.length;
-  const slide = slides[index];
+const AUTOPLAY_MS = 5500;
+const EASE = 'transform 850ms cubic-bezier(0.22, 1, 0.36, 1)';
 
-  const candidates = useCallback(
-    (i: number): string[] => {
-      const base = slides[i].src.replace(/\.(jpg|png)$/i, '');
-      const other = slides[i].src.endsWith('.png') ? '.jpg' : '.png';
-      return [slides[i].src, `${base}${other}`];
-    },
-    [slides]
+function usePrefersReducedMotion() {
+  const [reduced, setReduced] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return reduced;
+}
 
-  const srcFor = (i: number): string => {
-    const list = candidates(i);
-    const a = attempt[i] ?? 0;
-    return list[Math.min(a, list.length - 1)] ?? slides[i].src;
-  };
+export default function HeroCarousel() {
+  const N = SLIDES.length;
+  // Cloned track: [last, ...slides, first] — lets the loop wrap invisibly.
+  const track = [SLIDES[N - 1], ...SLIDES, SLIDES[0]];
 
-  const markFailed = () => {
-    setAttempt((prev) => {
-      const list = candidates(index);
-      const a = prev[index] ?? 0;
-      const next = [...prev];
-      next[index] = Math.min(a + 1, list.length);
-      return next;
-    });
-  };
+  // `real` is the position in the cloned track (1..N are the "real" slides).
+  const [real, setReal] = useState(1);
+  const [noAnim, setNoAnim] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const realRef = useRef(real);
+  useEffect(() => {
+    realRef.current = real;
+  }, [real]);
+  const reduced = usePrefersReducedMotion();
 
-  const go = useCallback(
-    (dir: 1 | -1) => {
-      setIndex((prev) => (prev + dir + total) % total);
-    },
-    [total]
+  const animateTo = useCallback((target: number) => {
+    setNoAnim(false);
+    setReal(target);
+  }, []);
+
+  const next = useCallback(() => {
+    // Reduced motion → no transitions, so never enter the clone track.
+    if (reduced) {
+      animateTo(realRef.current === N ? 1 : realRef.current + 1);
+      return;
+    }
+    if (realRef.current === N) animateTo(N + 1);
+    else animateTo(realRef.current + 1);
+  }, [N, animateTo, reduced]);
+
+  const prev = useCallback(() => {
+    if (reduced) {
+      animateTo(realRef.current === 1 ? N : realRef.current - 1);
+      return;
+    }
+    if (realRef.current === 1) animateTo(0);
+    else animateTo(realRef.current - 1);
+  }, [N, animateTo, reduced]);
+
+  const goTo = useCallback(
+    (displayIndex: number) => animateTo(displayIndex + 1),
+    [animateTo]
   );
 
   useEffect(() => {
-    if (paused || total <= 1) return;
-    timerRef.current = setTimeout(() => {
-      setIndex((prev) => (prev + 1) % total);
-    }, interval);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, [index, paused, interval, total]);
+    if (reduced || paused) return;
+    const id = setInterval(next, AUTOPLAY_MS);
+    return () => clearInterval(id);
+  }, [reduced, paused, next]);
 
-  const onTouchStart = (e: React.TouchEvent) => {
-    touchX.current = e.touches[0].clientX;
-  };
-  const onTouchEnd = (e: React.TouchEvent) => {
-    if (touchX.current == null) return;
-    const delta = e.changedTouches[0].clientX - touchX.current;
-    touchX.current = null;
-    if (Math.abs(delta) > 40) go(delta < 0 ? 1 : -1);
+  // When a cloned edge slide settles, snap back invisibly to the real slide.
+  const onTransitionEnd = () => {
+    if (real === N + 1) {
+      setNoAnim(true);
+      setReal(1);
+    } else if (real === 0) {
+      setNoAnim(true);
+      setReal(N);
+    }
   };
 
-  const pauseHandlers = {
-    onMouseEnter: () => setPaused(true),
-    onMouseLeave: () => setPaused(false),
-    onFocusCapture: () => setPaused(true),
-    onBlurCapture: () => setPaused(false),
-  };
-
-  const failed = (attempt[index] ?? 0) >= candidates(index).length;
-
-  const photoMarkup = failed ? (
-    <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-brand-800 px-8 text-center">
-      <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-white/80">
-        <ImageOff className="h-7 w-7" />
-      </span>
-      <span className="text-[11px] font-bold uppercase tracking-widest text-accent-300">
-        {slide.tag}
-      </span>
-      <p className="max-w-md text-base font-bold leading-snug text-white sm:text-lg">{slide.title}</p>
-    </div>
-  ) : (
-    // eslint-disable-next-line @next/next/no-img-element
-    <img
-      key={srcFor(index)}
-      src={srcFor(index)}
-      alt={slide.title}
-      className="absolute inset-0 h-full w-full object-cover"
-      onError={markFailed}
-    />
-  );
-
-  const dots = (
-    <div className="absolute inset-x-0 bottom-4 flex items-center justify-center gap-1.5">
-      <div
-        className="flex items-center gap-2 rounded-full bg-black/45 px-2.5 py-0.5"
-        role="group"
-        aria-label="স্লাইড নিয়ন্ত্রণ"
-      >
-        {slides.map((s, i) => (
-          <button
-            key={s.src}
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              setIndex(i);
-            }}
-            aria-label={`স্লাইড ${i + 1}`}
-            aria-current={i === index}
-            className="grid h-6 w-7 place-items-center rounded-full"
-          >
-            <span
-              className={`block h-1.5 rounded-full transition-all duration-300 ${
-                i === index ? 'w-5 bg-accent-400' : 'w-2 bg-white/70'
-              }`}
-            />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
-
-  const arrows = (
-    <>
-      <button
-        type="button"
-        onClick={() => go(-1)}
-        aria-label="পূর্ববর্তী ছবি"
-        className="absolute left-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-300"
-      >
-        <ChevronLeft className="h-5 w-5" />
-      </button>
-      <button
-        type="button"
-        onClick={() => go(1)}
-        aria-label="পরবর্তী ছবি"
-        className="absolute right-4 top-1/2 flex h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-black/40 text-white transition-colors hover:bg-black/60 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-300"
-      >
-        <ChevronRight className="h-5 w-5" />
-      </button>
-    </>
-  );
-
-  const eyebrow = (
-    <div className="flex flex-wrap items-center justify-center gap-2">
-      <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600">
-        <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
-        ময়মনসিংহ সেবা
-      </span>
-      <span className="inline-flex items-center rounded-full bg-accent-400 px-2.5 py-0.5 text-[11px] font-bold text-brand-800">
-        {slide.tag}
-      </span>
-    </div>
-  );
+  const displayIndex = real === 0 ? N - 1 : real === N + 1 ? 0 : real - 1;
 
   return (
-    <section className="bg-white lg:bg-brand-950" aria-label="প্রধান সেবার হাইলাইট">
-      {/* ——— Desktop: full-width image carousel only (no overlay text) ——— */}
-      <div
-        className="relative hidden aspect-[17/9] w-full max-h-[calc(100vh-4.5rem)] overflow-hidden bg-brand-950 lg:block"
-        {...pauseHandlers}
-      >
-        {photoMarkup}
+    <section className="bg-mist-50" aria-label="বৈশিষ্ট্যযুক্ত সেবা">
+      <div className="mx-auto w-full max-w-7xl px-4 pb-1 pt-5 sm:px-6 sm:pb-3 sm:pt-7 lg:px-8 lg:pb-4 lg:pt-8">
         <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-black/30 to-transparent"
-        />
-        {arrows}
-        {dots}
-      </div>
-
-      {/* ——— Desktop: intro block with headline + search, below the hero ——— */}
-      <div className="hidden border-b border-brand-100 bg-white lg:block">
-        <div className="mx-auto w-full max-w-7xl px-6 py-12 xl:px-8 xl:py-14">
-          <div className="mx-auto max-w-3xl text-center">
-            {eyebrow}
-            <h1
-              key={`di-${index}`}
-              className="mt-3 text-balance text-3xl font-extrabold leading-[1.2] tracking-tight text-ink-900 xl:text-[42px]"
-            >
-              {slide.title}
-            </h1>
-            <p
-              key={`dp-${index}`}
-              className="mt-3 text-balance text-base leading-relaxed text-ink-500"
-            >
-              {slide.subtitle}
-            </p>
-
-            <div className="mx-auto mt-7 max-w-xl">
-              <HeroSearchBar />
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ——— Mobile / tablet: compact app-like stack ——— */}
-      <div className="border-b border-brand-100 bg-white py-6 lg:hidden">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
-            ময়মনসিংহ সেবা
-          </span>
-          <span className="inline-flex items-center rounded-full bg-accent-400 px-2.5 py-0.5 text-[11px] font-bold text-brand-800">
-            {slide.tag}
-          </span>
-        </div>
-        <h1
-          key={`mh-${index}`}
-          className="mt-2.5 text-balance text-[24px] font-extrabold leading-[1.25] tracking-tight text-ink-900 sm:text-[28px]"
+          className="group/carousel relative overflow-hidden rounded-2xl bg-brand-950 shadow-xl shadow-brand-900/15 ring-1 ring-brand-900/10 lg:rounded-3xl"
+          onMouseEnter={() => setPaused(true)}
+          onMouseLeave={() => setPaused(false)}
+          onFocusCapture={() => setPaused(true)}
+          onBlurCapture={() => setPaused(false)}
         >
-          {slide.title}
-        </h1>
-        <p
-          key={`mp-${index}`}
-          className="mt-1.5 line-clamp-2 text-[14px] leading-relaxed text-ink-500 sm:text-[15px]"
-        >
-          {slide.subtitle}
-        </p>
-
-        <div
-          className="relative mt-4 aspect-video overflow-hidden rounded-2xl bg-brand-950 shadow-sm"
-          onTouchStart={onTouchStart}
-          onTouchEnd={onTouchEnd}
-          {...pauseHandlers}
-        >
-          {photoMarkup}
+          {/* Sliding track */}
           <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-black/25 to-transparent"
-          />
-          {dots}
+            className="flex w-full"
+            style={{
+              transform: `translateX(-${real * 100}%)`,
+              transition: noAnim || reduced ? 'none' : EASE,
+            }}
+            onTransitionEnd={onTransitionEnd}
+          >
+            {track.map((s, i) => (
+              <div
+                key={`${s.image}-${i}`}
+                className="relative aspect-[4/3] w-full shrink-0 sm:aspect-[16/9] lg:aspect-[21/9]"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.image}
+                  alt=""
+                  loading={i === 1 ? 'eager' : 'lazy'}
+                  className="h-full w-full object-cover"
+                />
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-brand-950/75 via-brand-950/20 to-transparent"
+                />
+                <span className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6">
+                  <span className="inline-flex items-center gap-2 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-bold text-brand-800 ring-1 ring-brand-100 backdrop-blur-sm sm:text-[13px]">
+                    {s.caption}
+                  </span>
+                </span>
+              </div>
+            ))}
+          </div>
+
+          {/* Prev / Next — ghost controls, desktop only */}
+          <button
+            type="button"
+            onClick={prev}
+            aria-label="আগের স্লাইড"
+            className="absolute left-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-brand-800 shadow-md ring-1 ring-brand-100 backdrop-blur-sm transition-all duration-300 hover:bg-white hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 sm:flex lg:left-5"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <button
+            type="button"
+            onClick={next}
+            aria-label="পরের স্লাইড"
+            className="absolute right-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-brand-800 shadow-md ring-1 ring-brand-100 backdrop-blur-sm transition-all duration-300 hover:bg-white hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 sm:flex lg:right-5"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </button>
+
+          {/* Dots — small, quiet */}
+          <div className="absolute bottom-5 right-4 flex items-center gap-1.5 sm:bottom-6 sm:right-6">
+            {SLIDES.map((s, i) => (
+              <button
+                key={s.image}
+                type="button"
+                onClick={() => goTo(i)}
+                aria-label={`স্লাইড ${i + 1} দেখুন`}
+                aria-current={i === displayIndex}
+                className={`h-1.5 rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
+                  i === displayIndex ? 'w-6 bg-accent-400' : 'w-1.5 bg-white/60 hover:bg-white'
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
     </section>

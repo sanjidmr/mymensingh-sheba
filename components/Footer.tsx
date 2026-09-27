@@ -14,6 +14,7 @@ export default function Footer() {
   );
 
   const companyLinks = [
+    { name: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh' },
     { name: 'আমাদের সম্পর্কে', href: '/about' },
     { name: 'কিভাবে কাজ করে', href: '/#how-it-works' },
     { name: 'যোগাযোগ ও ফিডব্যাক', href: '/contact' },
@@ -57,8 +58,8 @@ export default function Footer() {
               বাসা ভাড়া, গৃহকর্মী, মেরামত, গৃহশিক্ষক ও জরুরি রক্তদান এক জায়গায়।
             </p>
 
-            <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-xs font-medium text-brand-100/90">
-              <MapPin className="h-3.5 w-3.5 shrink-0 text-brand-300" />
+            <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-bronze-400/25 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-brand-100/90">
+              <MapPin className="h-3.5 w-3.5 shrink-0 text-bronze-300" />
               শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশনের ৩৩টি ওয়ার্ডে সক্রিয়
             </div>
 
@@ -77,14 +78,14 @@ export default function Footer() {
               <a
                 href="/contact"
                 aria-label="Facebook"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-brand-100/80 transition-colors hover:bg-brand-700 hover:text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-bronze-400/25 bg-white/[0.04] text-brand-100/80 transition-colors hover:border-bronze-400/60 hover:bg-brand-700 hover:text-white"
               >
                 <Facebook className="h-4 w-4" />
               </a>
               <a
                 href="/contact"
                 aria-label="Messenger"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-brand-100/80 transition-colors hover:bg-brand-700 hover:text-white"
+                className="flex h-9 w-9 items-center justify-center rounded-xl border border-bronze-400/25 bg-white/[0.04] text-brand-100/80 transition-colors hover:border-bronze-400/60 hover:bg-brand-700 hover:text-white"
               >
                 <MessageCircle className="h-4 w-4" />
               </a>

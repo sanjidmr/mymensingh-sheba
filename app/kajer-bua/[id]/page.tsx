@@ -17,7 +17,6 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
     openGraph: {
       title: `${profile.nameBn} - ${profile.titleBn}`,
       description: profile.aboutBn || '',
-      images: profile.imageUrl ? [profile.imageUrl] : [],
       type: 'profile',
     },
   };
@@ -45,7 +44,7 @@ export default async function KajerBuaDetailPage({ params }: { params: Promise<{
       </section>
 
       <section className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 -mt-6 relative z-10">
-        <StaffDetail profile={profile} serviceUi={serviceUi} />
+        <StaffDetail profile={profile} serviceUi={serviceUi} imageless />
       </section>
     </div>
   );

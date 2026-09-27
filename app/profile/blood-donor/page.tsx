@@ -16,7 +16,7 @@ export default function ProfileBloodDonorDashboardPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-[#FBFDFB]">
+      <div className="min-h-screen bg-mist-50">
         <Navbar />
         <div className="max-w-md mx-auto px-4 py-24 text-center">
           <Heart className="w-10 h-10 text-rose-300 mx-auto mb-4" />
@@ -38,7 +38,7 @@ export default function ProfileBloodDonorDashboardPage() {
 
   if (!bloodDonorProfile) {
     return (
-      <div className="min-h-screen bg-[#FBFDFB]">
+      <div className="min-h-screen bg-mist-50">
         <Navbar />
         <div className="max-w-xl mx-auto px-4 py-24 text-center">
           <Heart className="w-10 h-10 text-rose-300 mx-auto mb-4" />
@@ -68,7 +68,7 @@ function DonorDashboard({ donor }: { donor: BloodDonorProfile }) {
   const isPublished = donor.status === 'approved';
 
   return (
-    <div className="min-h-screen bg-[#FBFDFB]">
+    <div className="min-h-screen bg-mist-50">
       <Navbar />
       <main className="max-w-3xl mx-auto px-4 py-8 sm:py-12">
         <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">

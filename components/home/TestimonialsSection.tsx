@@ -46,7 +46,7 @@ export default function TestimonialsSection() {
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
-            <span className="inline-flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-brand-600">
+            <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-brand-600 sm:text-xs">
               <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
               এলাকার মানুষ বলছেন
             </span>

@@ -5,51 +5,68 @@
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-display: 'Noto Sans Bengali', ui-sans-serif, system-ui, sans-serif;
 
-  /* Brand green scale (Deep Forest + Secondary, warm) */
-  --color-brand-50: #f3f6f3;
-  --color-brand-100: #e3e7e2;
-  --color-brand-200: #c9d4cc;
-  --color-brand-300: #a4b8ac;
-  --color-brand-400: #7c9a8b;
-  --color-brand-500: #4f846f;
-  --color-brand-600: #176b57; /* Secondary Green */
-  --color-brand-700: #123c32; /* Deep Forest Green */
-  --color-brand-800: #0e3028;
-  --color-brand-900: #0a241d;
-  --color-brand-950: #071713;
+  /* Deep Forest Green → Soft Sage Green — the primary identity.
+     700 (#0C3B2E) is the brand anchor: nav, primary buttons, verified marks.
+     500 (#6D9773) is the exact sage; 600 is a darker sage with ≥4.5:1 on white
+     for text/links/icons. 300/100/50 stay light for on-dark and chip surfaces. */
+  --color-brand-50: #f1f5f1;
+  --color-brand-100: #e0e9e0;
+  --color-brand-200: #c5d6c6;
+  --color-brand-300: #a5c0a7;
+  --color-brand-400: #84a68b;
+  --color-brand-500: #6d9773; /* Soft Sage Green */
+  --color-brand-600: #4a7857; /* dark sage — readable text on light */
+  --color-brand-700: #0c3b2e; /* Deep Forest Green */
+  --color-brand-800: #0a3227;
+  --color-brand-900: #07271f;
+  --color-brand-950: #051f18;
 
-  /* Lime accent — small highlights / CTAs only */
-  --color-accent-100: #f2fbd9;
-  --color-accent-200: #e4f8b0;
-  --color-accent-300: #d1f173;
-  --color-accent-400: #b8e94e; /* Lime Accent */
-  --color-accent-500: #9ed72a;
-  --color-accent-600: #7fb51c;
-  --color-accent-700: #62891a;
+  /* Warm Golden Yellow — the controlled "spark", used sparingly:
+     gold-on-forest ≈ 8:1, gold button + forest text ≈ 9:1. */
+  --color-accent-100: #fff3cc;
+  --color-accent-200: #ffe79a;
+  --color-accent-300: #ffd15c; /* gold text on forest */
+  --color-accent-400: #ffba00; /* Warm Golden Yellow */
+  --color-accent-500: #e0a200;
+  --color-accent-600: #b88200;
+  --color-accent-700: #925e00;
 
-  /* Text */
-  --color-ink-900: #17201d; /* Main Text */
-  --color-ink-700: #3a4641;
-  --color-ink-500: #66736e; /* Muted Text */
-  --color-ink-400: #8a9791;
+  /* Warm Earth / Bronze — detail, maturity, borders, small highlights */
+  --color-bronze-50: #faf6ef;
+  --color-bronze-100: #f3e9da;
+  --color-bronze-200: #e6d3b8;
+  --color-bronze-300: #d4b489;
+  --color-bronze-400: #c89f6b;
+  --color-bronze-500: #bb8a52; /* Warm Earth / Bronze */
+  --color-bronze-600: #9a6e3c;
+  --color-bronze-700: #775129;
 
-  /* Warm neutral surfaces */
-  --color-mist-50: #f7f7f2; /* Warm Ivory */
-  --color-mist-100: #ecefe9;
+  /* Text — green-charcoal ink */
+  --color-ink-900: #16241c; /* Primary Text */
+  --color-ink-700: #2b3a31;
+  --color-ink-600: #3d4d43;
+  --color-ink-500: #57665c; /* Muted Text */
+  --color-ink-400: #7d8b81;
 
-  /* Legacy pages still use emerald-*: alias it to the same brand scale so the
-     whole app (not just the homepage) shares one consistent green identity. */
-  --color-emerald-50: #f3f6f3;
-  --color-emerald-100: #e3e7e2;
-  --color-emerald-200: #c9d4cc;
-  --color-emerald-300: #a4b8ac;
-  --color-emerald-400: #7c9a8b;
-  --color-emerald-500: #4f846f;
-  --color-emerald-600: #176b57;
-  --color-emerald-700: #123c32;
-  --color-emerald-800: #0e3028;
-  --color-emerald-900: #0a241d;
-  --color-emerald-950: #071713;
+  /* Warm cream surfaces (was navy-era cool mist) */
+  --color-mist-50: #faf8f2; /* Warm Off-White */
+  --color-mist-100: #f1ede1;
+  --color-mist-200: #e7e1d1;
+
+  /* Legacy pages still use emerald-*: alias it to the same green (forest/sage)
+     scale so the whole app — homepage and legacy pages alike — shares one
+     consistent Deep Forest Green identity. */
+  --color-emerald-50: #f1f5f1;
+  --color-emerald-100: #e0e9e0;
+  --color-emerald-200: #c5d6c6;
+  --color-emerald-300: #a5c0a7;
+  --color-emerald-400: #84a68b;
+  --color-emerald-500: #6d9773;
+  --color-emerald-600: #4a7857;
+  --color-emerald-700: #0c3b2e;
+  --color-emerald-800: #0a3227;
+  --color-emerald-900: #07271f;
+  --color-emerald-950: #051f18;
 }
 
 @layer base {
@@ -96,5 +113,19 @@
   }
   .rail-scrollbar::-webkit-scrollbar-track {
     background: transparent;
+  }
+
+  /* Homepage hero entrance — gentle rise, respects reduced motion */
+  @keyframes mms-fade-up {
+    from { opacity: 0; transform: translateY(18px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .mms-fade-up {
+    animation: mms-fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mms-fade-up {
+      animation: none;
+    }
   }
 }

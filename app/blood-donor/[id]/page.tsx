@@ -19,7 +19,6 @@ import {
 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import { DonorAvatar } from '@/components/blood-donor/DonorCard';
 import { BloodRequestForm, RequestSheetHeader } from '@/components/blood-donor/BloodRequestForm';
 import { DonorReportSheet } from '@/components/blood-donor/DonorReportSheet';
 import { fetchPublishedDonorById } from '@/lib/blood-donor-service';
@@ -49,7 +48,7 @@ function DonorDetailContent({ donorId }: { donorId: string }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FBFDFB]">
+      <div className="min-h-screen bg-mist-50">
         <Navbar />
         <div className="max-w-5xl mx-auto px-4 py-20 flex flex-col items-center gap-3 text-slate-500">
           <Loader2 className="w-6 h-6 animate-spin text-rose-700" />
@@ -62,7 +61,7 @@ function DonorDetailContent({ donorId }: { donorId: string }) {
 
   if (!donor) {
     return (
-      <div className="min-h-screen bg-[#FBFDFB]">
+      <div className="min-h-screen bg-mist-50">
         <Navbar />
         <div className="max-w-5xl mx-auto px-4 py-20 text-center">
           <Droplets className="w-12 h-12 text-slate-300 mx-auto mb-4" />
@@ -87,7 +86,7 @@ function DonorDetailContent({ donorId }: { donorId: string }) {
   const availability = DONOR_AVAILABILITY_LABELS[donor.isAvailable ? 'available' : 'unavailable'];
 
   return (
-    <div className="min-h-screen bg-[#FBFDFB]">
+    <div className="min-h-screen bg-mist-50">
       <Navbar />
 
       <main className="max-w-5xl mx-auto px-4 py-6 sm:py-10">
@@ -103,7 +102,9 @@ function DonorDetailContent({ donorId }: { donorId: string }) {
         {/* Profile hero */}
         <div className="bg-gradient-to-br from-rose-700 via-rose-600 to-red-700 rounded-3xl p-5 sm:p-8 text-white shadow-md">
           <div className="flex flex-col sm:flex-row sm:items-center gap-4">
-            <DonorAvatar donor={donor} className="w-20 h-20 sm:w-24 sm:h-24 text-3xl ring-2 ring-white/30" />
+            <span className="flex w-20 h-20 sm:w-24 sm:h-24 shrink-0 items-center justify-center rounded-2xl border border-white/25 bg-white/15">
+              <Droplets className="w-10 h-10 sm:w-12 sm:h-12 text-white" aria-hidden="true" />
+            </span>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 flex-wrap">
                 <h1 className="text-xl sm:text-2xl font-bold leading-tight">{donor.fullName}</h1>

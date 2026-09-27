@@ -16,7 +16,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
 
   if (isLoading || !isAdmin) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FBFDFB] text-sm text-slate-500">
+      <div className="min-h-screen flex items-center justify-center bg-mist-50 text-sm text-slate-500">
         লোড হচ্ছে...
       </div>
     );

@@ -19,7 +19,7 @@ import MovingRequestWizard from '@/components/home-moving/MovingRequestWizard';
 
 export default function HomeMovingPage() {
   return (
-    <div className="min-h-screen flex flex-col bg-[#FBFDFB]">
+    <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
       {/* Hero CTA */}

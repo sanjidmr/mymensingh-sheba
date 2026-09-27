@@ -90,7 +90,7 @@ function LoginForm() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FBFDFB]">
+    <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
@@ -349,7 +349,7 @@ export default function LoginPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#FBFDFB] flex items-center justify-center text-slate-500 text-sm">
+        <div className="min-h-screen bg-mist-50 flex items-center justify-center text-slate-500 text-sm">
           লোড হচ্ছে...
         </div>
       }

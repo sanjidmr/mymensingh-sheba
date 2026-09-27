@@ -3,31 +3,10 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import {
-  Home,
-  Sparkles,
-  Zap,
-  Wrench,
-  Truck,
-  GraduationCap,
-  HeartHandshake,
-  ArrowRight,
-  MapPin,
-  Search,
-} from 'lucide-react';
+import { ArrowRight, MapPin, PhoneCall, Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
 import { getAllMCCAreas } from '@/lib/locations';
-
-const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
-  Home,
-  Sparkles,
-  Zap,
-  Wrench,
-  Truck,
-  GraduationCap,
-  HeartHandshake,
-};
 
 function ServicesContent() {
   const searchParams = useSearchParams();
@@ -56,39 +35,39 @@ function ServicesContent() {
       breadcrumbs={[{ label: 'সেবাসমূহ' }]}
     >
       {/* Filter & Search Bar */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 mb-8">
+      <div className="mb-8 rounded-2xl border border-brand-100/90 bg-white p-4 shadow-sm sm:p-6">
         <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
           <div className="md:col-span-7">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-ink-700">
               সার্ভিস খুঁজুন:
             </label>
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" />
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="যেমন: বাসা ভাড়া, কাজের বুয়া, প্লাম্বার..."
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white"
+                placeholder="যেমন: বাসা ভাড়া, কাজের বুয়া, প্লাম্বার..."
+                className="w-full rounded-xl border border-brand-100 bg-mist-50 py-2.5 pl-10 pr-4 text-sm text-ink-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
           </div>
 
           <div className="md:col-span-5">
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="mb-1 block text-xs font-semibold text-ink-700">
               এলাকা নির্বাচন:
             </label>
             <div className="relative">
-              <MapPin className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-700" />
+              <MapPin className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" />
               <select
                 value={selectedArea}
                 onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full pl-10 pr-8 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:bg-white appearance-none"
+                className="w-full appearance-none rounded-xl border border-brand-100 bg-mist-50 py-2.5 pl-10 pr-8 text-sm text-ink-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
               >
-                <option value="">সম্পূর্ণ ময়মনসিংহ সিটি কর্পোরেশন</option>
+                <option value="">সম্পূর্ণ ময়মনসিংহ সিটি কর্পোরেশন</option>
                 {mccAreas.map((area) => (
                   <option key={area.id} value={area.id}>
-                    {area.nameBn} (ওয়ার্ড {area.wardNo})
+                    {area.nameBn} (ওয়ার্ড {area.wardNo})
                   </option>
                 ))}
               </select>
@@ -97,68 +76,73 @@ function ServicesContent() {
         </div>
       </div>
 
-      {/* Services Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {/* Services Grid — same compact card size as the homepage */}
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {filteredServices.map((service) => {
-          const Icon = ICON_MAP[service.iconName] || Home;
           const href = selectedArea
             ? `/${service.slug}?area=${selectedArea}`
             : `/${service.slug}`;
 
-          return (
-            <Link
-              key={service.id}
-              href={href}
-              className="group flex flex-col overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:shadow-lg hover:shadow-brand-900/5 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
-            >
-              <div className="relative aspect-[16/10] w-full overflow-hidden bg-brand-800">
-                {service.coverImage && (
-                  <img
-                    src={service.coverImage}
-                    alt={service.nameBn}
-                    loading="lazy"
-                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                  />
-                )}
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-transparent"
+          const cardClass =
+            'group flex h-full flex-col overflow-hidden rounded-xl border border-brand-100/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600';
+
+          const media = (
+            <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-mist-100">
+              {service.coverImage ? (
+                <img
+                  src={service.coverImage}
+                  alt={service.nameBn}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
                 />
-                {service.tagBadge && (
-                  <span className="absolute left-3 top-3 inline-flex items-center rounded-full bg-accent-400 px-2.5 py-1 text-[11px] font-bold text-brand-900 shadow-sm">
-                    {service.tagBadge}
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-50 to-mist-50">
+                  <span className="select-none text-5xl font-black leading-none text-brand-100/90 transition-transform duration-500 group-hover:scale-110">
+                    {service.nameBn.charAt(0)}
                   </span>
-                )}
-                <span className="absolute bottom-3 right-3 inline-flex h-7 w-7 items-center justify-center rounded-lg bg-brand-700 text-white shadow-md">
-                  <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
-                </span>
-              </div>
-
-              <div className="flex flex-1 flex-col p-5">
-                <div className="flex items-center gap-3">
-                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-mist-50 text-brand-700 transition-colors group-hover:bg-brand-700 group-hover:text-white">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <h3 className="line-clamp-2 text-lg font-bold leading-snug text-ink-900 transition-colors group-hover:text-brand-800">
-                    {service.nameBn}
-                  </h3>
                 </div>
+              )}
+              {service.tagBadge && (
+                <span className="absolute left-2.5 top-2.5 inline-flex items-center rounded-md bg-white/90 px-2 py-0.5 text-[10px] font-bold text-brand-800 ring-1 ring-brand-100">
+                  {service.tagBadge}
+                </span>
+              )}
+            </div>
+          );
 
-                <p className="mt-3 text-sm leading-relaxed text-ink-500">
+          return service.dial ? (
+            <a key={service.id} href={service.dial} className={cardClass}>
+              {media}
+              <div className="flex flex-1 flex-col p-3">
+                <h3 className="line-clamp-1 text-[13px] font-bold leading-snug text-ink-900">
+                  {service.nameBn}
+                </h3>
+                <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-500">
                   {service.shortDesc}
                 </p>
-
-                <div className="mt-5 flex items-center justify-between border-t border-brand-100 pt-4 text-sm">
-                  <span className="text-xs font-medium text-ink-500">
-                    {service.categoryType === 'admin_managed'
-                      ? 'অ্যাডমিন পরিচালিত'
-                      : service.categoryType === 'user_profile'
-                        ? 'ভেরিফাইড প্রোফাইল'
-                        : 'স্বেচ্ছাসেবী'}
+                <div className="mt-auto flex pt-2">
+                  <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-accent-400 px-3 py-1.5 text-xs font-bold text-brand-900 transition-colors duration-300 group-hover:bg-accent-500">
+                    <PhoneCall className="h-3.5 w-3.5" />
+                    কল করুন
+                    {service.number ? ` ${service.number}` : ''}
                   </span>
-                  <span className="inline-flex items-center gap-1 font-bold text-brand-700 transition-transform group-hover:translate-x-0.5">
-                    <span>প্রবেশ করুন</span>
-                    <ArrowRight className="h-4 w-4" />
+                </div>
+              </div>
+            </a>
+          ) : (
+            <Link key={service.id} href={href} className={cardClass}>
+              {media}
+              <div className="flex flex-1 flex-col p-3">
+                <h3 className="line-clamp-1 text-[13px] font-bold leading-snug text-ink-900">
+                  {service.nameBn}
+                </h3>
+                <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-500">
+                  {service.shortDesc}
+                </p>
+                <div className="mt-auto flex pt-2">
+                  <span className="inline-flex items-center gap-1 text-xs font-bold text-brand-700 transition-colors duration-300 group-hover:text-brand-800">
+                    প্রবেশ করুন
+                    <ArrowRight className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-0.5" />
                   </span>
                 </div>
               </div>

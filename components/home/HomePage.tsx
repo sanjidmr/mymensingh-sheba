@@ -3,27 +3,46 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import MobileBottomNav from '@/components/home/MobileBottomNav';
-import HeroSection from '@/components/home/HeroSection';
-import HeroSearchSection from '@/components/home/HeroSearchSection';
-import PopularServicesSection from '@/components/home/PopularServicesSection';
-import HomeServiceSection from '@/components/home/HomeServiceSection';
+import HeroCarousel from '@/components/home/HeroCarousel';
+import SearchSection from '@/components/home/SearchSection';
+import CategorySection from '@/components/home/CategorySection';
+import ServiceRowSection from '@/components/home/ServiceRowSection';
+import CommunityInviteSection from '@/components/home/CommunityInviteSection';
 import WhySection from '@/components/home/WhySection';
 import StepsSection from '@/components/home/StepsSection';
 import TestimonialsSection from '@/components/home/TestimonialsSection';
 import ReviewSection from '@/components/home/ReviewSection';
 import FinalCtaSection from '@/components/home/FinalCtaSection';
 import {
+  DAILY_CATEGORY,
+  SHOP_TRAVEL_CATEGORY,
+  EMERGENCY_CATEGORY,
+} from '@/lib/homepage-catalog';
+import {
+  GARI_SAMPLE_CARDS,
+  KENABECHA_SAMPLE_CARDS,
+  NEWS_SAMPLE_CARDS,
+} from '@/lib/home-static-rows';
+import {
   loadToletCards,
-  loadRepairCards,
-  loadMaidCards,
   loadTutorCards,
   loadDonorCards,
 } from '@/components/home/section-loaders';
 
 /**
  * ময়মনসিংহ সেবা — হোমপেজ
- * Sections are data-driven through the shared preview facades (Supabase-ready,
- * falls back to curated mock data when Supabase isn't configured).
+ *
+ * Desktop narrative flow:
+ *   ট্রান্সপারেন্ট ন্যাভবার
+ *   → প্রিমিয়াম ইমেজ ক্যারোসেল
+ *   → সহায়ক টেক্সট + সার্চ
+ *   → ক্যাটাগরি ০১ (দৈনন্দিন সেবা, white)
+ *   → ক্যাটাগরি ০২ (কেনাকাটা, যাতায়াত ও তথ্য, mist)
+ *   → ক্যাটাগরি ০৩ (জরুরি ও জনসেবা, সাদা — অন্য সেকশনের মতো, ডেন্স কার্ড)
+ *   → সার্ভিস রো: বাসা ভাড়া → গৃহশিক্ষক → গাড়ি ভাড়া (৫টি ছোট imageless কার্ড এক রোতে)
+ *   → ময়মনসিংহ কমিউনিটির জন্য
+ *   → সার্ভিস রো: রক্তদাতা → কেনাবেচা → স্থানীয় খবর
+ *   → কীভাবে কাজ করে → এলাকার মতামত → কেন আমরা → রিভিউ মডাল → শেষ কল-টু-অ্যাকশন
  */
 export default function HomePage() {
   return (
@@ -31,72 +50,93 @@ export default function HomePage() {
       <Navbar />
 
       <main className="flex-1">
-        <HeroSection />
+        {/* Large premium image carousel — the primary visual */}
+        <HeroCarousel />
 
-        {/* Mobile search band (desktop search lives in the hero's left column) */}
-        <HeroSearchSection />
+        {/* Supporting editorial copy + product search */}
+        <SearchSection />
 
-        {/* জনপ্রিয় সেবা — icon shortcut cards (all breakpoints) */}
-        <PopularServicesSection />
+        {/* ক্যাটাগরি ০১ */}
+        <CategorySection category={DAILY_CATEGORY} />
 
-        {/* 1 — বাসা ভাড়া (To-Let) */}
-        <HomeServiceSection
-          id="tolet-preview"
-          eyebrow="আবাসন"
-          title="ময়মনসিংহ সিটিতে বাসা ভাড়া"
-          description="ফ্ল্যাট, রুম, ব্যাচেলর ও মেস সিট — এলাকা ও বাজেট অনুযায়ী ভেরিফাইড তালিকা।"
-          seeMoreHref="/services/toilet"
-          background="soft"
+        {/* ক্যাটাগরি ০২ */}
+        <CategorySection category={SHOP_TRAVEL_CATEGORY} />
+
+        {/* ক্যাটাগরি ০৩ */}
+        <CategorySection category={EMERGENCY_CATEGORY} />
+
+        {/* সার্ভিস রো — বাসা ভাড়া */}
+        <ServiceRowSection
+          kicker="এই শহরের তালিকা"
+          title="বাসা / মেস / হোস্টেল ভাড়া"
+          href="/tolet"
           load={loadToletCards}
+          tone="mist"
+          withImage
+          demoImages={['/home.jpg', '/homechange.jpg', '/sheba1.png', '/sheba2.png']}
         />
 
-        {/* 2 — Electrician ও Plumber (এক কার্ড) */}
-        <HomeServiceSection
-          id="repair-preview"
-          eyebrow="মেরামত • ইলেক্ট্রিশিয়ান ও প্লাম্বার"
-          title="Electrician ও Plumber সেবা"
-          description="শর্ট সার্কিট, ওয়্যারিং, পাইপ-লিক ও স্যানিটারি ফিটিংস — অভিজ্ঞ ও যাচাইকৃত টেকনিশিয়ান।"
-          seeMoreHref="/services/electrician"
-          background="white"
-          load={loadRepairCards}
-        />
-
-        {/* 3 — কাজের বুয়া */}
-        <HomeServiceSection
-          id="maid-preview"
-          eyebrow="গৃহকর্মী"
-          title="কাজের বুয়া (গৃহকর্মী)"
-          description="রান্না, ঘর-মোছা ও কাপড় ধোয়ায় অভিজ্ঞ — ফুল-টাইম ও পার্ট-টাইম, বাসায়-থেকে-থাকা সহ।"
-          seeMoreHref="/services/maid"
-          background="soft"
-          load={loadMaidCards}
-        />
-
-        {/* 4 — গৃহশিক্ষক */}
-        <HomeServiceSection
-          id="tutor-preview"
-          eyebrow="শিক্ষা"
-          title="অভিজ্ঞ গৃহশিক্ষক"
-          description="রেটিং, শিক্ষাগত যোগ্যতা ও এলাকা অনুযায়ী বেছে নিন — বাসায় পড়ার পাশাপাশি অনলাইনও।"
-          seeMoreHref="/services/tutor"
-          background="white"
+        {/* সার্ভিস রো — গৃহশিক্ষক */}
+        <ServiceRowSection
+          kicker="অভিজ্ঞ শিক্ষক"
+          title="গৃহশিক্ষক খুঁজুন"
+          href="/home-tutor"
           load={loadTutorCards}
+          tone="white"
+          withImage
+          demoImages={['/tutor.jpg', '/coutching.jpg', '/sheba3.png', '/sheba4.png']}
         />
 
-        {/* 5 — ব্লাড ডোনার */}
-        <HomeServiceSection
-          id="blood-donor-preview"
-          eyebrow="জরুরি সেবা"
-          title="জরুরি প্রয়োজনে রক্তদাতা"
-          description="সম্পূর্ণ বিনামূল্যে রক্তদান — অ্যাডমিন টিম রক্তদাতার সঙ্গে সমন্বয় করে। কোনো ফি বা লেনদেন নেই।"
-          seeMoreHref="/services/blood-donor"
-          background="soft"
+        {/* সার্ভিস রো — গাড়ি, অটো ও CNG */}
+        <ServiceRowSection
+          kicker="স্থানীয় যাতায়াত"
+          title="গাড়ি, অটো ও CNG ভাড়া"
+          href="/services?q=%E0%A6%97%E0%A6%BE%E0%A6%A1%E0%A6%BC%E0%A6%BF"
+          cards={GARI_SAMPLE_CARDS}
+          tone="mist"
+          withImage
+          demoImages={['/carrent.png', '/bus.jpg', '/sheba1.png', '/sheba2.png']}
+        />
+
+        {/* Community invitation — people can share their own services/info */}
+        <CommunityInviteSection />
+
+        {/* সার্ভিস রো — রক্তদাতা */}
+        <ServiceRowSection
+          kicker="জরুরি প্রয়োজনে"
+          title="রক্তদাতা খুঁজুন"
+          href="/blood-donor"
           load={loadDonorCards}
+          tone="white"
+          cardTone="red"
+          hideImage
         />
 
-        <WhySection />
+        {/* সার্ভিস রো — কেনাবেচা */}
+        <ServiceRowSection
+          kicker="স্থানীয় বাজার"
+          title="কেনাবেচা"
+          href="/services?q=%E0%A6%95%E0%A7%87%E0%A6%A8%E0%A6%BE%E0%A6%AC%E0%A7%87%E0%A6%9A%E0%A6%BE"
+          cards={KENABECHA_SAMPLE_CARDS}
+          tone="mist"
+          withImage
+          demoImages={['/buysell.jpg', '/sheba2.png', '/sheba3.png', '/sheba4.png']}
+        />
+
+        {/* সার্ভিস রো — স্থানীয় খবর */}
+        <ServiceRowSection
+          kicker="সম্প্রতি"
+          title="স্থানীয় খবর ও ঘোষণা"
+          href="/services?q=news"
+          cards={NEWS_SAMPLE_CARDS}
+          tone="white"
+          withImage
+          demoImages={['/news.jpg', '/job.jpg', '/bus.jpg', '/wifi.jpg']}
+        />
+
         <StepsSection />
         <TestimonialsSection />
+        <WhySection />
         <ReviewSection />
         <FinalCtaSection />
       </main>

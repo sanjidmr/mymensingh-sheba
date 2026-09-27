@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
@@ -8,34 +8,51 @@ import {
   Menu,
   X,
   User,
-  Search,
   Home,
   LayoutGrid,
   Workflow,
   Info,
   Phone,
-  MapPin,
   ChevronRight,
   ArrowRight,
+  Search,
+  Landmark,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import MymensinghLiveBar from '@/components/MymensinghLiveBar';
 
 /**
- * Solid sticky nav bar — same on every page (homepage included).
- * It never overlays the hero: the bar occupies its own height in normal flow
- * and the hero section starts cleanly below it. Mobile keeps a compact bar:
- * logo/name on the left, hamburger on the right (44px targets).
+ * Premium navbar, same on every page.
+ *
+ * On the homepage the bar sits transparently above the page so it feels part of
+ * the hero composition (it turns into a soft cream blur once you scroll). The
+ * brand is the logo alone — noticeably larger, no wordmark. Every other page
+ * keeps the solid deep-forest band. The nav carries area links plus the
+ * "ময়মনসিংহ পরিচিতি" page. Mobile keeps the compact bar (logo + hamburger,
+ * 44px targets) with a polished drawer.
  */
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin } = useAuth();
+
+  // The homepage navbar is transparent at the top and adapts to a soft cream
+  // blur after scrolling so content never collides with the links.
+  const onHome = pathname === '/';
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 12);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
 
   const navLinks = [
     { name: 'হোম', href: '/', icon: Home },
     { name: 'সেবা সমূহ', href: '/services', icon: LayoutGrid },
     { name: 'কিভাবে কাজ করে', href: '/#how-it-works', icon: Workflow },
     { name: 'আমাদের সম্পর্কে', href: '/about', icon: Info },
+    { name: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh', icon: Landmark },
     { name: 'যোগাযোগ', href: '/contact', icon: Phone },
   ];
 
@@ -55,27 +72,43 @@ export default function Navbar() {
           ? 'রক্তদাতা'
           : 'কাস্টমার';
 
-  const navLink =
-    'text-ink-500 hover:bg-mist-50 hover:text-ink-900';
-  const navLinkActive = 'bg-brand-50 font-semibold text-brand-800';
-  const iconBtn = 'text-ink-500 hover:bg-mist-50 hover:text-brand-700';
+  const navLink = onHome
+    ? 'text-ink-700 hover:bg-brand-100/60 hover:text-brand-900'
+    : 'text-brand-100/90 hover:bg-white/10 hover:text-white';
+  const navLinkActive = onHome
+    ? 'bg-brand-100 font-semibold text-brand-800'
+    : 'bg-white/10 font-semibold text-white';
+  const iconBtn = onHome
+    ? 'rounded-lg text-ink-600 transition-colors hover:bg-brand-100/60 hover:text-brand-900'
+    : 'rounded-lg text-brand-100/90 transition-colors hover:bg-white/10 hover:text-white';
 
   return (
-    <header className="sticky top-0 z-50 border-b border-brand-100 bg-white/95 shadow-sm shadow-brand-900/5 backdrop-blur-md">
+    <>
+      <MymensinghLiveBar />
+      <header
+        className={`sticky top-0 z-50 ${
+          onHome
+            ? scrolled
+              ? 'border-b border-brand-100/80 bg-mist-50/90 shadow-sm shadow-brand-900/5 backdrop-blur-md'
+              : 'border-b border-transparent bg-transparent'
+            : 'border-b border-brand-700/70 bg-brand-700 shadow-sm shadow-brand-950/30'
+        }`}
+      >
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between gap-3 sm:h-[4.5rem]">
-          {/* Logo — image at its natural wide ratio, no background box */}
+          {/* Brand — the logo alone, filling the navbar height (no tile, no ring) */}
           <Link
             href="/"
-            className="group flex shrink-0 items-center rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+            aria-label="Mymensingh Sheba হোম"
+            className="group flex h-full shrink-0 items-center rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           >
             <Image
               src="/logo.png"
               alt="Mymensingh Sheba লোগো"
-              width={1536}
-              height={1024}
+              width={230}
+              height={230}
               priority
-              className="h-9 w-auto transition-transform duration-300 group-hover:scale-105 sm:h-12"
+              className="h-[52px] w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03] sm:h-full"
             />
           </Link>
 
@@ -97,12 +130,12 @@ export default function Navbar() {
             })}
           </nav>
 
-          {/* Right actions (desktop) — search / user / primary CTA */}
+          {/* Right actions (desktop) — search / auth */}
           <div className="hidden items-center gap-2 lg:flex">
             <Link
               href="/services"
               aria-label="সেবা খোঁজ"
-              className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${iconBtn}`}
+              className={`flex h-10 w-10 items-center justify-center ${iconBtn}`}
             >
               <Search className="h-5 w-5" />
             </Link>
@@ -110,44 +143,59 @@ export default function Navbar() {
             {user ? (
               <Link
                 href="/profile"
-                className="flex items-center gap-2 rounded-xl border border-brand-100 bg-mist-50/60 py-1.5 pl-1.5 pr-3 transition-colors hover:bg-brand-50"
+                className={`flex items-center gap-2 rounded-xl border py-1.5 pl-1.5 pr-3 transition-colors ${
+                  onHome
+                    ? 'border-brand-200 bg-white hover:bg-brand-100/40'
+                    : 'border-white/15 bg-white/10 hover:bg-white/15'
+                }`}
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-brand-700 text-xs font-bold text-white">
+                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-400 text-xs font-bold text-brand-900">
                   {user.fullName.charAt(0)}
                 </div>
                 <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold leading-tight text-ink-900">
+                  <span
+                    className={`text-xs font-bold leading-tight ${onHome ? 'text-brand-900' : 'text-white'}`}
+                  >
                     {user.fullName.split(' ')[0]}
                   </span>
-                  <span className="text-[10px] font-medium leading-tight text-brand-700">
+                  <span
+                    className={`text-[10px] font-medium leading-tight ${
+                      onHome ? 'text-brand-600' : 'text-accent-300'
+                    }`}
+                  >
                     {roleLabel}
                   </span>
                 </div>
               </Link>
             ) : (
-              <Link
-                href="/login"
-                aria-label="লগইন"
-                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${iconBtn}`}
-              >
-                <User className="h-5 w-5" />
-              </Link>
+              <>
+                <Link
+                  href="/login"
+                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                    onHome
+                      ? 'border-brand-300 text-brand-800 hover:bg-brand-100/60'
+                      : 'border-white/25 bg-transparent text-white hover:bg-white/10'
+                  }`}
+                >
+                  লগইন
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent-400 px-4 py-2.5 text-sm font-bold text-brand-900 shadow-sm transition-all hover:bg-accent-500 active:scale-[0.98]"
+                >
+                  রেজিস্ট্রেশন
+                </Link>
+              </>
             )}
-
-            <Link
-              href="/services"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-brand-800 active:scale-[0.98]"
-            >
-              সেবা নিন
-              <ArrowRight className="h-4 w-4" />
-            </Link>
           </div>
 
           {/* Mobile — hamburger only (search lives in the hero) */}
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-700 transition-colors hover:bg-mist-50 lg:hidden"
+            className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors lg:hidden ${
+              onHome ? 'text-brand-900 hover:bg-brand-100/60' : 'text-white hover:bg-white/10'
+            }`}
             aria-label={mobileMenuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"
@@ -161,7 +209,7 @@ export default function Navbar() {
       {mobileMenuOpen && (
         <div
           id="mobile-menu"
-          className="relative z-10 max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-brand-100 bg-white px-4 pb-8 pt-3 shadow-lg animate-in slide-in-from-top-2 fade-in duration-200 lg:hidden"
+          className="relative z-10 max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-brand-700/70 bg-white px-4 pb-8 pt-3 shadow-xl lg:hidden"
         >
           <nav className="space-y-1">
             {navLinks.map((link) => {
@@ -204,21 +252,17 @@ export default function Navbar() {
               onClick={() => setMobileMenuOpen(false)}
               className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-[15px] font-bold text-white shadow-sm hover:bg-brand-800"
             >
-              সেবা নিন
+              সেবা সমূহ দেখুন
               <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-2 border-t border-brand-100 pt-4 text-xs text-ink-500">
-            <span className="flex items-center gap-1 font-semibold text-brand-800">
-              <MapPin className="h-3.5 w-3.5 shrink-0" />
-              ময়মনসিংহ সিটি কর্পোরেশন
-            </span>
-            <div className="flex gap-3">
-              <Link href="/safety" onClick={() => setMobileMenuOpen(false)} className="hover:underline">
+          <div className="mt-4 flex items-center justify-center gap-4 border-t border-brand-100 pt-3.5 text-xs font-semibold text-ink-500">
+            <div className="flex gap-4">
+              <Link href="/safety" onClick={() => setMobileMenuOpen(false)} className="text-brand-800 hover:underline">
                 নিরাপত্তা
               </Link>
-              <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="hover:underline">
+              <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="text-brand-800 hover:underline">
                 সহায়তা
               </Link>
             </div>
@@ -226,5 +270,6 @@ export default function Navbar() {
         </div>
       )}
     </header>
+    </>
   );
 }

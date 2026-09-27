@@ -13,9 +13,10 @@ import { resolveStaffImageUrl } from '@/lib/staff-service';
 interface StaffProfileCardProps {
   profile: StaffProfile;
   serviceUi: StaffServiceUiConfig;
+  imageless?: boolean;
 }
 
-export function StaffProfileCard({ profile, serviceUi }: StaffProfileCardProps) {
+export function StaffProfileCard({ profile, serviceUi, imageless = false }: StaffProfileCardProps) {
   const accent = STAFF_ACCENT_CLASSES[serviceUi.accent] || STAFF_ACCENT_CLASSES.emerald;
   const areas = profile.areaIds
     .map((id) => getAreaById(id)?.nameBn)
@@ -32,7 +33,30 @@ export function StaffProfileCard({ profile, serviceUi }: StaffProfileCardProps) 
       href={`${serviceUi.route}/${profile.id}`}
       className="group bg-white rounded-2xl border border-slate-200 shadow-2xs hover:shadow-md hover:border-slate-300 transition-all duration-150 flex flex-col overflow-hidden no-underline"
     >
-      {/* Image header */}
+      {imageless ? (
+        <div className={`relative w-full bg-gradient-to-r ${accent.gradient} px-4 py-3`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {profile.isVerified && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-white/20 px-2.5 py-1 rounded-full border border-white/30">
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  ভেরিফাইড
+                </span>
+              )}
+              {profile.isEmergency && (
+                <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-100 bg-rose-700/90 px-2.5 py-1 rounded-full border border-white/30">
+                  <Zap className="w-3.5 h-3.5" />
+                  জরুরিতে উপলব্ধ
+                </span>
+              )}
+            </div>
+            <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-white bg-slate-900/40 px-2.5 py-1 rounded-full shrink-0">
+              <Clock className="w-3 h-3" />
+              {STAFF_AVAILABILITY_LABELS[profile.availability] || 'সীমিত সময়ে'}
+            </span>
+          </div>
+        </div>
+      ) : (
       <div className="relative w-full aspect-[4/3] bg-slate-100 overflow-hidden">
         {profile.imageUrl ? (
           <Image
@@ -76,6 +100,7 @@ export function StaffProfileCard({ profile, serviceUi }: StaffProfileCardProps) 
           {STAFF_AVAILABILITY_LABELS[profile.availability] || 'সীমিত সময়ে'}
         </span>
       </div>
+      )}
 
       {/* Body */}
       <div className="flex-1 flex flex-col p-4 sm:p-5">

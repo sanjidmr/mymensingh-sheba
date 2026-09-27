@@ -1,10 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { HeartHandshake, ArrowRight } from 'lucide-react';
+import { HeartHandshake, ArrowRight, PenLine } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 
 export default function FinalCtaSection() {
+  const openReview = () => {
+    window.dispatchEvent(new CustomEvent('mms:open-review'));
+  };
+
   return (
     <section className="bg-mist-50 pb-14 pt-2 sm:pb-20">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -19,7 +23,8 @@ export default function FinalCtaSection() {
                 আজই খুঁজে নিন আপনার প্রয়োজনীয় সেবা
               </h2>
               <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-white/80 sm:text-[15px]">
-                সেবা নিতে চান, নাকি সেবাদাতা হিসেবে যুক্ত হতে চান? দুটোই সম্ভব — কয়েকটি ধাপে শুরু করুন।
+                সেবা খুঁজে নিন, কিংবা আপনার অভিজ্ঞতার রিভিউ দিয়ে অন্যদের সঠিক সেবা
+                বেছে নিতে সাহায্য করুন।
               </p>
 
               <div className="mt-7 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -30,12 +35,14 @@ export default function FinalCtaSection() {
                   সেবা খুঁজুন
                   <ArrowRight className="h-4 w-4" />
                 </Link>
-                <Link
-                  href="/register"
+                <button
+                  type="button"
+                  onClick={openReview}
                   className="inline-flex min-h-[46px] w-full items-center justify-center gap-2 rounded-xl border border-white/25 bg-transparent px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-white/10 sm:w-auto"
                 >
-                  সেবাদাতা হিসেবে যুক্ত হন
-                </Link>
+                  <PenLine className="h-4 w-4" />
+                  আপনার রিভিউ দিন
+                </button>
               </div>
 
               <p className="mt-5 text-xs text-white/70">

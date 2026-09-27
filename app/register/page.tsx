@@ -74,7 +74,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FBFDFB]">
+    <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
       <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">

@@ -1,62 +1,86 @@
 /**
  * Mymensingh Sheba Design Tokens
- * 
+ *
  * Visual Identity:
- * - Clean Green & White identity
- * - Modern, trustworthy, local Mymensingh community focused
+ * - Deep Forest Green core, Soft Sage secondary, Warm Earth Bronze & Golden
+ *   Yellow spark — a warm, human, local, premium feel for Mymensingh.
+ * - Ratio guide ≈ Forest 40% / Sage 25% / Warm Cream 25% / Bronze+Gold 10%
  * - Mobile-first touch compliance (>= 44px min touch targets)
  * - Calibrated contrast for Bangla & English readability
  */
 
 export const DESIGN_TOKENS = {
   colors: {
-    // Primary Green Palette (Trust, Growth, Local Service)
+    // Primary — Deep Forest Green (#0C3B2E) → Soft Sage Green (#6D9773)
+    // 600 is a darkened sage holding >= 4.5:1 on white for text/links.
     primary: {
-      50: '#F0FDF4',
-      100: '#DCFCE7',
-      200: '#BBF7D0',
-      300: '#86EFAC',
-      400: '#4ADE80',
-      500: '#22C55E',
-      600: '#16A34A',
-      700: '#15803D',
-      800: '#166534', // Deep Brand Primary
-      900: '#14532D',
-      950: '#052E16',
+      50: '#F1F5F1',
+      100: '#E0E9E0',
+      200: '#C5D6C6',
+      300: '#A5C0A7',
+      400: '#84A68B',
+      500: '#6D9773', // Soft Sage Green
+      600: '#4A7857',
+      700: '#0C3B2E', // Deep Forest Green Primary
+      800: '#0A3227',
+      900: '#07271F',
+      950: '#051F18',
+    },
+    // Warm Golden Yellow — the controlled spark, used sparingly
+    accent: {
+      100: '#FFF3CC',
+      200: '#FFE79A',
+      300: '#FFD15C',
+      400: '#FFBA00', // Warm Golden Yellow
+      500: '#E0A200',
+      600: '#B88200',
+      700: '#925E00',
+    },
+    // Warm Earth / Bronze — detail, borders, small highlights
+    bronze: {
+      50: '#FAF6EF',
+      100: '#F3E9DA',
+      200: '#E6D3B8',
+      300: '#D4B489',
+      400: '#C89F6B',
+      500: '#BB8A52', // Warm Earth / Bronze
+      600: '#9A6E3C',
+      700: '#775129',
     },
     // Backgrounds
     background: {
-      base: '#FBFDFB',
+      base: '#FAF8F2',
       surface: '#FFFFFF',
-      subtle: '#F4F7F4',
-      muted: '#EBF2EC',
+      subtle: '#F1EDE1',
+      muted: '#E7E1D1',
     },
-    // Neutrals / Typography
+    // Neutrals / Typography (green-charcoal ink)
     text: {
-      primary: '#0F172A', // Slate 900
-      secondary: '#334155', // Slate 700
-      muted: '#64748B', // Slate 500
-      subtle: '#94A3B8', // Slate 400
+      primary: '#16241C',
+      secondary: '#2B3A31',
+      muted: '#57665C',
+      subtle: '#7D8B81',
       inverse: '#FFFFFF',
     },
     // Borders
     border: {
-      subtle: '#E2E8F0', // Slate 200
-      muted: '#CBD5E1', // Slate 300
-      brand: '#BBF7D0', // Green 200
-      focus: '#15803D', // Green 700
+      subtle: '#E0E9E0',
+      muted: '#C5D6C6',
+      brand: '#C5D6C6',
+      bronze: '#E6D3B8',
+      focus: '#0C3B2E',
     },
     // Semantic States
     state: {
       success: {
-        bg: '#F0FDF4',
-        border: '#BBF7D0',
-        text: '#166534',
+        bg: '#F1F5F1',
+        border: '#C5D6C6',
+        text: '#0A3227',
       },
       warning: {
-        bg: '#FFFBEB',
-        border: '#FDE68A',
-        text: '#92400E',
+        bg: '#FFF3CC',
+        border: '#FFD15C',
+        text: '#925E00',
       },
       error: {
         bg: '#FEF2F2',

@@ -88,7 +88,7 @@ export default function BloodDonorSetupPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#FBFDFB]">
+    <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
