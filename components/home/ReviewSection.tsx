@@ -1,17 +1,40 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { MessageSquarePlus, Star, X, CheckCircle2, PenLine } from 'lucide-react';
+import { MessageSquarePlus, Star, X, CheckCircle2, PenLine, Tag } from 'lucide-react';
+import { LAUNCH_SERVICES } from '@/lib/services-data';
 
 interface HomeReview {
   id: string;
   name: string;
+  service: string;
   rating: number;
   text: string;
   date: string;
 }
 
 const STORAGE_KEY = 'mms_home_reviews_v1';
+
+/** যেসব সেবার রিভিউ দেওয়া যায় — তালিকা থেকে নাম সিঙ্ক রাখতে নির্বাচিত স্লাগ */
+const REVIEWABLE_SLUGS = [
+  'tolet',
+  'kajer-bua',
+  'electrician',
+  'plumber',
+  'home-moving',
+  'ac-fridge',
+  'home-tutor',
+  'gari-auto-cng',
+  'buysell',
+  'bus-ticket',
+  'coaching',
+  'wifi',
+];
+
+const SERVICE_OPTIONS = REVIEWABLE_SLUGS.map((slug) => {
+  const service = LAUNCH_SERVICES.find((s) => s.slug === slug);
+  return { slug, nameBn: service?.nameBn ?? slug };
+});
 
 function loadReviews(): HomeReview[] {
   if (typeof window === 'undefined') return [];
@@ -56,6 +79,7 @@ export default function ReviewSection() {
   const [open, setOpen] = useState(false);
   const [reviews, setReviews] = useState<HomeReview[]>([]);
   const [name, setName] = useState('');
+  const [service, setService] = useState('');
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
@@ -94,6 +118,7 @@ export default function ReviewSection() {
 
   const resetForm = () => {
     setName('');
+    setService('');
     setRating(0);
     setText('');
     setError('');
@@ -109,6 +134,10 @@ export default function ReviewSection() {
       setError('দয়া করে আপনার নাম লিখুন।');
       return;
     }
+    if (!service) {
+      setError('দয়া করে কোন সেবা নিয়েছেন সেটি নির্বাচন করুন।');
+      return;
+    }
     if (!text.trim()) {
       setError('দয়া করে আপনার মতামত লিখুন।');
       return;
@@ -117,6 +146,7 @@ export default function ReviewSection() {
     const review: HomeReview = {
       id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.trim(),
+      service,
       rating,
       text: text.trim(),
       date: new Date().toISOString(),
@@ -206,6 +236,25 @@ export default function ReviewSection() {
             </div>
 
             <div>
+              <label htmlFor="review-service" className="mb-1.5 block text-xs font-semibold text-ink-700">
+                কোন সেবা নিয়েছেন?
+              </label>
+              <select
+                id="review-service"
+                value={service}
+                onChange={(e) => setService(e.target.value)}
+                className="w-full appearance-none rounded-xl border border-brand-100 bg-mist-50 px-3.5 py-2.5 text-sm text-ink-900 outline-none transition-colors focus:border-brand-500 focus:bg-white focus:ring-2 focus:ring-brand-500/20"
+              >
+                <option value="">সেবা নির্বাচন করুন</option>
+                {SERVICE_OPTIONS.map((option) => (
+                  <option key={option.slug} value={option.nameBn}>
+                    {option.nameBn}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
               <label htmlFor="review-text" className="mb-1.5 block text-xs font-semibold text-ink-700">
                 আপনার রিভিউ
               </label>
@@ -256,7 +305,7 @@ export default function ReviewSection() {
                     key={r.id}
                     className="flex h-full flex-col rounded-2xl border border-brand-100 bg-mist-50 p-4"
                   >
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="flex items-center gap-0.5">
                         {Array.from({ length: 5 }).map((_, i) => (
                           <Star
@@ -268,6 +317,12 @@ export default function ReviewSection() {
                       </span>
                       <time className="text-[11px] text-ink-400">{relativeDate(r.date)}</time>
                     </div>
+                    {r.service && (
+                      <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-brand-100 bg-brand-50 px-2 py-1 text-[11px] font-bold text-brand-800">
+                        <Tag className="h-3 w-3" aria-hidden="true" />
+                        {r.service}
+                      </p>
+                    )}
                     <blockquote className="mt-3 flex-1 text-[14px] leading-relaxed text-ink-700">
                       “{r.text}”
                     </blockquote>

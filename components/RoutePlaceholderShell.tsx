@@ -17,6 +17,11 @@ interface RoutePlaceholderShellProps {
   categoryBadge?: string;
   breadcrumbs: BreadcrumbItem[];
   children?: React.ReactNode;
+  /**
+   * Compact top spacing — used on directory pages (e.g. সর্ব সেবা সমূহ)
+   * so the header sits closer to the navbar with no unwanted gaps.
+   */
+  compact?: boolean;
 }
 
 export default function RoutePlaceholderShell({
@@ -25,14 +30,15 @@ export default function RoutePlaceholderShell({
   categoryBadge,
   breadcrumbs,
   children,
+  compact = false,
 }: RoutePlaceholderShellProps) {
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
+      <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${compact ? 'py-4 sm:py-6 lg:pb-12' : 'py-8 sm:py-12'}`}>
         {/* Breadcrumb Navigation */}
-        <nav className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-6">
+        <nav className={`flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 ${compact ? 'mb-3' : 'mb-6'}`}>
           <Link href="/" className="hover:text-emerald-800 transition-colors">
             হোম
           </Link>
@@ -54,7 +60,11 @@ export default function RoutePlaceholderShell({
         </nav>
 
         {/* Page Header */}
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 mb-8 shadow-2xs">
+        <div
+          className={`bg-white rounded-2xl border border-slate-200/80 shadow-2xs ${
+            compact ? 'p-5 sm:p-6 mb-6' : 'p-6 sm:p-8 mb-8'
+          }`}
+        >
           <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
             {categoryBadge && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-semibold">

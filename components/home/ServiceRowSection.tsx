@@ -76,7 +76,7 @@ export default function ServiceRowSection({
           : 'border-b border-brand-100/70 bg-white'
       }
     >
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
         {/* Header — centered on mobile, left-aligned on larger screens */}
         <div className="text-center sm:text-left">
           <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-brand-600 sm:text-xs">
@@ -90,7 +90,7 @@ export default function ServiceRowSection({
 
         {/* Cards */}
         {loading ? (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
             {Array.from({ length: count }).map((_, i) => (
               <div
                 key={i}
@@ -107,7 +107,7 @@ export default function ServiceRowSection({
             ))}
           </div>
         ) : shown.length > 0 ? (
-          <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
+          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
             {shown.map((card, index) => (
               <ServiceCard
                 key={card.id}
@@ -125,7 +125,7 @@ export default function ServiceRowSection({
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-xl border border-dashed border-brand-200 bg-white px-6 py-10 text-center">
+          <div className="mt-4 rounded-xl border border-dashed border-brand-200 bg-white px-6 py-10 text-center">
             <p className="text-sm font-medium text-ink-500">
               এই মুহূর্তে কোনো তালিকা নেই। কিছুক্ষণ পরে আবার দেখুন।
             </p>
@@ -133,7 +133,7 @@ export default function ServiceRowSection({
         )}
 
         {/* See-more — bottom of every row */}
-        <div className="mt-6 flex justify-center">
+        <div className="mt-5 flex justify-center">
           <Link
             href={href}
             className="group inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-6 py-2.5 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50"

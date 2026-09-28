@@ -27,7 +27,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
 
   return (
     <section className={bgClass} aria-label={category.title}>
-      <div className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 sm:py-10 lg:px-8 lg:py-12">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
         <CategoryHeader
           title={category.title}
           description={category.description}
@@ -37,7 +37,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
         {emergency ? (
           <>
             {/* Mobile — one compact swipeable row */}
-            <div className="no-scrollbar -mx-4 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 sm:px-6 lg:hidden">
+            <div className="no-scrollbar -mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 sm:px-6 lg:hidden">
               {category.items.map((item) => (
                 <div
                   key={item.id}
@@ -48,7 +48,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
               ))}
             </div>
             {/* Desktop — the familiar five-up grid */}
-            <div className={`mt-6 hidden grid-cols-1 gap-3 sm:gap-4 lg:grid ${category.grid ?? 'lg:grid-cols-5'}`}>
+            <div className={`mt-4 hidden grid-cols-1 gap-3 sm:gap-4 lg:grid ${category.grid ?? 'lg:grid-cols-5'}`}>
               {category.items.map((item) => (
                 <div key={item.id} className={item.layoutClass ?? ''}>
                   <CategoryCard item={item} compact dense />
@@ -57,7 +57,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
             </div>
           </>
         ) : (
-          <div className={`mt-6 grid gap-3 sm:gap-4 ${category.grid ?? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
+          <div className={`mt-4 grid gap-3 sm:gap-4 ${category.grid ?? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
             {category.items.map((item, index) => (
               <div
                 key={item.id}
@@ -74,7 +74,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
         )}
 
         {category.viewAll && (
-          <div className="mt-7 flex justify-center">
+          <div className="mt-5 flex justify-center">
             <Link
               href={category.viewAll.href}
               className={`group inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border px-6 py-2.5 text-sm font-bold shadow-sm transition-all duration-300 hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 ${

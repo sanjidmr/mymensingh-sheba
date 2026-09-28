@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { ArrowRight, MapPin, PhoneCall, Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
+import CommunityBandSection from '@/components/services/CommunityBandSection';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
 import { getAllMCCAreas } from '@/lib/locations';
 
@@ -33,6 +34,7 @@ function ServicesContent() {
       subtitle="ময়মনসিংহ সিটি কর্পোরেশন এলাকার জন্য আমাদের নির্ধারিত সেবা তালিকা থেকে আপনার প্রয়োজনীয় সেবাটি নির্বাচন করুন।"
       categoryBadge="সেবা ক্যাটালগ"
       breadcrumbs={[{ label: 'সেবাসমূহ' }]}
+      compact
     >
       {/* Filter & Search Bar */}
       <div className="mb-8 rounded-2xl border border-brand-100/90 bg-white p-4 shadow-sm sm:p-6">
@@ -150,6 +152,9 @@ function ServicesContent() {
           );
         })}
       </div>
+
+      {/* Community band — before footer, unique to the services directory */}
+      <CommunityBandSection />
     </RoutePlaceholderShell>
   );
 }

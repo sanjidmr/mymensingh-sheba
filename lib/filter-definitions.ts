@@ -197,7 +197,7 @@ export const STAFF_EXPERIENCE_OPTIONS = [
 // Availability (কাজের বুয়া, Electrician, Plumber)
 export const STAFF_AVAILABILITY_OPTIONS = [
   { id: 'all', labelBn: 'সকল প্রাপ্যতা' },
-  { id: 'available', labelBn: 'ফ্রি / প্রস্তুত' },
+  { id: 'available', labelBn: 'প্রস্তুত' },
   { id: 'limited', labelBn: 'সীমিত সময়ে' },
 ];
 
@@ -310,7 +310,7 @@ export const TUTOR_FEE_PRESETS = [
 
 export const TUTOR_AVAILABILITY_OPTIONS = [
   { id: 'all', labelBn: 'সকল প্রাপ্যতা' },
-  { id: 'available', labelBn: 'প্রস্তুত / ফ্রি' },
+  { id: 'available', labelBn: 'প্রস্তুত' },
   { id: 'limited', labelBn: 'সীমিত সময়ে' },
   { id: 'busy', labelBn: 'ব্যস্ত' },
 ];

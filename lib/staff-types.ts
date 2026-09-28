@@ -100,7 +100,7 @@ export const STAFF_REQUEST_STATUS_INFO: Record<
 };
 
 export const STAFF_AVAILABILITY_LABELS: Record<StaffAvailability, string> = {
-  available: 'ফ্রি / প্রস্তুত',
+  available: 'প্রস্তুত',
   limited: 'সীমিত সময়ে',
   busy: 'এই মুহূর্তে ব্যস্ত',
 };

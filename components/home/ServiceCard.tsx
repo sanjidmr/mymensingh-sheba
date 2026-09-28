@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { BadgeCheck, MapPin, Star, ArrowRight } from 'lucide-react';
+import { MapPin, Star, ArrowRight } from 'lucide-react';
 import { useState } from 'react';
 import type { HomePreviewCard } from '@/lib/home-preview';
 
@@ -19,8 +19,8 @@ interface ServiceCardProps {
 /**
  * New card language — lightweight, restrained, tactile.
  * White card, sage hairline border, warm bronze lift on hover, small corner radius.
- * The imgless variant (privacy for কাজের বুয়া/রক্তদাতা) renders a soft forest-green
- * header with a big brand initial and the status pills — no photo ever.
+ * Photo tiles stay clean: no text, no status badge on top of the image.
+ * `hideImage` (privacy for রক্তদাতা) drops the media block entirely.
  */
 export default function ServiceCard({
   card,
@@ -37,40 +37,6 @@ export default function ServiceCard({
   const arrowBoxClass =
     card.avatarTone === 'rose' ? 'bg-rose-700' : red ? 'bg-red-700' : 'bg-brand-700';
 
-  const statusPill = (
-    <>
-      {card.verified && (
-        <span className="inline-flex items-center gap-1 rounded-md bg-brand-700 px-2 py-1 text-[10px] font-bold text-white">
-          <BadgeCheck className="h-3 w-3" />
-          যাচাইকৃত
-        </span>
-      )}
-      {card.availability && (
-        <span
-          className={`inline-flex items-center gap-1.5 rounded-md border bg-white px-2 py-1 text-[10px] font-bold ${
-            card.availability.tone === 'green'
-              ? 'border-brand-200 text-brand-800'
-              : card.availability.tone === 'amber'
-                ? 'border-amber-200 text-amber-800'
-                : 'border-slate-200 text-slate-600'
-          }`}
-        >
-          <span
-            className={`h-1.5 w-1.5 rounded-full ${
-              card.availability.tone === 'green'
-                ? 'bg-brand-600'
-                : card.availability.tone === 'amber'
-                  ? 'bg-amber-500'
-                  : 'bg-slate-400'
-            }`}
-            aria-hidden="true"
-          />
-          {card.availability.label}
-        </span>
-      )}
-    </>
-  );
-
   return (
     <Link
       href={card.href}
@@ -83,9 +49,6 @@ export default function ServiceCard({
             className="select-none text-6xl font-black leading-none text-brand-100/90 transition-transform duration-500 group-hover:scale-110"
           >
             {card.avatarLabel}
-          </span>
-          <span className="absolute left-2.5 top-2.5 flex flex-wrap items-center gap-1.5">
-            {statusPill}
           </span>
         </div>
       ) : !hideImage ? (
@@ -110,37 +73,6 @@ export default function ServiceCard({
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-brand-950/40 to-transparent"
           />
-          <span className="absolute left-2.5 top-2.5 flex flex-wrap items-center gap-1.5">
-            {card.verified && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-brand-700 px-2 py-1 text-[10px] font-bold text-white">
-                <BadgeCheck className="h-3 w-3" />
-                যাচাইকৃত
-              </span>
-            )}
-          </span>
-          {card.availability && (
-            <span
-              className={`absolute bottom-2.5 left-2.5 inline-flex items-center gap-1.5 rounded-md border bg-white px-2 py-1 text-[10px] font-bold ${
-                card.availability.tone === 'green'
-                  ? 'border-brand-200 text-brand-800'
-                  : card.availability.tone === 'amber'
-                    ? 'border-amber-200 text-amber-800'
-                    : 'border-slate-200 text-slate-600'
-              }`}
-            >
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  card.availability.tone === 'green'
-                    ? 'bg-brand-600'
-                    : card.availability.tone === 'amber'
-                      ? 'bg-amber-500'
-                      : 'bg-slate-400'
-                }`}
-                aria-hidden="true"
-              />
-              {card.availability.label}
-            </span>
-          )}
           {!imageless && (
             <span
               className={`absolute bottom-2.5 right-2.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-white shadow-md ${arrowBoxClass}`}

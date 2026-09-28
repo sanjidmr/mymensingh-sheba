@@ -10,14 +10,14 @@ export default function FinalCtaSection() {
   };
 
   return (
-    <section className="bg-mist-50 pb-14 pt-2 sm:pb-20">
+    <section className="bg-mist-50 pb-8 pt-1 sm:pb-10">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <Reveal>
-          <div className="overflow-hidden rounded-2xl bg-brand-800 px-6 py-12 text-center sm:px-12 sm:py-16">
+          <div className="overflow-hidden rounded-2xl bg-brand-800 px-6 py-9 text-center sm:px-12 sm:py-11">
             <div className="mx-auto max-w-2xl">
               <span className="inline-flex items-center gap-2 rounded-full border border-brand-600 bg-brand-700 px-4 py-1.5 text-xs font-semibold text-accent-300">
                 <HeartHandshake className="h-4 w-4" />
-                জরুরি রক্তদান সম্পূর্ণ বিনামূল্যে
+                জরুরি রক্তদান সেবা
               </span>
               <h2 className="mt-5 text-2xl font-extrabold leading-tight text-white sm:text-3xl">
                 আজই খুঁজে নিন আপনার প্রয়োজনীয় সেবা

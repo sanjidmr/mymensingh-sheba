@@ -65,7 +65,7 @@ export const TUTOR_TEACHING_MODE_LABELS: Record<TutorTeachingMode, string> = {
 };
 
 export const TUTOR_AVAILABILITY_LABELS: Record<TutorAvailability, { labelBn: string; className: string }> = {
-  available: { labelBn: 'প্রস্তুত / ফ্রি', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  available: { labelBn: 'প্রস্তুত', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
   limited: { labelBn: 'সীমিত সময়ে', className: 'bg-amber-50 text-amber-700 border-amber-200' },
   busy: { labelBn: 'সাময়িক ব্যস্ত', className: 'bg-slate-50 text-slate-600 border-slate-200' },
 };

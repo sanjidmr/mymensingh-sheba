@@ -42,7 +42,7 @@ export default function TestimonialsSection() {
   const totalPages = TESTIMONIALS.length;
 
   return (
-    <section className="bg-white py-9 sm:py-12">
+    <section className="bg-white py-6 sm:py-8">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">

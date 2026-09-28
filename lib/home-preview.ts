@@ -1,4 +1,4 @@
-import type { ToletListing } from '@/lib/tolet-types';
+﻿import type { ToletListing } from '@/lib/tolet-types';
 import type { StaffProfile } from '@/lib/staff-types';
 import type { HomeTutorProfile, BloodDonorProfile } from '@/lib/supabase/types';
 import {
@@ -171,7 +171,7 @@ export function donorToPreviewCard(donor: BloodDonorProfile): HomePreviewCard {
       tone: donor.isAvailable ? 'green' : 'slate',
     },
     verified: donor.isVerified,
-    footer: 'রক্তদান সম্পূর্ণ বিনামূল্যে',
+    footer: 'রক্তদানে প্রস্তুত',
     footerLabel: 'বিস্তারিত দেখুন',
   };
 }

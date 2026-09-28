@@ -607,3 +607,38 @@ Two user-requested features (mobile-first, Deep Navy + Off-White, no regressions
   - **Image removal for কাজের বুয়া + রক্তদাতা:** photos removed from `lib/homepage-catalog.ts` (cards fall back to the brand-50 glyph panel) and from `lib/services-data.ts` (`coverImage` dropped for both); `/services` cards now render an **initial-letter panel** (`bg-gradient-to-br from-brand-50 to-mist-50`, first character of `nameBn`) when `coverImage` is absent. Live `ServiceCard imageless compact` keeps the avatar-initial header + pills (privacy preserved).
   - Compatibility: the older "deep-forest emergency band" and "Featured untouched" bullets above are **historical** — current behavior is documented here. Verified: tsc clean; lint 0 errors (same 4 pre-existing warnings); build green **76/76**.
 - New **community invite** section (`components/home/CommunityInviteSection.tsx`, mist, `border-b`): left column = eyebrow (gold dot + "ময়মনসিংহ কমিউনিটির জন্য"), heading **"আপনার সেবা, আপনার তথ্য — পৌঁছে দিন পুরো ময়মনসিংহে"**, supporting copy, a soft white friendly-message callout with Sparkles icon, primary CTA "আপনার তথ্য / সেবা যোগ করুন" → `/register` (emerald-700) and secondary "আমাদের সাথে যোগাযোগ করুন" → `/contact` (outline, bronze hairline); right column = compact 3×3 mosaic of 9 community categories (Home/GraduationCap/HeartHandshake/ShoppingBag/Briefcase/PenLine/Newspaper/Wrench/Store lucide icons, white tiles, brand-50 icon chips, hover bronze). `Reveal` stagger (0/120ms). Mobile: stacked single column copy → 3-across compact tiles, ≥44px CTAs, no overflow.
+
+## 23. Site-wide visual pass + `/about` + `/mymensingh` rebuild (supersedes §19.2)
+
+### 23.1 Navbar — light on every non-home page (`components/Navbar.tsx`)
+- Non-home header is now **white** (`bg-white`) with a `border-brand-100/80` hairline and `shadow-sm shadow-brand-900/5`; all nav links, icons, user chip, login button and hamburger were retinted from forest-on-forest to **dark-on-white** so they are actually readable. Homepage behaviour (transparent → cream blur after 12px, forest logo tile) is untouched.
+
+### 23.2 Hero carousel — full-bleed on mobile (`components/home/HeroCarousel.tsx`)
+- Mobile slide is **edge-to-edge full width** (container drops `max-w-7xl`/padding below `sm`), image stays `object-contain` so the whole picture is never cropped, and the slide box is a fixed `aspect-[16/9] … lg:aspect-[21/9]`. The surrounding surface is `bg-brand-900` so the matting reads as an intentional deep-forest frame, matching the earlier desktop look.
+
+### 23.3 `/services` community band (`components/services/CommunityBandSection.tsx`)
+- Band rewritten in place (still rendered by `app/services/page.tsx`): badge, heading **"আপনার শহর, আপনার সেবা — পৌঁছে দিন সবার কাছে"**, supporting copy, CTAs → `/register`, `/how-it-works`, `/contact`.
+
+### 23.4 `/about` — custom page (was a placeholder shell)
+- `app/about/page.tsx` (server + `metadata`) renders `Navbar`, breadcrumb, 12 chapters and `Footer`; new `components/about/*`: `AboutSectionBits`, `AboutHero`, `AboutStory`, `FounderSection`, `WhyUsSection`, `MissionVisionSection`, `AboutHowItWorks`, `AboutServices`, `AboutValues`, `AboutTrust`, `AboutCommitment`, `AboutFinalCta`.
+- Founder portrait is **optional**: `FOUNDER.image` is `null`, so a monogram avatar renders; set it to `'/founder.jpg'` (and drop the file in `public/`) to show the photo. Gold numerals use `text-accent-700` (contrast-safe). CTAs are existing routes only (`/services`, `/register`, `/contact`).
+
+### 23.5 `/mymensingh` — interactive digital history (replaces the 8-section page of §19.2)
+- `components/mymensingh/MymensinghCityPage.tsx` is now a thin composer: `Navbar` → `CityHero` → sticky `CitySectionNav` → 17 chapter components → `Sources` → `CityClosing` → `Footer` + `MobileBottomNav`. **19 chapters, mobile-first, no horizontal page overflow.**
+- Chapter order: `CityQuickFacts` (০১) → `NameOrigins` (০২) → `AncientMymensingh` (০৩) → `HistoryTimeline` (০৪) → `DivisionMap` (০৫) → `Division2015` (০৬) → `NatureJourney` (০৭) → `CultureHeritage` (০৮) → `EducationAndArts` (০৯) → `NotablePeople` (১০) → `BrahmaputraStory` (১১) → `ZamindariHeritage` (১২) → `MovementsAndWar` (১৩) → `PresentMymensingh` (১৪) → `TodayDashboard` (১৫) → `DidYouKnow` (১৬) → `ArchiveGallery` (১৭) → `Sources` (১৮) → `CityClosing` (১৯). Shared primitives live in `components/mymensingh/CityBits.tsx` (`CityLabel`, `CitySection`, `DARK_FOCUS`, `LIGHT_FOCUS`, `TITLE`, `TITLE_DARK`, `SCROLL_MT`); `SCROLL_MT = scroll-mt-[7.75rem]` clears the sticky Navbar **and** the sticky chapter rail.
+- **Interactivity** (client components, `aria-live`/`aria-pressed`/`aria-expanded` wired, 44px+ touch targets): name-origin switcher (4 competing theories), 16-milestone timeline (vertical accordion on mobile / horizontal year rail + detail on desktop), schematic division map, 4-district dashboard, scroll-snap swipeable gallery, expandable sources list, and a sticky chapter rail whose active chip is driven by `IntersectionObserver` and auto-scrolled into view.
+- **Accuracy policy (deliberate, and visible in the copy):** ১৭৮৭ = district, ১৮১১ = town, ১৯৬৯/৭৮/৮৪ = demerger steps, ২০১৫ = division (8th). Historic Greater Mymensingh is never equated with today's district. Notable people are labelled **জন্মস্থান / শিক্ষা ও কর্মজীবন / ঐতিহাসিক সম্পর্ক** and carry the *current* district where boundaries changed (e.g. জয়নুল আবেদিন — জন্ম কাশিয়ানী, today কিশোরগঞ্জ; জগদীশচন্দ্র বসু — কর্মজীবন, not birth). Unverified claims are written as "ধরা হয়/আলোচিত"; no population or percentage statistics are stated at all.
+- **Image policy:** `public/mymensingh/` does **not** exist in this repo, so no verified photo is available. `components/mymensingh/ArchivePhoto.tsx` is an honest slot: it renders the real `<img>` and, on error, a labelled "অডিট ফাইল যুক্ত হলে এখানে দেখা যাবে" frame with the slot note; `credit` renders a caption when a real file is present. The gallery degrades the same way per frame. Nothing is generated or passed off as a historical photograph. `CityPhoto.tsx` is now unused dead code (kept, not deleted).
+- `lib/bengali-numerals.ts` → `toBengaliDigits()` so every year renders in Bengali numerals (verified: 24 Bengali `১৭৮৭` vs. 2 Latin, the latter only inside DOM ids like `mms-tl-1787`).
+- `app/mymensingh/page.tsx` description rewritten to describe the album. No free/paid claim added anywhere on the page (verified 0 matches for বিনামূল্যে/ফ্রি/free).
+
+### 23.6 Verification (this pass)
+- `npx tsc --noEmit` — clean.
+- `npm run lint` — 0 errors, same **4** pre-existing warnings (admin img, services img, MovingRequestWizard img, TutorReviews unused-disable). No new warnings from the new files.
+- `npm run build` — green **77/77**; `/mymensingh` = 13.3 kB / 212 kB first-load, prerendered static.
+- Rendered-HTML spot check on `.next/server/app/mymensingh.html`: 19 `<h2>`, all 19 section ids present, 3 `aria-live` regions, chapter rail present, 0 free-claim matches.
+- Not yet done: real-browser pass (mobile/desktop overflow + interaction), and sourcing/licensing any real photograph.
+
+### 23.7 Open items for the user
+- Founder portrait: set `FOUNDER.image = '/founder.jpg'`.
+- `/mymensingh`: supply licensed/public-domain images to `public/mymensingh/` (`hero-river.jpg`, `brahmaputra-boats.jpg`, `shashi-lodge.jpg`, `zainul-park-boat.jpg`, plus the nature/district frames) and pass a `credit` to each `ArchivePhoto`; replace the §19.2 source links in `Sources.tsx` once individual documents are verified.

@@ -25,11 +25,11 @@ import MymensinghLiveBar from '@/components/MymensinghLiveBar';
  * Premium navbar, same on every page.
  *
  * On the homepage the bar sits transparently above the page so it feels part of
- * the hero composition (it turns into a soft cream blur once you scroll). The
- * brand is the logo alone — noticeably larger, no wordmark. Every other page
- * keeps the solid deep-forest band. The nav carries area links plus the
- * "ময়মনসিংহ পরিচিতি" page. Mobile keeps the compact bar (logo + hamburger,
- * 44px targets) with a polished drawer.
+ * the hero composition (it turns into a soft cream blur once you scroll). Every
+ * other page keeps a clean solid white bar with the same light link styling.
+ * The brand is the logo alone — noticeably larger, no wordmark. The nav carries
+ * area links plus the "ময়মনসিংহ পরিচিতি" page. Mobile keeps the compact bar
+ * (logo + hamburger, 44px targets) with a polished drawer.
  */
 export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -50,7 +50,7 @@ export default function Navbar() {
   const navLinks = [
     { name: 'হোম', href: '/', icon: Home },
     { name: 'সেবা সমূহ', href: '/services', icon: LayoutGrid },
-    { name: 'কিভাবে কাজ করে', href: '/#how-it-works', icon: Workflow },
+    { name: 'কিভাবে কাজ করে', href: '/how-it-works', icon: Workflow },
     { name: 'আমাদের সম্পর্কে', href: '/about', icon: Info },
     { name: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh', icon: Landmark },
     { name: 'যোগাযোগ', href: '/contact', icon: Phone },
@@ -72,15 +72,10 @@ export default function Navbar() {
           ? 'রক্তদাতা'
           : 'কাস্টমার';
 
-  const navLink = onHome
-    ? 'text-ink-700 hover:bg-brand-100/60 hover:text-brand-900'
-    : 'text-brand-100/90 hover:bg-white/10 hover:text-white';
-  const navLinkActive = onHome
-    ? 'bg-brand-100 font-semibold text-brand-800'
-    : 'bg-white/10 font-semibold text-white';
-  const iconBtn = onHome
-    ? 'rounded-lg text-ink-600 transition-colors hover:bg-brand-100/60 hover:text-brand-900'
-    : 'rounded-lg text-brand-100/90 transition-colors hover:bg-white/10 hover:text-white';
+  const navLink = 'text-ink-700 hover:bg-brand-100/60 hover:text-brand-900';
+  const navLinkActive = 'bg-brand-100 font-semibold text-brand-800';
+  const iconBtn =
+    'rounded-lg text-ink-600 transition-colors hover:bg-brand-100/60 hover:text-brand-900';
 
   return (
     <>
@@ -91,7 +86,7 @@ export default function Navbar() {
             ? scrolled
               ? 'border-b border-brand-100/80 bg-mist-50/90 shadow-sm shadow-brand-900/5 backdrop-blur-md'
               : 'border-b border-transparent bg-transparent'
-            : 'border-b border-brand-700/70 bg-brand-700 shadow-sm shadow-brand-950/30'
+            : 'border-b border-brand-100/80 bg-white shadow-sm shadow-brand-900/5'
         }`}
       >
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -143,26 +138,16 @@ export default function Navbar() {
             {user ? (
               <Link
                 href="/profile"
-                className={`flex items-center gap-2 rounded-xl border py-1.5 pl-1.5 pr-3 transition-colors ${
-                  onHome
-                    ? 'border-brand-200 bg-white hover:bg-brand-100/40'
-                    : 'border-white/15 bg-white/10 hover:bg-white/15'
-                }`}
+                className="flex items-center gap-2 rounded-xl border border-brand-200 bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:bg-brand-100/40"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-400 text-xs font-bold text-brand-900">
                   {user.fullName.charAt(0)}
                 </div>
                 <div className="flex flex-col text-left">
-                  <span
-                    className={`text-xs font-bold leading-tight ${onHome ? 'text-brand-900' : 'text-white'}`}
-                  >
+                  <span className="text-xs font-bold leading-tight text-brand-900">
                     {user.fullName.split(' ')[0]}
                   </span>
-                  <span
-                    className={`text-[10px] font-medium leading-tight ${
-                      onHome ? 'text-brand-600' : 'text-accent-300'
-                    }`}
-                  >
+                  <span className="text-[10px] font-medium leading-tight text-brand-600">
                     {roleLabel}
                   </span>
                 </div>
@@ -171,12 +156,8 @@ export default function Navbar() {
               <>
                 <Link
                   href="/login"
-                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-colors ${
-                    onHome
-                      ? 'border-brand-300 text-brand-800 hover:bg-brand-100/60'
-                      : 'border-white/25 bg-transparent text-white hover:bg-white/10'
-                  }`}
-                >
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-brand-300 px-4 py-2.5 text-sm font-semibold text-brand-800 transition-colors hover:bg-brand-100/60"
+              >
                   লগইন
                 </Link>
                 <Link
@@ -193,9 +174,7 @@ export default function Navbar() {
           <button
             type="button"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className={`flex h-11 w-11 items-center justify-center rounded-xl transition-colors lg:hidden ${
-              onHome ? 'text-brand-900 hover:bg-brand-100/60' : 'text-white hover:bg-white/10'
-            }`}
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-brand-900 transition-colors hover:bg-brand-100/60 lg:hidden"
             aria-label={mobileMenuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
             aria-expanded={mobileMenuOpen}
             aria-controls="mobile-menu"

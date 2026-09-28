@@ -8,6 +8,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
  *
  * One image slides horizontally out while the next enters seamlessly from the
  * side (a behind-the-scenes cloned-track loop, so there is never a wrap snap).
+ * Images use `object-contain` so nothing is cropped — the full picture stays
+ * visible inside the fixed hero size, matted on `bg-brand-900` so any
+ * letterboxing blends cleanly on wide screens.
  * Gentle autoplay, pause on hover/focus, ghost arrows (desktop) and small dots.
  * Respects `prefers-reduced-motion` (autoplay off, no transitions).
  *
@@ -104,9 +107,9 @@ export default function HeroCarousel() {
 
   return (
     <section className="bg-mist-50" aria-label="বৈশিষ্ট্যযুক্ত সেবা">
-      <div className="mx-auto w-full max-w-7xl px-4 pb-1 pt-5 sm:px-6 sm:pb-3 sm:pt-7 lg:px-8 lg:pb-4 lg:pt-8">
+      <div className="mx-auto w-full max-w-none px-0 pb-0 pt-0 sm:max-w-7xl sm:px-6 sm:pb-2 sm:pt-3 lg:px-8 lg:pb-3 lg:pt-4">
         <div
-          className="group/carousel relative overflow-hidden rounded-2xl bg-brand-950 shadow-xl shadow-brand-900/15 ring-1 ring-brand-900/10 lg:rounded-3xl"
+          className="group/carousel relative overflow-hidden rounded-none bg-brand-950 shadow-none ring-0 sm:rounded-2xl sm:shadow-xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-brand-900/10 lg:rounded-3xl"
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onFocusCapture={() => setPaused(true)}
@@ -124,18 +127,18 @@ export default function HeroCarousel() {
             {track.map((s, i) => (
               <div
                 key={`${s.image}-${i}`}
-                className="relative aspect-[4/3] w-full shrink-0 sm:aspect-[16/9] lg:aspect-[21/9]"
+                className="relative aspect-[16/9] w-full shrink-0 bg-brand-900 lg:aspect-[21/9]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={s.image}
                   alt=""
                   loading={i === 1 ? 'eager' : 'lazy'}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-contain"
                 />
                 <div
                   aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-brand-950/75 via-brand-950/20 to-transparent"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-brand-950/70 via-brand-950/20 to-transparent sm:h-32"
                 />
                 <span className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6">
                   <span className="inline-flex items-center gap-2 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-bold text-brand-800 ring-1 ring-brand-100 backdrop-blur-sm sm:text-[13px]">

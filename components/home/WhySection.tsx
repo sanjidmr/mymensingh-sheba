@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldCheck, Users, Search, HeartHandshake, BadgeCheck, CandlestickChart } from 'lucide-react';
+import { ShieldCheck, Users, Search, BadgeCheck, HeartHandshake, MapPin, Layers, Sparkles, Star } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 
 const WHY_ITEMS = [
@@ -17,12 +17,12 @@ const WHY_ITEMS = [
   {
     icon: Search,
     title: 'এলাকা-ভিত্তিক সূক্ষ্ম খোঁজ',
-    text: 'ময়মনসিংহ সিটির ৩৩টি ওয়ার্ডের এলাকা, বাজেট ও প্রয়োজন অনুযায়ী আগে-থেকে ফিল্টার করে সহজে বেছে নিন।',
+    text: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকার ভেতরে এলাকা, বাজেট ও প্রয়োজন অনুযায়ী আগে-থেকে ফিল্টার করে সহজে বেছে নিন।',
   },
   {
     icon: HeartHandshake,
-    title: 'জরুরি রক্তদান, সম্পূর্ণ বিনামূল্যে',
-    text: 'রক্তদান একটি মানবিক সেবা — পুরো প্রক্রিয়ায় কোনো ফি বা লেনদেন নেই, সংগঠিত হয় শুধুমাত্র মানবতার জন্য।',
+    title: 'জরুরি রক্তদান সহায়তা',
+    text: 'জরুরি প্রয়োজনে স্বেচ্ছাসেবী রক্তদাতার সাথে দ্রুত ও নিরাপদ সমন্বয় — নাম ও ঠিকানা সম্পূর্ণ গোপন থাকে।',
   },
   {
     icon: ShieldCheck,
@@ -30,22 +30,32 @@ const WHY_ITEMS = [
     text: 'আপনার ব্যক্তিগত তথ্য আইনগতভাবে সুরক্ষিত; অপ্রয়োজনে কোনো তথ্য প্রকাশ বা বিক্রয় করা হয় না।',
   },
   {
-    icon: CandlestickChart,
-    title: 'কোনো গোপন চার্জ নেই',
-    text: 'সেবার কোনো লুকানো ফি নেই — মালিক/সেবাদাতার সঙ্গে যোগাযোগ সম্পূর্ণ সরাসরি ও স্বচ্ছ।',
+    icon: Sparkles,
+    title: '১০০% বিশ্বস্ত',
+    text: 'স্বচ্ছ নীতিমালা, অ্যাডমিন যাচাই ও ব্যবহারকারীদের রিভিউ — তাই প্রতিটি প্রোফাইলে আস্থা রাখতে পারেন।',
   },
 ];
 
-const STATS = [
-  { value: '৩৩', unit: 'টি', label: 'সিটির ওয়ার্ডজুড়ে সেবা', sub: 'ময়মনসিংহ সিটি কর্পোরেশন' },
-  { value: '১০০+', unit: '', label: 'তালিকাভুক্ত বাসা ও প্রোফাইল', sub: 'বিভিন্ন এলাকায়' },
-  { value: '৬', unit: 'টি', label: 'প্রধান সেবা বিভাগ', sub: 'নিয়মিতভাবে সম্প্রসারণ' },
-  { value: '২৪/৭', unit: '', label: 'জরুরি রক্তদান সেবা', sub: 'অ্যাডমিন সহায়তায়' },
+const POINTS = [
+  {
+    icon: MapPin,
+    title: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকার ভেতরে',
+    text: 'লোকাল সেবা, লোকাল মানুষের জন্য',
+  },
+  {
+    icon: Layers,
+    title: 'বিভিন্ন এলাকায়',
+    text: 'ওয়ার্ডভিত্তিক তালিকা ও সেবাদাতা',
+  },
 ];
 
+/**
+ * WhySection — "কেন Mymensingh Sheba?" ভিত্তিক চারটি যুক্তি + তিনটি পয়েন্ট
+ * এবং একটি "আপনার রিভিউ দিন" কার্ড (রিভিউ মোডাল খোলে)।
+ */
 export default function WhySection() {
   return (
-    <section id="about" className="scroll-mt-24 bg-white py-9 sm:py-12">
+    <section id="about" className="scroll-mt-24 bg-white py-6 sm:py-8">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <Reveal>
           <div className="mx-auto max-w-2xl text-center">
@@ -57,13 +67,13 @@ export default function WhySection() {
               নিছক তালিকা নয় — আস্থা ও যাচাই-কর্মীর নিশ্চয়তা
             </h2>
             <p className="mt-3 text-sm leading-relaxed text-ink-500 sm:text-[15px]">
-              প্রতিটি প্রোফাইল ও বাসা-বিজ্ঞাপন অ্যাডমিন দল যাচাই করার পরই প্রকাশ পায়। ফলে আপনি যা দেখছেন,
+              প্রতিটি প্রোফাইল ও বিজ্ঞাপন অ্যাডমিন দল যাচাই করার পরই প্রকাশ পায়। ফলে আপনি যা দেখছেন,
               তা নির্ভরযোগ্য।
             </p>
           </div>
         </Reveal>
 
-        <div className="mt-8 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {WHY_ITEMS.map((item, i) => (
             <Reveal key={item.title} delay={i * 60}>
               <div className="group h-full rounded-2xl border border-brand-100 bg-mist-50/50 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:bg-white hover:shadow-lg hover:shadow-brand-900/5 sm:p-5">
@@ -77,19 +87,41 @@ export default function WhySection() {
           ))}
         </div>
 
-        {/* Stats strip */}
+        {/* Points + review invite */}
         <Reveal delay={120}>
-          <div className="mt-8 grid grid-cols-2 gap-3 rounded-2xl border border-brand-100 bg-white p-5 sm:gap-4 sm:p-8 lg:grid-cols-4">
-            {STATS.map((stat) => (
-              <div key={stat.label} className="text-center lg:px-4">
-                <p className="text-[26px] font-extrabold tracking-tight text-brand-800 sm:text-4xl">
-                  {stat.value}
-                  {stat.unit && <span className="ml-0.5 text-lg font-bold text-brand-600">{stat.unit}</span>}
-                </p>
-                <p className="mt-1 text-[13px] font-bold text-ink-900 sm:text-sm">{stat.label}</p>
-                <p className="mt-0.5 hidden text-xs text-ink-500 sm:block">{stat.sub}</p>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            {POINTS.map((point) => (
+              <div
+                key={point.title}
+                className="flex h-full flex-col rounded-2xl border border-brand-100 bg-white p-4 sm:p-5"
+              >
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-11 sm:w-11">
+                  <point.icon className="h-5 w-5" />
+                </span>
+                <h3 className="mt-3 text-[15px] font-bold leading-snug text-ink-900">
+                  {point.title}
+                </h3>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-500">{point.text}</p>
               </div>
             ))}
+
+            {/* Review — opens the shared review modal */}
+            <button
+              type="button"
+              onClick={() => window.dispatchEvent(new Event('mms:open-review'))}
+              className="group flex h-full flex-col rounded-2xl border border-accent-400/70 bg-accent-400/10 p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-accent-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 sm:p-5"
+            >
+              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-400 text-brand-900 shadow-sm sm:h-11 sm:w-11">
+                <Star className="h-5 w-5" />
+              </span>
+              <h3 className="mt-3 text-[15px] font-bold text-ink-900">আপনার রিভিউ দিন</h3>
+              <p className="mt-1 text-[13px] leading-relaxed text-ink-600">
+                কোন সেবা নিয়েছেন, অভিজ্ঞতা কেমন — সবার জানান।
+              </p>
+              <span className="mt-auto pt-3 text-xs font-bold text-brand-800">
+                রিভিউ ফর্ম খুলুন
+              </span>
+            </button>
           </div>
         </Reveal>
       </div>

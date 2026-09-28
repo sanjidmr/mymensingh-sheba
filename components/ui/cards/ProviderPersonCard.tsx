@@ -150,7 +150,7 @@ export function ProviderPersonCard({
               )}
             >
               <Clock className="w-3 h-3" />
-              <span>{isAvailable ? 'অন ডিউটি / ফ্রি' : 'ব্যস্ত'}</span>
+              <span>{isAvailable ? 'অন ডিউটি' : 'ব্যস্ত'}</span>
             </span>
           )}
 

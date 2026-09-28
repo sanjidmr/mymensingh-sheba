@@ -1,6 +1,6 @@
 'use client';
 
-import { MousePointerClick, PhoneCall, BadgeCheck } from 'lucide-react';
+import { ArrowRight, MousePointerClick, PhoneCall, BadgeCheck } from 'lucide-react';
 import Link from 'next/link';
 import Reveal from '@/components/home/Reveal';
 
@@ -32,7 +32,7 @@ const STEPS = [
 export default function StepsSection() {
   return (
     <section id="how-it-works" className="scroll-mt-24 border-b border-brand-100/70 bg-mist-50">
-      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <div className="max-w-2xl">
           <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-brand-600 sm:text-xs">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
@@ -46,7 +46,7 @@ export default function StepsSection() {
           </p>
         </div>
 
-        <ol className="relative mt-9 grid gap-4 sm:grid-cols-3 sm:gap-5">
+        <ol className="relative mt-5 grid gap-3 sm:grid-cols-3 sm:gap-4">
           {/* Connector (desktop) */}
           <div
             aria-hidden="true"
@@ -71,12 +71,19 @@ export default function StepsSection() {
         </ol>
 
         <Reveal delay={200}>
-          <div className="mt-8 text-center">
+          <div className="mt-5 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <Link
               href="/services"
               className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-700 px-6 py-3 text-sm font-bold text-white shadow-sm transition-colors hover:bg-brand-800"
             >
               সেবা সমূহ দেখুন
+            </Link>
+            <Link
+              href="/how-it-works"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-brand-700 px-6 py-3 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-50"
+            >
+              কোন সেবায় পোস্ট করা যায়?
+              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </Reveal>
