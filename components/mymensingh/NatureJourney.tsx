@@ -1,7 +1,7 @@
 import { Sprout, Trees, Mountain, Waves, Droplets } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 import ArchivePhoto from './ArchivePhoto';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 const LAYERS = [
@@ -9,35 +9,35 @@ const LAYERS = [
     icon: Waves,
     title: 'নদী',
     body: 'পুরাতন ব্রহ্মপুত্র আর তার শাখা — যাতায়াত, মাছ, বাণিজ্য আর চরাঞ্চলের জীবন এই জলের ওপর দাঁড়িয়ে।',
-    src: '/mymensingh/brahmaputra-boats.jpg',
+    src: '/nodi.jpg',
     alt: 'পুরাতন ব্রহ্মপুত্রে নৌকা ও ভিটি',
   },
   {
     icon: Trees,
     title: 'বনাঞ্চল',
     body: 'মধুপুর গড়ের চারপাশের বন ও বনজাতি — বাংলার প্রকৃতি ঐতিহ্যের একটি বড় অংশ।',
-    src: '/mymensingh/forest.jpg',
+    src: '/modhupur.jpg',
     alt: 'ময়মনসিংহ অঞ্চলের বনাঞ্চল',
   },
   {
     icon: Mountain,
     title: 'পাহাড়',
     body: 'গারো পাহাড় ও বরেন্দ্র অঞ্চল — পাথর, বন ও দৃশ্যের এক অনন্য মিশ্রণ।',
-    src: '/mymensingh/garo-hill.jpg',
+    src: '/pahar.jpg',
     alt: 'গারো পাহাড়ের প্রাকৃতিক দৃশ্য',
   },
   {
     icon: Droplets,
     title: 'হাওর ও জলাভূমি',
     body: 'হাওর, বিল ও জলাভূমি — শীতের পাখি, মাছ ও চরা চাষের জীবন্ত ভূমিরূপ।',
-    src: '/mymensingh/haor.jpg',
+    src: '/haor.jpg',
     alt: 'ময়মনসিংহ অঞ্চলের হাওর ও জলাভূমি',
   },
   {
     icon: Sprout,
     title: 'লালমাটির কৃষিজমি',
     body: 'লালমাটি — উর্বর কৃষিভূমি। ধান, সবজি ও ফল চাষে এই মাটির নিজস্ব ভূমিকা রয়েছে।',
-    src: '/mymensingh/red-soil.jpg',
+    src: '/lalmati.jpg',
     alt: 'লালমাটির কৃষিজমি',
   },
 ];
@@ -50,16 +50,13 @@ const LAYERS = [
 export default function NatureJourney() {
   return (
     <CitySection labelledBy="city-nature-heading" id="city-nature" className="bg-mist-50">
-      <Reveal className="max-w-2xl">
-        <CityLabel index="০৭">ভূপ্রকৃতি ও প্রকৃতি</CityLabel>
-        <h2 id="city-nature-heading" className={`mt-3 ${TITLE}`}>
-          নদী, পাহাড়, হাওর আর লালমাটির ময়মনসিংহ
-        </h2>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-          একটি জেলার চেহারা তার নদী আর মাটি দিয়ে তৈরি। নিচে পাঁচটি স্তরে এই ভূমির
-          বৈশিষ্ট্য সাজিয়ে দেখানো হলো।
-        </p>
-      </Reveal>
+      <CityHeading
+        id="city-nature-heading"
+        index="০৭"
+        eyebrow="ভূপ্রকৃতি ও প্রকৃতি"
+        title="নদী, পাহাড়, হাওর আর লালমাটির ময়মনসিংহ"
+        intro="একটি জেলার চেহারা তার নদী আর মাটি দিয়ে তৈরি। নিচে পাঁচটি স্তরে এই ভূমির বৈশিষ্ট্য সাজিয়ে দেখানো হলো।"
+      />
 
       <ol className="mt-8 space-y-8">
         {LAYERS.map((layer, index) => {

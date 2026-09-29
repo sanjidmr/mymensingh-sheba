@@ -1,6 +1,6 @@
 import { Landmark, Mountain, ScrollText, Ship, Sparkles, Crown } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 
 const CHAPTERS = [
   {
@@ -49,18 +49,13 @@ const CHAPTERS = [
 export default function AncientMymensingh() {
   return (
     <CitySection labelledBy="city-ancient-heading" id="city-ancient" className="border-y border-brand-100 bg-mist-100">
-      <div className="max-w-3xl">
-        <Reveal>
-          <CityLabel index="০৩">প্রাচীন জনপদ</CityLabel>
-          <h2 id="city-ancient-heading" className={`mt-3 ${TITLE}`}>
-            ময়মনসিংহের ইতিহাস এক দিনে তৈরি হয়নি
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-            প্রাচীন বাংলা থেকে শুরু করে কোম্পানি শাসন পর্যন্ত — যুগে যুগে এই অঞ্চলের
-            চেহারা বদলেছে। নিচে ছয়টি ধাপে সেই বদলামটি দেখা যাচ্ছে।
-          </p>
-        </Reveal>
-      </div>
+      <CityHeading
+        id="city-ancient-heading"
+        index="০৩"
+        eyebrow="প্রাচীন জনপদ"
+        title="ময়মনসিংহের ইতিহাস এক দিনে তৈরি হয়নি"
+        intro="প্রাচীন বাংলা থেকে শুরু করে কোম্পানি শাসন পর্যন্ত — যুগে যুগে এই অঞ্চলের চেহারা বদলেছে। নিচে ছয়টি ধাপে সেই বদলামটি দেখা যাচ্ছে।"
+      />
 
       {/* Mobile: vertical rail */}
       <ol className="mt-8 space-y-1 lg:hidden">

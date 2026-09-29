@@ -67,7 +67,17 @@ export default function CitySectionNav() {
   }, []);
 
   useEffect(() => {
-    activeRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    // Only the horizontal track should move. `scrollIntoView` walks every
+    // scrollable ancestor, so a plain call also nudges the document and fights
+    // the reader mid-scroll; scrolling the track directly avoids that entirely.
+    const track = trackRef.current;
+    const chip = activeRef.current;
+    if (!track || !chip) return;
+    const target = chip.offsetLeft - (track.clientWidth - chip.offsetWidth) / 2;
+    track.scrollTo({
+      left: Math.max(0, target),
+      behavior: 'smooth',
+    });
   }, [activeId]);
 
   return (

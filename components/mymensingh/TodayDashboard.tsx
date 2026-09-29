@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { ArrowRight, Building2, Landmark, MapPin, Sprout, Users } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import ArchivePhoto from './ArchivePhoto';
+import { CityHeading, CitySection } from './CityBits';
 
 type District = {
   id: string;
@@ -29,8 +30,8 @@ const DISTRICTS: District[] = [
       { label: 'ভূমিকা', value: 'বিভাগের কেন্দ্র' },
       { label: 'অবস্থান', value: 'ব্রহ্মপুত্র অঞ্চল' },
     ],
-    src: '/mymensingh/district-mymensingh.jpg',
-    alt: 'ময়মনসিংহ শহরের আধুনিক চিত্র',
+    src: '/sarkithouse.jpg',
+    alt: 'ময়মনসিংহ জেলার আর্কাইভাল দৃশ্যের ছবির স্থান',
     slotNote: 'ময়মনসিংহ জেলার আর্কাইভাল দৃশ্যের ছবির স্থান',
   },
   {
@@ -44,7 +45,7 @@ const DISTRICTS: District[] = [
       { label: 'ঐতিহাসিক ভূমিকা', value: 'প্রাক্তিন প্রশাসনকেন্দ্র' },
       { label: 'সম্পর্ক', value: 'বিভাগের অন্যতম পুরোনো জেলা' },
     ],
-    src: '/mymensingh/district-jamalpur.jpg',
+    src: '/jamalpur.jpg',
     alt: 'জামালপুর জেলার ঐতিহাসিক স্থাপত্যের চিত্র',
     slotNote: 'জামালপুর জেলার আর্কাইভাল দৃশ্যের ছবির স্থান',
   },
@@ -59,7 +60,7 @@ const DISTRICTS: District[] = [
       { label: 'পরিচিতি', value: 'ঐতিহাসিক নির্দর্শন' },
       { label: 'ভূমিকা', value: 'ধর্মীয় ঐতিহ্য কেন্দ্র' },
     ],
-    src: '/mymensingh/district-sherpur.jpg',
+    src: '/sherpur.jpg',
     alt: 'শেরপুর জেলার ঐতিহাসিক নির্দর্শনের চিত্র',
     slotNote: 'শেরপুর জেলার আর্কাইভাল দৃশ্যের ছবির স্থান',
   },
@@ -74,7 +75,7 @@ const DISTRICTS: District[] = [
       { label: 'পরিচিতি', value: 'হাওর ও কৃষি' },
       { label: 'সম্পর্ক', value: 'বিভাগের উত্তরের জেলা' },
     ],
-    src: '/mymensingh/district-netrokona.jpg',
+    src: '/netrokona.jpg',
     alt: 'নেত্রকোণা জেলার হাওর ও জলাভূমির চিত্র',
     slotNote: 'নেত্রকোণা জেলার আর্কাইভাল দৃশ্যের ছবির স্থান',
   },
@@ -100,37 +101,31 @@ export default function TodayDashboard() {
 
   return (
     <CitySection labelledBy="city-today-heading" id="city-today" className="border-b border-brand-100 bg-white">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl">
-          <Reveal>
-            <CityLabel index="১৫">আজকের বিভাগ</CityLabel>
-            <h2 id="city-today-heading" className={`mt-3 ${TITLE}`}>
-              ময়মনসিংহ বিভাগের চারটি জেলা
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-              বিভাগটি আসলে চারটি আলাদা চারিত্রের জেলার সমষ্টি। যেকোনো একটি বেছে নিলে
-              নিচে তার ভূমিকা ও পরিচিতি খুলে যাবে।
-            </p>
-          </Reveal>
-        </div>
-        <Reveal delay={60}>
-          <ul className="flex flex-wrap gap-2">
-            {QUICK.map((item) => {
-              const Icon = item.icon;
-              return (
-                <li
-                  key={item.label}
-                  className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-mist-50 px-3 py-1.5 text-[11px] font-bold text-ink-700"
-                >
-                  <Icon className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
-                  {item.label}
-                  <span className="text-brand-700">{item.value}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </Reveal>
-      </div>
+      <CityHeading
+        id="city-today-heading"
+        index="১৫"
+        eyebrow="আজকের বিভাগ"
+        title="ময়মনসিংহ বিভাগের চারটি জেলা"
+        intro="বিভাগটি আসলে চারটি আলাদা চারিত্রের জেলার সমষ্টি। যেকোনো একটি বেছে নিলে নিচে তার ভূমিকা ও পরিচিতি খুলে যাবে।"
+      />
+
+      <Reveal delay={50} className="mt-5">
+        <ul className="flex flex-wrap justify-center gap-2">
+          {QUICK.map((item) => {
+            const Icon = item.icon;
+            return (
+              <li
+                key={item.label}
+                className="inline-flex items-center gap-2 rounded-full border border-brand-200 bg-mist-50 px-3 py-1.5 text-[11px] font-bold text-ink-700"
+              >
+                <Icon className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
+                {item.label}
+                <span className="text-brand-700">{item.value}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </Reveal>
 
       {/* Mobile: accordion switcher */}
       <ul className="mt-7 space-y-2 lg:hidden">
@@ -248,17 +243,16 @@ export default function TodayDashboard() {
         </div>
 
         <div>
-          <div
-            className="flex aspect-[4/3] w-full flex-col items-center justify-center gap-2 rounded-2xl bg-brand-900 p-5 text-center"
-            role="img"
-            aria-label={current.alt}
-          >
-            <Landmark className="h-7 w-7 text-accent-400" aria-hidden="true" />
-            <p className="text-sm font-extrabold text-white">{current.name}</p>
-            <p className="max-w-[15rem] text-[11px] leading-relaxed text-brand-200/85">
-              {current.slotNote}
-            </p>
-          </div>
+          <ArchivePhoto
+            src={current.src}
+            alt={current.alt}
+            slotNote={current.slotNote}
+            className="aspect-[4/3] w-full rounded-2xl"
+            sizes="(max-width: 1023px) 100vw, 34vw"
+          />
+          <p className="mt-2.5 text-center text-sm font-extrabold text-white">
+            {current.name}
+          </p>
         </div>
       </div>
     </CitySection>

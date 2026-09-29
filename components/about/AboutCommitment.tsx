@@ -19,7 +19,7 @@ export default function AboutCommitment() {
     <section aria-labelledby="about-commitment-heading" className="relative bg-brand-950">
       <div className="relative h-44 w-full overflow-hidden sm:h-56 lg:h-72">
         <Image
-          src="/sheba3.png"
+          src="/sheba1.png"
           alt=""
           fill
           sizes="100vw"

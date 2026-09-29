@@ -1329,3 +1329,81 @@ DROP TRIGGER IF EXISTS trg_notif_listing_report ON public.listing_reports;
 CREATE TRIGGER trg_notif_listing_report
 AFTER INSERT ON public.listing_reports
 FOR EACH ROW EXECUTE FUNCTION public.notif_report_inserted();
+
+-- ====================================================================
+-- CONTACT MESSAGES (/contact form)
+-- ====================================================================
+
+-- Messages sent through the public contact form. Anyone can send one (no
+-- login required), which is why the INSERT policy below is open to `anon` as
+-- well as `authenticated`; only admins can read the inbox.
+CREATE TABLE IF NOT EXISTS public.contact_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    phone TEXT NOT NULL,
+    email TEXT,
+    subject TEXT NOT NULL CHECK (subject IN ('general', 'service_info', 'post_service', 'correction', 'complaint', 'partnership', 'other')),
+    message TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'new' CHECK (status IN ('new', 'reviewing', 'replied', 'closed')),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    admin_notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_messages_created
+ON public.contact_messages (created_at DESC);
+
+-- --- CONTACT MESSAGES RLS ---
+ALTER TABLE public.contact_messages ENABLE ROW LEVEL SECURITY;
+
+-- The contact inbox is admin-only: a visitor's name, phone and message must
+-- never be readable by another visitor.
+DROP POLICY IF EXISTS "Admins read contact messages" ON public.contact_messages;
+CREATE POLICY "Admins read contact messages"
+ON public.contact_messages FOR SELECT
+TO authenticated
+USING (public.is_admin());
+
+-- Guests may submit the form. Length checks mirror the client rules in
+-- lib/contact-types.ts (NAME_MIN 3, MESSAGE_MAX 1500) so a hand-rolled request
+-- cannot bypass them.
+DROP POLICY IF EXISTS "Guests can send contact messages" ON public.contact_messages;
+CREATE POLICY "Guests can send contact messages"
+ON public.contact_messages FOR INSERT
+TO anon, authenticated
+WITH CHECK (
+    name IS NOT NULL AND length(trim(name)) >= 3
+    AND phone IS NOT NULL AND length(trim(phone)) >= 10
+    AND message IS NOT NULL AND length(trim(message)) >= 12
+    AND length(message) <= 1500
+);
+
+DROP POLICY IF EXISTS "Admins manage contact messages" ON public.contact_messages;
+CREATE POLICY "Admins manage contact messages"
+ON public.contact_messages FOR UPDATE
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+-- A new contact message notifies the admin hub. It gets its own function
+-- rather than reusing notif_report_inserted(), because that one hardcodes a
+-- "রিপোর্ট" title and would mislabel every enquiry in the admin inbox.
+CREATE OR REPLACE FUNCTION public.notif_contact_message()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+    INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+    VALUES (
+        NULL, 'admin',
+        'নতুন যোগাযোগের বার্তা',
+        NEW.name || ' — ' || NEW.subject || ' বিষয়ে একটি বার্তা পাঠিয়েছেন। অনুরোধটি দেখে নিন।',
+        'info', 'contact_message', NEW.id::text
+    );
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_notif_contact_message ON public.contact_messages;
+CREATE TRIGGER trg_notif_contact_message
+AFTER INSERT ON public.contact_messages
+FOR EACH ROW EXECUTE FUNCTION public.notif_contact_message();

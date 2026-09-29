@@ -1,4 +1,5 @@
 import React from 'react';
+import Reveal from '@/components/home/Reveal';
 
 /**
  * Shared building blocks for the "ময়মনসিংহ পরিচিতি" page.
@@ -70,3 +71,46 @@ export const LIGHT_FOCUS =
 /** Standard chapter heading sizes — deliberately not oversized on mobile. */
 export const TITLE = 'text-[1.45rem] font-extrabold leading-snug tracking-tight sm:text-3xl';
 export const TITLE_DARK = 'text-[1.45rem] font-extrabold leading-snug tracking-tight text-white sm:text-3xl';
+
+/**
+ * CityHeading — the one, consistent centered chapter header for the whole page.
+ *
+ * Label + title + (optional) intro sit together, centered, on a constrained
+ * measure. Every chapter uses this, so the reading rhythm stays identical even
+ * when the section body is a side-by-side grid.
+ */
+export function CityHeading({
+  id,
+  index,
+  eyebrow,
+  title,
+  intro,
+  tone = 'light',
+}: {
+  id: string;
+  index?: string;
+  eyebrow: string;
+  title: string;
+  intro?: string;
+  tone?: 'light' | 'dark';
+}) {
+  return (
+    <Reveal className="mx-auto max-w-2xl text-center">
+      <CityLabel index={index} tone={tone}>
+        {eyebrow}
+      </CityLabel>
+      <h2 id={id} className={`mt-3 ${tone === 'dark' ? TITLE_DARK : TITLE}`}>
+        {title}
+      </h2>
+      {intro ? (
+        <p
+          className={`mt-3 text-[15px] leading-relaxed ${
+            tone === 'dark' ? 'text-brand-100/80' : 'text-ink-600'
+          }`}
+        >
+          {intro}
+        </p>
+      ) : null}
+    </Reveal>
+  );
+}

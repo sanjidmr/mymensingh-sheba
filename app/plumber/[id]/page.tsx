@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { fetchStaffProfileById } from '@/lib/staff-service';
 import { STAFF_SERVICE_UI } from '@/lib/staff-types';
 import { StaffDetail } from '@/components/staff/StaffDetail';
+import Navbar from '@/components/Navbar';
 import type { StaffProfile } from '@/lib/staff-types';
 
 const serviceUi = STAFF_SERVICE_UI.plumber;
@@ -30,6 +31,7 @@ export default async function PlumberDetailPage({ params }: { params: Promise<{ 
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Navbar />
       {/* Hero */}
       <section className="relative bg-gradient-to-br from-cyan-500 via-cyan-600 to-cyan-700 text-white overflow-hidden">
         <div className="absolute inset-0 bg-[url('/noise.svg')] opacity-5" />

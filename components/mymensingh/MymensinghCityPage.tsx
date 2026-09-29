@@ -84,7 +84,6 @@ export default function MymensinghCityPage() {
       </main>
 
       <Footer />
-      <MobileBottomNav />
     </div>
   );
 }

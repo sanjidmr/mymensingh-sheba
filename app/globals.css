@@ -70,6 +70,12 @@
 }
 
 @layer base {
+  /* Height of the fixed mobile bottom navigation. Kept as a token so the bar
+     and the space reserved for it can never drift apart. */
+  :root {
+    --mms-bottom-nav-h: 3.5rem;
+  }
+
   html {
     font-family: var(--font-sans);
     scroll-behavior: smooth;
@@ -81,6 +87,15 @@
     color: var(--color-ink-900);
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+  }
+
+  /* The bottom bar is `fixed`, so the document has to reserve its height or the
+     last row of every page ends up underneath it. Only below `lg`, matching the
+     bar's own `lg:hidden`, so desktop spacing is untouched. */
+  @media (max-width: 1023px) {
+    body {
+      padding-bottom: calc(var(--mms-bottom-nav-h) + env(safe-area-inset-bottom));
+    }
   }
 
   ::selection {

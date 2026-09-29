@@ -10,7 +10,7 @@ import {
   Trees,
 } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 
 const SPHERES = [
   {
@@ -85,17 +85,13 @@ const LANDMARKS = [
 export default function PresentMymensingh() {
   return (
     <CitySection labelledBy="city-present-heading" id="city-present" className="bg-mist-100">
-      <Reveal className="max-w-2xl">
-        <CityLabel index="১৪">বর্তমান</CityLabel>
-        <h2 id="city-present-heading" className={`mt-3 ${TITLE}`}>
-          আজকের ময়মনসিংহ
-        </h2>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-          ইতিহাসের শহর আজ সমান্তরালভাবে বেড়ে উঠেছে — বিশ্ববিদ্যালয়, স্বাস্থ্যসেবা,
-          খেলাধুলা, পর্যটন ও বাণিজ্যে। নিচে সেই আজকের জীবনের ছয়টি ক্ষেত্র দেওয়া
-          হয়েছে।
-        </p>
-      </Reveal>
+      <CityHeading
+        id="city-present-heading"
+        index="১৪"
+        eyebrow="বর্তমান"
+        title="আজকের ময়মনসিংহ"
+        intro="ইতিহাসের শহর আজ সমান্তরালভাবে বেড়ে উঠেছে — বিশ্ববিদ্যালয়, স্বাস্থ্যসেবা, খেলাধুলা, পর্যটন ও বাণিজ্যে। নিচে সেই আজকের জীবনের ছয়টি ক্ষেত্র দেওয়া হয়েছে।"
+      />
 
       <ul className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {SPHERES.map((sphere, index) => {

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Phone, Mail, ShieldCheck, Facebook, MessageCircle } from 'lucide-react';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
+import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
 
 export default function Footer() {
   const currentYear = 2026;
@@ -64,13 +65,24 @@ export default function Footer() {
             </div>
 
             <div className="mt-6 space-y-2 text-sm">
-              <a href="tel:+8801712345678" className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
-                <Phone className="h-4 w-4 text-brand-300" />
-                +৮৮০ ১৭XX-XXXXXX
-              </a>
-              <a href="mailto:help@mymensinghsheba.com" className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
+              {/* Reads from SITE_CONTACT so the footer can never advertise a
+                  number that isn't published — the same rule the /contact page
+                  follows. Previously this was a dead tel: link to an invented
+                  number while /contact said none existed. */}
+              {SITE_CONTACT.phone ? (
+                <a href={`tel:${SITE_CONTACT.phone}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
+                  <Phone className="h-4 w-4 text-brand-300" />
+                  {SITE_CONTACT.phone}
+                </a>
+              ) : (
+                <Link href={`/contact#${CONTACT_FORM_ANCHOR}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
+                  <Phone className="h-4 w-4 text-brand-300" />
+                  বার্তা পাঠান
+                </Link>
+              )}
+              <a href={`mailto:${SITE_CONTACT.email}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
                 <Mail className="h-4 w-4 text-brand-300" />
-                help@mymensinghsheba.com
+                {SITE_CONTACT.email}
               </a>
             </div>
 

@@ -1,6 +1,6 @@
 import { Compass, HelpCircle, Lightbulb } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 const MYTHS = [
@@ -36,16 +36,13 @@ const CURIOSITIES = [
 export default function DidYouKnow() {
   return (
     <CitySection labelledBy="city-myths-heading" id="city-myths" className="bg-mist-50">
-      <Reveal className="max-w-2xl">
-        <CityLabel index="১৬">সংশোধিত ধারণা</CityLabel>
-        <h2 id="city-myths-heading" className={`mt-3 ${TITLE}`}>
-          যেসব ধারণা প্রায়ই ভুল বোঝা হয়
-        </h2>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-          ইতিহাসে বিভ্রান্তি খুবই স্বাভাবিক। নিচে সবচেয়ে বেশি শোনা কয়েকটি ভুল ধারণা
-          ও সঠিক ব্যাখ্যা দেওয়া হলো।
-        </p>
-      </Reveal>
+      <CityHeading
+        id="city-myths-heading"
+        index="১৬"
+        eyebrow="সংশোধিত ধারণা"
+        title="যেসব ধারণা প্রায়ই ভুল বোঝা হয়"
+        intro="ইতিহাসে বিভ্রান্তি খুবই স্বাভাবিক। নিচে সবচেয়ে বেশি শোনা কয়েকটি ভুল ধারণা ও সঠিক ব্যাখ্যা দেওয়া হলো।"
+      />
 
       <ul className="mt-8 space-y-4">
         {MYTHS.map((item, index) => (

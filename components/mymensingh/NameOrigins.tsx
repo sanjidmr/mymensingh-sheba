@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Feather, Map, ScrollText, Sparkles } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE, LIGHT_FOCUS } from './CityBits';
+import { CityHeading, CitySection, LIGHT_FOCUS } from './CityBits';
 
 const THEORIES = [
   {
@@ -54,18 +54,16 @@ export default function NameOrigins() {
 
   return (
     <CitySection labelledBy="city-name-heading" id="city-name" className="bg-white">
-      <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
-        <Reveal>
-          <CityLabel index="০২">নামের উৎপত্তি</CityLabel>
-          <h2 id="city-name-heading" className={`mt-3 ${TITLE}`}>
-            ময়মনসিংহ নামটি এলো কোথা থেকে?
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-            ময়মনসিংহ নামের উৎপত্তি নিয়ে ইতিহাসে একাধিক মত রয়েছে। কোনো একটি ধারাকে
-            চূড়ান্ত সত্য হিসেবে উপস্থাপন করা ইতিহাসবিদের মতে সঠিক হবে না — তাই
-            প্রতিটি ধারা আলাদা করে, নিজ নিজ ভাষায় তুলে ধরা হলো।
-          </p>
+      <CityHeading
+        id="city-name-heading"
+        index="০২"
+        eyebrow="নামের উৎপত্তি"
+        title="ময়মনসিংহ নামটি এলো কোথা থেকে?"
+        intro="ময়মনসিংহ নামের উৎপত্তি নিয়ে ইতিহাসে একাধিক মত রয়েছে। কোনো একটি ধারাকে চূড়ান্ত সত্য হিসেবে উপস্থাপন করা ইতিহাসবিদের মতে সঠিক হবে না — তাই প্রতিটি ধারা আলাদা করে, নিজ নিজ ভাষায় তুলে ধরা হলো।"
+      />
 
+      <div className="mt-8 grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:gap-14">
+        <Reveal>
           {/* Desktop / tablet: switcher */}
           <div
             role="group"

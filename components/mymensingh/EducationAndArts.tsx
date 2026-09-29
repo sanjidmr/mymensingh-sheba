@@ -1,6 +1,6 @@
 import { BookMarked, Library, Palette, PenLine } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 
 const PILLARS = [
   {
@@ -35,12 +35,12 @@ const PILLARS = [
 export default function EducationAndArts() {
   return (
     <CitySection labelledBy="city-education-heading" id="city-education" className="bg-mist-100">
-      <Reveal className="max-w-2xl">
-        <CityLabel index="০৯">শিক্ষা, সাহিত্য ও শিল্প</CityLabel>
-        <h2 id="city-education-heading" className={`mt-3 ${TITLE}`}>
-          শিক্ষা, সাহিত্য ও শিল্পের এক উর্বর ভূমি
-        </h2>
-      </Reveal>
+      <CityHeading
+        id="city-education-heading"
+        index="০৯"
+        eyebrow="শিক্ষা, সাহিত্য ও শিল্প"
+        title="শিক্ষা, সাহিত্য ও শিল্পের এক উর্বর ভূমি"
+      />
 
       <div className="mt-7 grid gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
         <Reveal>

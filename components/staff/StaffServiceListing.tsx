@@ -13,6 +13,7 @@ import {
 import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
 import EmptyFilterResults from '@/components/filters/EmptyFilterResults';
 import { StaffProfileCard } from '@/components/staff/StaffProfileCard';
+import Navbar from '@/components/Navbar';
 import { getAllMCCAreas } from '@/lib/locations';
 
 const AREAS = getAllMCCAreas({ activeOnly: true });
@@ -110,6 +111,7 @@ export default function StaffServiceListing({ serviceSlug }: { serviceSlug: Staf
 
   return (
     <div className="min-h-screen bg-slate-50">
+      <Navbar />
       {/* Hero */}
       <section className={`relative bg-gradient-to-br ${accent.gradient} text-white overflow-hidden`}>
         <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 sm:py-16">

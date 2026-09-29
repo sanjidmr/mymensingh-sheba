@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ExternalLink, Info, ShieldCheck } from 'lucide-react';
-import { CityLabel, SCROLL_MT } from './CityBits';
+import { CityHeading, SCROLL_MT } from './CityBits';
 
 type Source = {
   id: string;
@@ -68,23 +68,20 @@ export default function Sources() {
       className={`${SCROLL_MT} border-t border-brand-100 bg-white`}
     >
       <div className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="max-w-2xl">
-          <CityLabel index="১৮">তথ্যসূত্র</CityLabel>
-          <h2 id="city-sources-heading" className="mt-3 text-2xl font-extrabold leading-tight text-ink-900 sm:text-3xl">
-            তথ্য যেখান থেকে এসেছে
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-            ইতিহাসের তথ্য যাচাই না করে উপস্থাপন করা ঠিক হয় না। নিচে কোন ধরনের
-            উৎসের সাহায্যে কোন তথ্যগুলো সাজানো হয়েছে তা খোলা যায়।
-          </p>
-          <p className="mt-4 flex items-start gap-2.5 rounded-xl border border-brand-200 bg-mist-50 p-4 text-[13px] leading-relaxed text-ink-700">
-            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-            <span>
-              যেসব তথ্য নথিভিত্তিকভাবে নিশ্চিত করা যায়নি, সেগুলো পাতায় উল্লেখ করা
-              হয়েছে — সেগুলোর মধ্যে সবচেয়ে বেশি ধাপ পড়ার দরকার।
-            </span>
-          </p>
-        </div>
+        <CityHeading
+          id="city-sources-heading"
+          index="১৮"
+          eyebrow="তথ্যসূত্র"
+          title="তথ্য যেখান থেকে এসেছে"
+          intro="ইতিহাসের তথ্য যাচাই না করে উপস্থাপন করা ঠিক হয় না। নিচে কোন ধরনের উৎসের সাহায্যে কোন তথ্যগুলো সাজানো হয়েছে তা খোলা যায়।"
+        />
+        <p className="mx-auto mt-5 flex max-w-2xl items-start justify-center gap-2.5 rounded-xl border border-brand-200 bg-mist-50 p-4 text-center text-[13px] leading-relaxed text-ink-700">
+          <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
+          <span>
+            যেসব তথ্য নথিভিত্তিকভাবে নিশ্চিত করা যায়নি, সেগুলো পাতায় উল্লেখ করা
+            হয়েছে — সেগুলোর মধ্যে সবচেয়ে বেশি ধাপ পড়ার দরকার।
+          </span>
+        </p>
 
         <ul className="mt-7 divide-y divide-brand-100 overflow-hidden rounded-2xl border border-brand-100">
           {SOURCES.map((source) => {

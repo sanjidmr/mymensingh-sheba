@@ -1,7 +1,7 @@
 import { Building, Castle, House, Landmark, TreePine } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 import ArchivePhoto from './ArchivePhoto';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 
 const SITES = [
   {
@@ -44,21 +44,16 @@ const SITES = [
 export default function ZamindariHeritage() {
   return (
     <CitySection labelledBy="city-zamindari-heading" id="city-zamindari" className="bg-mist-50">
-      <div className="grid gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
-        <div>
-          <Reveal>
-            <CityLabel index="১২">ভূমি ও স্থাপত্য</CityLabel>
-            <h2 id="city-zamindari-heading" className={`mt-3 ${TITLE}`}>
-              দেওয়ান, জমিদার আর তাদের ছাপ
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-              উনিশশো শতকের দ্বিতীয়ার্ধে সারা বাংলা ভাগাভাগির সঙ্গে পরগণা ও জমিদারি
-              ব্যবস্থা এই অঞ্চলের জীবনকে আকার দেয়। জমিদারি আইন বাতিল ও ভূমি
-              সংস্কারের পর এই কাঠামো বদলে গেছে — কিন্তু তার চিহ্ন এখনও টিকে আছে।
-            </p>
-          </Reveal>
+      <CityHeading
+        id="city-zamindari-heading"
+        index="১২"
+        eyebrow="ভূমি ও স্থাপত্য"
+        title="দেওয়ান, জমিদার আর তাদের ছাপ"
+        intro="উনিশশো শতকের দ্বিতীয়ার্ধে সারা বাংলা ভাগাভাগির সঙ্গে পরগণা ও জমিদারি ব্যবস্থা এই অঞ্চলের জীবনকে আকার দেয়। জমিদারি আইন বাতিল ও ভূমি সংস্কারের পর এই কাঠামো বদলে গেছে — কিন্তু তার চিহ্ন এখনও টিকে আছে।"
+      />
 
-          <Reveal delay={90}>
+      <div className="mt-8 grid gap-9 lg:grid-cols-[1.05fr_0.95fr] lg:gap-14">
+        <Reveal delay={50}>
             <ul className="mt-6 divide-y divide-brand-100 border-y border-brand-100">
               {SITES.map((site) => {
                 const Icon = site.icon;
@@ -85,11 +80,10 @@ export default function ZamindariHeritage() {
               })}
             </ul>
           </Reveal>
-        </div>
 
         <Reveal delay={110}>
           <ArchivePhoto
-            src="/mymensingh/shashi-lodge.jpg"
+            src="/muktagacha.jpg"
             alt="জামিলা ধাঁচের ঐতিহ্যবাহী বাড়ির ভবিষ্যৎ-অতীত চিত্র"
             slotNote="ঐতিহ্যবাহী স্থাপত্যের আর্কাইভাল ছবির স্থান"
             className="aspect-[4/5] w-full rounded-2xl"

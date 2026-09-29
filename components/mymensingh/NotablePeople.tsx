@@ -1,6 +1,6 @@
 import { Atom, Feather, Palette, Landmark, Users2 } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 
 type Relation = 'জন্মস্থান' | 'শিক্ষা ও কর্মজীবন' | 'ঐতিহাসিক সম্পর্ক';
 
@@ -83,17 +83,13 @@ const RELATION_STYLE: Record<Relation, string> = {
 export default function NotablePeople() {
   return (
     <CitySection labelledBy="city-people-heading" id="city-people" className="bg-white">
-      <Reveal className="max-w-2xl">
-        <CityLabel index="১০">মানুষ</CityLabel>
-        <h2 id="city-people-heading" className={`mt-3 ${TITLE}`}>
-          ময়মনসিংহের বিখ্যাত মানুষ
-        </h2>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-          “ময়মনসিংহে জন্মগ্রহণ করেছেন” আর “ময়মনসিংহের সঙ্গে ঐতিহাসিকভাবে যুক্ত
-          ছিলেন” — দুটি আলাদা কথা। নিচে প্রতিটি মানুষের সঙ্গে সম্পর্কের ধরনটি
-          স্পষ্ট করে দেওয়া হয়েছে।
-        </p>
-      </Reveal>
+      <CityHeading
+        id="city-people-heading"
+        index="১০"
+        eyebrow="মানুষ"
+        title="ময়মনসিংহের বিখ্যাত মানুষ"
+        intro="“ময়মনসিংহে জন্মগ্রহণ করেছেন” আর “ময়মনসিংহের সঙ্গে ঐতিহাসিকভাবে যুক্ত ছিলেন” — দুটি আলাদা কথা। নিচে প্রতিটি মানুষের সঙ্গে সম্পর্কের ধরনটি স্পষ্ট করে দেওয়া হয়েছে।"
+      />
 
       <div className="mt-8 space-y-8">
         {GROUPS.map((group, groupIndex) => {

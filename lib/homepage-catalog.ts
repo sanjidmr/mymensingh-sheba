@@ -81,7 +81,7 @@ export const DAILY_CATEGORY: HomepageCategory = {
   description:
     'বাসা, মেরামত, যাতায়াত, পড়াশোনা, গৃহকর্মী — জীবন চলার কাজগুলো এখন এক পরিচিত জায়গায়।',
   tone: 'white',
-  grid: 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7',
+  grid: 'grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7',
   compact: true,
   viewAll: { href: '/services', label: 'সব সেবা দেখুন' },
   items: [
@@ -177,7 +177,7 @@ export const SHOP_TRAVEL_CATEGORY: HomepageCategory = {
   description:
     'শুধু সেবা নয় — জীবনযাপন আর জ্ঞানের জায়গাগুলোও যেন হাতের কাছেই থাকে।',
   tone: 'mist',
-  grid: 'grid-cols-2 sm:grid-cols-3 lg:grid-cols-7',
+  grid: 'grid-cols-3 sm:grid-cols-3 lg:grid-cols-7',
   compact: true,
   viewAll: { href: '/services', label: 'সব সেবা দেখুন' },
   items: [
@@ -272,7 +272,7 @@ export const EMERGENCY_CATEGORY: HomepageCategory = {
   description:
     'জরুরি মুহূর্তে সঠিক নম্বরটা খুঁজতে গিয়ে সময় নষ্ট নয় — এক ট্যাপে সরাসরি সেবায়।',
   tone: 'white',
-  grid: 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-5',
+  grid: 'grid-cols-3 sm:grid-cols-3 lg:grid-cols-5',
   compact: true,
   dense: true,
   items: [

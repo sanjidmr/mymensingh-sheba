@@ -30,7 +30,7 @@ interface ArchivePhotoProps {
  * ArchivePhoto — an honest image slot.
  *
  * We do not generate or fabricate historical photographs. Until a real,
- * legally usable file is dropped into /public/mymensingh, the component keeps
+ * legally usable file is dropped into /public, the component keeps
  * the composition intact with a labelled archive placeholder; the moment the
  * file exists the photograph fades in automatically. Every frame that does
  * carry a real image is expected to pass its `credit`.

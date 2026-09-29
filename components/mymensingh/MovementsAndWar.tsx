@@ -1,6 +1,6 @@
 import { Flag, Flame, Landmark, Megaphone } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 const WAVES = [
@@ -43,16 +43,13 @@ const IMPACT = [
 export default function MovementsAndWar() {
   return (
     <CitySection labelledBy="city-movements-heading" id="city-movements" className="border-y border-brand-100 bg-white">
-      <Reveal className="max-w-2xl">
-        <CityLabel index="১৩">আন্দোলন ও মুক্তিযুদ্ধ</CityLabel>
-        <h2 id="city-movements-heading" className={`mt-3 ${TITLE}`}>
-          ভাষা আন্দোলন থেকে মুক্তিযুদ্ধ
-        </h2>
-        <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-          আধুনিক বাংলার সবচেয়ে গুরুত্বপূর্ণ আন্দোলনগুলোর সঙ্গে এই অঞ্চলের
-          নাম জড়িয়ে আছে।
-        </p>
-      </Reveal>
+      <CityHeading
+        id="city-movements-heading"
+        index="১৩"
+        eyebrow="আন্দোলন ও মুক্তিযুদ্ধ"
+        title="ভাষা আন্দোলন থেকে মুক্তিযুদ্ধ"
+        intro="আধুনিক বাংলার সবচেয়ে গুরুত্বপূর্ণ আন্দোলনগুলোর সঙ্গে এই অঞ্চলের নাম জড়িয়ে আছে।"
+      />
 
       <ol className="mt-8 space-y-5 lg:grid lg:grid-cols-2 lg:gap-5 lg:space-y-0">
         {WAVES.map((wave, index) => {

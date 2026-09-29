@@ -11,9 +11,9 @@ const STRIP = [
 
 /**
  * CityHero — cinematic opening. A dark river-toned surface, one strong
- * statement and a compact information strip. The photograph slot is the old
- * Brahmaputra; until a licensed file is added it degrades to a labelled
- * archive frame rather than a broken image.
+ * statement and a compact information strip, backed by /mymensingh.jpg. If
+ * that file is ever removed it degrades to a labelled archive frame rather
+ * than a broken image.
  */
 export default function CityHero() {
   return (
@@ -22,8 +22,8 @@ export default function CityHero() {
       className="relative overflow-hidden bg-brand-950 text-brand-100"
     >
       <ArchivePhoto
-        src="/mymensingh/hero-river.jpg"
-        alt="সন্ধ্যায় পুরাতন ব্রহ্মপুত্রের তীরে নৌকা ও মানুষের চলাচল"
+        src="/mymensingh.jpg"
+        alt="ময়মনসিংহ শহরের একটি দৃশ্য"
         slotNote="পুরাতন ব্রহ্মপুত্রের আর্কাইভাল ছবির স্থান"
         icon="waves"
         eager
@@ -36,29 +36,29 @@ export default function CityHero() {
         className="absolute inset-0 bg-gradient-to-t from-brand-950 via-brand-950/80 to-brand-950/45"
       />
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-14 sm:px-6 sm:pb-14 sm:pt-20 lg:px-8 lg:pb-16 lg:pt-24">
-        <p className="mms-fade-up inline-flex items-center gap-2 rounded-full border border-brand-700 bg-brand-900/70 px-3 py-1.5 text-[11px] font-bold text-accent-300 sm:text-xs">
+      <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-14 text-center sm:px-6 sm:pb-14 sm:pt-20 lg:px-8 lg:pb-16 lg:pt-24">
+        <p className="mms-fade-up mx-auto inline-flex items-center gap-2 rounded-full border border-brand-700 bg-brand-900/70 px-3 py-1.5 text-[11px] font-bold text-accent-300 sm:text-xs">
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />
           ময়মনসিংহ · একটি পরিচিতি
         </p>
 
         <h1
           id="city-hero-heading"
-          className="mms-fade-up mt-4 max-w-3xl text-[1.85rem] font-extrabold leading-[1.22] tracking-tight text-white sm:text-4xl lg:text-5xl"
+          className="mms-fade-up mx-auto mt-4 max-w-3xl text-[1.85rem] font-extrabold leading-[1.22] tracking-tight text-white sm:text-4xl lg:text-5xl"
           style={{ animationDelay: '80ms' }}
         >
           ময়মনসিংহ পরিচিতি
         </h1>
 
         <p
-          className="mms-fade-up mt-4 max-w-2xl text-[15px] font-semibold leading-relaxed text-accent-200 sm:text-lg"
+          className="mms-fade-up mx-auto mt-4 max-w-2xl text-[15px] font-semibold leading-relaxed text-accent-200 sm:text-lg"
           style={{ animationDelay: '150ms' }}
         >
           ইতিহাস, ঐতিহ্য, সংস্কৃতি আর মানুষের গল্পে গড়ে ওঠা এক জনপদ
         </p>
 
         <p
-          className="mms-fade-up mt-4 max-w-2xl text-[15px] leading-relaxed text-brand-100/85 sm:text-base"
+          className="mms-fade-up mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-brand-100/85 sm:text-base"
           style={{ animationDelay: '220ms' }}
         >
           পুরাতন ব্রহ্মপুত্রের তীরে গড়ে ওঠা এই শহর — একদিকে লালমাটির চর, অন্যদিকে

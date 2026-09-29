@@ -3,9 +3,14 @@
 import { useRef, useState } from 'react';
 import { ChevronLeft, ChevronRight, ImageOff, Info } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityLabel, CitySection } from './CityBits';
 
 type Frame = {
+  /**
+   * Stable identity for the frame. Never key on `src` — two frames may share the
+   * same photograph, and a duplicate key makes React drop one of the tiles.
+   */
+  id: string;
   src: string;
   title: string;
   era: string;
@@ -15,42 +20,48 @@ type Frame = {
 
 const FRAMES: Frame[] = [
   {
-    src: '/mymensingh/brahmaputra-boats.jpg',
+    id: 'brahmaputra-boats',
+    src: '/nodi.jpg',
     title: 'পুরাতন ব্রহ্মপুত্রে নৌকা',
     era: 'নদীর যুগ',
     alt: 'পুরাতন ব্রহ্মপুত্রে নৌকা ও ভিটির দৃশ্য',
     note: 'আর্কাইভাল ছবি যুক্ত হলে এখানে দেখা যাবে।',
   },
   {
-    src: '/mymensingh/shashi-lodge.jpg',
+    id: 'zamindari-house',
+    src: '/muktagacha.jpg',
     title: 'জামিলা ধাঁচের বাড়ি',
     era: 'ঐতিহাসিক স্থাপত্য',
     alt: 'ঐতিহ্যবাহী জামিলা ভবনের চিত্র',
     note: 'আর্কাইভাল ছবি যুক্ত হলে এখানে দেখা যাবে।',
   },
   {
-    src: '/mymensingh/zainul-park-boat.jpg',
+    id: 'zainul-park-boat',
+    src: '/nodi.jpg',
     title: 'জয়নুল আবেদিন উদ্যানের নৌকা',
     era: 'আধুনিক',
     alt: 'জয়নুল আবেদিন উদ্যানের নৌকাটির চিত্র',
     note: 'শিল্পীর স্মরণে রক্ষিত নৌকাটি একটি চমকপ্রদ স্থান।',
   },
   {
-    src: '/mymensingh/forest.jpg',
+    id: 'modhupur-forest',
+    src: '/modhupur.jpg',
     title: 'মধুপুর গড়ের বনাঞ্চল',
     era: 'প্রকৃতি',
     alt: 'মধুপুর গড়ের বনাঞ্চলের দৃশ্য',
     note: 'আর্কাইভাল ছবি যুক্ত হলে এখানে দেখা যাবে।',
   },
   {
-    src: '/mymensingh/haor.jpg',
+    id: 'haor-wetland',
+    src: '/haor.jpg',
     title: 'হাওর ও জলাভূমি',
     era: 'প্রকৃতি',
     alt: 'হাওর ও জলাভূমির দৃশ্য',
     note: 'আর্কাইভাল ছবি যুক্ত হলে এখানে দেখা যাবে।',
   },
   {
-    src: '/mymensingh/tribal-life.jpg',
+    id: 'garo-marow-tribe',
+    src: '/pahar.jpg',
     title: 'গারো-মারও ঐতিহ্য',
     era: 'সংস্কৃতি',
     alt: 'পাহাড়ি জনগোষ্ঠীর ঐতিহ্যবাহী জীবন',
@@ -79,43 +90,45 @@ export default function ArchiveGallery() {
 
   return (
     <CitySection labelledBy="city-gallery-heading" id="city-gallery" className="bg-brand-950">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl">
-          <Reveal>
-            <CityLabel index="১৭" tone="dark">
-              আর্কাইভ
-            </CityLabel>
-            <h2 id="city-gallery-heading" className="mt-3 text-2xl font-extrabold leading-tight text-white sm:text-3xl">
-              ছবির সংগ্রহ
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-brand-100/80">
-              আড়াই ডানে সরিয়ে দেখুন। প্রতিটি ফ্রেমে ছবির উৎস ও লাইসেন্স
-              উল্লেখ করা হবে — যাচাই না হওয়া ছবি ইতিহাসের প্রমাণ হিসেবে
-              ব্যবহার করা হয়নি।
-            </p>
-          </Reveal>
-        </div>
-        <Reveal delay={60}>
-          <div className="hidden gap-2 lg:flex">
-            <button
-              type="button"
-              onClick={() => scrollBy(-1)}
-              aria-label="আগের ছবি"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700 bg-brand-900 text-white transition-colors hover:border-brand-500"
-            >
-              <ChevronLeft className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scrollBy(1)}
-              aria-label="পরের ছবি"
-              className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700 bg-brand-900 text-white transition-colors hover:border-brand-500"
-            >
-              <ChevronRight className="h-5 w-5" aria-hidden="true" />
-            </button>
-          </div>
+      <div className="mx-auto max-w-2xl text-center">
+        <Reveal>
+          <CityLabel index="১৭" tone="dark">
+            আর্কাইভ
+          </CityLabel>
+          <h2
+            id="city-gallery-heading"
+            className="mt-3 text-2xl font-extrabold leading-tight text-white sm:text-3xl"
+          >
+            ছবির সংগ্রহ
+          </h2>
+          <p className="mt-3 text-[15px] leading-relaxed text-brand-100/80">
+            আড়াই ডানে সরিয়ে দেখুন। প্রতিটি ফ্রেমে ছবির উৎস ও লাইসেন্স
+            উল্লেখ করা হবে — যাচাই না হওয়া ছবি ইতিহাসের প্রমাণ হিসেবে
+            ব্যবহার করা হয়নি।
+          </p>
         </Reveal>
       </div>
+
+      <Reveal delay={60}>
+        <div className="mt-5 flex justify-center gap-2">
+          <button
+            type="button"
+            onClick={() => scrollBy(-1)}
+            aria-label="আগের ছবি"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700 bg-brand-900 text-white transition-colors hover:border-brand-500"
+          >
+            <ChevronLeft className="h-5 w-5" aria-hidden="true" />
+          </button>
+          <button
+            type="button"
+            onClick={() => scrollBy(1)}
+            aria-label="পরের ছবি"
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-brand-700 bg-brand-900 text-white transition-colors hover:border-brand-500"
+          >
+            <ChevronRight className="h-5 w-5" aria-hidden="true" />
+          </button>
+        </div>
+      </Reveal>
 
       <Reveal delay={80}>
         <div
@@ -123,10 +136,10 @@ export default function ArchiveGallery() {
           className="no-scrollbar mt-7 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2"
         >
           {FRAMES.map((frame) => {
-            const isMissing = failed[frame.src];
+            const isMissing = failed[frame.id];
             return (
               <figure
-                key={frame.src}
+                key={frame.id}
                 className="w-[78vw] max-w-sm shrink-0 snap-start overflow-hidden rounded-2xl border border-brand-800 bg-brand-900"
               >
                 <div className="relative aspect-[4/3] w-full bg-brand-900">
@@ -145,7 +158,7 @@ export default function ArchiveGallery() {
                       alt={frame.alt}
                       loading="lazy"
                       onError={() =>
-                        setFailed((prev) => ({ ...prev, [frame.src]: true }))
+                        setFailed((prev) => ({ ...prev, [frame.id]: true }))
                       }
                       className="absolute inset-0 h-full w-full object-cover"
                     />

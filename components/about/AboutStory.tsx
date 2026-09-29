@@ -62,25 +62,14 @@ export default function AboutStory() {
         <Reveal delay={100} className="relative">
           <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-brand-100 sm:aspect-[4/5]">
             <Image
-              src="/kajerbua.jpg"
-              alt="ময়মনসিংহে কাজের বুয়া সেবা নেওয়ার কাজ"
+              src="/amra.png"
+              alt="Mymensingh Sheba-এর কাজ নিয়ে আমাদের দল"
               fill
               sizes="(max-width: 1023px) 92vw, 40vw"
               className="object-cover"
             />
           </div>
-          <div className="absolute -bottom-5 left-3 w-28 overflow-hidden rounded-xl border-4 border-mist-50 bg-white shadow-lg sm:-left-5 sm:w-36">
-            <div className="relative aspect-square">
-              <Image
-                src="/e&p.jpg"
-                alt="এলাকায় ইলেক্ট্রিশিয়ান ও প্লাম্বার সেবাদেওয়া"
-                fill
-                sizes="144px"
-                className="object-cover"
-              />
-            </div>
-          </div>
-          <p className="mt-7 text-xs font-medium text-ink-500 sm:mt-8">
+          <p className="mt-4 text-xs font-medium text-ink-500">
             ময়মনসিংহের বাস্তব চাহিদা থেকেই প্রতিটি সেবার পথ খোলা হয়েছে।
           </p>
         </Reveal>

@@ -33,20 +33,20 @@ export default function StepsSection() {
   return (
     <section id="how-it-works" className="scroll-mt-24 border-b border-brand-100/70 bg-mist-50">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-        <div className="max-w-2xl">
+        <div className="mx-auto max-w-3xl text-center">
           <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-brand-600 sm:text-xs">
             <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
             জানার জন্য
           </span>
-          <h2 className="mt-2 text-2xl font-extrabold leading-tight tracking-tight text-ink-900 sm:text-3xl">
+          <h2 className="mx-auto mt-2 max-w-2xl text-balance text-2xl font-extrabold leading-tight tracking-tight text-ink-900 sm:text-3xl">
             সেবা পাওয়া যত সহজ, তিন ধাপেই
           </h2>
-          <p className="mt-2 text-sm leading-relaxed text-ink-500 sm:text-[15px]">
+          <p className="mx-auto mt-2 max-w-2xl text-balance text-sm leading-relaxed text-ink-500 sm:text-[15px]">
             জটিল কিছু নয় — খুঁজুন, অনুরোধ জানান, নিরাপদে কাজ সম্পন্ন করুন।
           </p>
         </div>
 
-        <ol className="relative mt-5 grid gap-3 sm:grid-cols-3 sm:gap-4">
+        <ol className="relative mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {/* Connector (desktop) */}
           <div
             aria-hidden="true"
@@ -54,9 +54,9 @@ export default function StepsSection() {
           />
           {STEPS.map((item, i) => (
             <Reveal key={item.step} delay={i * 80} as="li">
-              <div className="relative h-full rounded-xl border border-brand-100 bg-white p-5 transition-shadow duration-300 hover:shadow-md hover:shadow-brand-900/5 sm:p-6">
-                <div className="flex items-center justify-between">
-                  <span className="inline-flex h-12 w-12 items-center justify-center rounded-lg bg-brand-50 text-brand-700 sm:h-14 sm:w-14">
+              <div className="relative flex h-full flex-col rounded-xl border border-brand-100 bg-white p-5 transition-shadow duration-300 hover:shadow-md hover:shadow-brand-900/5 sm:p-6">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 sm:h-14 sm:w-14">
                     <item.icon className="h-6 w-6 sm:h-7 sm:w-7" />
                   </span>
                   <span className="text-xs font-bold uppercase tracking-widest text-accent-500">

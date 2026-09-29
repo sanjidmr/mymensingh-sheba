@@ -17,7 +17,6 @@ interface CategorySectionProps {
  */
 export default function CategorySection({ category }: CategorySectionProps) {
   const dark = category.tone === 'dark';
-  const emergency = category.id === 'emergency';
   const bgClass =
     category.tone === 'mist'
       ? 'border-b border-brand-100/70 bg-mist-50'
@@ -34,44 +33,22 @@ export default function CategorySection({ category }: CategorySectionProps) {
           dark={dark}
         />
 
-        {emergency ? (
-          <>
-            {/* Mobile — one compact swipeable row */}
-            <div className="no-scrollbar -mx-4 mt-4 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 sm:px-6 lg:hidden">
-              {category.items.map((item) => (
-                <div
-                  key={item.id}
-                  className="w-[30vw] min-w-[150px] shrink-0 snap-start"
-                >
-                  <CategoryCard item={item} compact dense />
-                </div>
-              ))}
+        {/* One grid for every category: exactly three cards per row on phones,
+            then the same rhythm the desktop already had from `sm` upwards. */}
+        <div className={`mt-4 grid gap-2 sm:gap-4 ${category.grid ?? 'grid-cols-3 sm:grid-cols-3 lg:grid-cols-3'}`}>
+          {category.items.map((item, index) => (
+            <div
+              key={item.id}
+              className={`${item.layoutClass ?? ''}${index >= 6 ? ' max-sm:hidden' : ''}`}
+            >
+              <CategoryCard
+                item={item}
+                compact={category.compact}
+                dense={category.dense}
+              />
             </div>
-            {/* Desktop — the familiar five-up grid */}
-            <div className={`mt-4 hidden grid-cols-1 gap-3 sm:gap-4 lg:grid ${category.grid ?? 'lg:grid-cols-5'}`}>
-              {category.items.map((item) => (
-                <div key={item.id} className={item.layoutClass ?? ''}>
-                  <CategoryCard item={item} compact dense />
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <div className={`mt-4 grid gap-3 sm:gap-4 ${category.grid ?? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'}`}>
-            {category.items.map((item, index) => (
-              <div
-                key={item.id}
-                className={`${item.layoutClass ?? ''}${index >= 4 ? ' max-sm:hidden' : ''}`}
-              >
-                <CategoryCard
-                  item={item}
-                  compact={category.compact}
-                  dense={category.dense}
-                />
-              </div>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
 
         {category.viewAll && (
           <div className="mt-5 flex justify-center">

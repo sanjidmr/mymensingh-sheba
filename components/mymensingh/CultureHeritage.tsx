@@ -1,6 +1,6 @@
 import { BookOpen, Music4, Palette, Sparkles, Users } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 
 const FOLK = [
   { name: 'ময়মনসিংহ গীতিকা', body: 'মায়া লিখনের ধারায় রচিত বিশাল গীতি সংকলন — বাংলা লোকসাহিত্যের অন্যতম বড় নিদর্শন।' },
@@ -22,16 +22,16 @@ const FOLK = [
 export default function CultureHeritage() {
   return (
     <CitySection labelledBy="city-culture-heading" id="city-culture" className="border-y border-brand-100 bg-white">
-      <div className="grid gap-9 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
-        <Reveal>
-          <CityLabel index="০৮">সংস্কৃতি ও লোকঐতিহ্য</CityLabel>
-          <h2 id="city-culture-heading" className={`mt-3 ${TITLE}`}>
-            গান, গল্প আর লোকজ জীবনের ময়মনসিংহ
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-            নদীর তীরের জনপদে লোকসংগীত সাধারণ বিষয় নয় — এখানে গান মানুষের পেশা,
-            দৈনন্দিন যাতায়াত আর বাণিজ্যের সঙ্গে জড়িয়ে আছে।
-          </p>
+      <CityHeading
+        id="city-culture-heading"
+        index="০৮"
+        eyebrow="সংস্কৃতি ও লোকঐতিহ্য"
+        title="গান, গল্প আর লোকজ জীবনের ময়মনসিংহ"
+        intro="নদীর তীরের জনপদে লোকসংগীত সাধারণ বিষয় নয় — এখানে গান মানুষের পেশা আর বাণিজ্যের সঙ্গে জড়িয়ে আছে, আর নকশীকাঁথা ঘরের শিল্প হয়ে উঠেছে।"
+      />
+
+      <div className="mt-8 grid gap-9 lg:grid-cols-[1fr_1.1fr] lg:gap-14">
+        <Reveal delay={50}>
 
           <div className="mt-6 rounded-2xl border border-bronze-200 bg-bronze-50 p-5">
             <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-bronze-600">

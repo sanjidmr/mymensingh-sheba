@@ -1,250 +1,267 @@
 'use client';
 
-import React, { useState, useEffect, useMemo, Suspense, useCallback } from 'react';
+import React, { Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { PlusCircle, MapPin, Loader2, AlertTriangle } from 'lucide-react';
-import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
+import { PlusCircle, Lock, ShieldCheck, Home } from 'lucide-react';
+import DirectoryShell from '@/components/directory/DirectoryShell';
+import DirectorySearchBar from '@/components/directory/DirectorySearchBar';
+import DirectoryResults, { ListingGrid } from '@/components/directory/DirectoryResults';
+import ListingCard, { type ListingCardData } from '@/components/directory/ListingCard';
+import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { useDirectoryController } from '@/lib/use-directory-controller';
+import { areaFilterGroup, type FilterGroup } from '@/lib/directory-filters';
+import type { SearchableFields } from '@/lib/directory-search';
 import { fetchPublicListings } from '@/lib/tolet-service';
-import { filterToletListings } from '@/lib/tolet-filters';
 import type { ToletListing } from '@/lib/tolet-types';
 import { getAreaById } from '@/lib/locations';
-import { useAuth } from '@/lib/auth-context';
-import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
-import EmptyFilterResults from '@/components/filters/EmptyFilterResults';
-import { ToletListingCard } from '@/components/tolet/ToletListingCard';
-import { COMMON_SORT_OPTIONS } from '@/lib/filter-definitions';
+import {
+  TOLET_PROPERTY_TYPE_INFO,
+  TOLET_LISTING_STATUS_INFO,
+} from '@/lib/tolet-types';
+import { toBengaliDigits } from '@/lib/bengali-numerals';
 
-const RENT_PRESETS: Record<string, { min: number | undefined; max: number | undefined }> = {
-  under5k: { min: 0, max: 5000 },
-  '5k-10k': { min: 5000, max: 10000 },
-  '10k-20k': { min: 10000, max: 20000 },
-  above20k: { min: 20000, max: undefined },
-};
+const SORT_OPTIONS = [
+  { id: 'newest', labelBn: 'নতুন আগে' },
+  { id: 'price_asc', labelBn: 'কম ভাড়া আগে' },
+  { id: 'price_desc', labelBn: 'বেশি ভাড়া আগে' },
+];
 
-function ToletContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const { user, savedListings, toggleSaveItem } = useAuth();
+const FILTER_GROUPS: FilterGroup[] = [
+  areaFilterGroup(),
+  {
+    id: 'propertyType',
+    labelBn: 'বাসার ধরন',
+    type: 'single',
+    compact: true,
+    options: [
+      { id: 'all', labelBn: 'সব ধরন' },
+      ...Object.entries(TOLET_PROPERTY_TYPE_INFO).map(([id, info]) => ({
+        id,
+        labelBn: info.labelBn,
+      })),
+    ],
+  },
+  {
+    id: 'rent',
+    labelBn: 'ভাড়া / বাজেট',
+    type: 'multi',
+    compact: true,
+    options: [
+      { id: 'under5k', labelBn: '৫,০০০ ৳ এর নিচে', min: 0, max: 5000 },
+      { id: '5k-10k', labelBn: '৫–১০ হাজার', min: 5000, max: 10000 },
+      { id: '10k-20k', labelBn: '১০–২০ হাজার', min: 10000, max: 20000 },
+      { id: 'above20k', labelBn: '২০ হাজারের বেশি', min: 20000 },
+    ],
+  },
+  {
+    id: 'bedrooms',
+    labelBn: 'রুম সংখ্যা',
+    type: 'single',
+    compact: true,
+    options: [
+      { id: 'all', labelBn: 'যে কোনো' },
+      { id: '1', labelBn: '১ রুম' },
+      { id: '2', labelBn: '২ রুম' },
+      { id: '3', labelBn: '৩ রুম' },
+      { id: '4', labelBn: '৪+ রুম' },
+    ],
+  },
+  {
+    id: 'facilities',
+    labelBn: 'সুবিধা',
+    type: 'multi',
+    compact: true,
+    options: [
+      { id: 'wifi', labelBn: 'ওয়াইফাই' },
+      { id: 'lift', labelBn: 'লিফট' },
+      { id: 'gas', labelBn: 'তিতাস গ্যাস' },
+      { id: 'generator', labelBn: 'জেনারেটর' },
+      { id: 'water', labelBn: '২৪ ঘণ্টা পানি' },
+      { id: 'balcony', labelBn: 'বারান্দা' },
+      { id: 'parking', labelBn: 'পার্কিং' },
+    ],
+  },
+];
 
-  const initialArea = searchParams.get('area') || searchParams.get('areaId') || undefined;
-  const initialType = searchParams.get('type') || 'all';
-  const initialRentPreset = searchParams.get('rent') || 'all';
-  const initialBedrooms = searchParams.get('beds') || 'all';
-  const initialBathrooms = searchParams.get('baths') || 'all';
-  const initialAvailability = searchParams.get('avail') || 'all';
-  const initialSort = searchParams.get('sort') || 'newest';
+const PLACEHOLDER =
+  'এলাকা, বাজেট, সুবিধা বা প্রয়োজনীয় কিছু লিখে খুঁজুন…';
 
+function ToletDirectory() {
   const [listings, setListings] = useState<ToletListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
-  const [guestFavorites, setGuestFavorites] = useState<Record<string, boolean>>({});
-
-  const [filterValues, setFilterValues] = useState<Record<string, unknown>>({
-    areaId: initialArea,
-    propertyType: initialType !== 'all' ? initialType : undefined,
-    rentPreset: initialRentPreset !== 'all' ? initialRentPreset : undefined,
-    bedrooms: initialBedrooms !== 'all' ? initialBedrooms : undefined,
-    bathrooms: initialBathrooms !== 'all' ? initialBathrooms : undefined,
-    availability: initialAvailability !== 'all' ? initialAvailability : undefined,
-  });
-  const [sortBy, setSortBy] = useState<string>(initialSort);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const data = await fetchPublicListings();
-      if (!active) return;
-      setListings(data);
-      setLoading(false);
-    })().catch(() => {
-      if (!active) return;
-      setLoading(false);
-      setLoadError(true);
-    });
+      try {
+        const data = await fetchPublicListings();
+        if (active) setListings(data);
+      } catch {
+        if (active) setLoadError(true);
+      } finally {
+        if (active) setLoading(false);
+      }
+    })();
     return () => {
       active = false;
     };
   }, []);
 
-  const savedToletIds = useMemo(() => {
-    const set = new Set<string>();
-    for (const item of savedListings) {
-      if (item.itemType !== 'tolet') continue;
-      const id = item.linkHref.split('/').filter(Boolean).pop();
-      if (id) set.add(id);
-    }
-    return set;
-  }, [savedListings]);
-
-  const isFavorite = useCallback(
-    (id: string) => savedToletIds.has(id) || !!guestFavorites[id],
-    [savedToletIds, guestFavorites]
+  const searchable = useCallback(
+    (l: ToletListing): SearchableFields => ({
+      title: l.title,
+      subtitle: TOLET_PROPERTY_TYPE_INFO[l.propertyType]?.labelBn,
+      area: getAreaById(l.areaId)?.nameBn,
+      address: l.specificAddress,
+      priceText: `${l.rentPrice}`,
+      tags: [...l.facilities, l.floor || '', l.availableFrom || ''],
+      description: l.description,
+      // Primary price first so "৫০০০ টাকা" ranks by rent, then room counts.
+      numbers: [l.rentPrice, l.bedrooms, l.bathrooms],
+    }),
+    []
   );
 
-  const toggleFavoriteForId = useCallback(
-    (id: string, next: boolean) => {
-      const listing = listings.find((l) => l.id === id);
-      if (!listing) return;
-      if (user) {
-        const area = getAreaById(listing.areaId);
-        toggleSaveItem({
-          itemType: 'tolet',
+  const matchable = useCallback(
+    (l: ToletListing) => ({
+      areaIds: [l.areaId],
+      ranges: { price: l.rentPrice, bedrooms: l.bedrooms },
+      values: {
+        propertyType: l.propertyType,
+        facilities: l.facilities,
+        // "4+" bucket for the room facet.
+        bedrooms:
+          l.bedrooms >= 4 ? '4' : String(l.bedrooms),
+      },
+    }),
+    []
+  );
+
+  const controller = useDirectoryController<ToletListing>({
+    items: listings,
+    searchable,
+    matchable,
+    filterGroups: FILTER_GROUPS,
+    paramMap: { area: 'areaId', rent: 'rent', bedrooms: 'beds' },
+  });
+
+  const cards = useMemo<ListingCardData[]>(
+    () =>
+      controller.results.map((listing) => {
+        const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
+        const statusInfo = TOLET_LISTING_STATUS_INFO[listing.status];
+        const isLive = listing.status === 'approved';
+        return {
+          id: listing.id,
+          href: `/tolet/${listing.id}`,
           title: listing.title,
-          areaName: area?.nameBn || listing.areaId,
-          priceOrRate: `৳${listing.rentPrice.toLocaleString('bn-BD')}/মাস`,
-          linkHref: `/tolet/${listing.id}`,
-        }).catch(() => {});
-      } else {
-        setGuestFavorites((prev) => ({ ...prev, [id]: next }));
-      }
-    },
-    [listings, user, toggleSaveItem]
+          subtitle: typeInfo?.labelBn,
+          imageUrl: listing.photos?.[0],
+          priceLabel: `৳${toBengaliDigits(listing.rentPrice)}`,
+          priceSuffix: '/মাস',
+          areaLabel: getAreaById(listing.areaId)?.nameBn,
+          chips: [
+            listing.bedrooms > 0 ? `${toBengaliDigits(listing.bedrooms)} রুম` : '',
+            listing.bathrooms > 0 ? `${toBengaliDigits(listing.bathrooms)} বাথ` : '',
+            ...listing.facilities.slice(0, 2),
+          ].filter(Boolean),
+          isVerified: listing.isVerified,
+          // Only surface a badge when it carries information: a live listing
+          // needs none, a pending/unavailable one must not read as available.
+          badge: isLive ? undefined : statusInfo?.labelBn,
+          badgeTone: 'brand' as const,
+          actionLabel: 'বিস্তারিত দেখুন',
+          unavailableLabel: isLive ? undefined : statusInfo?.labelBn,
+        };
+      }),
+    [controller.results]
   );
-
-  // Synchronize URL search params
-  const handleFilterChange = (newFilters: Record<string, unknown>) => {
-    setFilterValues(newFilters);
-    const params = new URLSearchParams();
-    if (newFilters.areaId) params.set('area', String(newFilters.areaId));
-    if (newFilters.propertyType && newFilters.propertyType !== 'all') params.set('type', String(newFilters.propertyType));
-    if (newFilters.rentPreset && newFilters.rentPreset !== 'all') params.set('rent', String(newFilters.rentPreset));
-    if (newFilters.bedrooms && newFilters.bedrooms !== 'all') params.set('beds', String(newFilters.bedrooms));
-    if (newFilters.bathrooms && newFilters.bathrooms !== 'all') params.set('baths', String(newFilters.bathrooms));
-    if (newFilters.availability && newFilters.availability !== 'all') params.set('avail', String(newFilters.availability));
-    if (sortBy !== 'newest') params.set('sort', sortBy);
-    const query = params.toString();
-    router.replace(`/tolet${query ? `?${query}` : ''}`, { scroll: false });
-  };
-
-  const handleResetFilters = () => {
-    setFilterValues({});
-    setSortBy('newest');
-    router.replace('/tolet', { scroll: false });
-  };
-
-  const handleSortChange = (newSort: string) => {
-    setSortBy(newSort);
-    const params = new URLSearchParams(searchParams.toString());
-    if (newSort === 'newest') params.delete('sort');
-    else params.set('sort', newSort);
-    const query = params.toString();
-    router.replace(`/tolet${query ? `?${query}` : ''}`, { scroll: false });
-  };
-
-  const preset = RENT_PRESETS[String(filterValues.rentPreset || 'all')];
-
-  const filteredListings = useMemo(() => {
-    const fq = {
-      areaId: typeof filterValues.areaId === 'string' ? filterValues.areaId : undefined,
-      propertyType:
-        typeof filterValues.propertyType === 'string' ? filterValues.propertyType : undefined,
-      minRent: preset?.min,
-      maxRent: preset?.max,
-      bedrooms: typeof filterValues.bedrooms === 'string' ? filterValues.bedrooms : undefined,
-      bathrooms: typeof filterValues.bathrooms === 'string' ? filterValues.bathrooms : undefined,
-      facilities: Array.isArray(filterValues.facilities)
-        ? (filterValues.facilities as string[])
-        : undefined,
-      availability:
-        typeof filterValues.availability === 'string' ? filterValues.availability : undefined,
-    };
-    return filterToletListings(listings, fq, sortBy);
-  }, [listings, filterValues, preset, sortBy]);
-
-  const filtersForQuery = {
-    areaId: typeof filterValues.areaId === 'string' ? filterValues.areaId : undefined,
-    propertyType: typeof filterValues.propertyType === 'string' ? filterValues.propertyType : undefined,
-    minRent: preset?.min,
-    maxRent: preset?.max,
-    bedrooms: typeof filterValues.bedrooms === 'string' ? filterValues.bedrooms : undefined,
-    bathrooms: typeof filterValues.bathrooms === 'string' ? filterValues.bathrooms : undefined,
-    facilities: Array.isArray(filterValues.facilities) ? (filterValues.facilities as string[]) : undefined,
-    availability: typeof filterValues.availability === 'string' ? filterValues.availability : undefined,
-  };
-
-  const activeArea = getAreaById(filtersForQuery.areaId);
 
   return (
-    <RoutePlaceholderShell
-      title="বাসা ভাড়া (To-Let) — ময়মনসিংহ"
-      subtitle="ময়মনসিংহ সিটি কর্পোরেশন এলাকার ফ্ল্যাট, মেস, হোস্টেল, সাবলেট ও সিট ভাড়ার সরাসরি বিজ্ঞাপন।"
-      categoryBadge="বাসা ভাড়া"
+    <DirectoryShell
+      title="বাসা ভাড়া (To-Let)"
+      subtitle="ময়মনসিংহ সিটি কর্পোরেশন এলাকার যাচাই করা ফ্ল্যাট, মেস ও সিট ভাড়ার বিজ্ঞাপন।"
       breadcrumbs={[{ label: 'বাসা ভাড়া' }]}
-    >
-      {/* Top Banner with Post To-Let CTA */}
-      <div className="bg-emerald-800 text-white rounded-2xl p-4 sm:p-6 mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs">
-        <div>
-          <span className="text-xs text-emerald-200 uppercase tracking-wider font-bold block mb-1">
-            মালিকদের জন্য সরাসরি পোস্ট
-          </span>
-          <h2 className="text-base sm:text-xl font-extrabold">
-            আপনার ফ্ল্যাট, মেস বা রুম ভাড়া দিতে চান?
-          </h2>
-          <p className="text-xs sm:text-sm text-emerald-100 mt-1 max-w-xl">
-            একই অ্যাকাউন্ট থেকে সরাসরি টু-লেট বিজ্ঞাপন পোস্ট করুন। কোনো মধ্যস্বত্বভোগী নেই।
-          </p>
-        </div>
-
+      highlights={['যাচাই করা বিজ্ঞাপন', 'সরাসরি মালিকের সাথে', 'মধ্যস্বত্বভোগী নেই']}
+      action={
         <Link
           href="/profile/tolet/new"
-          className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-white text-emerald-950 text-xs sm:text-sm font-bold hover:bg-emerald-50 transition-colors shrink-0 shadow-2xs"
+          className={`inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-3.5 text-[13px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:w-auto ${LIGHT_FOCUS}`}
         >
-          <PlusCircle className="w-4 h-4 text-emerald-700" />
-          <span>বাসা ভাড়া পোস্ট করুন</span>
+          <PlusCircle className="h-4 w-4" aria-hidden="true" />
+          ভাড়া দেওয়ান
         </Link>
-      </div>
-
-      {/* Centralized Filter Bar */}
-      <ServiceFilterBar
-        serviceType="tolet"
-        filterValues={filterValues}
-        onFilterChange={handleFilterChange}
-        onResetFilters={handleResetFilters}
-        totalResults={filteredListings.length}
-        sortOptions={[
-          COMMON_SORT_OPTIONS.newest,
-          COMMON_SORT_OPTIONS.priceAsc,
-          COMMON_SORT_OPTIONS.priceDesc,
-          COMMON_SORT_OPTIONS.availability,
-          COMMON_SORT_OPTIONS.recent,
-        ]}
-        currentSort={sortBy}
-        onSortChange={handleSortChange}
+      }
+    >
+      <DirectorySearchBar
+        value={controller.query}
+        onChange={controller.setQuery}
+        placeholder={PLACEHOLDER}
+        filterGroups={FILTER_GROUPS}
+        filterState={controller.filterState}
+        onFilterStateChange={controller.setFilterState}
+        resultCount={cards.length}
+        resultNoun="বিজ্ঞাপন"
+        tone="narrow"
+        sortOptions={SORT_OPTIONS}
+        currentSort={controller.sort}
+        onSortChange={controller.setSort}
       />
 
-      {loading ? (
-        <div className="py-16 flex flex-col items-center gap-3 text-slate-500 text-sm">
-          <Loader2 className="w-6 h-6 animate-spin text-emerald-700" />
-          <span>বাসা ভাড়ার তালিকা লোড হচ্ছে...</span>
-        </div>
-      ) : loadError ? (
-        <div className="py-16 text-center text-sm text-rose-600 flex flex-col items-center gap-2">
-          <AlertTriangle className="w-6 h-6" />
-          <span>তালিকা লোড করতে সমস্যা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।</span>
-        </div>
-      ) : filteredListings.length === 0 ? (
-        <EmptyFilterResults onResetFilters={handleResetFilters} areaName={activeArea?.nameBn} />
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5 sm:gap-6">
-          {filteredListings.map((listing) => (
-            <ToletListingCard
-              key={listing.id}
-              listing={listing}
-              isFavorite={isFavorite(listing.id)}
-              onFavoriteToggle={toggleFavoriteForId}
-            />
-          ))}
-        </div>
-      )}
+      <div className="mt-2.5">
+        <DirectoryResults
+          loading={loading || controller.initialLoading}
+          empty={cards.length === 0}
+          count={cards.length}
+          noun="বিজ্ঞাপন"
+          loadingText="বাসা ভাড়ার বিজ্ঞাপন লোড হচ্ছে…"
+          onReset={controller.resetAll}
+        >
+          <ListingGrid>
+            {cards.map((card) => (
+              <ListingCard
+                key={card.id}
+                item={card}
+                variant="rental"
+                fallbackLabel="বাসা"
+              />
+            ))}
+          </ListingGrid>
+        </DirectoryResults>
+      </div>
 
-      {!user && !loading && (
-        <p className="mt-8 text-center text-xs text-slate-500">
-          <MapPin className="w-3.5 h-3.5 inline-block text-emerald-700 -mt-0.5" /> লাইক করা বিজ্ঞাপনগুলো
-          সংরক্ষণ করতে লগইন করুন। লগইন ছাড়াও ব্রাউজ করা যাবে।
+      {!loading && !loadError && cards.length > 0 && (
+        <p className="mt-3 flex items-start gap-1.5 text-[11px] leading-relaxed text-ink-400">
+          <Lock className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          <span>
+            বিজ্ঞাপন বাড়াতে <Link href="/register" className="font-semibold text-brand-700 underline">অ্যাকাউন্ট খুলুন</Link>।
+            লগইন করে বিজ্ঞাপন সংরক্ষণ করা যাবে — লগইন ছাড়াও সব বিজ্ঞাপন দেখা যায়।
+          </span>
         </p>
       )}
-    </RoutePlaceholderShell>
+
+      {loadError && (
+        <p className="mt-3 flex items-start gap-1.5 text-[11px] text-red-700">
+          <ShieldCheck className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+          বিজ্ঞাপন লোড করতে সমস্যা হয়েছে। কিছুক্ষণ পর আবার চেষ্টা করুন।
+        </p>
+      )}
+
+      {/* Compact, unframed context strip — not another card. */}
+      <section className="mt-5 border-t border-brand-100 pt-4">
+        <h2 className="flex items-center gap-1.5 text-sm font-extrabold text-ink-900">
+          <Home className="h-4 w-4 text-brand-600" aria-hidden="true" />
+          ভাড়া নেওয়ার আগে যা জানা দরকার
+        </h2>
+        <ul className="mt-2 grid gap-x-6 gap-y-1.5 text-[12px] leading-relaxed text-ink-500 sm:grid-cols-2 lg:grid-cols-3">
+          <li>• বিজ্ঞাপন দেওয়ার আগে ঘর, পানি ও বিদ্যুৎ সরাসরি দেখে নিন।</li>
+          <li>• অগ্রিম টাকার জন্য সবসময় রশিদ লিখে রাখুন।</li>
+          <li>• ভাড়ার চুক্তিপত্রে মালিক ও ভাড়াটিয়ের স্বাক্ষর নিন।</li>
+          <li>• কোনো মধ্যস্বত্বভোগী নেই — সরাসরি মালিকের সাথে যোগাযোগ করুন।</li>
+        </ul>
+      </section>
+    </DirectoryShell>
   );
 }
 
@@ -252,12 +269,12 @@ export default function ToletPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-7xl mx-auto px-4 py-12 text-center text-slate-500 text-sm">
-          বাসা ভাড়ার তালিকা লোড হচ্ছে...
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 text-center text-sm text-ink-500">
+          বাসা ভাড়ার বিজ্ঞাপন লোড হচ্ছে…
         </div>
       }
     >
-      <ToletContent />
+      <ToletDirectory />
     </Suspense>
   );
 }

@@ -1,7 +1,7 @@
 import { Building2, CalendarCheck, Flag, Landmark, MapPinned, TrainFront } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 type Fact = {
@@ -70,12 +70,12 @@ const FACTS: Fact[] = [
 export default function CityQuickFacts() {
   return (
     <CitySection labelledBy="city-facts-heading" id="city-facts" className="border-b border-brand-100 bg-mist-50">
-      <Reveal>
-        <CityLabel index="০১">এক নজরে</CityLabel>
-        <h2 id="city-facts-heading" className={`mt-3 ${TITLE}`}>
-          এক নজরে ময়মনসিংহ
-        </h2>
-      </Reveal>
+      <CityHeading
+        id="city-facts-heading"
+        index="০১"
+        eyebrow="এক নজরে"
+        title="এক নজরে ময়মনসিংহ"
+      />
 
       <ul className="mt-7 grid gap-px overflow-hidden rounded-2xl border border-brand-100 bg-brand-100 sm:grid-cols-2 lg:grid-cols-3">
         {FACTS.map((fact, index) => {

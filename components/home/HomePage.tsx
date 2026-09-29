@@ -2,7 +2,6 @@
 
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import MobileBottomNav from '@/components/home/MobileBottomNav';
 import HeroCarousel from '@/components/home/HeroCarousel';
 import SearchSection from '@/components/home/SearchSection';
 import CategorySection from '@/components/home/CategorySection';
@@ -46,7 +45,7 @@ import {
  */
 export default function HomePage() {
   return (
-    <div className="flex min-h-screen flex-col pb-[calc(env(safe-area-inset-bottom)+5.5rem)] lg:pb-0">
+    <div className="flex min-h-screen flex-col">
       <Navbar />
 
       <main className="flex-1">
@@ -142,7 +141,6 @@ export default function HomePage() {
       </main>
 
       <Footer />
-      <MobileBottomNav />
     </div>
   );
 }

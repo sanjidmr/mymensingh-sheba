@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDown, Milestone } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE_DARK, DARK_FOCUS } from './CityBits';
+import { CityHeading, CitySection, DARK_FOCUS } from './CityBits';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 type Milestone = {
@@ -127,28 +127,21 @@ export default function HistoryTimeline() {
 
   return (
     <CitySection labelledBy="city-timeline-heading" id="city-timeline" className="bg-brand-950">
-      <div className="flex flex-wrap items-end justify-between gap-4">
-        <div className="max-w-2xl">
-          <Reveal>
-            <CityLabel index="০৪" tone="dark">
-              কেন্দ্রীয় সময়রেখা
-            </CityLabel>
-            <h2 id="city-timeline-heading" className={`mt-3 ${TITLE_DARK}`}>
-              {toBengaliDigits(1787)} থেকে বর্তমান
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-brand-100/80">
-              যে সন বেছে নেবেন, নিচে সেই সময়ের ঘটনাটি খুলে যাবে। মোবাইলে তালিকাটি
-              নিচে নামে, ডেস্কটপে সময়রেখাটি পাশাপাশি সাজানো।
-            </p>
-          </Reveal>
-        </div>
-        <Reveal delay={60}>
-          <p className="inline-flex items-center gap-2 rounded-full border border-brand-800 px-3.5 py-2 text-xs font-bold text-brand-200">
-            <Milestone className="h-3.5 w-3.5 text-accent-400" aria-hidden="true" />
-            মোট {toBengaliDigits(MILESTONES.length)}টি ধাপ
-          </p>
-        </Reveal>
-      </div>
+      <CityHeading
+        id="city-timeline-heading"
+        index="০৪"
+        eyebrow="কেন্দ্রীয় সময়রেখা"
+        title={`${toBengaliDigits(1787)} থেকে বর্তমান`}
+        intro="যে সন বেছে নেবেন, নিচে সেই সময়ের ঘটনাটি খুলে যাবে। মোবাইলে তালিকাটি নিচে নামে, ডেস্কটপে সময়রেখাটি পাশাপাশি সাজানো।"
+        tone="dark"
+      />
+
+      <Reveal delay={60} className="mt-5">
+        <p className="mx-auto flex w-fit items-center gap-2 rounded-full border border-brand-800 px-3.5 py-2 text-xs font-bold text-brand-200">
+          <Milestone className="h-3.5 w-3.5 text-accent-400" aria-hidden="true" />
+          মোট {toBengaliDigits(MILESTONES.length)}টি ধাপ
+        </p>
+      </Reveal>
 
       {/* Mobile: accordion */}
       <ol className="mt-7 space-y-2 lg:hidden">

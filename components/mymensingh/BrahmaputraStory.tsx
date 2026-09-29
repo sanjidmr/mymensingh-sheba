@@ -1,7 +1,7 @@
 import { Palette, Ship, Waves } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 import ArchivePhoto from './ArchivePhoto';
-import { CityLabel, CitySection, TITLE_DARK, SCROLL_MT } from './CityBits';
+import { CityLabel, TITLE_DARK, SCROLL_MT } from './CityBits';
 
 /**
  * BrahmaputraStory — the emotional river chapter.
@@ -17,7 +17,7 @@ export default function BrahmaputraStory() {
       className={`${SCROLL_MT} relative overflow-hidden bg-brand-950 text-brand-100`}
     >
       <ArchivePhoto
-        src="/mymensingh/brahmaputra-boats.jpg"
+        src="/nodi.jpg"
         alt="পুরাতন ব্রহ্মপুত্রে নৌকা ও ভিটি"
         slotNote="পুরাতন ব্রহ্মপুত্রের আর্কাইভাল দৃশ্যের ছবির স্থান"
         icon="waves"
@@ -35,23 +35,22 @@ export default function BrahmaputraStory() {
       />
 
       <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20">
-        <div className="max-w-2xl">
-          <Reveal>
-            <CityLabel index="১১" tone="dark">
-              ব্রহ্মপুত্র
-            </CityLabel>
-            <h2 id="city-river-heading" className={`mt-3 ${TITLE_DARK}`}>
-              ব্রহ্মপুত্র শুধু একটি নদী নয় — ময়মনসিংহের পরিচয়ের অংশ
-            </h2>
-            <p className="mt-4 text-[15px] leading-relaxed text-brand-100/85 sm:text-base">
-              যে নদীর তীরে এই শহর গড়ে উঠেছে, সে নদী আজও মানুষের জীবন থেকে
-              বিচ্ছিন্ন হয়ে যায়নি। নৌকা, মাঝি, চরাঞ্চলের বাজার, মাছ আর বৃষ্টির
-              খবর — সবকিছু একই জলের ওপর দাঁড়িয়ে।
-            </p>
-          </Reveal>
+        <Reveal className="mx-auto max-w-3xl text-center">
+          <CityLabel index="১১" tone="dark">
+            ব্রহ্মপুত্র
+          </CityLabel>
+          <h2 id="city-river-heading" className={`mt-3 ${TITLE_DARK}`}>
+            ব্রহ্মপুত্র শুধু একটি নদী নয় — ময়মনসিংহের পরিচয়ের অংশ
+          </h2>
+          <p className="mt-4 text-[15px] leading-relaxed text-brand-100/85 sm:text-base">
+            যে নদীর তীরে এই শহর গড়ে উঠেছে, সে নদী আজও মানুষের জীবন থেকে
+            বিচ্ছিন্ন হয়ে যায়নি। নৌকা, মাঝি, চরাঞ্চলের বাজার, মাছ আর বৃষ্টির
+            খবর — সবকিছু একই জলের ওপর দাঁড়িয়ে।
+          </p>
+        </Reveal>
 
-          <Reveal delay={90}>
-            <ul className="mt-7 grid gap-4 sm:grid-cols-3">
+        <Reveal delay={90}>
+          <ul className="mt-8 grid gap-4 sm:grid-cols-3">
               {[
                 {
                   icon: Ship,
@@ -87,7 +86,6 @@ export default function BrahmaputraStory() {
               })}
             </ul>
           </Reveal>
-        </div>
       </div>
     </section>
   );

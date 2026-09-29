@@ -43,7 +43,7 @@ export default function ServiceRowSection({
   hideImage = false,
   withImage = false,
   demoImages = [],
-  count = 5,
+  count = 6,
 }: ServiceRowSectionProps) {
   const [items, setItems] = useState<HomePreviewCard[] | null>(cards ?? null);
   const [error, setError] = useState(false);
@@ -66,6 +66,19 @@ export default function ServiceRowSection({
 
   const shown = (items ?? []).slice(0, count);
   const loading = items === null && !error;
+
+  /**
+   * How many of the fetched cards each breakpoint shows.
+   * Phone  -> six cards, two tidy rows of three.
+   * sm+    -> four cards (the previous behaviour, untouched).
+   * lg+    -> five cards across, the desktop row.
+   * So the two "extra" cards are revealed and hidden at the opposite ends.
+   */
+  const visibilityAt = (index: number) => {
+    if (index === 4) return 'max-sm:hidden';
+    if (index === 5) return 'hidden lg:block';
+    return '';
+  };
 
   return (
     <section
@@ -90,16 +103,14 @@ export default function ServiceRowSection({
 
         {/* Cards */}
         {loading ? (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
             {Array.from({ length: count }).map((_, i) => (
               <div
                 key={i}
-                className={`overflow-hidden rounded-xl border border-brand-100/80 bg-white${
-                  i >= 4 ? ' max-sm:hidden' : ''
-                }`}
+                className={`overflow-hidden rounded-lg border border-brand-100/80 bg-white sm:rounded-xl ${visibilityAt(i)}`}
               >
                 <div className="aspect-[4/3] animate-pulse bg-brand-100/60" />
-                <div className="space-y-2 p-3">
+                <div className="space-y-2 p-2 sm:p-3">
                   <div className="h-3 w-4/5 animate-pulse rounded-sm bg-brand-100/60" />
                   <div className="h-3 w-2/3 animate-pulse rounded-sm bg-brand-100/50" />
                 </div>
@@ -107,7 +118,7 @@ export default function ServiceRowSection({
             ))}
           </div>
         ) : shown.length > 0 ? (
-          <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
             {shown.map((card, index) => (
               <ServiceCard
                 key={card.id}
@@ -120,7 +131,7 @@ export default function ServiceRowSection({
                 compact
                 hideImage={imageMode ? false : hideImage}
                 tone={cardTone}
-                className={index >= 4 ? 'max-sm:hidden' : ''}
+                className={visibilityAt(index)}
               />
             ))}
           </div>

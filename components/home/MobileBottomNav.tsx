@@ -12,11 +12,25 @@ const ITEMS = [
 ];
 
 /**
+ * Routes that own the whole screen and should not carry site navigation —
+ * the admin console and the auth screens. Everything else keeps the bar.
+ */
+const BARE_ROUTES = ['/admin', '/login', '/register', '/forgot-password', '/design-system'];
+
+function isBareRoute(pathname: string): boolean {
+  return BARE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
+}
+
+/**
  * Fixed mobile bottom navigation.
  * Five slots — the center slot is a raised gold "পোস্ট করুন" (+) action that
  * floats above the bar so posting is always one thumb-tap away on mobile.
- * Only rendered on regular pages (the homepage and other public sections);
- * admin pages deliberately omit it via their own layout choice.
+ *
+ * Mounted once from the root layout rather than per page, so it survives every
+ * client-side route change instead of vanishing on any page that forgot to
+ * render it. The document reserves matching bottom padding via
+ * `--mms-bottom-nav-h` in globals.css, so the last row of content is never
+ * hidden underneath.
  */
 export default function MobileBottomNav() {
   const pathname = usePathname();
@@ -25,6 +39,8 @@ export default function MobileBottomNav() {
     if (href === '/') return pathname === '/';
     return pathname.startsWith(href);
   };
+
+  if (isBareRoute(pathname)) return null;
 
   return (
     <nav

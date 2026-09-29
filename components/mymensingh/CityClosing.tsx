@@ -1,5 +1,5 @@
 import { ArrowRight, Compass } from 'lucide-react';
-import { CityLabel } from './CityBits';
+import { CityHeading } from './CityBits';
 
 const LINKS = [
   { href: '/services', label: 'সেবাসমূহ', note: 'কী কী সেবা পাওয়া যায়' },
@@ -24,19 +24,14 @@ export default function CityClosing() {
         className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-accent-400/60 to-transparent"
       />
       <div className="relative mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
-        <div className="max-w-2xl">
-          <CityLabel index="১৯" tone="dark">
-            শেষ কথা
-          </CityLabel>
-          <h2 id="city-closing-heading" className="mt-3 text-2xl font-extrabold leading-tight text-white sm:text-3xl">
-            ইতিহাস জানলে বর্তমান বোঝা যায়
-          </h2>
-          <p className="mt-3 text-[15px] leading-relaxed text-brand-100/80">
-            ময়মনসিংহের গল্প শুধু অতীতের নয় — নদী, চাষ, পাখি আর মানুষের জীবন
-            আজও এখানে চলছে। কিছু তথ্য এখনো যাচাইয়ের অপেক্ষায় আছে; সেগুলো
-            যাচাই হলে এখানে যুক্ত হবে।
-          </p>
-        </div>
+        <CityHeading
+          id="city-closing-heading"
+          index="১৯"
+          eyebrow="শেষ কথা"
+          title="ইতিহাস জানলে বর্তমান বোঝা যায়"
+          intro="ময়মনসিংহের গল্প শুধু অতীতের নয় — নদী, চাষ, পাখি আর মানুষের জীবন আজও এখানে চলছে। কিছু তথ্য এখনো যাচাইয়ের অপেক্ষায় আছে; সেগুলো যাচাই হলে এখানে যুক্ত হবে।"
+          tone="dark"
+        />
 
         <nav aria-label="পরবর্তী পাতা" className="mt-8 grid gap-3 sm:grid-cols-3">
           {LINKS.map((link) => (
@@ -59,7 +54,7 @@ export default function CityClosing() {
           ))}
         </nav>
 
-        <p className="mt-8 flex items-start gap-2.5 text-[12px] leading-relaxed text-brand-400/85">
+        <p className="mx-auto mt-8 flex max-w-2xl items-start justify-center gap-2.5 text-center text-[12px] leading-relaxed text-brand-400/85">
           <Compass className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
           <span>
             এই পাতার তথ্য সংগ্রহ ও যাচাইয়ের কাজ চলমান। ভুল বা অসম্পূর্ণ তথ্য চিহ্নিত

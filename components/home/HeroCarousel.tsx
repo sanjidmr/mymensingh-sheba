@@ -8,9 +8,9 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
  *
  * One image slides horizontally out while the next enters seamlessly from the
  * side (a behind-the-scenes cloned-track loop, so there is never a wrap snap).
- * Images use `object-contain` so nothing is cropped — the full picture stays
- * visible inside the fixed hero size, matted on `bg-brand-900` so any
- * letterboxing blends cleanly on wide screens.
+ * Every source file is 1672×941 (~16:9) and the frame is locked to 16:9 at
+ * every breakpoint, so each picture fills the box edge to edge: nothing is
+ * cropped and no side matting is ever visible.
  * Gentle autoplay, pause on hover/focus, ghost arrows (desktop) and small dots.
  * Respects `prefers-reduced-motion` (autoplay off, no transitions).
  *
@@ -127,14 +127,18 @@ export default function HeroCarousel() {
             {track.map((s, i) => (
               <div
                 key={`${s.image}-${i}`}
-                className="relative aspect-[16/9] w-full shrink-0 bg-brand-900 lg:aspect-[21/9]"
+                className="relative aspect-[16/9] w-full shrink-0"
               >
+                {/* The four `/sheba*.png` files are 1672×941 (~16:9), and the
+                    frame is locked to 16:9 at every breakpoint, so the picture
+                    fills the box edge to edge — no side matting, and `cover`
+                    trims at most a sub-pixel sliver. */}
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={s.image}
                   alt=""
                   loading={i === 1 ? 'eager' : 'lazy'}
-                  className="h-full w-full object-contain"
+                  className="h-full w-full object-cover"
                 />
                 <div
                   aria-hidden="true"

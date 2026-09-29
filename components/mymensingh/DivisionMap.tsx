@@ -1,6 +1,6 @@
 import { ArrowDown, Map } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
-import { CityLabel, CitySection, TITLE } from './CityBits';
+import { CityHeading, CitySection } from './CityBits';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 const SEQUENCE = [
@@ -22,21 +22,16 @@ const SEQUENCE = [
 export default function DivisionMap() {
   return (
     <CitySection labelledBy="city-division-heading" id="city-division" className="border-b border-brand-100 bg-white">
-      <div className="grid gap-9 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-14">
-        <div>
-          <Reveal>
-            <CityLabel index="০৫">প্রশাসনিক পরিবর্তন</CityLabel>
-            <h2 id="city-division-heading" className={`mt-3 ${TITLE}`}>
-              বৃহত্তর ময়মনসিংহ থেকে বর্তমান ময়মনসিংহ
-            </h2>
-            <p className="mt-3 text-[15px] leading-relaxed text-ink-600">
-              আজকের ময়মনসিংহ একসময় এত বড় ছিল না। একটি বিশাল প্রশাসনিক এলাকা ধীরে ধীরে
-              ভাঙতে ভাঙতে আজকের চারটি জেলা তৈরি হয়েছে — এবং সেই এলাকা নিয়েই ২০১৫ সালে
-              বিভাগ গঠিত হয়েছে।
-            </p>
-          </Reveal>
+      <CityHeading
+        id="city-division-heading"
+        index="০৫"
+        eyebrow="প্রশাসনিক পরিবর্তন"
+        title="বৃহত্তর ময়মনসিংহ থেকে বর্তমান ময়মনসিংহ"
+        intro="আজকের ময়মনসিংহ একসময় এত বড় ছিল না। একটি বিশাল প্রশাসনিক এলাকা ধীরে ধীরে ভাঙতে ভাঙতে আজকের চারটি জেলা তৈরি হয়েছে — এবং সেই এলাকা নিয়েই ২০১৫ সালে বিভাগ গঠিত হয়েছে।"
+      />
 
-          <Reveal delay={70}>
+      <div className="mt-8 grid gap-9 lg:grid-cols-[1fr_0.9fr] lg:items-center lg:gap-14">
+        <Reveal delay={50}>
             <ol className="mt-6 space-y-1">
               {SEQUENCE.map((step, index) => {
                 const isLast = index === SEQUENCE.length - 1;
@@ -65,7 +60,6 @@ export default function DivisionMap() {
               })}
             </ol>
           </Reveal>
-        </div>
 
         <Reveal delay={100}>
           <div className="rounded-2xl border border-brand-100 bg-mist-50 p-5">

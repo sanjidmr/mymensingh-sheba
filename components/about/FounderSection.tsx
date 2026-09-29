@@ -7,11 +7,11 @@ const FOUNDER = {
   name: 'Mushfiqur Rahman Sanjid',
   role: 'Founder & Creator, Mymensingh Sheba',
   /**
-   * Portrait slot. Drop a real photo at `public/founder.jpg` (or change this
+   * Portrait. Drop a real photo at `public/founder.jpg` (or change this
    * value to any path inside /public) and it renders automatically — until
    * then a typographic monogram keeps the composition intact.
    */
-  image: null as string | null,
+  image: '/founder.jpg' as string | null,
   alt: 'Mymensingh Sheba-এর প্রতিষ্ঠাকারী মুশফিকুর রহমান সানজিদ',
 };
 
@@ -19,14 +19,45 @@ const FOUNDER = {
  * FounderSection — sits directly after the story, by design.
  *
  * Personal rather than corporate: portrait, name, role, the reason it started,
- * and one short quote. Mobile order is portrait → name → role → story → quote.
+ * and one short quote.
+ *
+ * Phone order is heading → name → role → portrait → story → quote, so the
+ * reader meets the name before the photograph. The desktop two-column split
+ * (portrait left, text right) is expressed with explicit `lg:col-start` /
+ * `lg:row-start` placements, so re-ordering the four grid children on small
+ * screens leaves the large-screen composition untouched.
  */
 export default function FounderSection() {
   return (
     <AboutSection labelledBy="about-founder-heading" className="bg-white">
-      <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-14">
-        <Reveal>
-          <div className="relative aspect-[4/5] w-full overflow-hidden rounded-2xl bg-brand-900">
+      <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-x-14 lg:gap-y-0">
+        {/* 1 — heading (first on phones) */}
+        <Reveal className="order-1 lg:order-none lg:col-start-2 lg:row-start-1">
+          <SectionLabel>যিনি শুরু করেছিলেন</SectionLabel>
+          <h2
+            id="about-founder-heading"
+            className="mt-3 text-2xl font-extrabold leading-snug tracking-tight text-ink-900 sm:text-3xl"
+          >
+            Mymensingh-এর একজন মানুষ হিসেবে শুরু
+          </h2>
+        </Reveal>
+
+        {/* 2 — name & role */}
+        <Reveal
+          delay={70}
+          className="order-2 lg:order-none lg:col-start-2 lg:row-start-2 lg:mt-4"
+        >
+          <div>
+            <p className="text-lg font-extrabold text-brand-800 sm:text-xl">
+              {FOUNDER.name}
+            </p>
+            <p className="mt-0.5 text-sm font-medium text-ink-500">{FOUNDER.role}</p>
+          </div>
+        </Reveal>
+
+        {/* 3 — portrait (third on phones, left column on desktop) */}
+        <Reveal className="order-3 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-3">
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-brand-900 sm:aspect-[4/5]">
             {FOUNDER.image ? (
               <Image
                 src={FOUNDER.image}
@@ -51,55 +82,42 @@ export default function FounderSection() {
           </div>
         </Reveal>
 
-        <div>
-          <Reveal>
-            <SectionLabel>যিনি শুরু করেছিলেন</SectionLabel>
-            <h2
-              id="about-founder-heading"
-              className="mt-3 text-2xl font-extrabold leading-snug tracking-tight text-ink-900 sm:text-3xl"
-            >
-              Mymensingh-এর একজন মানুষ হিসেবে শুরু
-            </h2>
-          </Reveal>
+        {/* 4 — story */}
+        <Reveal
+          delay={130}
+          className="order-4 lg:order-none lg:col-start-2 lg:row-start-3 lg:mt-4"
+        >
+          <div className="space-y-3.5 text-[15px] leading-relaxed text-ink-600">
+            <p>
+              আমি ময়মনসিংহেই বড় হয়েছি। তাই চরপাড়ার একটা সমস্যা, বাসার একটা ঝামেলা
+              কিংবা একজন প্রয়োজনীয় মানুষ খুঁজে না পাওয়ার কষ্ট — এগুলো আমার কাছে
+              শুনুম নয়, নিজে উপস্থিত থাকে।
+            </p>
+            <p>
+              একদিন ভাবলাম, এত ছোট ছোট প্রয়োজনের জন্য যদি একটি নির্ভরযোগ্য জায়গা
+              থাকত, তাহলে মানুষের অনেক সময় ও ঝামেলা কমে যেত। তখনই Mymensingh
+              Sheba-এর কাজ শুরু হয়।
+            </p>
+            <p>
+              এটি কোনো বড় কোম্পানির প্রজন্দের পরিকল্পনা নয় — এটি একজন স্থানীয়
+              মানুষের প্রয়োজন থেকে, নিজের শহরের জন্য বানানো একটি ছোট প্রচেষ্টা।
+            </p>
+          </div>
+        </Reveal>
 
-          <Reveal delay={70}>
-            <div className="mt-4">
-              <p className="text-lg font-extrabold text-brand-800 sm:text-xl">
-                {FOUNDER.name}
-              </p>
-              <p className="mt-0.5 text-sm font-medium text-ink-500">{FOUNDER.role}</p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={130}>
-            <div className="mt-4 space-y-3.5 text-[15px] leading-relaxed text-ink-600">
-              <p>
-                আমি ময়মনসিংহেই বড় হয়েছি। তাই চরপাড়ার একটা সমস্যা, বাসার একটা ঝামেলা
-                কিংবা একজন প্রয়োজনীয় মানুষ খুঁজে না পাওয়ার কষ্ট — এগুলো আমার কাছে
-                শুনুম নয়, নিজে উপস্থিত থাকে।
-              </p>
-              <p>
-                একদিন ভাবলাম, এত ছোট ছোট প্রয়োজনের জন্য যদি একটি নির্ভরযোগ্য জায়গা
-                থাকত, তাহলে মানুষের অনেক সময় ও ঝামেলা কমে যেত। তখনই Mymensingh
-                Sheba-এর কাজ শুরু হয়।
-              </p>
-              <p>
-                এটি কোনো বড় কোম্পানির প্রজন্দের পরিকল্পনা নয় — এটি একজন স্থানীয়
-                মানুষের প্রয়োজন থেকে, নিজের শহরের জন্য বানানো একটি ছোট প্রচেষ্টা।
-              </p>
-            </div>
-          </Reveal>
-
-          <Reveal delay={190}>
-            <blockquote className="mt-6 rounded-2xl bg-mist-100 p-5">
-              <Quote className="h-5 w-5 text-accent-500" aria-hidden="true" />
-              <p className="mt-2 text-[15px] font-bold leading-relaxed text-ink-900">
-                প্রযুক্তি তখনই সবচেয়ে মূল্যবান, যখন সেটি মানুষের বাস্তব জীবনের কোনো
-                একটি সমস্যাকে সহজ করে দেয়।
-              </p>
-            </blockquote>
-          </Reveal>
-        </div>
+        {/* 5 — quote */}
+        <Reveal
+          delay={190}
+          className="order-5 lg:order-none lg:col-start-2 lg:row-start-4 lg:mt-6"
+        >
+          <blockquote className="rounded-2xl bg-mist-100 p-5">
+            <Quote className="h-5 w-5 text-accent-500" aria-hidden="true" />
+            <p className="mt-2 text-[15px] font-bold leading-relaxed text-ink-900">
+              প্রযুক্তি তখনই সবচেয়ে মূল্যবান, যখন সেটি মানুষের বাস্তব জীবনের কোনো
+              একটি সমস্যাকে সহজ করে দেয়।
+            </p>
+          </blockquote>
+        </Reveal>
       </div>
     </AboutSection>
   );
