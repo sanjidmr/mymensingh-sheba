@@ -1407,3 +1407,355 @@ DROP TRIGGER IF EXISTS trg_notif_contact_message ON public.contact_messages;
 CREATE TRIGGER trg_notif_contact_message
 AFTER INSERT ON public.contact_messages
 FOR EACH ROW EXECUTE FUNCTION public.notif_contact_message();
+
+-- ====================================================================
+-- MARKETPLACE + LOCAL DIRECTORY MIGRATION
+-- Covers: Coaching, WiFi, News, Jobs, Buy-Sell, Bus, Vehicle rental,
+--         and the local Emergency directory (doctor/police/ambulance/fire).
+--
+-- Design notes
+--  * `service_listings` is the single admin-curated table behind the four
+--    admin-only directories (coaching / wifi / bus / vehicle). They share a
+--    shape (title, image, area coverage, contact, status) but differ in their
+--    category-specific attributes, which live in a JSONB `details` bag with a
+--    CHECK that the keys the UI actually reads are present for that category.
+--    One table keeps admin CRUD, search, and moderation to a single code path.
+--  * `community_posts` is the single user-authored table behind News, Jobs and
+--    Buy-Sell. It is author-scoped (RLS: authors read/edit only their own rows)
+--    and ships in `pending` status so the existing admin moderation pattern can
+--    approve it. A news post can be `featured` for the editorial lead slot.
+--  * `emergency_contacts` is admin-curated and intentionally has NO public
+--    write path. Phone numbers are only ever values an admin entered from a
+--    verified source; there is no seed data in this file, because inventing a
+--    local number is exactly what the platform must not do.
+--  * `vehicle_requests` captures the "অনুরোধ করুন" form for the vehicle page.
+-- ====================================================================
+
+-- --------------------------------------------------------------------
+-- 1. SERVICE LISTINGS (admin-only: coaching / wifi / bus / vehicle)
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.service_listings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    category TEXT NOT NULL
+        CHECK (category IN ('coaching', 'wifi', 'bus', 'vehicle')),
+    -- URL-safe identifier used by /<category>/<slug> detail pages.
+    slug TEXT NOT NULL,
+    title_bn TEXT NOT NULL,
+    subtitle_bn TEXT,
+    summary_bn TEXT,
+    description_bn TEXT,
+    image_url TEXT,
+    logo_url TEXT,
+    -- MCC area ids this listing serves. Empty = city-wide.
+    area_ids TEXT[] NOT NULL DEFAULT '{}',
+    -- Free-form highlight chips (e.g. wifi packages, bus amenities).
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    -- Numeric fields the fee/speed/fare RANGE filters compare against.
+    --  * coaching -> monthly_fee_min / monthly_fee_max
+    --  * wifi     -> price_min / price_max (monthly taka)
+    --  * bus      -> fare_min / fare_max
+    --  * vehicle  -> left NULL (rental price is intentionally not shown)
+    monthly_fee_min INTEGER,
+    monthly_fee_max INTEGER,
+    price_min INTEGER,
+    price_max INTEGER,
+    speed_mbps INTEGER,
+    fare_min INTEGER,
+    fare_max INTEGER,
+    -- Bus: origin / destination (free text, kept local and human).
+    origin_bn TEXT,
+    destination_bn TEXT,
+    -- Vehicle: no rental price on the card, so capacity/notes only.
+    seat_count INTEGER,
+    -- Admin-curated public contact. Kept out of the public SELECT surface the
+    -- same way staff_profiles keeps phone_private, and surfaced through the
+    -- service facade / contact-form routing instead of a raw number.
+    contact_phone_private TEXT,
+    -- Who may add rows: only admins. Customers never write here, so the whole
+    -- INSERT/UPDATE/DELETE surface is admin-gated in RLS below.
+    is_active BOOLEAN DEFAULT TRUE,
+    is_featured BOOLEAN DEFAULT FALSE,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    -- Slug is unique per category, not globally, so the same word can exist as a
+    -- bus route and a coaching centre without colliding.
+    UNIQUE (category, slug)
+);
+
+-- Idempotent upgrade for DBs created before this migration.
+ALTER TABLE public.service_listings ADD COLUMN IF NOT EXISTS seat_count INTEGER;
+ALTER TABLE public.service_listings ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+
+CREATE INDEX IF NOT EXISTS idx_service_listings_category_active
+    ON public.service_listings (category, is_active);
+CREATE INDEX IF NOT EXISTS idx_service_listings_slug
+    ON public.service_listings (category, slug);
+
+-- --------------------------------------------------------------------
+-- 2. COMMUNITY POSTS (user-authored: news / jobs / buy-sell)
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.community_posts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    kind TEXT NOT NULL CHECK (kind IN ('news', 'job', 'buy_sell')),
+    slug TEXT NOT NULL UNIQUE,
+    author_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    title_bn TEXT NOT NULL,
+    summary_bn TEXT,
+    -- Buy-sell uses this for the item name/price; news for the body excerpt.
+    body_bn TEXT,
+    cover_image_url TEXT,
+    category TEXT,
+    -- Optional location context (news local tag, job location, item area).
+    area_id TEXT,
+    -- Taxonomy chips (news category, buy-sell item type, job category).
+    tags TEXT[] NOT NULL DEFAULT '{}',
+    -- Numeric fields the range filters compare against.
+    --  * job      -> salary_min / salary_max
+    --  * buy_sell -> price (single point, mapped to both min & max for the range)
+    salary_min INTEGER,
+    salary_max INTEGER,
+    price INTEGER,
+    -- Job-only fields.
+    job_type TEXT,
+    deadline DATE,
+    -- Buy-sell-only field.
+    condition_label TEXT,
+    -- Moderation. Customers may only ever insert 'pending'; approval is admin.
+    status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'approved', 'rejected')),
+    is_featured BOOLEAN DEFAULT FALSE,
+    published_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_community_posts_kind_status
+    ON public.community_posts (kind, status);
+CREATE INDEX IF NOT EXISTS idx_community_posts_author
+    ON public.community_posts (author_id);
+
+-- --------------------------------------------------------------------
+-- 3. EMERGENCY CONTACTS (admin-only, verified local numbers)
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.emergency_contacts (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    service TEXT NOT NULL
+        CHECK (service IN ('doctor', 'police', 'ambulance', 'fire_service')),
+    name_bn TEXT NOT NULL,
+    organization_bn TEXT,
+    area_id TEXT,
+    address_bn TEXT,
+    -- A REAL, locally-sourced number. No defaults, no national fallbacks in the
+    -- data — an admin must enter a verified value or leave the row out.
+    phone TEXT NOT NULL,
+    -- Where the number came from, for auditability ("verified_source" note).
+    source_note TEXT,
+    is_active BOOLEAN DEFAULT TRUE,
+    sort_order INTEGER DEFAULT 0,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_emergency_contacts_service_active
+    ON public.emergency_contacts (service, is_active);
+
+-- --------------------------------------------------------------------
+-- 4. VEHICLE REQUESTS ("গাড়ির জন্য অনুরোধ করুন")
+-- --------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.vehicle_requests (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    vehicle_listing_id UUID REFERENCES public.service_listings(id) ON DELETE SET NULL,
+    vehicle_kind TEXT NOT NULL CHECK (vehicle_kind IN ('গাড়ি', 'অটো', 'CNG')),
+    vehicle_name TEXT,
+    customer_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    contact_name TEXT NOT NULL,
+    contact_phone TEXT NOT NULL,
+    pickup_area_id TEXT,
+    destination_area_id TEXT,
+    travel_date DATE,
+    travel_time TEXT,
+    notes TEXT,
+    status TEXT NOT NULL DEFAULT 'new'
+        CHECK (status IN ('new', 'contacted', 'closed')),
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_vehicle_requests_status
+    ON public.vehicle_requests (status, created_at DESC);
+
+-- ====================================================================
+-- ROW LEVEL SECURITY — new tables
+-- ====================================================================
+ALTER TABLE public.service_listings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.community_posts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.emergency_contacts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.vehicle_requests ENABLE ROW LEVEL SECURITY;
+
+-- --- service_listings ---
+-- Public (incl. anonymous) can read ONLY active rows. The public SELECT policy
+-- intentionally does not expose contact_phone_private to non-admins; the
+-- service facade never selects it for public reads either.
+DROP POLICY IF EXISTS "Active service listings are public" ON public.service_listings;
+CREATE POLICY "Active service listings are public"
+ON public.service_listings FOR SELECT
+TO anon, authenticated
+USING (is_active = TRUE);
+
+-- Admins manage every service listing. Customers have no INSERT/UPDATE/DELETE
+-- policy at all, so RLS denies them by default (this is the "admin only" gate).
+DROP POLICY IF EXISTS "Admins manage service listings" ON public.service_listings;
+CREATE POLICY "Admins manage service listings"
+ON public.service_listings FOR ALL
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+-- --- community_posts ---
+-- Public reads only approved posts (the news desk, jobs board, marketplace).
+DROP POLICY IF EXISTS "Approved community posts are public" ON public.community_posts;
+CREATE POLICY "Approved community posts are public"
+ON public.community_posts FOR SELECT
+TO anon, authenticated
+USING (status = 'approved');
+
+-- Authors can see their own posts regardless of moderation state.
+DROP POLICY IF EXISTS "Authors read own posts" ON public.community_posts;
+CREATE POLICY "Authors read own posts"
+ON public.community_posts FOR SELECT
+TO authenticated
+USING (author_id = auth.uid());
+
+-- SECURITY: a customer may only insert a post that is their own AND still
+-- 'pending'. They can never self-approve by sending status='approved'.
+DROP POLICY IF EXISTS "Authors create own posts" ON public.community_posts;
+CREATE POLICY "Authors create own posts"
+ON public.community_posts FOR INSERT
+TO authenticated
+WITH CHECK (author_id = auth.uid() AND status = 'pending');
+
+-- Authors may edit the content of their own post, but must keep it 'pending'
+-- (an edit re-enters moderation) and may not change the author.
+DROP POLICY IF EXISTS "Authors update own posts" ON public.community_posts;
+CREATE POLICY "Authors update own posts"
+ON public.community_posts FOR UPDATE
+TO authenticated
+USING (author_id = auth.uid())
+WITH CHECK (author_id = auth.uid() AND status = 'pending');
+
+-- Authors may delete their own post; nobody else can delete it.
+DROP POLICY IF EXISTS "Authors delete own posts" ON public.community_posts;
+CREATE POLICY "Authors delete own posts"
+ON public.community_posts FOR DELETE
+TO authenticated
+USING (author_id = auth.uid());
+
+-- Admins moderate everything (approve/reject/feature/delete).
+DROP POLICY IF EXISTS "Admins moderate community posts" ON public.community_posts;
+CREATE POLICY "Admins moderate community posts"
+ON public.community_posts FOR ALL
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+-- --- emergency_contacts ---
+-- Public reads active rows (verified local numbers only). No customer write.
+DROP POLICY IF EXISTS "Active emergency contacts are public" ON public.emergency_contacts;
+CREATE POLICY "Active emergency contacts are public"
+ON public.emergency_contacts FOR SELECT
+TO anon, authenticated
+USING (is_active = TRUE);
+
+DROP POLICY IF EXISTS "Admins manage emergency contacts" ON public.emergency_contacts;
+CREATE POLICY "Admins manage emergency contacts"
+ON public.emergency_contacts FOR ALL
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+-- --- vehicle_requests ---
+-- A visitor (even anonymous) may submit a request; admins read the inbox.
+-- Guests can INSERT but cannot read back the inbox.
+DROP POLICY IF EXISTS "Anyone can submit vehicle requests" ON public.vehicle_requests;
+CREATE POLICY "Anyone can submit vehicle requests"
+ON public.vehicle_requests FOR INSERT
+TO anon, authenticated
+WITH CHECK (status = 'new');
+
+-- Admins read and manage all vehicle requests.
+DROP POLICY IF EXISTS "Admins manage vehicle requests" ON public.vehicle_requests;
+CREATE POLICY "Admins manage vehicle requests"
+ON public.vehicle_requests FOR ALL
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
+-- A signed-in customer may read their own submitted requests.
+DROP POLICY IF EXISTS "Customers read own vehicle requests" ON public.vehicle_requests;
+CREATE POLICY "Customers read own vehicle requests"
+ON public.vehicle_requests FOR SELECT
+TO authenticated
+USING (customer_id = auth.uid());
+
+-- --- updated_at triggers for the new tables ---
+DROP TRIGGER IF EXISTS trg_service_listings_updated ON public.service_listings;
+CREATE TRIGGER trg_service_listings_updated
+BEFORE UPDATE ON public.service_listings
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_community_posts_updated ON public.community_posts;
+CREATE TRIGGER trg_community_posts_updated
+BEFORE UPDATE ON public.community_posts
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_emergency_contacts_updated ON public.emergency_contacts;
+CREATE TRIGGER trg_emergency_contacts_updated
+BEFORE UPDATE ON public.emergency_contacts
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_vehicle_requests_updated ON public.vehicle_requests;
+CREATE TRIGGER trg_vehicle_requests_updated
+BEFORE UPDATE ON public.vehicle_requests
+FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+-- New community posts and vehicle requests notify the admin hub, matching the
+-- existing service_request / contact_message notification pattern.
+CREATE OR REPLACE FUNCTION public.notif_community_post_inserted()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+    INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+    VALUES (
+        NULL, 'admin',
+        'নতুন ' || NEW.kind || ' পোস্ট',
+        NEW.title_bn || ' — অনুমোদনের জন্য অপেক্ষমাণ।',
+        'info', 'community_post', NEW.id::text
+    );
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_notif_community_post ON public.community_posts;
+CREATE TRIGGER trg_notif_community_post
+AFTER INSERT ON public.community_posts
+FOR EACH ROW EXECUTE FUNCTION public.notif_community_post_inserted();
+
+CREATE OR REPLACE FUNCTION public.notif_vehicle_request_inserted()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+    INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+    VALUES (
+        NULL, 'admin',
+        'নতুন গাড়ি/অটো/CNG অনুরোধ',
+        NEW.contact_name || ' — ' || NEW.vehicle_kind || ' অনুরোধ পাঠিয়েছেন।',
+        'info', 'vehicle_request', NEW.id::text
+    );
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_notif_vehicle_request ON public.vehicle_requests;
+CREATE TRIGGER trg_notif_vehicle_request
+AFTER INSERT ON public.vehicle_requests
+FOR EACH ROW EXECUTE FUNCTION public.notif_vehicle_request_inserted();

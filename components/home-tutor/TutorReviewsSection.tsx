@@ -10,6 +10,18 @@ import {
 } from '@/lib/home-tutor-service';
 import type { HomeTutorProfile, TutorReview } from '@/lib/supabase/types';
 import { useAuth } from '@/lib/auth-context';
+import { formatBanglaDate } from '@/lib/mymensingh-live';
+
+/**
+ * Review date, hand-formatted via the shared Bangla formatter. `Intl`/locale
+ * formatting differs between Node and the browser, so it would desync the
+ * server HTML from the first client render.
+ */
+function formatReviewDate(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return formatBanglaDate({ y: d.getFullYear(), m: d.getMonth(), day: d.getDate() });
+}
 
 interface TutorReviewsSectionProps {
   tutor: HomeTutorProfile;
@@ -124,7 +136,7 @@ export function TutorReviewsSection({ tutor }: TutorReviewsSectionProps) {
                       {r.customerName || 'ভেরিফায়েড অভিভাবক'}
                     </span>
                     <span className="block text-[10px] text-slate-400">
-                      {new Date(r.createdAt).toLocaleDateString('bn-BD')}
+                      {formatReviewDate(r.createdAt)}
                     </span>
                   </div>
                 </div>

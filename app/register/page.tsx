@@ -1,281 +1,329 @@
 'use client';
 
-import React, { useState } from 'react';
-import Link from 'next/link';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import {
-  User,
-  Phone,
-  Lock,
-  Mail,
-  MapPin,
-  ArrowRight,
-  ShieldCheck,
-  CheckCircle2,
-  AlertCircle,
-  Eye,
-  EyeOff,
-} from 'lucide-react';
-import { useAuth } from '@/lib/auth-context';
-import { MCC_AREAS } from '@/lib/locations';
+import { User, Phone, Lock, Mail, MapPin, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
+import AuthField, { AuthSubmit, PasswordStrength } from '@/components/auth/AuthField';
+import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { useAuth } from '@/lib/auth-context';
+import { getAllMCCAreas } from '@/lib/locations';
+
+const AREAS = getAllMCCAreas();
+const MIN_PASSWORD = 6;
+
+type Errors = Partial<
+  Record<'fullName' | 'phone' | 'primaryAreaId' | 'password' | 'confirmPassword', string>
+>;
 
 export default function RegisterPage() {
   const router = useRouter();
-  const { register } = useAuth();
+  const { register, user, isLoading: authLoading } = useAuth();
 
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [primaryAreaId, setPrimaryAreaId] = useState(MCC_AREAS[0]?.id || 'charpara');
+  const [primaryAreaId, setPrimaryAreaId] = useState(AREAS[0]?.id || 'charpara');
   const [password, setPassword] = useState('');
-  const [agreeTerms, setAgreeTerms] = useState(true);
-  const [showPassword, setShowPassword] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [agreed, setAgreed] = useState(false);
+
+  const [errors, setErrors] = useState<Errors>({});
+  const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [done, setDone] = useState(false);
+
+  useEffect(() => {
+    if (user) router.replace('/profile');
+  }, [user, router]);
+
+  const clearError = (key: keyof Errors) =>
+    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setErrorMsg('');
+    setFormError('');
 
-    if (!fullName.trim()) {
-      setErrorMsg('দয়া করে আপনার পুরো নাম লিখুন');
-      return;
-    }
-    if (!phone.trim() || phone.length < 11) {
-      setErrorMsg('সঠিক ১১ ডিজিটের মোবাইল নম্বর লিখুন (যেমন: 017xxxxxxxx)');
-      return;
-    }
-    if (!password || password.length < 6) {
-      setErrorMsg('পাসওয়ার্ড নূন্যতম ৬ অক্ষরের হতে হবে');
-      return;
-    }
-    if (!agreeTerms) {
-      setErrorMsg('ময়মনসিংহ সেবা ব্যবহারের শর্তাবলীতে সম্মতি দিন');
+    const next: Errors = {};
+
+    if (!fullName.trim()) next.fullName = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
+    else if (fullName.trim().length < 3) next.fullName = 'নাম কমপক্ষে ৩ অক্ষরের হতে হবে';
+
+    // Bangladeshi mobile: 11 digits, 01 + operator digit. Tolerates +88, spaces
+    // and Bengali digits, because people type all three.
+    const digits = phone.replace(/[^\d]/g, '');
+    const local = digits.startsWith('880') ? digits.slice(3) : digits;
+    if (!local) next.phone = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
+    else if (!/^01[3-9]\d{8}$/.test(local)) next.phone = 'সঠিক মোবাইল নম্বর দিন (যেমন ০১৭১২৩৪৫৬৭৮)';
+
+    if (!password) next.password = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
+    else if (password.length < MIN_PASSWORD)
+      next.password = `কমপক্ষে ${MIN_PASSWORD} অক্ষরের পাসওয়ার্ড ব্যবহার করুন`;
+
+    if (!confirmPassword) next.confirmPassword = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
+    else if (password !== confirmPassword) next.confirmPassword = 'দুটি পাসওয়ার্ড মিলছে না';
+
+    setErrors(next);
+    if (Object.keys(next).length > 0) return;
+
+    if (!agreed) {
+      setFormError('চালু করার জন্য শর্তাবলী ও নিরাপত্তা নীতিতে সম্মতি দিন।');
       return;
     }
 
     setLoading(true);
-    const res = await register({
-      fullName,
-      phone,
-      primaryAreaId,
-      password,
-      email: email.trim() || undefined,
-    });
+    let res: { success: boolean; error?: string };
+    try {
+      res = await register({
+        fullName: fullName.trim(),
+        phone: local,
+        primaryAreaId,
+        password,
+        email: email.trim() || undefined,
+      });
+    } catch {
+      res = { success: false };
+    }
     setLoading(false);
 
     if (res.success) {
-      router.push('/profile');
-    } else {
-      setErrorMsg(res.error || 'রেজিস্ট্রেশন ব্যর্থ হয়েছে। পুনরায় চেষ্টা করুন।');
+      setDone(true);
+      return;
     }
+    setFormError(res.error || 'অ্যাকাউন্ট তৈরি করা যায়নি। একটু পরে আবার চেষ্টা করুন।');
   };
 
+  if (done) {
+    return (
+      <div className="flex min-h-screen flex-col bg-mist-50">
+        <Navbar />
+        <main className="flex flex-1 items-center justify-center bg-mist-50 px-4 py-12 sm:px-6">
+          <div className="w-full max-w-md rounded-xl border border-brand-100 bg-white px-6 py-10 text-center shadow-sm">
+            <span
+              aria-hidden="true"
+              className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-700"
+            >
+              <CheckCircle2 className="h-7 w-7" />
+            </span>
+            <h1 className="mt-5 text-xl font-extrabold tracking-tight text-ink-900">
+              অভিনন্দন!
+            </h1>
+            <p className="mx-auto mt-2 max-w-xs text-[14px] leading-relaxed text-ink-500">
+              আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। এখন সেবা খুঁজতে ও নিজের প্রোফাইল সাজাতে পারেন।
+            </p>
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+              <button
+                type="button"
+                onClick={() => router.replace('/profile')}
+                className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-[15px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:w-auto ${LIGHT_FOCUS}`}
+              >
+                শুরু করুন
+              </button>
+              <button
+                type="button"
+                onClick={() => router.replace('/services')}
+                className={`inline-flex min-h-[48px] w-full items-center justify-center rounded-lg border border-brand-200 bg-white px-5 text-[15px] font-bold text-brand-700 transition-colors hover:bg-mist-50 sm:w-auto ${LIGHT_FOCUS}`}
+              >
+                সেবা দেখুন
+              </button>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen flex flex-col bg-mist-50">
+    <div className="flex min-h-screen flex-col bg-mist-50">
       <Navbar />
 
-      <main className="flex-1 flex items-center justify-center px-4 py-8 sm:py-12">
-        <div className="w-full max-w-md">
-          {/* Header */}
-          <div className="text-center mb-6">
-            <div className="w-12 h-12 rounded-2xl bg-emerald-800 text-white flex items-center justify-center font-bold text-2xl shadow-xs mx-auto mb-3">
-              ম
-            </div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 tracking-tight">
-              নতুন অ্যাকাউন্ট তৈরি করুন
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-1.5 max-w-xs mx-auto">
-              একটি অ্যাকাউন্ট থেকেই সব সেবা গ্রহণ এবং প্রয়োজনে সার্ভিস প্রোফাইল সক্রিয় করুন
+      <AuthShell
+        eyebrow="একটি অ্যাকাউন্ট, সব সেবা"
+        title="Mymensingh Sheba-তে যোগ দিন"
+        subtitle="মাত্র কয়েকটি তথ্য দিয়ে অ্যাকাউন্ট তৈরি করুন"
+        supporting="ফর্মটি শুধু আপনাকে সেবা দিতে সাহায্য করে — বাজার, বিজ্ঞাপন বা প্রোফাইলের জন্য কিছু আগে থেকে দিতে হবে না।"
+        formLabel="অ্যাকাউন্ট তৈরি করুন"
+        after={
+          <AuthSwitch question="আগেই অ্যাকাউন্ট আছে?" actionLabel="লগইন করুন" href="/login" />
+        }
+      >
+        <form onSubmit={handleSubmit} noValidate className="space-y-1">
+          {formError && (
+            <p
+              role="alert"
+              className="mb-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900"
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+              {formError}
             </p>
-          </div>
+          )}
 
-          {/* Form Card */}
-          <div className="bg-white rounded-2xl border border-slate-200/90 shadow-sm p-5 sm:p-7">
-            {errorMsg && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-start gap-2">
-                <AlertCircle className="w-4 h-4 text-rose-700 shrink-0 mt-0.5" />
-                <span>{errorMsg}</span>
-              </div>
-            )}
+          <AuthField
+            label="আপনার নাম"
+            value={fullName}
+            onChange={(v) => {
+              setFullName(v);
+              clearError('fullName');
+            }}
+            placeholder="যেমন: রহিমা বেগম"
+            icon={<User className="h-4 w-4" />}
+            autoComplete="name"
+            required
+            error={errors.fullName}
+          />
 
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Full Name */}
-              <div>
-                <label
-                  htmlFor="fullName"
-                  className="block text-xs font-semibold text-slate-800 mb-1.5"
-                >
-                  আপনার পুরো নাম (বাংলা বা ইংরেজি)
-                </label>
-                <div className="relative">
-                  <input
-                    id="fullName"
-                    type="text"
-                    value={fullName}
-                    onChange={(e) => setFullName(e.target.value)}
-                    placeholder="যেমন: তানভীর আহমেদ"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent transition-all"
-                    required
-                  />
-                  <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                </div>
-              </div>
+          <AuthField
+            label="মোবাইল নম্বর"
+            value={phone}
+            onChange={(v) => {
+              setPhone(v);
+              clearError('phone');
+            }}
+            placeholder="০১৭১২৩৪৫৬৭৮"
+            icon={<Phone className="h-4 w-4" />}
+            autoComplete="tel"
+            inputMode="tel"
+            maxLength={14}
+            required
+            error={errors.phone}
+            hint="এই নম্বরেই সেবার আপডেট জানানো হবে।"
+          />
 
-              {/* Mobile Phone */}
-              <div>
-                <label
-                  htmlFor="phone"
-                  className="block text-xs font-semibold text-slate-800 mb-1.5"
-                >
-                  মোবাইল নম্বর (১১ ডিজিট)
-                </label>
-                <div className="relative">
-                  <input
-                    id="phone"
-                    type="tel"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="01711223344"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent transition-all"
-                    required
-                  />
-                  <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1">
-                  এই নম্বরে সার্ভিস সংক্রান্ত প্রয়োজনীয় আপডেট জানানো হবে।
-                </p>
-              </div>
-
-              {/* Primary MCC Area */}
-              <div>
-                <label
-                  htmlFor="primaryArea"
-                  className="block text-xs font-semibold text-slate-800 mb-1.5"
-                >
-                  আপনার এলাকা (ময়মনসিংহ সিটি কর্পোরেশন)
-                </label>
-                <div className="relative">
-                  <select
-                    id="primaryArea"
-                    value={primaryAreaId}
-                    onChange={(e) => setPrimaryAreaId(e.target.value)}
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent transition-all appearance-none"
-                    required
-                  >
-                    {MCC_AREAS.map((area) => (
-                      <option key={area.id} value={area.id}>
-                        {area.nameBn} {area.wardNo ? `(ওয়ার্ড ${area.wardNo})` : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <MapPin className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* Password */}
-              <div>
-                <label
-                  htmlFor="regPassword"
-                  className="block text-xs font-semibold text-slate-800 mb-1.5"
-                >
-                  পাসওয়ার্ড নির্ধারণ করুন
-                </label>
-                <div className="relative">
-                  <input
-                    id="regPassword"
-                    type={showPassword ? 'text' : 'password'}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="কমপক্ষে ৬ অক্ষর লিখুন"
-                    className="w-full pl-10 pr-10 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent transition-all"
-                    required
-                  />
-                  <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                  <button
-                    type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                  >
-                    {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
-                    ) : (
-                      <Eye className="w-4 h-4" />
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* Optional Email */}
-              <div>
-                <label
-                  htmlFor="email"
-                  className="block text-xs font-semibold text-slate-800 mb-1.5"
-                >
-                  ইমেইল ঠিকানা <span className="text-slate-400 font-normal">(ঐচ্ছিক)</span>
-                </label>
-                <div className="relative">
-                  <input
-                    id="email"
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="user@example.com"
-                    className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700 focus:border-transparent transition-all"
-                  />
-                  <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-                </div>
-              </div>
-
-              {/* Terms Checkbox */}
-              <div className="pt-1">
-                <label className="flex items-start gap-2.5 cursor-pointer text-xs text-slate-700">
-                  <input
-                    type="checkbox"
-                    checked={agreeTerms}
-                    onChange={(e) => setAgreeTerms(e.target.checked)}
-                    className="mt-0.5 rounded border-slate-300 text-emerald-800 focus:ring-emerald-700"
-                  />
-                  <span>
-                    আমি নিশ্চিত করছি যে আমি ময়মনসিংহ সিটি কর্পোরেশন এলাকার বাসিন্দা বা এই এলাকার সেবায় আগ্রহী এবং আমি প্ল্যাটফর্মের নিরাপত্তা নীতি মেনে চলবো।
-                  </span>
-                </label>
-              </div>
-
-              {/* Submit CTA */}
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full mt-3 py-3 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-sm transition-all shadow-xs flex items-center justify-center gap-2 active:scale-[0.99] disabled:opacity-70 cursor-pointer"
+          <div>
+            <label
+              htmlFor="primaryArea"
+              className="mb-1.5 flex items-baseline gap-1.5 text-[13px] font-bold text-ink-700"
+            >
+              আপনার এলাকা
+              <span className="text-rose-500">*</span>
+            </label>
+            <div className="relative">
+              <MapPin
+                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
+                aria-hidden="true"
+              />
+              <select
+                id="primaryArea"
+                value={primaryAreaId}
+                onChange={(e) => setPrimaryAreaId(e.target.value)}
+                className={`w-full appearance-none rounded-lg border bg-white py-3 pl-11 pr-9 text-[15px] text-ink-900 transition-colors focus:outline-none ${
+                  errors.primaryAreaId
+                    ? 'border-rose-300 bg-rose-50/50'
+                    : 'border-brand-200 hover:border-brand-300 focus:border-brand-500'
+                } ${LIGHT_FOCUS}`}
               >
-                <span>{loading ? 'অ্যাকাউন্ট তৈরি হচ্ছে...' : 'অ্যাকাউন্ট নিশ্চিত করুন'}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </form>
-
-            {/* Bottom link */}
-            <div className="mt-6 pt-5 border-t border-slate-100 text-center">
-              <p className="text-xs text-slate-600">
-                ইতিমধ্যে অ্যাকাউন্ট আছে?{' '}
-                <Link
-                  href="/login"
-                  className="font-bold text-emerald-800 hover:text-emerald-900 hover:underline inline-flex items-center gap-1 ml-1"
-                >
-                  লগইন করুন
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </Link>
+                {AREAS.map((area) => (
+                  <option key={area.id} value={area.id}>
+                    {area.nameBn}
+                    {area.wardNo ? ` — ওয়ার্ড ${area.wardNo}` : ''}
+                  </option>
+                ))}
+              </select>
+              <svg
+                className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  fillRule="evenodd"
+                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
+                  clipRule="evenodd"
+                />
+              </svg>
+            </div>
+            <div className="mt-1.5 min-h-[18px]">
+              <p className="text-[11.5px] leading-relaxed text-ink-400">
+                কাছের সেবাগুলো আগে দেখানোর জন্য ব্যবহার হবে।
               </p>
             </div>
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-2 text-xs text-slate-500">
-            <ShieldCheck className="w-4 h-4 text-emerald-700 shrink-0" />
-            <span>১০০% এনক্রিপ্টেড ও সুরক্ষিত প্ল্যাটফর্ম</span>
+          <AuthField
+            label="পাসওয়ার্ড"
+            value={password}
+            onChange={(v) => {
+              setPassword(v);
+              clearError('password');
+              if (confirmPassword && v !== confirmPassword)
+                setErrors((p) => ({ ...p, confirmPassword: 'দুটি পাসওয়ার্ড মিলছে না' }));
+            }}
+            placeholder={`কমপক্ষে ${MIN_PASSWORD} অক্ষর`}
+            icon={<Lock className="h-4 w-4" />}
+            autoComplete="new-password"
+            isPassword
+            required
+            error={errors.password}
+            hint={`কমপক্ষে ${MIN_PASSWORD} অক্ষরের পাসওয়ার্ড ব্যবহার করুন`}
+          >
+            <div className="mt-2">
+              <PasswordStrength value={password} />
+            </div>
+          </AuthField>
+
+          <AuthField
+            label="পাসওয়ার্ড আবার লিখুন"
+            value={confirmPassword}
+            onChange={(v) => {
+              setConfirmPassword(v);
+              clearError('confirmPassword');
+            }}
+            placeholder="একই পাসওয়ার্ড আবার লিখুন"
+            icon={<Lock className="h-4 w-4" />}
+            autoComplete="new-password"
+            isPassword
+            required
+            error={errors.confirmPassword}
+          />
+
+          <AuthField
+            label="ইমেইল ঠিকানা"
+            labelSuffix="(ঐচ্ছিক)"
+            type="email"
+            value={email}
+            onChange={setEmail}
+            placeholder="you@example.com"
+            icon={<Mail className="h-4 w-4" />}
+            autoComplete="email"
+            inputMode="email"
+            hint="পাসওয়ার্ড ভুলে গেলে ইমেইলে সাহায্য লাগে।"
+          />
+
+          <label className="flex cursor-pointer items-start gap-2.5 py-1">
+            <input
+              type="checkbox"
+              checked={agreed}
+              onChange={(e) => {
+                setAgreed(e.target.checked);
+                if (e.target.checked) setFormError('');
+              }}
+              className={`mt-0.5 h-4 w-4 shrink-0 rounded border-brand-300 accent-brand-700 ${LIGHT_FOCUS}`}
+            />
+            <span className="text-[12.5px] leading-relaxed text-ink-600">
+              আমি শর্তাবলী ও{' '}
+              <a
+                href="/safety"
+                className={`font-semibold text-brand-700 underline underline-offset-2 ${LIGHT_FOCUS}`}
+              >
+                নিরাপত্তা নীতি
+              </a>{' '}
+              মেনে চলছি।
+            </span>
+          </label>
+
+          <div className="pt-3">
+            <AuthSubmit
+              loading={loading || authLoading}
+              loadingLabel="অ্যাকাউন্ট তৈরি হচ্ছে…"
+              label="অ্যাকাউন্ট তৈরি করুন"
+              icon={<UserPlus className="h-4 w-4" aria-hidden="true" />}
+            />
           </div>
-        </div>
-      </main>
+        </form>
+      </AuthShell>
 
       <Footer />
     </div>

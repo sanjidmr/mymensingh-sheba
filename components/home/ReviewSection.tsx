@@ -344,13 +344,16 @@ export default function ReviewSection() {
 }
 
 function relativeDate(iso: string): string {
-  try {
-    return new Date(iso).toLocaleDateString('bn-BD', {
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    });
-  } catch {
-    return '';
-  }
+  // Hand-formatted rather than toLocaleDateString: Node and the browser carry
+  // different ICU data and render bn-BD differently, which is a hydration
+  // mismatch. See formatBanglaDate in lib/mymensingh-live.ts.
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const months = [
+    'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+    'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর',
+  ];
+  const bn = (n: number) =>
+    String(n).replace(/\d/g, (d2) => '০১২৩৪৫৬৭৮৯'[Number(d2)]);
+  return `${bn(d.getDate())} ${months[d.getMonth()]}, ${bn(d.getFullYear())}`;
 }

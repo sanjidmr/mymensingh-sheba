@@ -86,30 +86,35 @@ export default function DirectoryPageClient({
     };
   }, [serviceKey]);
 
-  const filterGroups = useMemo<FilterGroup[]>(
-    () => [
-      areaFilterGroup(),
-      {
-        id: 'workType',
-        labelBn: serviceUi.workTypeLabel,
-        type: 'multi',
-        compact: true,
-        options: workTypes,
-      },
-      ...(timeSlots
-        ? [
-            {
-              id: 'timeSlot',
-              labelBn: 'পছন্দের সময়',
-              type: 'single' as const,
-              compact: true,
-              options: timeSlots,
-            },
-          ]
-        : []),
-    ],
-    [workTypes, timeSlots, serviceUi.workTypeLabel]
-  );
+  // Pages build `workTypes`/`timeSlots` with an inline `.filter(...)` at the
+  // call site, so their identities change on every server render. Keying the
+  // memo on the serialised contents keeps `filterGroups` referentially stable,
+  // which the URL-mirroring effect in `useDirectoryController` depends on —
+  // otherwise each new payload would retrigger `router.replace` forever.
+  const workTypesKey = JSON.stringify(workTypes);
+  const timeSlotsKey = JSON.stringify(timeSlots ?? null);
+  const filterGroups = useMemo<FilterGroup[]>(() => [
+    areaFilterGroup(),
+    {
+      id: 'workType',
+      labelBn: serviceUi.workTypeLabel,
+      type: 'multi',
+      compact: true,
+      options: workTypes,
+    },
+    ...(timeSlots
+      ? [
+          {
+            id: 'timeSlot',
+            labelBn: 'পছন্দের সময়',
+            type: 'single' as const,
+            compact: true,
+            options: timeSlots,
+          },
+        ]
+      : []),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [workTypesKey, timeSlotsKey, serviceUi.workTypeLabel]);
 
   const searchable = useCallback(
     (p: StaffProfile): SearchableFields => ({

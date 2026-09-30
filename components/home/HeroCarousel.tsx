@@ -27,14 +27,15 @@ const AUTOPLAY_MS = 5500;
 const EASE = 'transform 850ms cubic-bezier(0.22, 1, 0.36, 1)';
 
 function usePrefersReducedMotion() {
-  const [reduced, setReduced] = useState(
-    () =>
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  );
+  // Must start false on both server and client. Reading `matchMedia` in the
+  // state initialiser would make the first client render disagree with the
+  // server HTML for anyone who has reduced motion on, and the transition style
+  // below depends on this value.
+  const [reduced, setReduced] = useState(false);
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    setReduced(mq.matches);
     const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);

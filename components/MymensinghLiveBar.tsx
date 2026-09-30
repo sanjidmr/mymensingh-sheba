@@ -140,7 +140,11 @@ export default function MymensinghLiveBar() {
     status: 'loading',
     value: null,
   });
-  const [nowTick, setNowTick] = useState<number>(() => Date.now());
+  // Fixed initial value, not Date.now(): a different timestamp on the server
+  // and the client makes the rendered date/countdown disagree, which React
+  // reports as a hydration mismatch. The real clock is adopted in the effect
+  // below, before any fetch.
+  const [nowTick, setNowTick] = useState<number>(0);
   const [showWeather, setShowWeather] = useState(false);
   const [showPrayers, setShowPrayers] = useState(false);
 
@@ -188,6 +192,9 @@ export default function MymensinghLiveBar() {
   }, []);
 
   useEffect(() => {
+    // Adopt the real clock after mount so the first client render matches the
+    // server's, then let the fetches and the minute ticker run from there.
+    setNowTick(Date.now());
     const initial = setTimeout(() => {
       loadPrayers();
       loadWeather();
@@ -218,12 +225,17 @@ export default function MymensinghLiveBar() {
     };
   }, [loadPrayers, loadWeather]);
 
-  const today = dhakaTodayParts(nowTick);
+  // `clockReady` gates everything derived from the wall clock. Until the effect
+  // sets a real timestamp, `nowTick` is 0 and any date or countdown built from
+  // it would be nonsense (1970), so those nodes stay empty on the server and on
+  // the first client render, and fill in once the real time is known.
+  const clockReady = nowTick > 0;
+  const today = clockReady ? dhakaTodayParts(nowTick) : null;
 
   let nextPrayer: PrayerTime | null = null;
   let nextEpoch = 0;
   let nextIsTomorrow = false;
-  if (prayers.prayers) {
+  if (prayers.prayers && clockReady) {
     for (const p of prayers.prayers) {
       if (p.epoch > nowTick) {
         nextPrayer = p;
@@ -276,7 +288,7 @@ export default function MymensinghLiveBar() {
               লাইভ · ময়মনসিংহ
             </span>
             <span className="hidden whitespace-nowrap text-[11px] text-brand-100/70 lg:inline">
-              {formatBanglaDate(today)}
+              {today ? formatBanglaDate(today) : ''}
             </span>
             {divider}
 
@@ -481,7 +493,11 @@ export default function MymensinghLiveBar() {
           <div>
             <div className="mb-3 flex items-center justify-between rounded-xl bg-brand-50 px-3.5 py-2.5">
               <span className="text-xs font-semibold text-brand-800">
-                {formatBanglaDate(prayers.date ?? today)}
+                {prayers.date
+                  ? formatBanglaDate(prayers.date)
+                  : today
+                    ? formatBanglaDate(today)
+                    : ''}
               </span>
               <span className="text-[11px] font-medium text-brand-600">
                 {PRAYER_METHOD_NAME} পদ্ধতি

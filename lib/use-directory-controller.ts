@@ -15,6 +15,16 @@ export interface UseDirectoryControllerArgs<T> {
   /** URL param names, when a page's facets differ from their group ids. */
   paramMap?: Record<string, string>;
   defaultSort?: string;
+  /**
+   * Extra sort orders beyond the built-in `newest` / `price_asc` /
+   * `price_desc` / `rating`. Each entry compares two items directly, so a page
+   * can sort on its own domain field (a coaching centre by monthly fee, a WiFi
+   * provider by speed) without the controller knowing what that field means.
+   *
+   * Memoize the object at the call site — it participates in the `results` memo
+   * dependencies, so a fresh literal each render would defeat that memo.
+   */
+  sorters?: Record<string, (a: T, b: T) => number>;
 }
 
 export interface DirectoryController<T> {
@@ -50,6 +60,7 @@ export function useDirectoryController<T>({
   filterGroups,
   paramMap = {},
   defaultSort = 'newest',
+  sorters,
 }: UseDirectoryControllerArgs<T>): DirectoryController<T> {
   const router = useRouter();
   const pathname = usePathname();
@@ -89,18 +100,28 @@ export function useDirectoryController<T>({
   }, []);
 
   // --- URL mirroring (replace, debounced so typing is cheap) ---
+  //
+  // `paramMap` is nearly always written as an inline object literal at the
+  // call site, so its identity changes on every render. Depending on the
+  // object itself would re-run this effect each time, and because the effect
+  // calls `router.replace` that re-render would re-trigger the effect — an
+  // infinite loop that ends in "Maximum update depth exceeded". Depending on
+  // its serialised form makes the effect depend on the map's *contents*, which
+  // is what actually matters.
+  const paramMapKey = JSON.stringify(paramMap);
   useEffect(() => {
     if (firstRun.current) {
       firstRun.current = false;
       return;
     }
+    const map: Record<string, string> = JSON.parse(paramMapKey);
     const params = new URLSearchParams();
     if (query.trim()) params.set('q', query.trim());
     if (sort && sort !== defaultSort) params.set('sort', sort);
     for (const group of filterGroups) {
       const value = filterState[group.id];
       if (value === undefined) continue;
-      const param = paramMap[group.id] ?? group.id;
+      const param = map[group.id] ?? group.id;
       if (Array.isArray(value)) {
         for (const v of value) if (v && v !== 'all') params.append(param, v);
       } else if (value && value !== 'all') {
@@ -108,8 +129,19 @@ export function useDirectoryController<T>({
       }
     }
     const queryString = params.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }, [query, sort, filterState, filterGroups, paramMap, pathname, router, defaultSort]);
+    const nextUrl = queryString ? `${pathname}?${queryString}` : pathname;
+
+    // Bail when the URL would not actually change. A page that rebuilds its
+    // filter groups from props (or any other new-identity dependency) would
+    // otherwise re-run this effect on every navigation, and because
+    // `router.replace` still refetches the RSC payload, that payload hands back
+    // fresh identities — re-triggering the effect until React gives up with
+    // "Maximum update depth exceeded" and the page never leaves its skeleton.
+    if (nextUrl === `${pathname}${searchParams.toString() ? `?${searchParams.toString()}` : ''}`) {
+      return;
+    }
+    router.replace(nextUrl, { scroll: false });
+  }, [query, sort, filterState, filterGroups, paramMapKey, pathname, router, defaultSort, searchParams]);
 
   const setQuery = useCallback((value: string) => setQueryState(value), []);
 
@@ -162,9 +194,17 @@ export function useDirectoryController<T>({
       sorted.sort((a, b) => num(b.record.ranges?.price) - num(a.record.ranges?.price));
     } else if (sort === 'rating') {
       sorted.sort((a, b) => num(b.record.values?.rating) - num(a.record.values?.rating));
+    } else {
+      // Page-specific orders (a coaching centre by monthly fee, a WiFi provider
+      // by speed, a bus by fare) compare the domain object, which is why the
+      // controller never needs to know what those fields are called.
+      const custom = sorters?.[sort];
+      if (custom) {
+        sorted.sort((a, b) => custom(a.item, b.item));
+      }
     }
     return sorted.map((pair) => pair.item);
-  }, [items, query, filterGroups, filterState, sort, searchable, matchable]);
+  }, [items, query, filterGroups, filterState, sort, searchable, matchable, sorters]);
 
   const activeFilterCount = useMemo(() => {
     let total = 0;

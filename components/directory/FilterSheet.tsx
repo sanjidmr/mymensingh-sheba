@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, RotateCcw } from 'lucide-react';
 import { LIGHT_FOCUS, DARK_FOCUS } from '@/components/about/AboutSectionBits';
@@ -45,6 +45,15 @@ export default function FilterSheet({
 }: FilterSheetProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
 
+  // A portal can only be created in the browser, but that is not enough on its
+  // own: a `typeof document === 'undefined'` guard makes the *server* render
+  // null while the first *client* render emits the portal, so React sees a
+  // mismatch and throws away the tree. `mounted` keeps the very first client
+  // render identical to the server's null, and the portal appears on the
+  // following paint.
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
   // Body scroll lock while open.
   useEffect(() => {
     if (!open) return;
@@ -70,7 +79,7 @@ export default function FilterSheet({
     };
   }, [open, onClose]);
 
-  if (typeof document === 'undefined') return null;
+  if (!mounted) return null;
 
   const draftCount = countActiveFilters(groups, draft);
 

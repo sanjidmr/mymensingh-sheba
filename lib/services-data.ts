@@ -102,6 +102,7 @@ iconName: 'GraduationCap',
     categoryType: 'community',
     tagBadge: 'জরুরি সেবা',
     searchPlaceholder: 'রক্তের গ্রুপ ও এলাকা নির্বাচন করুন...',
+    coverImage: '/doner.jpg',
   },
   {
     id: 'gari-auto-cng',

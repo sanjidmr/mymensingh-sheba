@@ -186,9 +186,29 @@ export function weatherLabel(code: number): string {
   return 'পরিবর্তনশীল আকাশ';
 }
 
+const BN_MONTHS = [
+  'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
+  'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর',
+];
+
+const BN_WEEKDAYS = [
+  'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার',
+];
+
+/**
+ * Formats a Dhaka date as "বুধবার, ৩০ সেপ্টেম্বর".
+ *
+ * Deliberately hand-formatted rather than delegating to
+ * `Intl.DateTimeFormat('bn-BD')`. Node and the browser ship different ICU
+ * data, so the two produce different strings for the same date — the server
+ * sends "বুধবার ৩০ সেপ্টেম্বর" while a browser renders "৩০ সেপ্টেম্বর,
+ * বুধবার" — which is a hydration mismatch on every page that shows the date.
+ * Owning the format makes the output byte-identical on both sides.
+ */
 export function formatBanglaDate(parts: DhakaDateParts): string {
-  const local = new Date(parts.y, parts.m, parts.day);
-  return new Intl.DateTimeFormat('bn-BD', { weekday: 'long', day: 'numeric', month: 'long' }).format(local);
+  // UTC midday, so the weekday can never shift with the host timezone.
+  const d = new Date(Date.UTC(parts.y, parts.m, parts.day, 12));
+  return `${BN_WEEKDAYS[d.getUTCDay()]}, ${toBn(parts.day)} ${BN_MONTHS[parts.m]}`;
 }
 
 export const LIVE_FRESHNESS_MS = LIVE_REFRESH_MINUTES * 60 * 1000;

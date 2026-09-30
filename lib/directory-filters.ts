@@ -27,6 +27,14 @@ export interface FilterGroup {
   options: FilterOption[];
   /** Rendered as a horizontal chip row instead of stacked rows. */
   compact?: boolean;
+  /**
+   * A fixed, vocabulary-backed group whose options are the ids a record stores
+   * (a news desk's `category`, a coaching centre's `subject`).
+   *
+   * Optional only so a caller can leave it off; a group with no options renders
+   * as an empty section, so every real group should have at least one.
+   */
+  optionsAreTaxonomy?: boolean;
 }
 
 /** MCC area list, reshaped as a single-select facet. */
