@@ -18,7 +18,6 @@ import {
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 import { adminFetchAllReports, adminUpdateReportStatus, reportTargetLink, type AdminReportRow, type AdminReportStatus } from '@/lib/admin-service';
 
 const TYPE_LABELS: Record<AdminReportRow['type'], { label: string; icon: React.ReactNode }> = {
@@ -84,7 +83,7 @@ export default function AdminReportsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Navbar />
+        
         <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
           <span className="text-sm">রিপোর্ট লোড হচ্ছে...</span>
@@ -95,7 +94,7 @@ export default function AdminReportsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar />
+      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>

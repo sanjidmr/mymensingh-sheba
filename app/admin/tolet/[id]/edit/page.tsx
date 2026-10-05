@@ -8,8 +8,6 @@ import { useAuth } from '@/lib/auth-context';
 import { adminFetchListingById, adminUpdateListing, uploadListingPhotos } from '@/lib/tolet-service';
 import type { ToletListing, ToletListingInput } from '@/lib/tolet-types';
 import { ToletWizardForm } from '@/components/tolet/ToletWizardForm';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 
 interface AdminEditToletListingPageProps {
   params: Promise<{ id: string }>;
@@ -46,12 +44,12 @@ export default function AdminEditToletListingPage({ params }: AdminEditToletList
   if (isLoading || !isAdmin || loading) {
     return (
       <div className="min-h-screen flex flex-col bg-mist-50">
-        <Navbar />
+        
         <main className="flex-1 flex items-center justify-center text-sm text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin text-emerald-700 mr-2" />
           লোড হচ্ছে...
         </main>
-        <Footer />
+        
       </div>
     );
   }
@@ -59,7 +57,7 @@ export default function AdminEditToletListingPage({ params }: AdminEditToletList
   if (error || !listing) {
     return (
       <div className="min-h-screen flex flex-col bg-mist-50">
-        <Navbar />
+        
         <main className="flex-1 flex items-center justify-center p-6">
           <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-sm w-full">
             <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
@@ -73,7 +71,7 @@ export default function AdminEditToletListingPage({ params }: AdminEditToletList
             </Link>
           </div>
         </main>
-        <Footer />
+        
       </div>
     );
   }
@@ -97,7 +95,7 @@ export default function AdminEditToletListingPage({ params }: AdminEditToletList
 
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
-      <Navbar />
+      
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
         <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
           <Link href={`/admin/tolet/${listing.id}`} className="hover:text-emerald-800 flex items-center gap-1">
@@ -126,7 +124,7 @@ export default function AdminEditToletListingPage({ params }: AdminEditToletList
           onDone={() => router.replace(`/admin/tolet/${listing.id}`)}
         />
       </main>
-      <Footer />
+      
     </div>
   );
 }

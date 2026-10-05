@@ -138,6 +138,18 @@ export interface CommunityPost {
   deadline?: string;
   conditionLabel?: string;
   status: PostStatus;
+  /**
+   * Why a moderator rejected this post. Set only by an admin (the service
+   * layer strips it from every author write and a DB trigger refuses to let
+   * a non-admin touch it); readable by the author through their own row so
+   * the dashboard can say *what* to fix instead of just "not approved".
+   */
+  rejectionReason?: string;
+  /**
+   * Hiring organisation for `kind === 'job'` — the company name the reader
+   * sees on the ad. NULL for every other kind.
+   */
+  organizationBn?: string;
   isFeatured: boolean;
   publishedAt?: string;
   createdAt: string;
@@ -161,6 +173,7 @@ export type CommunityPostInput = Omit<
 > & {
   authorPhone?: string | null;
   whatsappNumber?: string | null;
+  rejectionReason?: string | null;
 };
 
 // ---------------------------------------------------------------------------

@@ -17,7 +17,6 @@ import {
   Phone,
   Camera,
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 import { adminFetchTutorProfiles, adminUpdateTutorProfile } from '@/lib/home-tutor-service';
 import { TutorAvatar } from '@/components/home-tutor/TutorCard';
 import type { HomeTutorProfile, TutorProfileStatus } from '@/lib/supabase/types';
@@ -106,7 +105,7 @@ export default function AdminTutorVerificationsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar />
+      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>

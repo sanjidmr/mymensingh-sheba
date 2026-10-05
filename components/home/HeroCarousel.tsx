@@ -8,6 +8,7 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { fetchPublicHeroSlides, type PublicHeroSlide } from '@/lib/hero-service';
 
 /**
  * HeroCarousel — a premium, calm homepage banner.
@@ -20,9 +21,12 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
  * Gentle autoplay, pause on hover/focus, ghost arrows (desktop) and small dots.
  * Respects `prefers-reduced-motion` (autoplay off, no transitions).
  *
- * Imagery: the four existing `/sheba*.png` files — replace the file paths below.
+ * Imagery comes from the `hero_slides` table, which the admin panel manages.
+ * `SLIDES` below is the fallback: it is what renders when the table is empty
+ * (a fresh install) or the database cannot be reached, so the homepage always
+ * has a hero and never a broken image.
  */
-const SLIDES = [
+const SLIDES: PublicHeroSlide[] = [
   { image: '/sheba1.png', caption: 'প্রতিদিনের সেবা, এক জায়গায়' },
   { image: '/sheba2.png', caption: 'বাসা থেকে মেরামত — সবই স্থানীয়' },
   { image: '/sheba3.png', caption: 'ময়মনসিংহের মানুষের হাতেই গড়া' },
@@ -58,10 +62,21 @@ function usePrefersReducedMotion() {
   );
 }
 
-export default function HeroCarousel() {
-  const N = SLIDES.length;
+export default function HeroCarousel({
+  slides,
+}: {
+  /**
+   * Slides from the `hero_slides` table, fetched by the server component that
+   * renders this carousel. When empty or omitted the built-in `SLIDES` array
+   * is used, so a fresh install or an unreachable database still shows the
+   * original homepage hero.
+   */
+  slides?: PublicHeroSlide[];
+}) {
+  const active = slides && slides.length > 0 ? slides : SLIDES;
+  const N = active.length;
   // Cloned track: [last, ...slides, first] — lets the loop wrap invisibly.
-  const track = [SLIDES[N - 1], ...SLIDES, SLIDES[0]];
+  const track = [active[N - 1], ...active, active[0]];
 
   // `real` is the position in the cloned track (1..N are the "real" slides).
   const [real, setReal] = useState(1);
@@ -140,7 +155,7 @@ export default function HeroCarousel() {
             }}
             onTransitionEnd={onTransitionEnd}
           >
-            {track.map((s, i) => (
+            {active.map((s, i) => (
               <div
                 key={`${s.image}-${i}`}
                 className="relative aspect-[16/9] w-full shrink-0"
@@ -189,7 +204,7 @@ export default function HeroCarousel() {
 
           {/* Dots — small, quiet */}
           <div className="absolute bottom-5 right-4 flex items-center gap-1.5 sm:bottom-6 sm:right-6">
-            {SLIDES.map((s, i) => (
+            {active.map((s, i) => (
               <button
                 key={s.image}
                 type="button"

@@ -14,6 +14,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     phone TEXT NOT NULL UNIQUE,
     email TEXT,
     avatar_url TEXT,
+    -- Short self-description, editable from the customer dashboard.
+    bio TEXT,
     primary_area_id TEXT NOT NULL, -- Centralized MCC area id (e.g., 'charpara', 'ganginarpar')
     role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'blocked')),
@@ -23,8 +25,9 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
--- Idempotent upgrade for existing databases (add status column + constraint)
+-- Idempotent upgrade for existing databases (add status + bio columns)
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -1054,6 +1057,57 @@ CREATE INDEX IF NOT EXISTS idx_community_post_reports_post
 CREATE INDEX IF NOT EXISTS idx_community_post_reports_status
     ON public.community_post_reports (status, created_at DESC);
 
+-- --- COMMUNITY POST REPORTS RLS ---
+--
+-- This table previously shipped with no `ENABLE ROW LEVEL SECURITY` and no
+-- policies at all. Supabase grants ALL on new tables to `anon` and
+-- `authenticated`, so with RLS disabled ANY visitor could read the entire
+-- moderation queue (reporter names and reasons) and rewrite rows -- including
+-- setting `status = 'dismissed'`, which removes a report from the very admin
+-- who has to action it. The policies below close that and give the admin panel
+-- the read access it needs. Kept in sync with
+-- supabase/migrations/20261006000000_admin_panel_security.sql.
+ALTER TABLE public.community_post_reports ENABLE ROW LEVEL SECURITY;
+
+-- Guests may file a report (a fake listing is precisely the case where the
+-- reporter has no account), but the row must be well-formed and a signed-in
+-- reporter may only file under their own id.
+DROP POLICY IF EXISTS community_post_reports_insert ON public.community_post_reports;
+CREATE POLICY community_post_reports_insert
+    ON public.community_post_reports
+    FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (
+        length(trim(reporter_name)) >= 2
+        AND length(trim(reason)) >= 2
+        AND (reporter_id IS NULL OR reporter_id = auth.uid())
+    );
+
+-- The admin moderation queue. Without this SELECT policy the table was
+-- unreadable by admins as well as by everyone else.
+DROP POLICY IF EXISTS "Admins read community post reports" ON public.community_post_reports;
+CREATE POLICY "Admins read community post reports"
+    ON public.community_post_reports
+    FOR SELECT
+    TO authenticated
+    USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins manage community post reports" ON public.community_post_reports;
+CREATE POLICY "Admins manage community post reports"
+    ON public.community_post_reports
+    FOR ALL
+    TO authenticated
+    USING (public.is_admin())
+    WITH CHECK (public.is_admin());
+
+-- A reporter may see what became of their own report.
+DROP POLICY IF EXISTS "Reporters read own community post reports" ON public.community_post_reports;
+CREATE POLICY "Reporters read own community post reports"
+    ON public.community_post_reports
+    FOR SELECT
+    TO authenticated
+    USING (reporter_id = auth.uid());
+
 -- 11b. TO-LET LISTING ENGAGEMENT EVENTS
 --
 -- Append-only log of every meaningful action on a listing detail page:
@@ -1386,6 +1440,42 @@ ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'listings' AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin()));
 
+-- --- POST PHOTOS STORAGE ---
+--
+-- The `posts` bucket is referenced by `uploadPostImage()` in
+-- `lib/catalog-service.ts` for every community-post cover / gallery image, so
+-- without it image upload fails at runtime with "Bucket not found". Public for
+-- the same reason `listings` is: an approved post's photo is rendered on a
+-- public page from a stored URL. Writes are scoped to the uploader's own
+-- `<uid>/…` folder, so no account can touch another account's image.
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('posts', 'posts', true)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Post photos are public" ON storage.objects;
+CREATE POLICY "Post photos are public"
+ON storage.objects FOR SELECT
+USING (bucket_id = 'posts');
+
+DROP POLICY IF EXISTS "Authors upload their own post photos" ON storage.objects;
+CREATE POLICY "Authors upload their own post photos"
+ON storage.objects FOR INSERT
+TO authenticated
+WITH CHECK (bucket_id = 'posts' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "Authors update their own post photos" ON storage.objects;
+CREATE POLICY "Authors update their own post photos"
+ON storage.objects FOR UPDATE
+TO authenticated
+USING (bucket_id = 'posts' AND (storage.foldername(name))[1] = auth.uid()::text)
+WITH CHECK (bucket_id = 'posts' AND (storage.foldername(name))[1] = auth.uid()::text);
+
+DROP POLICY IF EXISTS "Authors delete their own post photos" ON storage.objects;
+CREATE POLICY "Authors delete their own post photos"
+ON storage.objects FOR DELETE
+TO authenticated
+USING (bucket_id = 'posts' AND (storage.foldername(name))[1] = auth.uid()::text);
+
 -- 13. NOTIFICATIONS (reusable, simple)
 -- One row per notification. target_role='customer' → the user_id owner receives it.
 -- target_role='admin' → every admin's inbox sees it (admin hub notifications).
@@ -1414,10 +1504,19 @@ TO authenticated
 USING (user_id = auth.uid() OR (target_role = 'admin' AND public.is_admin()));
 
 -- Users may create their own notifications; admins may notify any account.
+--
+-- The `target_role = 'customer'` clause is load-bearing: the admin hub reads
+-- every row with `target_role = 'admin'` (see "Users read own notifications"
+-- above), so without it any signed-in customer could post arbitrary title/body
+-- text straight into an admin's inbox. The database triggers that raise admin
+-- notifications are SECURITY DEFINER and are not subject to this policy.
 CREATE POLICY "Users create own notifications"
 ON public.notifications FOR INSERT
 TO authenticated
-WITH CHECK (user_id = auth.uid() OR public.is_admin());
+WITH CHECK (
+    public.is_admin()
+    OR (user_id = auth.uid() AND target_role = 'customer')
+);
 
 -- Marking read is the only client-side mutation.
 CREATE POLICY "Users mark own notifications read"
@@ -1722,6 +1821,10 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
     price INTEGER,
     -- Job-only fields.
     job_type TEXT,
+    -- Job-only: the hiring organisation / company. Added by the customer
+    -- dashboard migration; NULL for every other kind and for every row
+    -- written before it existed, so no existing post changes meaning.
+    organization_bn TEXT,
     deadline DATE,
     -- Buy-sell-only field.
     condition_label TEXT,
@@ -1739,6 +1842,10 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
     -- Moderation. Customers may only ever insert 'pending'; approval is admin.
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'approved', 'rejected')),
+    -- Why a moderator rejected this post. Set by an admin only; the author
+    -- reads it through the existing "Authors read own posts" policy and it is
+    -- shown on /dashboard. Mirrors tolet_listings.rejection_reason.
+    rejection_reason TEXT,
     is_featured BOOLEAN DEFAULT FALSE,
     published_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
@@ -1879,6 +1986,53 @@ TO authenticated
 USING (public.is_admin())
 WITH CHECK (public.is_admin());
 
+-- --- MODERATION COLUMN GUARD ---
+-- RLS proves the ROW belongs to the caller and forces status = 'pending', but
+-- it does not restrict WHICH columns a caller may write. Without this trigger
+-- an author could insert their own post with is_featured = TRUE (it becomes
+-- featured the moment an admin approves it) or overwrite/clear the rejection
+-- reason a moderator left for them. The service layer strips those fields too,
+-- but frontend stripping is not a security boundary — a crafted PostgREST
+-- request skips it entirely. SECURITY DEFINER so the check can not be routed
+-- around, and non-admins simply get the OLD values restored.
+--
+-- auth.uid() IS NULL means a migration / service-role write: those have no
+-- user session to judge and must keep working (seeds, backfills).
+CREATE OR REPLACE FUNCTION public.community_posts_guard_moderation()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF auth.uid() IS NULL OR public.is_admin() THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        NEW.author_id := auth.uid();
+        NEW.status := 'pending';
+        NEW.is_featured := FALSE;
+        NEW.published_at := NULL;
+        NEW.rejection_reason := NULL;
+    ELSE
+        NEW.author_id := OLD.author_id;
+        -- An author edit always re-enters moderation (matches RLS WITH CHECK),
+        -- but only moderators decide feature/publish/rejection state.
+        NEW.status := 'pending';
+        NEW.is_featured := OLD.is_featured;
+        NEW.published_at := OLD.published_at;
+        NEW.rejection_reason := OLD.rejection_reason;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_community_posts_moderation_guard ON public.community_posts;
+CREATE TRIGGER trg_community_posts_moderation_guard
+BEFORE INSERT OR UPDATE ON public.community_posts
+FOR EACH ROW EXECUTE FUNCTION public.community_posts_guard_moderation();
+
 -- Seller contact for a marketplace item — the ONLY way a buyer's browser ever
 -- reads a seller's number.
 --
@@ -1997,6 +2151,54 @@ DROP TRIGGER IF EXISTS trg_notif_community_post ON public.community_posts;
 CREATE TRIGGER trg_notif_community_post
 AFTER INSERT ON public.community_posts
 FOR EACH ROW EXECUTE FUNCTION public.notif_community_post_inserted();
+
+-- A moderation DECISION tells the author. Before this the only post
+-- notification was the admin hub on insert, so an author had to reload the
+-- dashboard to discover whether their post had been approved — or why it had
+-- not been. Server-side and SECURITY DEFINER, so a client cannot forge one.
+CREATE OR REPLACE FUNCTION public.notif_community_post_status_changed()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF NEW.status = OLD.status THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.status = 'approved' THEN
+        INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+        VALUES (
+            NEW.author_id, 'customer',
+            'আপনার পোস্ট অনুমোদিত হয়েছে',
+            '“' || NEW.title_bn || '” এখন সবার জন্য দেখা যাচ্ছে।',
+            'success', 'community_post', NEW.id::text
+        );
+    ELSIF NEW.status = 'rejected' THEN
+        INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+        VALUES (
+            NEW.author_id, 'customer',
+            'পোস্টটি অনুমোদিত হয়নি',
+            CASE
+                WHEN NULLIF(BTRIM(NEW.rejection_reason), '') IS NOT NULL
+                    THEN '“' || NEW.title_bn || '” অনুমোদিত হয়নি। কারণ: '
+                         || BTRIM(NEW.rejection_reason)
+                         || ' — কারণটি পড়ে সম্পাদনা করে আবার পাঠান।'
+                ELSE '“' || NEW.title_bn || '” অনুমোদিত হয়নি। সম্পাদনা করে আবার পাঠাতে পারেন।'
+            END,
+            'warning', 'community_post', NEW.id::text
+        );
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_notif_community_post_status ON public.community_posts;
+CREATE TRIGGER trg_notif_community_post_status
+AFTER UPDATE OF status ON public.community_posts
+FOR EACH ROW EXECUTE FUNCTION public.notif_community_post_status_changed();
 
 CREATE OR REPLACE FUNCTION public.notif_vehicle_request_inserted()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''

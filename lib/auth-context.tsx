@@ -45,6 +45,10 @@ function notificationLink(n: {
     if (n.relatedType === 'blood_request') return `/admin/blood/${id}`;
     return '/admin/reports';
   }
+  // Customer-facing decisions point at the customer dashboard: a moderation
+  // verdict belongs next to the posts list, not in a generic inbox.
+  if (n.relatedType === 'community_post') return '/dashboard/posts';
+  if (n.relatedType === 'tolet_listing') return '/profile/tolet';
   return '/profile/requests';
 }
 
@@ -72,6 +76,10 @@ interface AuthContextType {
   resetPassword: (phoneOrEmail: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  /** Upload a new profile photo to the owner-scoped `avatars` bucket. */
+  uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string; url?: string }>;
+  /** Change the signed-in user's password via Supabase Auth. */
+  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
   markNotificationsReadAll: () => Promise<void>;
   activateToletProfile: (details: Omit<ToletProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'totalListingsCount' | 'status'>) => Promise<void>;
   activateHomeTutorProfile: (details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>) => Promise<void>;
@@ -428,6 +436,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             phone: updated.phone,
             email: updated.email || null,
             avatar_url: updated.avatarUrl || null,
+            bio: updated.bio || null,
             primary_area_id: updated.primaryAreaId,
             emergency_contact: updated.emergencyContact || null,
             updated_at: updated.updatedAt,
@@ -435,6 +444,51 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', user.id);
       }
     }
+  };
+
+  /**
+   * Profile photo → public `avatars` bucket, under the caller's own uid folder
+   * (the storage policies only allow that folder, so one account can never
+   * overwrite another's photo). The stored public URL is then persisted on the
+   * profile row through the same `updateProfile` path everything else uses.
+   */
+  const uploadAvatar = async (file: File) => {
+    if (!user) return { success: false, error: 'লগইন করতে হবে।' };
+    if (!file.type.startsWith('image/')) {
+      return { success: false, error: 'শুধুমাত্র ছবি ফাইল (JPG, PNG, WebP) দেওয়া যাবে।' };
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      return { success: false, error: 'ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।' };
+    }
+    if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    const client = createClient();
+    if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+
+    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 5);
+    const path = `${user.id}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const { error } = await client.storage.from('avatars').upload(path, file, {
+      contentType: file.type,
+      upsert: false,
+    });
+    if (error) return { success: false, error: `ছবি আপলোড ব্যর্থ হয়েছে: ${error.message}` };
+
+    const { data } = client.storage.from('avatars').getPublicUrl(path);
+    if (!data.publicUrl) return { success: false, error: 'ছবির লিংক তৈরি করা যায়নি।' };
+    await updateProfile({ avatarUrl: data.publicUrl });
+    return { success: true, url: data.publicUrl };
+  };
+
+  /** Sets a new password for the CURRENT session — no reset email needed. */
+  const changePassword = async (newPassword: string) => {
+    if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    const client = createClient();
+    if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    if (newPassword.length < 6) {
+      return { success: false, error: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' };
+    }
+    const { error } = await client.auth.updateUser({ password: newPassword });
+    if (error) return { success: false, error: error.message };
+    return { success: true };
   };
 
   const activateToletProfile = async (
@@ -676,6 +730,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         resetPassword,
         logout,
         updateProfile,
+        uploadAvatar,
+        changePassword,
         markNotificationsReadAll,
         activateToletProfile,
         activateHomeTutorProfile,

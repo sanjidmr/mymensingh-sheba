@@ -17,6 +17,12 @@ export interface ServiceCategory {
   dial?: string;
   /** Man-readable number shown on the call button */
   number?: string;
+  /**
+   * Display order on the public directory. Optional so the built-in catalog
+   * keeps its authored order; the admin panel writes it when an owner
+   * reorders the grid.
+   */
+  sortOrder?: number;
 }
 
 export const LAUNCH_SERVICES: ServiceCategory[] = [

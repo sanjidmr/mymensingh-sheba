@@ -20,8 +20,6 @@ import {
   Inbox,
   BadgeCheck,
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import {
   adminFetchListingById,
   adminUpdateListing,
@@ -119,12 +117,12 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col bg-mist-50">
-        <Navbar />
+        
         <main className="flex-1 flex items-center justify-center text-sm text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin text-emerald-700 mr-2" />
           লোড হচ্ছে...
         </main>
-        <Footer />
+        
       </div>
     );
   }
@@ -132,7 +130,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
   if (error || !listing) {
     return (
       <div className="min-h-screen flex flex-col bg-mist-50">
-        <Navbar />
+        
         <main className="flex-1 flex items-center justify-center p-6">
           <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-sm w-full">
             <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
@@ -146,7 +144,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
             </Link>
           </div>
         </main>
-        <Footer />
+        
       </div>
     );
   }
@@ -165,7 +163,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
 
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
-      <Navbar />
+      
       <main className="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="mb-4 flex items-center gap-2 text-xs text-slate-500 flex-wrap">
           <Link href="/admin" className="hover:text-emerald-800">অ্যাডমিন</Link>
@@ -514,7 +512,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
           </div>
         </div>
       </main>
-      <Footer />
+      
     </div>
   );
 }

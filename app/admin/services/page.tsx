@@ -10,7 +10,6 @@ import { STAFF_SERVICE_UI } from '@/lib/staff-types';
 import { STAFF_ACCENT_CLASSES, staffWorkTypeLabels } from '@/lib/staff-labels';
 import { getAreaById } from '@/lib/locations';
 import { resolveStaffImageUrl } from '@/lib/staff-service';
-import Navbar from '@/components/Navbar';
 
 const SERVICE_SLUGS = ['kajer-bua', 'electrician', 'plumber'] as const;
 
@@ -66,7 +65,7 @@ export default function AdminServicesPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar />
+      
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>

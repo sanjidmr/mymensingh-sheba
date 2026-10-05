@@ -20,7 +20,6 @@ import {
   Eye,
   AlertTriangle,
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 import {
   adminFetchBloodRequestById,
   adminFetchContactReleases,
@@ -148,7 +147,7 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Navbar />
+        
         <div className="flex items-center justify-center gap-3 py-32 text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin text-rose-700" />
           <span className="text-sm">অনুরোধ লোড হচ্ছে...</span>
@@ -160,7 +159,7 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
   if (!req) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Navbar />
+        
         <div className="max-w-lg mx-auto px-4 py-24 text-center">
           <Droplets className="w-10 h-10 text-slate-300 mx-auto mb-4" />
           <h1 className="text-base font-bold text-slate-900">অনুরোধটি পাওয়া যায়নি</h1>
@@ -179,7 +178,7 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar />
+      
       <main className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Link
           href="/admin/blood"

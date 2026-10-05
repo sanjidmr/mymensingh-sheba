@@ -78,7 +78,7 @@ const PUBLIC_LISTING_COLUMNS =
  * a convention rather than a boundary. `fetchMarketContact` is the boundary.
  */
 const PUBLIC_POST_COLUMNS =
-  'id, kind, slug, author_id, author_name, title_bn, summary_bn, body_bn, cover_image_url, gallery, category, area_id, tags, salary_min, salary_max, price, job_type, deadline, condition_label, status, is_featured, published_at, created_at, updated_at';
+  'id, kind, slug, author_id, author_name, title_bn, summary_bn, body_bn, cover_image_url, gallery, category, area_id, tags, salary_min, salary_max, price, job_type, deadline, condition_label, organization_bn, status, is_featured, published_at, created_at, updated_at';
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : '';
@@ -170,6 +170,11 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     jobType: optStr(c.jobType),
     deadline: optStr(c.deadline),
     conditionLabel: optStr(c.conditionLabel),
+    // Author-only fields. `fetchMyPosts`/`fetchMyPostForEdit` select `*` so an
+    // author always sees why a post was rejected; the public column list
+    // deliberately omits `rejection_reason`, so it never reaches a stranger.
+    rejectionReason: optStr(c.rejectionReason),
+    organizationBn: optStr(c.organizationBn),
     status: c.status as CommunityPost['status'],
     isFeatured: Boolean(c.isFeatured),
     publishedAt: optStr(c.publishedAt),
@@ -687,8 +692,15 @@ export async function createCommunityPost(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
 
-  const { status: _ignoredStatus, isFeatured: _ignoredFeature, authorId: _ignoredAuthor, ...rest } =
-    input;
+  // `rejectionReason` is stripped as well: only a moderator may write it, so
+  // an author craftily sending one along must land on nothing.
+  const {
+    status: _ignoredStatus,
+    isFeatured: _ignoredFeature,
+    authorId: _ignoredAuthor,
+    rejectionReason: _ignoredReason,
+    ...rest
+  } = input;
 
   const payload = {
     ...toSnakeObject(rest as Record<string, unknown>),
@@ -719,7 +731,14 @@ export async function updateCommunityPost(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
 
-  const { status: _s, isFeatured: _f, authorId: _a, slug: _slug, ...rest } = patch;
+  const {
+    status: _s,
+    isFeatured: _f,
+    authorId: _a,
+    slug: _slug,
+    rejectionReason: _r,
+    ...rest
+  } = patch;
   const payload = {
     ...toSnakeObject(rest as Record<string, unknown>),
     // An edit re-enters moderation.

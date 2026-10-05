@@ -54,6 +54,11 @@ export interface HomepageService {
   icon: LucideIcon;
   /** Optional CSS utility for the grid cell (e.g. centering a lone last card) */
   layoutClass?: string;
+  /**
+   * Display order within the category. Optional so the built-in catalog keeps
+   * its authored order; the admin panel writes it when an owner reorders cards.
+   */
+  sortOrder?: number;
 }
 
 export type CategoryTone = 'white' | 'mist' | 'dark';

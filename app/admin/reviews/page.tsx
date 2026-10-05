@@ -14,7 +14,6 @@ import {
   ChevronUp,
   Link,
 } from 'lucide-react';
-import Navbar from '@/components/Navbar';
 import { adminFetchTutorReviews, adminUpdateTutorReview } from '@/lib/admin-service';
 import type { TutorReview } from '@/lib/supabase/types';
 
@@ -66,7 +65,7 @@ export default function AdminReviewsPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50">
-        <Navbar />
+        
         <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
           <span className="text-sm">রিভিউ লোড হচ্ছে...</span>
@@ -85,7 +84,7 @@ export default function AdminReviewsPage() {
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <Navbar />
+      
       <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
           <div>

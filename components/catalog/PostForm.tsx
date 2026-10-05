@@ -65,6 +65,7 @@ interface FormValues {
   salaryMin: string;
   salaryMax: string;
   jobType: string;
+  organization: string;
   education: string;
   experience: string;
   deadline: string;
@@ -86,6 +87,7 @@ const EMPTY: FormValues = {
   salaryMin: '',
   salaryMax: '',
   jobType: '',
+  organization: '',
   education: '',
   experience: '',
   deadline: '',
@@ -137,6 +139,7 @@ function seedFrom(post: CommunityPost) {
       salaryMin: post.salaryMin != null ? String(post.salaryMin) : '',
       salaryMax: post.salaryMax != null ? String(post.salaryMax) : '',
       jobType: post.jobType ?? '',
+      organization: post.organizationBn ?? '',
       education: '',
       experience: '',
       deadline: post.deadline ?? '',
@@ -236,6 +239,9 @@ export default function PostForm({
     }
 
     if (kind === 'job') {
+      if (values.organization.trim().length < 2) {
+        next.organization = 'প্রতিষ্ঠানের নাম লিখুন (কমপক্ষে ২ অক্ষর)।';
+      }
       if (!values.jobType) next.jobType = 'চাকরির ধরন বেছে নিন।';
       const min = values.salaryMin.trim() ? Number(values.salaryMin) : null;
       const max = values.salaryMax.trim() ? Number(values.salaryMax) : null;
@@ -342,6 +348,7 @@ export default function PostForm({
         salaryMin: kind === 'job' && values.salaryMin ? Number(values.salaryMin) : undefined,
         salaryMax: kind === 'job' && values.salaryMax ? Number(values.salaryMax) : undefined,
         jobType: kind === 'job' ? values.jobType : undefined,
+        organizationBn: kind === 'job' ? values.organization.trim() || undefined : undefined,
         deadline: kind === 'job' && values.deadline ? values.deadline : undefined,
         conditionLabel: kind === 'buy_sell' ? values.condition : undefined,
       };
@@ -459,6 +466,14 @@ export default function PostForm({
             : 'পোস্টটি অ্যাডমিন অনুমোদনের পর সবার জন্য দেখা যাবে। অনুমোদনের আগে আপনি নিজেই দেখতে পাবেন।'}
         </p>
 
+        {/* Why this post came back — the whole point of editing a rejected
+            submission is knowing what to fix. */}
+        {editing?.status === 'rejected' && editing.rejectionReason && (
+          <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-[12.5px] font-medium leading-relaxed text-red-900">
+            <strong>অনুমোদিত হয়নি —</strong> {editing.rejectionReason}
+          </p>
+        )}
+
         <form onSubmit={handleSubmit} className="mt-4 space-y-3.5" noValidate>
           <Field
             id="title"
@@ -532,6 +547,25 @@ export default function PostForm({
 
           {kind === 'job' && (
             <>
+              <Field
+                id="organization"
+                label="প্রতিষ্ঠানের নাম"
+                required
+                error={errors.organization}
+                hint="যে প্রতিষ্ঠান/কোম্পানিতে নিয়োগ দেওয়া হচ্ছে।"
+              >
+                <input
+                  id="field-organization"
+                  type="text"
+                  value={values.organization}
+                  onChange={(e) => set('organization', e.target.value)}
+                  maxLength={120}
+                  placeholder="যেমন: ময়মনসিংহ ইন্টারন্যাশনাল স্কুল"
+                  aria-invalid={Boolean(errors.organization)}
+                  className={inputClass(Boolean(errors.organization))}
+                />
+              </Field>
+
               <Field id="jobType" label="চাকরির ধরন" required error={errors.jobType}>
                 <select
                   id="field-jobType"

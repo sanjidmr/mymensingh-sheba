@@ -78,6 +78,8 @@ export interface UserProfile {
   status: UserAccountStatus;
   isVerified: boolean;
   emergencyContact?: string;
+  /** Short self-description shown on the customer dashboard profile. */
+  bio?: string;
   createdAt: string;
   updatedAt: string;
 }

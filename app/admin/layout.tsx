@@ -1,26 +1,44 @@
-'use client';
+import type { Metadata } from 'next';
+import { requireAdmin } from '@/lib/admin/guard';
+import AdminShell from '@/components/admin/AdminShell';
+import { ToastProvider } from '@/components/admin/ToastProvider';
+import { fetchAdminBadgeCounts } from '@/lib/admin/queries';
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/auth-context';
+export const metadata: Metadata = {
+  title: 'অ্যাডমিন কন্ট্রোল',
+  robots: { index: false, follow: false },
+};
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  const router = useRouter();
-  const { isLoading, isAdmin } = useAuth();
+/**
+ * The admin console's server-side gate.
+ *
+ * This replaces the old client-side redirect, which ran only after the page
+ * bundle had already been downloaded and derived `isAdmin` from the browser's
+ * copy of the session. Now the role is resolved here, before any admin markup
+ * or admin data is rendered or serialised.
+ *
+ * `requireAdmin()` redirects to `/login` when there is no session and to `/`
+ * when there is a session that is not an admin. It throws, so the `session`
+ * below is non-nullable for every child route.
+ *
+ * `dynamic` matters: without it Next may cache this layout's render and serve
+ * a stale authorisation decision.
+ */
+export const dynamic = 'force-dynamic';
 
-  useEffect(() => {
-    if (!isLoading && !isAdmin) {
-      router.replace('/');
-    }
-  }, [isLoading, isAdmin, router]);
+export default async function AdminLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  const session = await requireAdmin();
+  const badges = await fetchAdminBadgeCounts();
 
-  if (isLoading || !isAdmin) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-mist-50 text-sm text-slate-500">
-        লোড হচ্ছে...
-      </div>
-    );
-  }
-
-  return <>{children}</>;
+  return (
+    <ToastProvider>
+      <AdminShell adminName={session.fullName} badges={badges}>
+        {children}
+      </AdminShell>
+    </ToastProvider>
+  );
 }

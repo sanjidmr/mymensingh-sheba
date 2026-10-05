@@ -1,16 +1,48 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Phone, Mail, ShieldCheck, Facebook, MessageCircle } from 'lucide-react';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
-import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
+import { CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
+import {
+  mergeSiteContact,
+  mergeLaunchServices,
+  type SiteContentOverrides,
+} from '@/lib/site-content';
 
+/**
+ * The public footer.
+ *
+ * A Server Component so the admin's contact and service-catalog overrides are
+ * applied before render. The contact block still honours the honesty rule in
+ * `lib/site-contact.ts`: until a real number is published, the footer offers a
+ * link to the contact form rather than a `tel:` link to a number that does not
+ * exist.
+ */
 export default function Footer() {
   const currentYear = 2026;
+  const [overrides, setOverrides] = useState<SiteContentOverrides>();
 
-  const serviceLinks = LAUNCH_SERVICES.filter(
+  useEffect(() => {
+    let active = true;
+    fetch('/api/site-content', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        if (active && payload?.overrides) setOverrides(payload.overrides);
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const contact = mergeSiteContact(overrides);
+  const services = mergeLaunchServices(LAUNCH_SERVICES, overrides?.launch_services);
+
+  const serviceLinks = services.filter(
     (s) => ['tolet', 'kajer-bua', 'electrician', 'plumber', 'home-moving', 'home-tutor', 'blood-donor'].includes(s.slug)
   );
 
@@ -69,10 +101,10 @@ export default function Footer() {
                   number that isn't published — the same rule the /contact page
                   follows. Previously this was a dead tel: link to an invented
                   number while /contact said none existed. */}
-              {SITE_CONTACT.phone ? (
-                <a href={`tel:${SITE_CONTACT.phone}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
+              {contact.phone ? (
+                <a href={`tel:${contact.phone}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
                   <Phone className="h-4 w-4 text-brand-300" />
-                  {SITE_CONTACT.phone}
+                  {contact.phone}
                 </a>
               ) : (
                 <Link href={`/contact#${CONTACT_FORM_ANCHOR}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
@@ -80,27 +112,61 @@ export default function Footer() {
                   বার্তা পাঠান
                 </Link>
               )}
-              <a href={`mailto:${SITE_CONTACT.email}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
+              <a href={`mailto:${contact.email}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
                 <Mail className="h-4 w-4 text-brand-300" />
-                {SITE_CONTACT.email}
+                {contact.email}
               </a>
             </div>
 
             <div className="mt-6 flex items-center gap-2.5">
-              <a
-                href="/contact"
-                aria-label="Facebook"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-bronze-400/25 bg-white/[0.04] text-brand-100/80 transition-colors hover:border-bronze-400/60 hover:bg-brand-700 hover:text-white"
-              >
-                <Facebook className="h-4 w-4" />
-              </a>
-              <a
-                href="/contact"
-                aria-label="Messenger"
-                className="flex h-9 w-9 items-center justify-center rounded-xl border border-bronze-400/25 bg-white/[0.04] text-brand-100/80 transition-colors hover:border-bronze-400/60 hover:bg-brand-700 hover:text-white"
-              >
-                <MessageCircle className="h-4 w-4" />
-              </a>
+              {contact.socials.length > 0 ? (
+                contact.socials.map((social) =>
+                  social.href ? (
+                    <a
+                      key={social.labelBn}
+                      href={social.href}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={social.labelBn}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-bronze-400/25 bg-white/[0.04] text-brand-100/80 transition-colors hover:border-bronze-400/60 hover:bg-brand-700 hover:text-white"
+                    >
+                      {social.icon === 'messenger' ? (
+                        <MessageCircle className="h-4 w-4" />
+                      ) : (
+                        <Facebook className="h-4 w-4" />
+                      )}
+                    </a>
+                  ) : (
+                    <span
+                      key={social.labelBn}
+                      title="শীঘ্রই যুক্ত হবে"
+                      aria-label={`${social.labelBn} — শীঘ্রই`}
+                      className="flex h-9 w-9 items-center justify-center rounded-xl border border-dashed border-bronze-400/25 text-brand-100/40"
+                    >
+                      {social.icon === 'messenger' ? (
+                        <MessageCircle className="h-4 w-4" />
+                      ) : (
+                        <Facebook className="h-4 w-4" />
+                      )}
+                    </span>
+                  )
+                )
+              ) : (
+                <>
+                  <span
+                    title="শীঘ্রই যুক্ত হবে"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-dashed border-bronze-400/25 text-brand-100/40"
+                  >
+                    <Facebook className="h-4 w-4" />
+                  </span>
+                  <span
+                    title="শীঘ্রই যুক্ত হবে"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl border border-dashed border-bronze-400/25 text-brand-100/40"
+                  >
+                    <MessageCircle className="h-4 w-4" />
+                  </span>
+                </>
+              )}
             </div>
           </div>
 

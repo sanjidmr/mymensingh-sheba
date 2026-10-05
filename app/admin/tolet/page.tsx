@@ -4,8 +4,6 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Settings, CheckCircle2, Save, Search, Loader2, ShieldCheck } from 'lucide-react';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import {
   getToletFeeRules,
   loadToletFeeRules,
@@ -88,7 +86,7 @@ export default function AdminToletPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
-      <Navbar />
+      
       <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
         <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-6">
           <Link href="/" className="hover:text-emerald-800">হোম</Link>
@@ -296,7 +294,7 @@ export default function AdminToletPage() {
           </div>
         </div>
       </main>
-      <Footer />
+      
     </div>
   );
 }

@@ -5,8 +5,6 @@ import { useAuth } from '@/lib/auth-context';
 import { adminFetchStaffProfileById } from '@/lib/staff-service';
 import type { StaffProfile } from '@/lib/staff-types';
 import StaffProfileForm from '@/components/admin/StaffProfileForm';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { AlertTriangle } from 'lucide-react';
@@ -45,12 +43,12 @@ export default function AdminEditStaffProfilePage({ params }: AdminEditStaffProf
   if (isLoading || !isAdmin || loading) {
     return (
       <div className="min-h-screen flex flex-col bg-mist-50">
-        <Navbar />
+        
         <main className="flex-1 flex items-center justify-center text-sm text-slate-500">
           <Loader2 className="w-5 h-5 animate-spin text-emerald-700 mr-2" />
           লোড হচ্ছে...
         </main>
-        <Footer />
+        
       </div>
     );
   }
@@ -58,7 +56,7 @@ export default function AdminEditStaffProfilePage({ params }: AdminEditStaffProf
   if (error || !profile) {
     return (
       <div className="min-h-screen flex flex-col bg-mist-50">
-        <Navbar />
+        
         <main className="flex-1 flex items-center justify-center p-6">
           <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-sm w-full">
             <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
@@ -72,7 +70,7 @@ export default function AdminEditStaffProfilePage({ params }: AdminEditStaffProf
             </Link>
           </div>
         </main>
-        <Footer />
+        
       </div>
     );
   }
