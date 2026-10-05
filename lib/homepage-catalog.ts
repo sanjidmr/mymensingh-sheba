@@ -126,7 +126,7 @@ export const DAILY_CATEGORY: HomepageCategory = {
       name: 'এসি ও ফ্রিজ মেরামত',
       en: 'Cooling Repair',
       text: 'এসি সার্ভিসিং থেকে ফ্রিজ মেরামত — ঘরের শীতলতা নিয়ে থাকুন নিশ্চিত।',
-      href: '/services?q=এসি',
+      href: '/ac-fridge',
       image: '/ac.png',
       chips: ['এসি', 'ফ্রিজ'],
       cta: 'মেরামত দেখুন',

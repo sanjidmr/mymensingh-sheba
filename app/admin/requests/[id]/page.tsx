@@ -354,7 +354,7 @@ export default function AdminRequestDetailPage({
             {req.description && (
               <div className="sm:col-span-2">
                 <strong className="text-slate-400 block mb-1">বিবরণ</strong>
-                <div className="p-3 bg-slate-50 rounded-xl text-slate-700">{req.description}</div>
+                <div className="p-3 bg-slate-50 rounded-xl text-slate-700 whitespace-pre-line">{req.description}</div>
               </div>
             )}
             {req.quotation && (

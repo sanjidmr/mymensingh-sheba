@@ -47,11 +47,22 @@ const STATUS_CONFIGS: Record<
 const SERVICE_FILTERS = [
   { id: 'all', labelBn: 'সব সেবা' },
   { id: 'home-moving', labelBn: 'বাসা পাল্টানো' },
+  { id: 'basha-paltano', labelBn: 'বাসা পাল্টানো (নতুন পেজ)' },
   { id: 'kajer-bua', labelBn: 'কাজের বুয়া' },
   { id: 'electrician', labelBn: 'Electrician' },
   { id: 'plumber', labelBn: 'Plumber' },
+  { id: 'ac-fridge', labelBn: 'এসি ও ফ্রিজ' },
   { id: 'home-tutor', labelBn: 'গৃহশিক্ষক' },
 ];
+
+/**
+ * Bangla labels for slugs that have no staff-directory entry behind them, so
+ * their rows do not fall back to showing the raw slug to the admin.
+ */
+const EXTRA_SERVICE_LABELS: Record<string, string> = {
+  'basha-paltano': 'বাসা পাল্টানো',
+  'ac-fridge': 'এসি ও ফ্রিজ',
+};
 
 function AdminRequestsContent() {
   const searchParams = useSearchParams();
@@ -243,7 +254,7 @@ function AdminRequestsContent() {
                           </span>
                         ) : (
                           <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-medium ${accent.chip}`}>
-                            {ui?.nameBn || req.serviceSlug}
+                            {ui?.nameBn || EXTRA_SERVICE_LABELS[req.serviceSlug] || req.serviceSlug}
                           </span>
                         )}
                       </div>
