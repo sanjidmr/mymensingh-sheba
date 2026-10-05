@@ -194,8 +194,13 @@ export default function MymensinghLiveBar() {
   useEffect(() => {
     // Adopt the real clock after mount so the first client render matches the
     // server's, then let the fetches and the minute ticker run from there.
-    setNowTick(Date.now());
+    //
+    // Deferred into the same 0ms timeout as the fetches rather than being set
+    // synchronously here: the deferral is what avoids the hydration mismatch,
+    // and `setNowTick` in the effect body itself is a synchronous setState,
+    // which cascades a re-render before the browser has painted anything.
     const initial = setTimeout(() => {
+      setNowTick(Date.now());
       loadPrayers();
       loadWeather();
     }, 0);

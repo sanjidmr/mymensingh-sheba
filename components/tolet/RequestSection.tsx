@@ -50,76 +50,105 @@ export function RequestSection({ listingId, user }: RequestSectionProps) {
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
-      <div className="flex items-center gap-2 text-xs font-semibold text-emerald-800 mb-2">
-        <Lock className="w-4 h-4 text-emerald-700" />
+    <section
+      aria-labelledby="tolet-request-heading"
+      className="rounded-xl border border-brand-100 bg-white p-4 sm:p-5"
+    >
+      <p className="flex items-center gap-1.5 text-[11.5px] font-bold text-brand-700">
+        <Lock className="h-3.5 w-3.5 text-brand-600" aria-hidden="true" />
         <span>নিরাপদ যোগাযোগ প্রোটোকল</span>
-      </div>
-      <h4 className="text-base font-bold text-slate-900 mb-2">বাসা দেখার অনুরোধ পাঠান</h4>
-      <p className="text-xs text-slate-600 mb-4 leading-relaxed">
+      </p>
+
+      <h2
+        id="tolet-request-heading"
+        className="mt-1.5 text-[15px] font-extrabold text-ink-900 sm:text-[17px]"
+      >
+        বাসা দেখার অনুরোধ পাঠান
+      </h2>
+
+      <p className="mt-1.5 text-[11.5px] leading-relaxed text-ink-500">
         স্প্যাম ও হয়রানি রোধে মালিকের ফোন নম্বর সরাসরি উন্মুক্ত নয়। আপনার অনুরোধ প্ল্যাটফর্মের মাধ্যমে
         বিজ্ঞাপনদাতার কাছে পৌঁছাবে।
       </p>
 
       {requestSent ? (
-        <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-center">
-          <CheckCircle2 className="w-8 h-8 text-emerald-700 mx-auto mb-2" />
-          <div className="font-bold mb-1">অনুরোধ জমা হয়েছে!</div>
-          <p className="text-xs text-emerald-800 leading-relaxed">
+        <div className="mt-3.5 rounded-lg border border-brand-200 bg-brand-50 px-3.5 py-3.5 text-center">
+          <CheckCircle2 className="mx-auto mb-2 h-7 w-7 text-brand-600" aria-hidden="true" />
+          <div className="text-[13px] font-extrabold text-brand-900">অনুরোধ জমা হয়েছে!</div>
+          <p className="mt-1 text-[11.5px] leading-relaxed text-brand-800">
             আপনার তথ্য বিজ্ঞাপনদাতার কাছে পাঠানো হয়েছে। তিনি শীঘ্রই যোগাযোগ করবেন।
           </p>
-          <Link href="/profile/requests" className="underline font-semibold text-xs inline-block mt-2">
+          <Link
+            href="/profile/requests"
+            className="mt-2 inline-block text-[11.5px] font-bold text-brand-800 underline underline-offset-2"
+          >
             আমার অনুরোধ দেখুন
           </Link>
         </div>
       ) : !user ? (
-        <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
-          <Lock className="w-6 h-6 mx-auto mb-2 text-slate-400" />
-          <p className="text-xs text-slate-600 mb-3 leading-relaxed">
+        <div className="mt-3.5 rounded-lg border border-brand-100 bg-mist-50 px-3.5 py-3.5 text-center">
+          <Lock className="mx-auto mb-2 h-6 w-6 text-brand-400" aria-hidden="true" />
+          <p className="mb-3 text-[11.5px] leading-relaxed text-ink-500">
             বাসা দেখার অনুরোধ পাঠাতে অ্যাকাউন্টে লগইন করুন। আপনার তথ্য গোপন রাখা হবে।
           </p>
-          <div className="flex gap-2 justify-center">
-            <Link href="/login" className="px-4 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold">
+          <div className="flex flex-wrap justify-center gap-2">
+            <Link
+              href="/login"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg bg-brand-700 px-4 text-[12.5px] font-bold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:flex-none"
+            >
               লগইন করুন
             </Link>
-            <Link href="/register" className="px-4 py-2 rounded-xl border border-emerald-800 text-emerald-900 text-xs font-semibold">
+            <Link
+              href="/register"
+              className="inline-flex min-h-11 flex-1 items-center justify-center rounded-lg border border-brand-300 bg-white px-4 text-[12.5px] font-bold text-brand-800 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:flex-none"
+            >
               অ্যাকাউন্ট খুলুন
             </Link>
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+        <form onSubmit={handleSubmit} className="mt-3.5 space-y-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">আপনার নাম:</label>
+              <label htmlFor="tolet-req-name" className="mb-1 block text-[11.5px] font-bold text-ink-700">
+                আপনার নাম
+              </label>
               <input
+                id="tolet-req-name"
                 type="text"
                 required
                 value={visitorName}
                 onChange={(e) => setVisitorName(e.target.value)}
                 placeholder="পূর্ণ নাম"
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                className={inputClass}
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">মোবাইল নম্বর:</label>
+              <label htmlFor="tolet-req-phone" className="mb-1 block text-[11.5px] font-bold text-ink-700">
+                মোবাইল নম্বর
+              </label>
               <input
+                id="tolet-req-phone"
                 type="tel"
+                inputMode="tel"
                 required
                 value={visitorPhone}
                 onChange={(e) => setVisitorPhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                className={inputClass}
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">আপনার এলাকা (ঐচ্ছিক):</label>
+            <label htmlFor="tolet-req-area" className="mb-1 block text-[11.5px] font-bold text-ink-700">
+              আপনার এলাকা <span className="font-medium text-ink-400">(ঐচ্ছিক)</span>
+            </label>
             <select
+              id="tolet-req-area"
               value={visitorArea}
               onChange={(e) => setVisitorArea(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className={inputClass}
             >
               <option value="">এলাকা নির্বাচন করুন</option>
               {getAllMCCAreas({ activeOnly: true }).map((a) => (
@@ -131,11 +160,14 @@ export function RequestSection({ listingId, user }: RequestSectionProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">পছন্দের সময়:</label>
+            <label htmlFor="tolet-req-time" className="mb-1 block text-[11.5px] font-bold text-ink-700">
+              পছন্দের সময়
+            </label>
             <select
+              id="tolet-req-time"
               value={preferredTime}
               onChange={(e) => setPreferredTime(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className={inputClass}
             >
               <option value="">যেকোনো সময়</option>
               {PREFERRED_TIMES.map((t) => (
@@ -147,28 +179,43 @@ export function RequestSection({ listingId, user }: RequestSectionProps) {
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">প্রশ্ন বা নোট (ঐচ্ছিক):</label>
+            <label htmlFor="tolet-req-note" className="mb-1 block text-[11.5px] font-bold text-ink-700">
+              প্রশ্ন বা নোট <span className="font-medium text-ink-400">(ঐচ্ছিক)</span>
+            </label>
             <textarea
+              id="tolet-req-note"
               rows={2}
               value={visitorNote}
               onChange={(e) => setVisitorNote(e.target.value)}
               placeholder="যেমন: শুক্রবার বিকেলে দেখতে চাই..."
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
+              className={`${inputClass} min-h-[4.5rem] resize-y`}
             />
           </div>
 
-          {requestError && <p className="text-xs text-rose-600">{requestError}</p>}
+          {requestError && (
+            <p role="alert" className="text-[11.5px] font-semibold text-rose-700">
+              {requestError}
+            </p>
+          )}
 
           <button
             type="submit"
             disabled={submitting}
-            className="w-full py-3 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-sm flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-60"
+            className="flex min-h-12 w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-[13.5px] font-extrabold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 disabled:opacity-60"
           >
-            {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            {submitting ? (
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+            ) : (
+              <Send className="h-4 w-4" aria-hidden="true" />
+            )}
             <span>{submitting ? 'পাঠানো হচ্ছে...' : 'অনুরোধ পাঠান'}</span>
           </button>
         </form>
       )}
-    </div>
+    </section>
   );
 }
+
+/** One field style, so name / phone / area / time / note can never drift apart. */
+const inputClass =
+  'w-full rounded-lg border border-brand-200 bg-white px-3 py-2.5 text-[13px] text-ink-900 placeholder:text-ink-300 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/25';

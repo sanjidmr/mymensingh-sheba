@@ -211,48 +211,9 @@ export function JobCard({ post }: { post: CommunityPost }) {
   );
 }
 
-// ---------------------------------------------------------------------------
-// Buy-sell — 2-up phone, 5-up desktop
-// ---------------------------------------------------------------------------
-
-export function MarketCard({ post }: { post: CommunityPost }) {
-  return (
-    <Link href={`/buy-sell/${post.slug}`} className={CARD_BASE}>
-      <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-mist-100">
-        <ListingMedia src={post.coverImageUrl} alt={post.titleBn} label={post.titleBn} />
-        {post.isFeatured && (
-          <span className="absolute left-1.5 top-1.5 rounded-md bg-accent-400 px-1.5 py-[3px] text-[10px] font-extrabold text-brand-950 shadow-sm">
-            ফিচার্ড
-          </span>
-        )}
-        {post.status !== 'approved' && (
-          <span className="absolute right-1.5 top-1.5">
-            <StatusBadge status={post.status} />
-          </span>
-        )}
-      </div>
-
-      <div className="flex min-w-0 flex-col p-2 sm:p-2.5">
-        {post.price != null && (
-          <p className="truncate text-[13px] font-extrabold leading-none tracking-tight text-brand-800 sm:text-sm">
-            {bnTaka(post.price)}
-          </p>
-        )}
-        <h3 className="mt-1 line-clamp-2 text-[11.5px] font-bold leading-snug text-ink-900 sm:text-[13px]">
-          {post.titleBn}
-        </h3>
-        <div className="mt-1 flex items-center justify-between gap-1.5">
-          <AreaLine areaId={post.areaId} />
-          {post.conditionLabel && (
-            <span className="shrink-0 truncate text-[10px] text-ink-400">
-              {post.conditionLabel}
-            </span>
-          )}
-        </div>
-      </div>
-    </Link>
-  );
-}
+// The buy-sell card used to live here too. It is now
+// `components/buy-sell/ProductCard`, which carries the seller name and the
+// posted date that this one had no room for.
 
 // ---------------------------------------------------------------------------
 // The compact card used in "my posts"

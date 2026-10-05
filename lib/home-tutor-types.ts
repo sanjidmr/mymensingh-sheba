@@ -1,9 +1,11 @@
 import type {
   HomeTutorProfile,
   TutorAvailability,
+  TutorEducationStatus,
   TutorProfileStatus,
   TutorTeachingMode,
 } from '@/lib/supabase/types';
+import { toBn } from '@/lib/catalog-types';
 
 // =========================================================================
 //  HOME TUTOR (গৃহশিক্ষক) DOMAIN MODULE
@@ -82,11 +84,131 @@ export interface TutorJoin {
   note: string;
 }
 
+/**
+ * Monthly fee, in Bangla, for a tutor profile.
+ *
+ * The three shapes a real tutor quotes, and all three have to read naturally:
+ *   - a fixed fee            → "৳৫,০০০ (মাসিক)"
+ *   - a band                → "৳৫,০০০ – ৳৭,০০০ (মাসিক)"
+ *   - an open end            → "৳৫,০০০ + (আলোচনা সাপেক্ষে)"
+ *
+ * `min === max` is the fixed case and is common enough to matter: a tutor who
+ * quotes one number is the single most common row in the directory, and printing
+ * "৳৫,০০০ – ৳৫,০০০" for it looks like a bug rather than a quote.
+ */
 export function formatTutorFee(min: number, max: number): string {
   if (!min && !max) return 'আলোচনা সাপেক্ষে';
   if (min && !max) return `৳${min.toLocaleString('bn-BD')} + (আলোচনা সাপেক্ষে)`;
   if (!min) return `৳${max.toLocaleString('bn-BD')} এর নিচে`;
-  return `৳${min.toLocaleString('bn-BD')} – ${max.toLocaleString('bn-BD')} (মাসিক)`;
+  if (min === max) return `৳${min.toLocaleString('bn-BD')} (মাসিক)`;
+  return `৳${min.toLocaleString('bn-BD')} – ৳${max.toLocaleString('bn-BD')} (মাসিক)`;
+}
+
+/**
+ * The five class bands a Bangladeshi home tutor actually quotes for.
+ *
+ * This is an ORDERING aid, not a display taxonomy. `preferredClasses` stores
+ * whatever the tutor typed — "১ম – ৫ম শ্রেণি", "ক্লাস ৩", "প্রাইমারি" — so the
+ * detail page must render those strings verbatim rather than force them into a
+ * fixed vocabulary and mangle them. What this list buys is a sensible order for
+ * the chips: primary first, admission last, which is the order a parent reads
+ * them in. Anything unrecognised keeps its place at the end, still rendered as
+ * typed, so no value is ever dropped.
+ */
+export const TUTOR_CLASS_LEVELS: { id: string; labelBn: string; needles: string[] }[] = [
+  {
+    id: 'primary',
+    labelBn: '১ম – ৫ম শ্রেণি',
+    needles: ['১ম', '১-৫', '১০ম', 'প্রাইমারি', 'primary', 'ক্লাস ১', 'ক্লাস ২', 'ক্লাস ৩', 'ক্লাস ৪', 'ক্লাস ৫'],
+  },
+  {
+    id: 'middle',
+    labelBn: '৬ষ্ঠ – ৮ম শ্রেণি',
+    needles: ['৬ষ্ঠ', '৬-৮', '৮ম', 'মাধ্যমিক', 'middle'],
+  },
+  {
+    id: 'ssc',
+    labelBn: '৯ম – ১০ম শ্রেণি (SSC)',
+    needles: ['৯ম', '৯-১০', 'দশম', 'এসএসসি', 'ssc'],
+  },
+  {
+    id: 'hsc',
+    labelBn: 'একাদশ – দ্বাদশ শ্রেণি (HSC)',
+    needles: ['একাদশ', 'দ্বাদশ', 'এইচএসসি', 'hsc', '১১', '১২'],
+  },
+  {
+    id: 'admission',
+    labelBn: 'ভর্তি পরীক্ষা',
+    needles: ['ভর্তি', 'এডমিশন', 'admission', 'পরীক্ষা'],
+  },
+];
+
+/** Index of a stored class string in the canonical order, or Infinity. */
+function classLevelRank(value: string): number {
+  const haystack = value.toLowerCase();
+  const index = TUTOR_CLASS_LEVELS.findIndex((band) =>
+    band.needles.some((needle) => haystack.includes(needle.toLowerCase()))
+  );
+  return index === -1 ? Number.POSITIVE_INFINITY : index;
+}
+
+/**
+ * The class strings a tutor declared, in primary-to-admission order.
+ *
+ * Duplicates are dropped and unrecognised values are kept verbatim, because a
+ * band this list has never heard of is still something the tutor said they
+ * teach, and hiding it would be the page quietly narrowing what they offer.
+ */
+export function sortTutorClasses(classes: string[]): string[] {
+  const seen = new Set<string>();
+  return classes
+    .map((value) => value.trim())
+    .filter((value) => {
+      if (!value || seen.has(value)) return false;
+      seen.add(value);
+      return true;
+    })
+    .sort((a, b) => classLevelRank(a) - classLevelRank(b));
+}
+
+/** Which band a stored class string belongs to, or null if unrecognised. */
+export function tutorClassBand(value: string): string | null {
+  return TUTOR_CLASS_LEVELS[classLevelRank(value)]?.id ?? null;
+}
+
+/**
+ * How each education row should be read.
+ *
+ * `passed` and `completed` are different words for the same fact, and both exist
+ * in the table because two admins typed them. They render the same so the
+ * timeline does not look like it is making a distinction it cannot support.
+ */
+export const TUTOR_EDUCATION_STATUS_LABELS: Record<
+  TutorEducationStatus,
+  { labelBn: string; className: string }
+> = {
+  passed: { labelBn: 'পাশ করেছেন', className: 'border-brand-200 bg-brand-50 text-brand-700' },
+  completed: { labelBn: 'পাশ করেছেন', className: 'border-brand-200 bg-brand-50 text-brand-700' },
+  studying: { labelBn: 'চলতে', className: 'border-accent-200 bg-accent-100/70 text-accent-700' },
+};
+
+/**
+ * Class duration as the phrase a parent would say it.
+ *
+ * Bangla digits throughout. The `whole === 1` branch exists because Bangla
+ * counts "1 ঘণ্টা" without the plural ঘণ্টাা/ঘণ্টার form that a naive
+ * `${n} ঘণ্টা` produces — but the number itself still goes through `toBn`, or
+ * "1 ঘণ্টা 30 মিনিট" ends up half-ASCII and half-Bangla next to the rest of
+ * the page.
+ */
+export function formatClassDuration(minutes?: number): string | undefined {
+  if (!minutes || minutes <= 0) return undefined;
+  if (minutes < 60) return `${toBn(minutes)} মিনিট`;
+  const hours = minutes / 60;
+  const whole = Math.floor(hours);
+  const rest = minutes % 60;
+  if (rest === 0) return whole === 1 ? '১ ঘণ্টা' : `${toBn(whole)} ঘণ্টা`;
+  return `${toBn(whole)} ঘণ্টা ${toBn(rest)} মিনিট`;
 }
 
 /** Keyword-based education filter. Tutoreducation is stored as free-text

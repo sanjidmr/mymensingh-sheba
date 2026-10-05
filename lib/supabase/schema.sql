@@ -84,6 +84,17 @@ CREATE TABLE IF NOT EXISTS public.home_tutor_profiles (
     -- Availability: free / limited / busy
     availability TEXT NOT NULL DEFAULT 'available' CHECK (availability IN ('available', 'limited', 'busy')),
     profile_photo_url TEXT,
+    -- Profile-page detail. All optional on purpose: a tutor who has not filled
+    -- these in must not have a fact invented for them, so the UI omits the
+    -- whole section instead of printing a blank or a zero.
+    -- A qualification timeline, newest first:
+    --   [{ institution, department, degree, status: 'passed'|'studying'|'completed', year }]
+    educations JSONB NOT NULL DEFAULT '[]'::jsonb,
+    -- What they are doing right now:
+    --   { roleLabelBn, studyingAt, teachingAt, workingAt, note }
+    current_activity JSONB,
+    class_duration_minutes INTEGER,
+    preferred_student_type TEXT,
     admin_notes TEXT,          -- Admin review notes (never public)
     rejection_reason TEXT,     -- Set when rejected / changes requested (visible to the tutor only)
     published_at TIMESTAMPTZ,  -- Set when admin approves/publishes
@@ -177,6 +188,15 @@ ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS parking_info TEXT;
 ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS moving_items JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS photo_urls JSONB DEFAULT '[]'::jsonb;
 ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS quotation TEXT;
+
+-- Idempotent migration for the Service Request detail pages
+-- (কাজের বুয়া / ইলেকট্রিশিয়ান / প্লাম্বার / বাসা পাল্টানো / এসি ও ফ্রিজ).
+-- One nullable JSONB column holds everything that has no column of its own:
+-- per-service question answers, the location blocks (including the second
+-- address for a house move), the alternative phone number and the readable
+-- Bangla summary. `details` and `service_type` are untouched, so every existing
+-- admin screen and status flow keeps working.
+ALTER TABLE public.service_requests ADD COLUMN IF NOT EXISTS service_meta JSONB DEFAULT NULL;
 
 -- Idempotent migration for the Home Tutor (গৃহশিক্ষক) milestone:
 -- extra profile columns + 'rejected' status (previously draft/pending_approval/approved/paused/suspended)
@@ -304,7 +324,7 @@ CREATE INDEX IF NOT EXISTS idx_tutor_reports_tutor ON public.tutor_reports (tuto
 CREATE TABLE IF NOT EXISTS public.saved_items (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
-    item_type TEXT NOT NULL CHECK (item_type IN ('tolet', 'tutor', 'service')),
+    item_type TEXT NOT NULL CHECK (item_type IN ('tolet', 'tutor', 'service', 'market')),
     item_id TEXT NOT NULL,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     UNIQUE(user_id, item_type, item_id)
@@ -954,6 +974,10 @@ CREATE TABLE IF NOT EXISTS public.tolet_listings (
     floor TEXT,
     available_from DATE,
     facilities TEXT[] NOT NULL DEFAULT '{}',
+    -- Facilities the owner explicitly states are NOT included. Drives the
+    -- "এই বাসায় যা নেই" panel on the detail page. Optional on purpose: it is
+    -- never inferred from the absence of an entry in `facilities`.
+    unavailable_facilities TEXT[] NOT NULL DEFAULT '{}',
     description TEXT,
     photos TEXT[] NOT NULL DEFAULT '{}', -- Public storage URLs; photos[0] = cover
     status TEXT NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'pending_review', 'approved', 'rejected', 'unavailable', 'suspended', 'archived')),
@@ -1002,6 +1026,177 @@ CREATE TABLE IF NOT EXISTS public.listing_reports (
 
 CREATE INDEX IF NOT EXISTS idx_listing_reports_listing ON public.listing_reports (listing_id);
 CREATE INDEX IF NOT EXISTS idx_listing_reports_status ON public.listing_reports (status);
+
+-- 11a. COMMUNITY POST REPORTS
+--
+-- Separate from `listing_reports` because that table is FK-bound to
+-- `tolet_listings` and a marketplace item is a `community_posts` row. Reports
+-- cascade on delete: a report about a row that no longer exists cannot be
+-- actioned, so keeping it would only pollute the moderation queue.
+--
+-- Anyone may INSERT — guests included, because a fake listing is precisely the
+-- case where the reporter has no account. No SELECT/UPDATE policy exists, so
+-- with RLS enabled those actions are denied to every non-admin role; the UI
+-- confirms success from the insert rather than from a re-read.
+CREATE TABLE IF NOT EXISTS public.community_post_reports (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    post_id UUID NOT NULL REFERENCES public.community_posts(id) ON DELETE CASCADE,
+    reporter_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    reporter_name TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    details TEXT,
+    status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'resolved', 'dismissed')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_community_post_reports_post
+    ON public.community_post_reports (post_id);
+CREATE INDEX IF NOT EXISTS idx_community_post_reports_status
+    ON public.community_post_reports (status, created_at DESC);
+
+-- 11b. TO-LET LISTING ENGAGEMENT EVENTS
+--
+-- Append-only log of every meaningful action on a listing detail page:
+-- view / call_click / whatsapp_click / favorite / share. Written by
+-- `lib/tolet-tracking.ts` and aggregated for the admin panel by the
+-- `tolet_listing_analytics()` RPC below.
+--
+-- SEMANTICS — read before reporting on these numbers:
+--   `call_click` records that the "কল করুন" button was PRESSED. It does NOT
+--   mean a call was placed, connected or answered: the platform has no telephony
+--   integration and cannot observe any of that. Admin copy must say
+--   "কল বাটন চাপা হয়েছে" and must never say "কল হয়েছে".
+--
+-- DESIGN NOTES:
+--   * `listing_id` is TEXT with NO foreign key on purpose. (a) Showcase ids are
+--     not UUIDs, so an FK would reject them; (b) an FK would cascade-delete the
+--     analytics history of a listing an owner removed, losing exactly the data
+--     an admin would want to review. Denormalised area_id / property_type /
+--     rent_price keep per-property reporting meaningful after deletion.
+--   * `visitor_id` is an opaque client-generated id — never an IP address and
+--     never a fingerprint — so unique-visitor counts work without collecting
+--     anything identifying. Guests get `user_id = NULL` by design.
+--   * Rows are readable by admins only. Public select is deliberately NOT
+--     granted: engagement counts are business data and are also a small
+--     fingerprinting surface.
+CREATE TABLE IF NOT EXISTS public.tolet_listing_events (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    listing_id TEXT NOT NULL,
+    event_type TEXT NOT NULL CHECK (event_type IN ('view', 'call_click', 'whatsapp_click', 'favorite', 'share')),
+    event_source TEXT NOT NULL DEFAULT 'detail_page'
+        CHECK (event_source IN ('detail_page', 'sticky_bar', 'card')),
+    visitor_id TEXT,
+    user_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
+    area_id TEXT,
+    property_type TEXT,
+    rent_price INTEGER,
+    created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+);
+
+-- Aggregation reads are always "per listing", so that is the leading index.
+CREATE INDEX IF NOT EXISTS idx_tolet_events_listing ON public.tolet_listing_events (listing_id);
+CREATE INDEX IF NOT EXISTS idx_tolet_events_listing_type ON public.tolet_listing_events (listing_id, event_type);
+CREATE INDEX IF NOT EXISTS idx_tolet_events_created ON public.tolet_listing_events (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tolet_events_area ON public.tolet_listing_events (area_id);
+
+ALTER TABLE public.tolet_listing_events ENABLE ROW LEVEL SECURITY;
+
+-- Public writes only. The WITH CHECK constrains the shape of a row a visitor can
+-- forge: they cannot attribute an event to somebody else's user_id, and they
+-- cannot submit an event_type outside the vocabulary the UI uses.
+DROP POLICY IF EXISTS "Anyone can record a tolet engagement event" ON public.tolet_listing_events;
+CREATE POLICY "Anyone can record a tolet engagement event"
+ON public.tolet_listing_events FOR INSERT
+TO anon, authenticated
+WITH CHECK (user_id IS NULL OR user_id = auth.uid());
+
+-- Admins read everything; an owner additionally sees their own listing's rows so
+-- they can judge interest without waiting on the platform.
+DROP POLICY IF EXISTS "Admins read all tolet engagement events" ON public.tolet_listing_events;
+CREATE POLICY "Admins read all tolet engagement events"
+ON public.tolet_listing_events FOR SELECT
+TO authenticated
+USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Owners read events for their own listings" ON public.tolet_listing_events;
+CREATE POLICY "Owners read events for their own listings"
+ON public.tolet_listing_events FOR SELECT
+TO authenticated
+USING (
+    public.is_admin() OR
+    EXISTS (
+        SELECT 1 FROM public.tolet_listings l
+        WHERE l.id::text = public.tolet_listing_events.listing_id
+          AND l.owner_id = auth.uid()
+    )
+);
+
+-- Aggregated rollup for the admin panel: one row per listing, hottest first.
+-- Does the counting in Postgres so the console never pulls the raw event log.
+-- SECURITY DEFINER because the underlying table's SELECT policy is admin-only;
+-- the function re-checks is_admin() before returning anything.
+CREATE OR REPLACE FUNCTION public.tolet_listing_analytics(p_limit INTEGER DEFAULT 50)
+RETURNS TABLE (
+    listing_id            TEXT,
+    listing_title         TEXT,
+    area_id               TEXT,
+    property_type         TEXT,
+    rent_price            INTEGER,
+    status                TEXT,
+    views                 BIGINT,
+    call_clicks           BIGINT,
+    whatsapp_clicks       BIGINT,
+    favorites             BIGINT,
+    shares                BIGINT,
+    unique_visitors       BIGINT,
+    last_activity_at      TIMESTAMPTZ
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF NOT public.is_admin() THEN
+        RAISE EXCEPTION 'admin only';
+    END IF;
+
+    RETURN QUERY
+    WITH ev AS (
+        SELECT e.listing_id,
+               COUNT(*) FILTER (WHERE e.event_type = 'view')           AS views,
+               COUNT(*) FILTER (WHERE e.event_type = 'call_click')     AS call_clicks,
+               COUNT(*) FILTER (WHERE e.event_type = 'whatsapp_click') AS whatsapp_clicks,
+               COUNT(*) FILTER (WHERE e.event_type = 'favorite')       AS favorites,
+               COUNT(*) FILTER (WHERE e.event_type = 'share')          AS shares,
+               COUNT(DISTINCT COALESCE(e.user_id::text, e.visitor_id)) AS unique_visitors,
+               MAX(e.created_at)                                       AS last_activity_at,
+               -- Denormalised copy, used when the listing row no longer exists
+               -- (owner deleted it) so the history is still attributable.
+               MIN(e.area_id)                                         AS area_id
+        FROM public.tolet_listing_events e
+        GROUP BY e.listing_id
+    )
+    SELECT ev.listing_id,
+           l.title,
+           COALESCE(l.area_id, ev.area_id),
+           l.property_type,
+           l.rent_price,
+           l.status,
+           ev.views,
+           ev.call_clicks,
+           ev.whatsapp_clicks,
+           ev.favorites,
+           ev.shares,
+           ev.unique_visitors,
+           ev.last_activity_at
+    FROM ev
+    LEFT JOIN public.tolet_listings l ON l.id::text = ev.listing_id
+    -- Hottest first: contact clicks, then views. Ties broken by recency so a
+    -- freshly-active listing outranks a stale one with identical totals.
+    ORDER BY (ev.call_clicks + ev.whatsapp_clicks) DESC, ev.views DESC, ev.last_activity_at DESC NULLS LAST
+    LIMIT GREATEST(1, LEAST(COALESCE(p_limit, 50), 500));
+END;
+$$;
 
 -- 12. PLATFORM SETTINGS (admin-configurable values, e.g. tolet_fee_rules)
 CREATE TABLE IF NOT EXISTS public.platform_settings (
@@ -1467,6 +1662,16 @@ CREATE TABLE IF NOT EXISTS public.service_listings (
     destination_bn TEXT,
     -- Vehicle: no rental price on the card, so capacity/notes only.
     seat_count INTEGER,
+    -- Vehicle-only detail. Nullable and printed only when stored, so an older
+    -- row keeps showing exactly the facts it actually has.
+    photos TEXT[] NOT NULL DEFAULT '{}',
+    model_name_bn TEXT,
+    model_year INTEGER,
+    has_ac BOOLEAN,
+    driver_included BOOLEAN,
+    available_time_bn TEXT,
+    -- How price_min / price_max should be read: "প্রতি কিলোমিটার" etc.
+    price_note_bn TEXT,
     -- Admin-curated public contact. Kept out of the public SELECT surface the
     -- same way staff_profiles keeps phone_private, and surfaced through the
     -- service facade / contact-form routing instead of a raw number.
@@ -1520,6 +1725,17 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
     deadline DATE,
     -- Buy-sell-only field.
     condition_label TEXT,
+    -- Marketplace contact. `author_phone` / `whatsapp_number` are deliberately
+    -- NOT part of the public column list used by the service layer: they are
+    -- read back only through the `fetch_market_contact` RPC below, which
+    -- returns them for an approved `buy_sell` row and nothing else. That keeps
+    -- a news article or a job ad from ever exposing its author's number while
+    -- still letting a buyer call the seller.
+    author_name TEXT,
+    author_phone TEXT,
+    whatsapp_number TEXT,
+    -- Extra product photos beyond the cover image.
+    gallery TEXT[] NOT NULL DEFAULT '{}',
     -- Moderation. Customers may only ever insert 'pending'; approval is admin.
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending', 'approved', 'rejected')),
@@ -1574,6 +1790,11 @@ CREATE TABLE IF NOT EXISTS public.vehicle_requests (
     destination_area_id TEXT,
     travel_date DATE,
     travel_time TEXT,
+    -- What the renter actually asked for, so an operator can quote without a
+    -- phone call back. All nullable: the short form stays valid.
+    passenger_count INTEGER,
+    trip_duration TEXT,
+    budget INTEGER,
     notes TEXT,
     status TEXT NOT NULL DEFAULT 'new'
         CHECK (status IN ('new', 'contacted', 'closed')),
@@ -1657,6 +1878,43 @@ ON public.community_posts FOR ALL
 TO authenticated
 USING (public.is_admin())
 WITH CHECK (public.is_admin());
+
+-- Seller contact for a marketplace item — the ONLY way a buyer's browser ever
+-- reads a seller's number.
+--
+-- PostgREST column lists are not a security boundary: any row an anon visitor
+-- can SELECT, they can select every column of. So the marketplace phone cannot
+-- simply be left out of the public query — it has to be unreadable at the
+-- database level and handed over only through a function that checks what the
+-- row actually is. This does that: it returns contact details for an APPROVED
+-- `buy_sell` post and for nothing else, so a news article or a job ad can never
+-- leak its author's number no matter what the client asks for.
+CREATE OR REPLACE FUNCTION public.fetch_market_contact(p_slug TEXT)
+RETURNS TABLE (
+    post_id UUID,
+    author_name TEXT,
+    author_phone TEXT,
+    whatsapp_number TEXT
+)
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = public
+AS $$
+    SELECT p.id, p.author_name, p.author_phone, p.whatsapp_number
+    FROM public.community_posts p
+    WHERE p.slug = p_slug
+      AND p.kind = 'buy_sell'
+      AND p.status = 'approved'
+    LIMIT 1;
+$$;
+
+COMMENT ON FUNCTION public.fetch_market_contact(TEXT) IS
+    'Seller phone / WhatsApp for an approved buy_sell post. Returns nothing for '
+    'news or job posts, and nothing for a post still in moderation.';
+
+REVOKE ALL ON FUNCTION public.fetch_market_contact(TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.fetch_market_contact(TEXT) TO anon, authenticated;
 
 -- --- emergency_contacts ---
 -- Public reads active rows (verified local numbers only). No customer write.

@@ -1,339 +1,343 @@
 'use client';
 
-import React, { useState, use, useEffect } from 'react';
+import React, { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { Flag, ShieldAlert, Info } from 'lucide-react';
+
+import Navbar from '@/components/Navbar';
+import { PropertyGallery } from '@/components/tolet/detail/PropertyGallery';
+import { PropertyFactGrid } from '@/components/tolet/detail/PropertyFactGrid';
+import { FacilityPanels } from '@/components/tolet/detail/FacilityPanels';
+import { PropertyLocation } from '@/components/tolet/detail/PropertyLocation';
+import { RentSummaryCard } from '@/components/tolet/detail/RentSummaryCard';
+import { OwnerProfileCard } from '@/components/tolet/detail/OwnerProfileCard';
+import { ContactActionsPanel } from '@/components/tolet/detail/ContactActions';
 import {
-  MapPin,
-  Bed,
-  Bath,
-  Calendar,
-  Layers,
-  ShieldCheck,
-  CheckCircle2,
-  Heart,
-  Lock,
-  Loader2,
-  AlertTriangle,
-  UserRound,
-} from 'lucide-react';
-import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
-import { fetchListingById } from '@/lib/tolet-service';
-import { calculateToletFee, getToletFeeDescription } from '@/lib/tolet-fees';
-import { TOLET_PROPERTY_TYPE_INFO, type ToletListing } from '@/lib/tolet-types';
-import { getAreaById } from '@/lib/locations';
-import { TOLET_FACILITY_OPTIONS } from '@/lib/filter-definitions';
-import { useAuth } from '@/lib/auth-context';
+  ToletDetailHeader,
+  ToletDetailMobileShare,
+} from '@/components/tolet/detail/ToletDetailHeader';
+import {
+  StickyContactBar,
+  StickyContactBarSpacer,
+} from '@/components/tolet/detail/StickyContactBar';
+import { SimilarProperties } from '@/components/tolet/detail/SimilarProperties';
 import { RequestSection } from '@/components/tolet/RequestSection';
 import { ReportSheet } from '@/components/tolet/ReportSheet';
-import { cn } from '@/lib/utils';
 
+import { fetchListingById, fetchSimilarListings } from '@/lib/tolet-service';
+import type { ToletListing } from '@/lib/tolet-types';
+import { useAuth } from '@/lib/auth-context';
+import { trackListingView, trackToletEvent } from '@/lib/tolet-tracking';
+import { getAreaById } from '@/lib/locations';
+import { toBengaliDigits } from '@/lib/bengali-numerals';
+
+/**
+ * To-Let listing detail page.
+ *
+ * Layout contract
+ * ---------------
+ * Mobile is a single column in reading order: photo → key numbers → money →
+ * description → facilities → map → contact → owner → request. On `lg` the page
+ * becomes two columns: the property and everything about it on the left, the
+ * money + contact summary in a sticky rail on the right.
+ *
+ * Only ONE element is rendered twice — the rent card, hidden per breakpoint.
+ * It must sit high in the phone flow (above the description) *and* in the
+ * desktop rail, and those are incompatible positions in a single DOM order.
+ * It is pure presentational markup with no state, so the duplication costs
+ * nothing. Everything else — contact, owner, request — is rendered exactly once,
+ * because below `lg` the two-column wrapper is not a grid and the rail simply
+ * flows after the left column, which is already where the phone needs it.
+ *
+ * Everything is driven off a `ToletListing`, so any listing — live from Supabase
+ * or from the showcase seed — renders through exactly this page. There is no
+ * per-demo special-casing anywhere below.
+ *
+ * Tracking notes
+ * --------------
+ * The page view is recorded once per browser session (see `trackListingView`),
+ * and favourite / call / WhatsApp / share are recorded by the components that
+ * own those actions. `call_click` means the button was pressed — never that a
+ * call happened.
+ */
 interface ToletDetailPageProps {
   params: Promise<{ id: string }>;
 }
 
-const facilityLabelMap: Record<string, string> = {};
-for (const f of TOLET_FACILITY_OPTIONS) facilityLabelMap[f.id] = f.labelBn;
+/**
+ * The outcome of loading a listing, tagged with the id it describes.
+ *
+ * Tagging is what lets `loading` be *derived* rather than stored: the request
+ * in flight is exactly "no result yet for this id", so the effect below never
+ * has to reset a flag synchronously before it starts fetching. That removes the
+ * extra render pass an id change used to cause, and makes it impossible for
+ * `loading` and the listing to disagree about which id they refer to — which is
+ * how the previous version could briefly render listing A's data under
+ * listing B's URL.
+ */
+type ListingLoad =
+  | { id: string; status: 'loading' }
+  | { id: string; status: 'missing' }
+  | { id: string; status: 'ready'; listing: ToletListing; similar: ToletListing[] };
+
+/** Stable empty array, so the derived `similar` keeps referential identity. */
+const NO_SIMILAR: ToletListing[] = [];
 
 export default function ToletDetailPage({ params }: ToletDetailPageProps) {
-  const resolvedParams = use(params);
-  const listingId = resolvedParams.id;
-  const { user, isAdmin, savedListings, toggleSaveItem } = useAuth();
+  const { id } = use(params);
+  const { user, savedListings, toggleSaveItem } = useAuth();
 
-  const [listing, setListing] = useState<ToletListing | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState(false);
-  const [activePhoto, setActivePhoto] = useState(0);
-  const [guestFav, setGuestFav] = useState(false);
+  const [load, setLoad] = useState<ListingLoad | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
+  const [guestFavorite, setGuestFavorite] = useState(false);
+  const [requestAnchor, setRequestAnchor] = useState<HTMLElement | null>(null);
 
+  // ---- Load the listing, then the related ones -----------------------------
   useEffect(() => {
-    let active = true;
+    let cancelled = false;
+
     (async () => {
-      const data = await fetchListingById(listingId);
-      if (!active) return;
-      setListing(data);
-      setLoading(false);
-    })().catch(() => {
-      if (!active) return;
-      setLoading(false);
-      setLoadError(true);
-    });
+      const found = await fetchListingById(id);
+      if (cancelled) return;
+
+      if (!found) {
+        setLoad({ id, status: 'missing' });
+        return;
+      }
+
+      // Publish the listing on its own. Related listings are secondary, so they
+      // stream in afterwards — a slow second query must never hold the gallery
+      // hostage.
+      setLoad({ id, status: 'ready', listing: found, similar: NO_SIMILAR });
+
+      const related = await fetchSimilarListings(found, 4);
+      if (cancelled) return;
+      setLoad((current) =>
+        current?.id === id && current.status === 'ready'
+          ? { ...current, similar: related }
+          : current
+      );
+    })();
+
     return () => {
-      active = false;
+      cancelled = true;
     };
-  }, [listingId]);
+  }, [id]);
 
-  if (!loading && !loadError) {
-    const typed = listing;
-    if (!typed) {
-      notFound();
-    }
-    const allowed =
-      typed.status === 'approved' || isAdmin || (user && user.id === typed.ownerId);
-    if (!allowed) {
-      notFound();
-    }
-  }
+  // Derived, not stored. Anything describing a *different* id than the current
+  // route is treated as "not loaded yet".
+  const isForCurrentId = load?.id === id;
+  const ready = isForCurrentId && load.status === 'ready' ? load : null;
+  const listing = ready?.listing ?? null;
+  const similar = ready?.similar ?? NO_SIMILAR;
 
-  if (loading) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 flex flex-col items-center gap-3 text-slate-500 text-sm">
-        <Loader2 className="w-6 h-6 animate-spin text-emerald-700" />
-        <span>বিজ্ঞাপনের বিবরণ লোড হচ্ছে...</span>
-      </div>
-    );
-  }
+  // ---- View tracking: once per session per listing --------------------------
+  useEffect(() => {
+    if (!listing) return;
+    trackListingView({
+      listingId: listing.id,
+      userId: user?.id ?? null,
+      areaId: listing.areaId,
+      propertyType: listing.propertyType,
+      rentPrice: listing.rentPrice,
+    });
+  }, [listing, user?.id]);
 
-  if (loadError || !listing) {
-    return (
-      <div className="max-w-7xl mx-auto px-4 py-20 text-center text-sm text-rose-600 flex flex-col items-center gap-2">
-        <AlertTriangle className="w-6 h-6" />
-        <span>বিজ্ঞাপন লোড করতে সমস্যা হয়েছে।</span>
-        <Link href="/tolet" className="text-emerald-800 font-semibold underline mt-2">
-          সব বিজ্ঞাপনে ফিরে যান
-        </Link>
-      </div>
-    );
-  }
+  // ---- Favourite ------------------------------------------------------------
+  const savedForThisListing = useMemo(
+    () =>
+      savedListings.find((item) => item.linkHref === `/tolet/${listing?.id}`) ?? null,
+    [savedListings, listing?.id]
+  );
+  const isFavorite = user ? Boolean(savedForThisListing) : guestFavorite;
 
-  const area = getAreaById(listing.areaId);
-  const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
-  const photos = listing.photos || [];
-  const currentPhoto = photos[activePhoto] || '';
-  const isMessLike = typeInfo?.isMessLike ?? false;
-  const fee = calculateToletFee(listing.rentPrice, listing.propertyType);
-  const total = listing.rentPrice + fee;
-
-  const isFavorite = user
-    ? savedListings.some((item) => item.itemType === 'tolet' && item.linkHref === `/tolet/${listing.id}`)
-    : guestFav;
-
-  const toggleFavorite = () => {
+  const handleToggleFavorite = useCallback(async () => {
+    if (!listing) return;
     const next = !isFavorite;
-    if (user) {
-      void toggleSaveItem({
-        itemType: 'tolet',
-        title: listing.title,
-        areaName: area?.nameBn || listing.areaId,
-        priceOrRate: `৳${listing.rentPrice.toLocaleString('bn-BD')}/মাস`,
-        linkHref: `/tolet/${listing.id}`,
-      });
+
+    if (!user) {
+      // Guests can keep a local shortlist for the session; it simply is not
+      // synced anywhere, and we say so rather than pretending it is.
+      setGuestFavorite(next);
     } else {
-      setGuestFav(next);
+      const area = getAreaById(listing.areaId);
+      try {
+        await toggleSaveItem({
+          itemType: 'tolet',
+          title: listing.title,
+          areaName: area?.nameBn ?? listing.areaId,
+          priceOrRate: `৳${listing.rentPrice.toLocaleString('en-IN')}`,
+          linkHref: `/tolet/${listing.id}`,
+        });
+      } catch {
+        // Saving is best-effort; never let it break the page.
+      }
     }
-  };
+
+    void trackToletEvent({
+      listingId: listing.id,
+      eventType: 'favorite',
+      source: 'detail_page',
+      userId: user?.id ?? null,
+      areaId: listing.areaId,
+      propertyType: listing.propertyType,
+      rentPrice: listing.rentPrice,
+    });
+  }, [listing, isFavorite, user, toggleSaveItem]);
+
+  // ---- Contact fallback: jump to the request form --------------------------
+  const scrollToRequest = useCallback(() => {
+    requestAnchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [requestAnchor]);
+
+  if (!isForCurrentId) return <ListingSkeleton />;
+  if (!listing) notFound();
+
+  const description = listing.description.trim();
 
   return (
-    <RoutePlaceholderShell
-      title={listing.title}
-      subtitle={`${area?.nameBn || ''}, ময়মনসিংহ সিটি কর্পোরেশন • ${typeInfo?.labelBn || ''}`}
-      categoryBadge="বাসা ভাড়া বিবরণ"
-      breadcrumbs={[
-        { label: 'বাসা ভাড়া', href: '/tolet' },
-        { label: listing.title.slice(0, 24) + '...' },
-      ]}
-    >
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* LEFT: Gallery & Details */}
-        <div className="lg:col-span-8 space-y-6">
-          {/* Gallery */}
-          <div className="relative aspect-16/10 w-full rounded-2xl overflow-hidden bg-slate-100 border border-slate-200">
-            {currentPhoto ? (
-              <Image
-                src={currentPhoto}
-                alt={listing.title}
-                fill
-                priority
-                className="object-cover"
-                referrerPolicy="no-referrer"
-              />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-emerald-800 text-sm font-semibold">
-                ছবি যোগ করা হয়নি
-              </div>
-            )}
-            <div className="absolute top-4 left-4 flex gap-2">
-              <span className="px-3 py-1 rounded-lg bg-emerald-800 text-white text-xs font-semibold shadow-xs">
-                {typeInfo?.labelBn || listing.propertyType}
-              </span>
-              {listing.isVerified && listing.status === 'approved' && (
-                <span className="px-3 py-1 rounded-lg bg-white/95 text-emerald-900 text-xs font-semibold shadow-xs flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
-                  যাচাইকৃত
-                </span>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={toggleFavorite}
-              className="absolute top-4 right-4 p-2.5 rounded-full bg-white/95 hover:bg-white text-slate-700 transition-colors shadow-xs"
-              aria-label="পছন্দ"
-            >
-              <Heart className={cn('w-5 h-5', isFavorite && 'fill-rose-600 text-rose-600')} />
-            </button>
-            {photos.length > 1 && (
-              <span className="absolute bottom-3 right-3 px-2 py-0.5 rounded-md bg-slate-900/70 text-white text-[11px] font-medium">
-                {activePhoto + 1}/{photos.length}
-              </span>
-            )}
-          </div>
+    <div className="flex min-h-screen flex-col bg-mist-50">
+      <Navbar />
 
-          {photos.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {photos.map((photo, idx) => (
-                <button
-                  key={`${photo}-${idx}`}
-                  type="button"
-                  onClick={() => setActivePhoto(idx)}
-                  className={cn(
-                    'relative w-20 h-20 shrink-0 rounded-xl overflow-hidden border-2 transition-colors',
-                    idx === activePhoto ? 'border-emerald-700' : 'border-transparent opacity-80'
-                  )}
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8">
+        <ToletDetailHeader
+          listing={listing}
+          userId={user?.id ?? null}
+          isLoggedIn={Boolean(user)}
+        />
+        <ToletDetailMobileShare
+          listing={listing}
+          userId={user?.id ?? null}
+          className="mb-3"
+        />
+
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
+          {/* ---------------- Left column: the property itself ---------------- */}
+          <div className="min-w-0 space-y-5 sm:space-y-6">
+            <PropertyGallery
+              listing={listing}
+              isFavorite={isFavorite}
+              onToggleFavorite={handleToggleFavorite}
+            />
+
+            <PropertyFactGrid listing={listing} />
+
+            {/* Money, phone only. On desktop the rail owns this card. */}
+            <div className="lg:hidden">
+              <RentSummaryCard listing={listing} />
+            </div>
+
+            {description && (
+              <section aria-labelledby="tolet-description-heading">
+                <h2
+                  id="tolet-description-heading"
+                  className="flex items-center gap-1.5 text-[15px] font-extrabold text-ink-900 sm:text-[17px]"
                 >
-                  <Image src={photo} alt={`ছবি ${idx + 1}`} fill sizes="80px" className="object-cover" referrerPolicy="no-referrer" />
-                </button>
-              ))}
-            </div>
-          )}
-
-          {/* Key Specs */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-5 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center">
-            {isMessLike ? (
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 col-span-2">
-                <Bed className="w-5 h-5 text-emerald-800 mx-auto mb-1" />
-                <div className="text-xs text-slate-500">মোট সিট/শয্যা</div>
-                <div className="text-sm font-bold text-slate-900">
-                  {listing.totalRooms ?? listing.bedrooms} টি
+                  <span
+                    aria-hidden="true"
+                    className="h-3.5 w-[3px] shrink-0 rounded-full bg-accent-400"
+                  />
+                  বিস্তারিত বর্ণনা
+                </h2>
+                <div className="mt-2.5 rounded-xl border border-brand-100 bg-white px-3.5 py-3.5 sm:px-4">
+                  <p className="whitespace-pre-line text-[13px] leading-[1.85] text-ink-700">
+                    {description}
+                  </p>
                 </div>
-              </div>
-            ) : (
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <Bed className="w-5 h-5 text-emerald-800 mx-auto mb-1" />
-                <div className="text-xs text-slate-500">বেডরুম</div>
-                <div className="text-sm font-bold text-slate-900">{listing.bedrooms} টি</div>
-              </div>
+              </section>
             )}
-            {!isMessLike && (
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-                <Bath className="w-5 h-5 text-emerald-800 mx-auto mb-1" />
-                <div className="text-xs text-slate-500">বাথরুম</div>
-                <div className="text-sm font-bold text-slate-900">{listing.bathrooms} টি</div>
-              </div>
-            )}
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <Layers className="w-5 h-5 text-emerald-800 mx-auto mb-1" />
-              <div className="text-xs text-slate-500">তলা</div>
-              <div className="text-sm font-bold text-slate-900">{listing.floor || '—'}</div>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-100">
-              <Calendar className="w-5 h-5 text-emerald-800 mx-auto mb-1" />
-              <div className="text-xs text-slate-500">প্রাপ্যতা</div>
-              <div className="text-sm font-bold text-slate-900">{listing.availableFrom || '—'}</div>
-            </div>
-          </div>
 
-          {/* Description */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-6 sm:p-8">
-            <h3 className="text-lg font-bold text-slate-900 mb-3">বাসার বিস্তারিত বিবরণ</h3>
-            <p className="text-slate-600 leading-relaxed text-sm sm:text-base whitespace-pre-line">
-              {listing.description}
+            <FacilityPanels
+              facilities={listing.facilities}
+              unavailableFacilities={listing.unavailableFacilities}
+            />
+
+            <PropertyLocation listing={listing} />
+
+            {/* Posted-at note, so an old listing is obviously an old listing. */}
+            {listing.publishedAt && (
+              <p className="flex items-center gap-1.5 text-[11px] text-ink-400">
+                <Info className="h-3.5 w-3.5 shrink-0 text-brand-400" aria-hidden="true" />
+                বিজ্ঞাপনটি প্রকাশিত হয়েছে{' '}
+                {formatPostedBn(listing.publishedAt)}
+              </p>
+            )}
+
+            {/* Safety note — last thing in the left column, before the rail's
+                contact actions in the phone flow. */}
+            <p className="flex items-start gap-2 rounded-xl border border-bronze-200 bg-bronze-50/60 px-3.5 py-3 text-[11.5px] leading-relaxed text-ink-600">
+              <ShieldAlert
+                className="mt-0.5 h-4 w-4 shrink-0 text-bronze-500"
+                aria-hidden="true"
+              />
+              <span>
+                <strong className="font-extrabold text-ink-800">নিরাপত্তা ও সতর্কতা:</strong>{' '}
+                ভাড়া দেওয়ার আগে ঘর, পানি ও বিদ্যুৎ সরাসরি দেখে নিন। কোনো টাকা বা
+                ডকুমেন্ট হাতে দেওয়ার আগে চুক্তিপত্রে মালিক ও ভাড়াটিয়ার দুই পক্ষের
+                স্বাক্ষর নিন। কোনো ব্যক্তিকে অগ্রিম টাকা পাঠাতে বলা হলে{' '}
+                <Link
+                  href="/contact"
+                  className="font-bold text-brand-800 underline underline-offset-2"
+                >
+                  যোগাযোগ করুন
+                </Link>
+                ।
+              </span>
             </p>
 
-            {listing.facilities.length > 0 && (
-              <div className="mt-6 pt-6 border-t border-slate-100">
-                <h4 className="text-sm font-bold text-slate-900 mb-3">সুযোগ-সুবিধাসমূহ:</h4>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {listing.facilities.map((fac, idx) => (
-                    <div key={idx} className="flex items-center gap-2 text-xs sm:text-sm text-slate-700 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
-                      <span>{facilityLabelMap[fac] || fac}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            <div className="mt-6 pt-6 border-t border-slate-100">
-              <h4 className="text-sm font-bold text-slate-900 mb-2">অবস্থান ও এলাকা:</h4>
-              <div className="flex items-center gap-2 text-sm text-slate-700">
-                <MapPin className="w-4 h-4 text-emerald-700 shrink-0" />
-                <span>
-                  {listing.specificAddress} ({area?.nameBn || ''} — ময়মনসিংহ সিটি কর্পোরেশন)
-                </span>
-              </div>
             </div>
 
-            {(user?.id === listing.ownerId || isAdmin) && (
-              <div className="mt-6 pt-6 border-t border-slate-100">
-                <h4 className="text-sm font-bold text-slate-900 mb-2">সর্বশেষ অবস্থা:</h4>
-                <p className="text-xs text-slate-600">
-                  {listing.status === 'approved' && 'এই বিজ্ঞাপনটি প্রকাশিত এবং সবার জন্য দৃশ্যমান।'}
-                  {listing.status === 'pending_review' && 'এই বিজ্ঞাপনটি যাচাইয়ের অপেক্ষায় রয়েছে।'}
-                  {listing.status === 'draft' && 'এই বিজ্ঞাপনটি খসড়া হিসেবে সংরক্ষিত; এখনো প্রকাশ হয়নি।'}
-                  {listing.status === 'rejected' && 'এই বিজ্ঞাপনটি প্রত্যাখ্যাত হয়েছে।'}
-                  {listing.status === 'suspended' && 'এই বিজ্ঞাপনটি স্থগিত করা হয়েছে।'}
-                  {listing.status === 'unavailable' && 'এই বাসা বর্তমানে অনুপলব্ধ।'}
-                  {listing.status === 'archived' && 'এই বিজ্ঞাপনটি আর্কাইভ করা হয়েছে।'}
-                </p>
-              </div>
-            )}
-          </div>
+          {/* ---------------- Right rail: money + contact ----------------
+              Below `lg` the wrapper is not a grid, so this aside simply flows
+              after the left column — which is exactly where the phone needs the
+              contact actions, owner card and request form to land. That is why
+              only the rent card is rendered twice: it has to sit high in the
+              phone flow (above the description) AND in the desktop rail, and
+              those are incompatible positions in one DOM order. Everything else
+              is rendered exactly once — no duplicated headings, ids or hooks. */}
+          <aside className="mt-5 space-y-4 lg:sticky lg:top-20 lg:mt-0">
+            {/* Money, desktop only — the phone copy sits next to the photos. */}
+            <div className="hidden lg:block">
+              <RentSummaryCard listing={listing} />
+            </div>
+
+            <ContactActionsPanel
+              listing={listing}
+              userId={user?.id ?? null}
+              isLoggedIn={Boolean(user)}
+              onRequestFallback={scrollToRequest}
+            />
+
+            <OwnerProfileCard listing={listing} />
+
+            <div ref={setRequestAnchor} className="scroll-mt-24">
+              <RequestSection listingId={listing.id} user={user} />
+            </div>
+
+            <div className="flex justify-center pt-0.5">
+              <button
+                type="button"
+                onClick={() => setReportOpen(true)}
+                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold text-ink-400 transition-colors hover:bg-mist-100 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+              >
+                <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                বিজ্ঞাপনটি রিপোর্ট করুন
+              </button>
+            </div>
+          </aside>
         </div>
 
-        {/* RIGHT: Price + Request */}
-        <div className="lg:col-span-4 space-y-6">
-          {/* Price Breakdown */}
-          <div className="bg-white rounded-2xl border border-emerald-800/30 p-6 shadow-xs">
-            <div className="text-xs uppercase tracking-wider font-semibold text-emerald-900 mb-1">
-              স্বচ্ছ ভাড়া নির্ধারণ হিসাব
-            </div>
-            <div className="space-y-3 pt-3 border-t border-slate-100 text-sm">
-              <div className="flex items-center justify-between text-slate-600">
-                <span>মাসিক মূল ভাড়া:</span>
-                <span className="font-semibold text-slate-900">৳{listing.rentPrice.toLocaleString('bn-BD')}</span>
-              </div>
-              <div className="flex items-center justify-between text-slate-600">
-                <span>প্ল্যাটফর্ম ফি ({typeInfo?.labelBn || ''}):</span>
-                <span className="font-semibold text-slate-900">+ ৳{fee}</span>
-              </div>
-              <div className="pt-3 border-t border-slate-200 flex items-baseline justify-between">
-                <span className="font-bold text-slate-900">সর্বমোট প্রদেয়:</span>
-                <span className="text-2xl font-black text-emerald-800">৳{total.toLocaleString('bn-BD')}</span>
-              </div>
-            </div>
-            <p className="mt-3 text-[11px] text-slate-500 leading-normal">{getToletFeeDescription()}।</p>
-          </div>
+        <SimilarProperties listings={similar} />
 
-          {/* Safe Contact & Request */}
-          <RequestSection listingId={listing.id} user={user} />
+        <StickyContactBarSpacer />
+      </main>
 
-          {/* Report */}
-          <button
-            type="button"
-            onClick={() => setReportOpen(true)}
-            className="w-full p-3 rounded-xl border border-rose-200 text-rose-700 text-xs font-semibold flex items-center justify-center gap-1.5 bg-white hover:bg-rose-50 transition-colors"
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            এই বিজ্ঞাপনটি রিপোর্ট করুন
-          </button>
-
-          {!listing.ownerId.startsWith('demo-') && listing.ownerName && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-4 flex items-center gap-3">
-              <span className="w-11 h-11 rounded-full bg-emerald-100 text-emerald-800 inline-flex items-center justify-center shrink-0">
-                <UserRound className="w-5 h-5" />
-              </span>
-              <div className="min-w-0">
-                <div className="text-xs font-bold text-slate-900 truncate">{listing.ownerName}</div>
-                <div className="text-[11px] text-slate-500">
-                  {listing.isVerified ? 'যাচাইকৃত বিজ্ঞাপনদাতা' : 'বিজ্ঞাপনদাতা'} • নিরাপদ যোগাযোগ
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+      <StickyContactBar
+        listing={listing}
+        userId={user?.id ?? null}
+        onRequestFallback={scrollToRequest}
+      />
 
       <ReportSheet
         open={reportOpen}
@@ -341,6 +345,56 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
         listingId={listing.id}
         user={user}
       />
-    </RoutePlaceholderShell>
+    </div>
+  );
+}
+
+/** "২ দিন আগে" / "১ মাস আগে" — never an ambiguous "২/১০"-style timestamp. */
+function formatPostedBn(iso: string): string {
+  const then = new Date(iso);
+  if (Number.isNaN(then.getTime())) return 'একটি সময় আগে';
+  const diffMs = Date.now() - then.getTime();
+  const days = Math.floor(diffMs / 86_400_000);
+
+  if (days <= 0) {
+    const hours = Math.floor(diffMs / 3_600_000);
+    if (hours <= 0) return `${toBengaliDigits(Math.max(1, Math.floor(diffMs / 60_000)))} মিনিট আগে`;
+    return `${toBengaliDigits(hours)} ঘণ্টা আগে`;
+  }
+  if (days === 1) return 'গতকাল';
+  if (days < 30) return `${toBengaliDigits(days)} দিন আগে`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${toBengaliDigits(months)} মাস আগে`;
+  return `${toBengaliDigits(Math.floor(days / 365))} বছর আগে`;
+}
+
+/**
+ * Skeleton for the first paint. Shaped like the real layout (photo block above,
+ * two columns below) so the page does not visibly jump when data lands, and so
+ * a slow connection shows the structure of a property page rather than a spinner.
+ */
+function ListingSkeleton() {
+  return (
+    <div className="flex min-h-screen flex-col bg-mist-50">
+      <Navbar />
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-6 pt-4 sm:px-6 sm:pb-8 sm:pt-5 lg:px-8">
+        <div className="h-3 w-48 animate-pulse rounded bg-brand-100" />
+        <div className="mt-3 h-6 w-3/4 animate-pulse rounded bg-brand-100" />
+        <div className="mt-2 h-3.5 w-1/2 animate-pulse rounded bg-brand-100" />
+        <div className="mt-4 lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
+          <div className="min-w-0 space-y-5">
+            <div className="aspect-[4/5] w-full animate-pulse rounded-xl bg-brand-100 sm:aspect-[16/10]" />
+            <div className="h-20 w-full animate-pulse rounded-xl bg-brand-100" />
+          </div>
+          <div className="mt-5 space-y-4 lg:mt-0">
+            <div className="h-44 w-full animate-pulse rounded-xl bg-brand-100" />
+            <div className="h-32 w-full animate-pulse rounded-xl bg-brand-100" />
+          </div>
+        </div>
+        <p className="sr-only" role="status">
+          বিজ্ঞাপনের বিবরণ লোড হচ্ছে
+        </p>
+      </main>
+    </div>
   );
 }

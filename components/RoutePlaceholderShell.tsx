@@ -4,6 +4,7 @@ import React from 'react';
 import Link from 'next/link';
 import { ArrowLeft, MapPin, ChevronRight, Sparkles } from 'lucide-react';
 import Navbar from '@/components/Navbar';
+import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import Footer from '@/components/Footer';
 
 interface BreadcrumbItem {
@@ -37,23 +38,35 @@ export default function RoutePlaceholderShell({
       <Navbar />
 
       <main className={`flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 ${compact ? 'py-4 sm:py-6 lg:pb-12' : 'py-8 sm:py-12'}`}>
-        {/* Breadcrumb Navigation */}
-        <nav className={`flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 ${compact ? 'mb-3' : 'mb-6'}`}>
-          <Link href="/" className="hover:text-emerald-800 transition-colors">
+        {/* Breadcrumb. Small type, but `min-h-10` hit areas — a breadcrumb is
+            navigation, not prose, and the old bare text links were 16px tall. */}
+        <nav
+          aria-label="ব্রেডক্রাম্ব"
+          className={`-mx-1 flex items-center gap-1.5 px-1 text-xs text-ink-500 sm:text-sm ${compact ? 'mb-3' : 'mb-6'}`}
+        >
+          <Link
+            href="/"
+            className={`-ml-1 inline-flex min-h-10 min-w-10 items-center justify-center px-1 transition-colors hover:text-brand-800 ${LIGHT_FOCUS}`}
+          >
             হোম
           </Link>
           {breadcrumbs.map((crumb, idx) => (
             <React.Fragment key={idx}>
-              <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <ChevronRight className="h-3.5 w-3.5 shrink-0 text-brand-200" aria-hidden="true" />
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className="hover:text-emerald-800 transition-colors"
+                  className={`inline-flex min-h-10 items-center transition-colors hover:text-brand-800 ${LIGHT_FOCUS}`}
                 >
-                  {crumb.label}
+                  <span className="truncate">{crumb.label}</span>
                 </Link>
               ) : (
-                <span className="font-medium text-slate-800">{crumb.label}</span>
+                <span
+                  aria-current="page"
+                  className="inline-flex min-h-10 items-center font-medium text-ink-700"
+                >
+                  <span className="truncate">{crumb.label}</span>
+                </span>
               )}
             </React.Fragment>
           ))}

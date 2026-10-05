@@ -51,12 +51,27 @@ export const TOLET_LISTING_STATUS_INFO: Record<
   archived: { labelBn: 'আর্কাইভ করা', badgeClass: 'bg-slate-100 text-slate-500 border-slate-200' },
 };
 
+/**
+ * Extra, non-sensitive information about the person who posted a listing.
+ * Optional: real listings usually leave it empty and the UI falls back to a
+ * generic "বিজ্ঞাপনদাতা" label rather than inventing a bio.
+ */
+export interface ToletOwnerMeta {
+  /** Two-letter avatar fallback, e.g. 'সা'. */
+  initials: string;
+  roleLabelBn: string;
+  memberSinceBn: string;
+  /** True for seeded demo content, so the UI can label it as a sample. */
+  isDemo?: boolean;
+}
+
 export interface ToletListing {
   id: string;
   ownerId: string;
   ownerName: string;
   ownerPhone?: string;
   ownerVerified: boolean;
+  ownerMeta?: ToletOwnerMeta;
   title: string;
   propertyType: ToletPropertyType;
   areaId: string;
@@ -69,6 +84,12 @@ export interface ToletListing {
   totalRooms?: number;
   availableFrom?: string;
   facilities: string[];
+  /**
+   * Facilities the owner explicitly says are NOT included. Rendered as a
+   * separate "এই বাসায় যা নেই" panel so a tenant is not left guessing about
+   * gas, lift or parking. Optional — most listings simply omit it.
+   */
+  unavailableFacilities?: string[];
   description: string;
   photos: string[];
   isVerified: boolean;
@@ -92,9 +113,70 @@ export interface ToletListingInput {
   totalRooms?: number;
   availableFrom?: string;
   facilities: string[];
+  unavailableFacilities?: string[];
   description: string;
   photos: string[];
 }
+
+// ---------------------------------------------------------------------------
+// Contact / engagement tracking
+// ---------------------------------------------------------------------------
+
+/**
+ * Every meaningful action a visitor takes on a listing detail page.
+ *
+ * Note on `call_click`: it records the BUTTON PRESS, not whether a call was
+ * actually answered — the platform has no way to know the latter. Analytics
+ * copy must therefore say "কল বাটন চাপা হয়েছে", never "কল হয়েছে".
+ */
+export type ToletEventType =
+  | 'view'
+  | 'call_click'
+  | 'whatsapp_click'
+  | 'favorite'
+  | 'share';
+
+/** Where on the page an event was fired from — lets the admin panel compare
+ *  the sticky mobile bar against the desktop sidebar. */
+export type ToletEventSource = 'detail_page' | 'sticky_bar' | 'card';
+
+export interface ToletEventInput {
+  listingId: string;
+  eventType: ToletEventType;
+  source?: ToletEventSource;
+  /** Signed-in user, when there is one. Guests record `null`. */
+  userId?: string | null;
+  /** Denormalised so per-property analytics survives a listing deletion. */
+  areaId?: string;
+  propertyType?: string;
+  rentPrice?: number;
+}
+
+/**
+ * Rolled-up counters for one property. This is exactly the shape the admin
+ * panel needs, so the future console only has to render rows.
+ */
+export interface ToletListingStats {
+  listingId: string;
+  views: number;
+  callClicks: number;
+  whatsappClicks: number;
+  favorites: number;
+  shares: number;
+  /** callClicks + whatsappClicks — the number that decides "is this listing hot". */
+  contactClicks: number;
+  /** Distinct visitors (anon id or user id) that produced any event. */
+  uniqueVisitors: number;
+  lastActivityAt: string | null;
+}
+
+export const TOLET_EVENT_TYPE_INFO: Record<ToletEventType, { labelBn: string }> = {
+  view: { labelBn: 'বিজ্ঞাপন দেখা হয়েছে' },
+  call_click: { labelBn: 'কল বাটন চাপা হয়েছে' },
+  whatsapp_click: { labelBn: 'হোয়াটসঅ্যাপ বাটন চাপা হয়েছে' },
+  favorite: { labelBn: 'পছন্দ তালিকায় যুক্ত হয়েছে' },
+  share: { labelBn: 'শেয়ার করা হয়েছে' },
+};
 
 export type ToletRequestStatus = 'submitted' | 'contacted' | 'completed' | 'cancelled';
 

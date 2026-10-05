@@ -55,6 +55,33 @@ export interface ServiceListing {
   isFeatured: boolean;
   createdAt: string;
   updatedAt: string;
+  // --- vehicle only -------------------------------------------------------
+  // A vehicle is the one curated category where a single photo sells the
+  // listing, so it carries a gallery and the specs a renter actually asks about.
+  // All of it is optional: every field below is printed only when stored, so a
+  // row written by an older admin stays honest instead of showing invented
+  // zeroes.
+  photos?: string[];
+  /** "Toyota Axio", "Honda Grace", "Bajaj RE" — distinct from the listing title. */
+  modelNameBn?: string;
+  modelYear?: number;
+  /** null = unknown, which is different from false ("definitely not air-con"). */
+  hasAc?: boolean;
+  driverIncluded?: boolean;
+  /** "সকাল ৭টা – বিকাল ৬টা", "শুধু রাত্রি". */
+  availableTimeBn?: string;
+  /**
+   * How the numbers above should be read: "প্রতি কিলোমিটার", "প্রতি দিন",
+   * "পুরো ভাড়া (ভাড়াও চালক)". Free text because the unit is a local
+   * convention, not an enum anyone can enumerate correctly.
+   */
+  priceNoteBn?: string;
+  /**
+   * Only set on `lib/vehicle-demo-data.ts` rows. The directory's "showing demo
+   * data" state is per-category, so this has to ride on the row: one demo
+   * listing in a category of real ones is still a demo listing.
+   */
+  isDemo?: boolean;
 }
 
 /** The write-side shape an admin form produces. */
@@ -80,11 +107,27 @@ export interface CommunityPost {
   slug: string;
   authorId: string;
   authorName?: string;
+  /**
+   * The author's contact number.
+   *
+   * Not a free-for-all: it is populated from the signed-in user's profile, or
+   * typed by a guest at post time, and it is only ever READ BACK on a
+   * marketplace item — a news article or a job ad never exposes it. See
+   * `fetchMarketContact` in the service layer for the server-side gate.
+   */
   authorPhone?: string;
+  /** Separate WhatsApp number when it differs from the call number. */
+  whatsappNumber?: string;
   titleBn: string;
   summaryBn?: string;
   bodyBn?: string;
   coverImageUrl?: string;
+  /**
+   * Extra product photos beyond the cover. A marketplace item with one photo
+   * reads as a scam, so the detail page shows a gallery when this is present
+   * and falls back to the cover alone when it is not.
+   */
+  gallery?: string[];
   category?: string;
   areaId?: string;
   tags: string[];
@@ -99,9 +142,26 @@ export interface CommunityPost {
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
+  /** Only set on `lib/market-demo-data.ts` rows. See `ServiceListing.isDemo`. */
+  isDemo?: boolean;
 }
 
-export type CommunityPostInput = Omit<CommunityPost, 'id' | 'createdAt' | 'updatedAt'>;
+/**
+ * What an author may write.
+ *
+ * `authorPhone` and `whatsappNumber` are re-declared as nullable because a
+ * seller has to be able to *withdraw* a number, not only set one: sending
+ * `undefined` would skip the column and leave the old number stored on a post
+ * the seller believes they have cleaned up. `null` writes SQL NULL; `undefined`
+ * leaves the column alone.
+ */
+export type CommunityPostInput = Omit<
+  CommunityPost,
+  'id' | 'createdAt' | 'updatedAt' | 'authorPhone' | 'whatsappNumber'
+> & {
+  authorPhone?: string | null;
+  whatsappNumber?: string | null;
+};
 
 // ---------------------------------------------------------------------------
 // Emergency directory
@@ -144,6 +204,12 @@ export interface VehicleRequest {
   destinationAreaId?: string;
   travelDate?: string;
   travelTime?: string;
+  /** যাত্রী সংখ্যা — decides which vehicle is right, so it is asked up front. */
+  passengerCount?: number;
+  /** "এক ঘণ্টা", "সারাদিন", "দুই দিন" — the hire term, not a timestamp. */
+  tripDuration?: string;
+  /** Optional ceiling the rider has in mind, in taka. */
+  budget?: number;
   notes?: string;
   status: VehicleRequestStatus;
   createdAt: string;
@@ -160,6 +226,9 @@ export interface VehicleRequestInput {
   destinationAreaId?: string;
   travelDate?: string;
   travelTime?: string;
+  passengerCount?: number;
+  tripDuration?: string;
+  budget?: number;
   notes?: string;
 }
 
@@ -243,15 +312,24 @@ export const JOB_EDUCATION: { id: string; labelBn: string }[] = [
   { id: 'any', labelBn: 'যেকোনো' },
 ];
 
-/** Buy-sell item categories. */
+/**
+ * Buy-sell item categories.
+ *
+ * `vehicle` is a legacy id kept for rows written before বাইক and গাড়ি were split
+ * apart. It is deliberately absent from this list, so it never appears as a
+ * filter chip, but `tagLabel` still resolves it — a post filed under the old id
+ * keeps rendering its own category instead of silently losing it.
+ */
 export const MARKET_CATEGORIES: { id: string; labelBn: string }[] = [
   { id: 'mobile', labelBn: 'মোবাইল' },
   { id: 'laptop', labelBn: 'ল্যাপটপ / কম্পিউটার' },
   { id: 'electronics', labelBn: 'ইলেকট্রনিক্স' },
-  { id: 'furniture', labelBn: 'ফার্নিচার' },
+  { id: 'furniture', labelBn: 'আসবাবপত্র' },
+  { id: 'bike', labelBn: 'বাইক' },
+  { id: 'car', labelBn: 'গাড়ি' },
   { id: 'books', labelBn: 'বই' },
-  { id: 'vehicle', labelBn: 'বাইক / গাড়ি' },
   { id: 'clothing', labelBn: 'পোশাক' },
+  { id: 'household', labelBn: 'বাসার জিনিসপত্র' },
   { id: 'other', labelBn: 'অন্যান্য' },
 ];
 
@@ -262,6 +340,27 @@ export const MARKET_CONDITIONS: { id: string; labelBn: string }[] = [
   { id: 'good', labelBn: 'ভালো' },
   { id: 'used', labelBn: 'ব্যবহৃত' },
 ];
+
+/**
+ * Lucide icon name per marketplace category, for the category rail.
+ *
+ * A string rather than a component so this module stays free of JSX and the
+ * component that owns the rail is the one that decides how to draw it. Every
+ * value is a real lucide export, so the rail can index the icon set directly.
+ */
+export const MARKET_CATEGORY_ICONS: Record<string, string> = {
+  mobile: 'Smartphone',
+  laptop: 'Laptop',
+  electronics: 'Plug',
+  furniture: 'Armchair',
+  bike: 'Bike',
+  car: 'Car',
+  books: 'BookOpen',
+  clothing: 'Shirt',
+  household: 'BedDouble',
+  vehicle: 'Car',
+  other: 'Package',
+};
 
 // ---------------------------------------------------------------------------
 // Fee / price bands used by the "range" filters
@@ -576,6 +675,44 @@ export function bnDate(value?: string | null): string | undefined {
   if (month < 0 || month > 11) return undefined;
   if (day < 1 || day > 31) return undefined;
   return `${toBn(day)} ${BN_MONTHS[month]} ${toBn(year)}`;
+}
+
+/**
+ * "৩ ঘণ্টা আগে" — how long ago a timestamp was, in the unit a reader cares about.
+ *
+ * Deliberately relative and deliberately short. On a marketplace the only
+ * question a posted date answers is "is this thing still available", and that is
+ * a question about recency, not about a calendar. A listing from eleven months
+ * ago needs no more explanation than "১১ মাস আগে"; a listing from this morning
+ * should not read "১৫ অক্টোবর ২০২৬" the same way it would in a news archive.
+ *
+ * `now` is injectable so the caller can pin it. Anything that renders on both
+ * the server and the client must pass the server's clock, or the two renders
+ * will disagree about whether a post is one day or two days old.
+ */
+export function bnRelativeTime(value?: string | null, now: number = Date.now()): string | undefined {
+  if (!value) return undefined;
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return undefined;
+
+  const seconds = Math.floor((now - then) / 1000);
+  if (seconds < 0) return 'এইমাত্র';
+  if (seconds < 60) return 'এইমাত্র';
+
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${toBn(minutes)} মিনিট আগে`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${toBn(hours)} ঘণ্টা আগে`;
+
+  const days = Math.floor(hours / 24);
+  if (days === 1) return 'গতকাল';
+  if (days < 30) return `${toBn(days)} দিন আগে`;
+
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${toBn(months)} মাস আগে`;
+
+  return `${toBn(Math.floor(days / 365))} বছর আগে`;
 }
 
 /** Human label for a set of area ids, e.g. "চরপাড়া, টাউন হল". */

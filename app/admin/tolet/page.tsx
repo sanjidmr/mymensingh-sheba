@@ -16,6 +16,7 @@ import { adminFetchListings } from '@/lib/tolet-service';
 import type { ToletListing, ToletListingStatus } from '@/lib/tolet-types';
 import { TOLET_LISTING_STATUS_INFO, TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
+import { ToletAnalyticsTable } from '@/components/tolet/admin/ToletAnalytics';
 import { getAreaById } from '@/lib/locations';
 
 const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color: string; active: string }> = [
@@ -285,6 +286,13 @@ export default function AdminToletPage() {
                 })}
               </div>
             )}
+          </div>
+
+          {/* Property-wise engagement, across every listing rather than one row
+              of the moderation list. Rendered last so a moderator reads the
+              queue first and the numbers second. */}
+          <div className="mt-8">
+            <ToletAnalyticsTable limit={25} />
           </div>
         </div>
       </main>

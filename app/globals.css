@@ -43,10 +43,16 @@
 
   /* Text — green-charcoal ink */
   --color-ink-900: #16241c; /* Primary Text */
+  /* 800 and 300 complete the ramp. Several components already reference
+     `ink-800` (semi-emphasis text) and `ink-300` (placeholder text); without
+     these two keys Tailwind emits no utility for them and the text silently
+     inherits its parent's colour. */
+  --color-ink-800: #22322a;
   --color-ink-700: #2b3a31;
   --color-ink-600: #3d4d43;
   --color-ink-500: #57665c; /* Muted Text */
   --color-ink-400: #7d8b81;
+  --color-ink-300: #9aa79e; /* Placeholder / disabled text on white */
 
   /* Warm cream surfaces (was navy-era cool mist) */
   --color-mist-50: #faf8f2; /* Warm Off-White */
@@ -140,6 +146,22 @@
   }
   @media (prefers-reduced-motion: reduce) {
     .mms-fade-up {
+      animation: none;
+    }
+  }
+
+  /* Gallery photo change — a 150ms cross-fade. Deliberately the ONLY animation
+     on the listing detail page: enough to confirm the tap registered, not
+     enough to make the page feel like a carousel widget. */
+  @keyframes mms-fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  .mms-fade-in {
+    animation: mms-fade-in 150ms ease-out both;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .mms-fade-in {
       animation: none;
     }
   }

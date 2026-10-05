@@ -163,14 +163,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 ? `ভাড়া দেওয়া বাসা (${itemId})`
                 : itemType === 'tutor'
                 ? `গৃহশিক্ষক (${itemId})`
-                : `সেবা (${itemId})`,
+                : itemType === 'market'
+                    ? `কেনাবেচার পণ্য (${itemId})`
+                    : `সেবা (${itemId})`,
             areaName: '',
             linkHref:
               itemType === 'tolet'
                 ? `/tolet/${itemId}`
                 : itemType === 'tutor'
                 ? `/home-tutor/${itemId}`
-                : '/services',
+                : itemType === 'market'
+                    ? `/buy-sell/${itemId}`
+                    : '/services',
             savedAt: String(camel.createdAt),
           } as SavedListingItem;
         })

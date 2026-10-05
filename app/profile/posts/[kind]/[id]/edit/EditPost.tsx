@@ -22,26 +22,29 @@ import type { CommunityPost } from '@/lib/catalog-types';
 export default function EditPost({ postId }: { postId: string }) {
   const { user, isLoading: authLoading } = useAuth();
   const [post, setPost] = useState<CommunityPost | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Same reasoning as `MyPosts`: "no user to fetch for" and "fetch finished"
+  // are one state, so tracking `loaded` lets the spinner be derived instead of
+  // forcing the effect to synchronously setState "not loading" and cascade a
+  // render before the first paint.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     let active = true;
     (async () => {
       try {
         const data = await fetchMyPostForEdit(postId);
         if (active) setPost(data);
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoaded(true);
       }
     })();
     return () => {
       active = false;
     };
   }, [user, postId]);
+
+  const loading = !!user && !loaded;
 
   if (authLoading || loading) {
     return (
@@ -73,7 +76,11 @@ export default function EditPost({ postId }: { postId: string }) {
 
   return (
     <PostAuthGate next="/profile/posts">
-      <PostForm kind={post.kind} editing={post} />
+      {/* `key` on the post id is what makes the form's lazy seed correct: a
+          different post is a different component instance, so the fields are
+          seeded once at mount instead of being re-seeded by an effect that
+          could also clobber half-typed input. */}
+      <PostForm key={post.id} kind={post.kind} editing={post} />
     </PostAuthGate>
   );
 }

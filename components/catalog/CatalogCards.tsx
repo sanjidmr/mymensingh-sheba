@@ -246,7 +246,7 @@ export interface TileCardProps {
   title: string;
   subtitle?: string;
   imageUrl?: string;
-  /** Optional emphasized line. Deliberately unused for vehicle (no rental price). */
+  /** Optional emphasized line — the price, on categories that have one. */
   priceLabel?: string;
   priceSuffix?: string;
   areaLabel?: string;

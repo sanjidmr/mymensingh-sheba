@@ -45,6 +45,15 @@ export interface CatalogDirectoryProps {
   renderCard: (listing: ServiceListing) => React.ReactNode;
   /** Header action, e.g. an admin "add" link. */
   action?: React.ReactNode;
+  /**
+   * Optional notice between the header and the search bar.
+   *
+   * Used by the categories that can fall back to demo rows, to say so. It lives
+   * here rather than at the call site because `CatalogDirectory` owns the whole
+   * page frame including the Navbar — a sibling node rendered by the caller
+   * would land above the navbar, not above the results.
+   */
+  banner?: React.ReactNode;
 }
 
 export default function CatalogDirectory({
@@ -56,6 +65,7 @@ export default function CatalogDirectory({
   sorters,
   renderCard,
   action,
+  banner,
 }: CatalogDirectoryProps) {
   const searchable = useCallback(
     (item: ServiceListing): SearchableFields => ({
@@ -130,6 +140,8 @@ export default function CatalogDirectory({
       highlights={ui.highlights}
       action={action}
     >
+      {banner ? <div className="mb-3">{banner}</div> : null}
+
       <DirectorySearchBar
         value={controller.query}
         onChange={controller.setQuery}

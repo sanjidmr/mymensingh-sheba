@@ -70,6 +70,10 @@ interface FormValues {
   deadline: string;
   condition: string;
   phone: string;
+  /** buy_sell: the seller's own number, which the buyer is allowed to call. */
+  sellerPhone: string;
+  /** buy_sell: optional WhatsApp line. Blank means "same as the call number". */
+  whatsapp: string;
 }
 
 const EMPTY: FormValues = {
@@ -87,9 +91,67 @@ const EMPTY: FormValues = {
   deadline: '',
   condition: '',
   phone: '',
+  sellerPhone: '',
+  whatsapp: '',
 };
 
-type Errors = Partial<Record<keyof FormValues, string>>;
+type Errors = Partial<Record<keyof FormValues | 'photos', string>>;
+
+/**
+ * One photo slot in the uploader.
+ *
+ * `file` is a freshly picked file still on this device; `url` is either the
+ * object URL of that file or the stored URL of an existing photo. The first slot
+ * becomes `cover_image_url` and the rest become `gallery` — a split the column
+ * layout already forces, and one that keeps the card grid's first photo cheap
+ * to fetch.
+ */
+type PhotoSlot = { key: string; file: File | null; url: string };
+
+/** Cover plus four gallery photos. */
+const MAX_PHOTOS = 5;
+
+/**
+ * The form's starting state for an existing post.
+ *
+ * A factory rather than an effect. The previous shape set five pieces of state
+ * from inside `useEffect`, which meant every field rendered blank for one frame
+ * on load and — worse — would overwrite half-typed input if the `editing`
+ * reference ever changed identity. The caller keys the form on the post id, so
+ * "a different post" is now "a different component instance" and the seed runs
+ * exactly once, at mount.
+ *
+ * `education` and `experience` start empty on purpose: they are job facets
+ * stored as tags, not columns, and there is no column to read them back out of.
+ * Pre-filling them would show the seller's existing chips as unselected.
+ */
+function seedFrom(post: CommunityPost) {
+  return {
+    values: {
+      title: post.titleBn,
+      summary: post.summaryBn ?? '',
+      body: post.bodyBn ?? '',
+      category: post.category ?? '',
+      areaId: post.areaId ?? '',
+      price: post.price != null ? String(post.price) : '',
+      salaryMin: post.salaryMin != null ? String(post.salaryMin) : '',
+      salaryMax: post.salaryMax != null ? String(post.salaryMax) : '',
+      jobType: post.jobType ?? '',
+      education: '',
+      experience: '',
+      deadline: post.deadline ?? '',
+      condition: post.conditionLabel ?? '',
+      phone: '',
+      sellerPhone: post.authorPhone ?? '',
+      whatsapp: post.whatsappNumber ?? '',
+    },
+    tags: post.tags ?? [],
+    photos: [
+      ...(post.coverImageUrl ? [{ key: 'cover', file: null, url: post.coverImageUrl }] : []),
+      ...(post.gallery ?? []).map((url, i) => ({ key: `existing-${i}`, file: null, url })),
+    ],
+  };
+}
 
 export default function PostForm({
   kind,
@@ -104,40 +166,19 @@ export default function PostForm({
   const meta = KIND_META[kind];
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const [values, setValues] = useState<FormValues>(EMPTY);
-  const [tags, setTags] = useState<string[]>([]);
+  // One seed, computed once. The lazy initialisers below read it in order, so
+  // `seedFrom` runs at most once per mount and never on a later render.
+  const [seed] = useState(() => (editing ? seedFrom(editing) : null));
+  const [values, setValues] = useState<FormValues>(() => seed?.values ?? EMPTY);
+  const [tags, setTags] = useState<string[]>(() => seed?.tags ?? []);
+  const [photos, setPhotos] = useState<PhotoSlot[]>(() => seed?.photos ?? []);
   const [errors, setErrors] = useState<Errors>({});
   const [submitting, setSubmitting] = useState(false);
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [formError, setFormError] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string>('');
   const [deleting, setDeleting] = useState(false);
 
   const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
-
-  // Seed the form once when editing. `editing.id` is the key so re-saving does
-  // not clobber what the reader is currently typing.
-  useEffect(() => {
-    if (!editing) return;
-    setValues({
-      title: editing.titleBn,
-      summary: editing.summaryBn ?? '',
-      body: editing.bodyBn ?? '',
-      category: editing.category ?? '',
-      areaId: editing.areaId ?? '',
-      price: editing.price != null ? String(editing.price) : '',
-      salaryMin: editing.salaryMin != null ? String(editing.salaryMin) : '',
-      salaryMax: editing.salaryMax != null ? String(editing.salaryMax) : '',
-      jobType: editing.jobType ?? '',
-      education: '',
-      experience: '',
-      deadline: editing.deadline ?? '',
-      condition: editing.conditionLabel ?? '',
-      phone: '',
-    });
-    setTags(editing.tags ?? []);
-    setImagePreview(editing.coverImageUrl ?? '');
-  }, [editing]);
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -171,6 +212,27 @@ export default function PostForm({
       const price = Number(values.price);
       if (!values.price.trim()) next.price = 'দাম লিখুন।';
       else if (Number.isNaN(price) || price < 0) next.price = 'সঠিক দাম লিখুন।';
+
+      // A photo is not optional on a marketplace listing. A text-only post for
+      // "Samsung phone, 45000" is indistinguishable from a scam, and it is the
+      // single strongest predictor of one — a buyer cannot judge condition,
+      // size or damage from a description. It is required for buy_sell only,
+      // because a news article legitimately runs without a photo.
+      if (photos.length === 0) next.photos = 'পণ্যের অন্তত একটি ছবি দিন।';
+
+      // The seller's number is required here for the same reason: a listing a
+      // buyer cannot call is not a listing. `normalizeBdPhone` handles the
+      // Bangladeshi formats (01…, +8801…, spaces) and returns '' on garbage.
+      const seller = normalizeBdPhone(values.sellerPhone);
+      if (!/^01[3-9]\d{8}$/.test(seller)) {
+        next.sellerPhone = 'সঠিক মোবাইল নম্বর দিন (যেমন ০১৭১২৩৪৫৬৭৮)।';
+      }
+      if (values.whatsapp.trim()) {
+        const wa = normalizeBdPhone(values.whatsapp);
+        if (!/^01[3-9]\d{8}$/.test(wa)) {
+          next.whatsapp = 'হোয়াটসঅ্যাপ নম্বরটি সঠিক নয়।';
+        }
+      }
     }
 
     if (kind === 'job') {
@@ -207,29 +269,40 @@ export default function PostForm({
     if (Object.keys(found).length > 0) {
       // Move focus to the first problem so a keyboard user is not left hunting.
       const firstKey = Object.keys(found)[0];
-      document.getElementById(`field-${firstKey}`)?.focus();
+      const el = document.getElementById(`field-${firstKey}`);
+      if (el instanceof HTMLElement) el.focus();
       return;
     }
 
     setSubmitting(true);
     try {
       const authorId = await currentUserId();
-      let coverImageUrl = imagePreview;
 
-      if (imageFile) {
+      // Upload only the slots holding a local file; the rest are already in
+      // storage and are re-sent unchanged. Sequential rather than parallel
+      // because they share one author-id path prefix and a burst of five
+      // simultaneous uploads is the shape that trips bucket rate limits.
+      const pending = photos.filter((slot) => slot.file);
+      const urls: string[] = [];
+      setUploadedCount(0);
+      for (const slot of photos) {
+        if (!slot.file) {
+          urls.push(slot.url);
+          continue;
+        }
         if (!authorId) {
           setFormError('ছবি আপলোড করতে লগইন করুন।');
-          setSubmitting(false);
           return;
         }
-        const uploaded = await uploadPostImage(authorId, imageFile);
+        const uploaded = await uploadPostImage(authorId, slot.file);
         if (!uploaded.success) {
           setFormError(uploaded.error);
-          setSubmitting(false);
           return;
         }
-        coverImageUrl = uploaded.data;
+        urls.push(uploaded.data);
+        setUploadedCount((n) => n + 1);
       }
+      if (pending.length === 0) setUploadedCount(0);
 
       // The taxonomy facets are stored as slugs, so a chip and the facet share
       // one value and the filter works on the row that was just written.
@@ -247,12 +320,20 @@ export default function PostForm({
         titleBn: values.title.trim(),
         summaryBn: values.summary.trim() || undefined,
         bodyBn: values.body.trim() || undefined,
-        coverImageUrl: coverImageUrl || undefined,
+        coverImageUrl: urls[0] || undefined,
+        gallery: urls.slice(1),
         category: values.category || undefined,
         areaId: values.areaId || undefined,
         tags: allTags,
         authorName: editing?.authorName,
-        authorPhone: phoneRequired ? normalizeBdPhone(values.phone) : editing?.authorPhone,
+        authorPhone:
+          kind === 'buy_sell'
+            ? normalizeBdPhone(values.sellerPhone)
+            : phoneRequired
+              ? normalizeBdPhone(values.phone)
+              : editing?.authorPhone,
+        whatsappNumber:
+          kind === 'buy_sell' ? normalizeBdPhone(values.whatsapp) || null : undefined,
         status: 'pending' as const,
         isFeatured: false,
         authorId: '',
@@ -297,19 +378,64 @@ export default function PostForm({
     }
   }
 
-  function pickImage(file: File | null) {
-    if (!file) return;
-    if (!file.type.startsWith('image/')) {
-      setFormError('শুধুমাত্র ছবি ফাইল দেওয়া যাবে।');
+  function pickImages(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const room = MAX_PHOTOS - photos.length;
+    if (room <= 0) {
+      setFormError(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি দেওয়া যাবে।`);
       return;
     }
-    if (file.size > 5 * 1024 * 1024) {
-      setFormError('ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।');
-      return;
+    const accepted: PhotoSlot[] = [];
+    for (const file of Array.from(files).slice(0, room)) {
+      if (!file.type.startsWith('image/')) {
+        setFormError('শুধুমাত্র ছবি ফাইল দেওয়া যাবে।');
+        continue;
+      }
+      if (file.size > 5 * 1024 * 1024) {
+        setFormError('প্রতিটি ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।');
+        continue;
+      }
+      accepted.push({
+        key: `local-${file.name}-${file.size}-${crypto.randomUUID()}`,
+        file,
+        url: URL.createObjectURL(file),
+      });
     }
-    setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
-    setFormError('');
+    // Reporting the truncation matters: silently dropping the 6th photo leaves
+    // the seller believing they uploaded all of them.
+    if (files.length > room) {
+      setFormError(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি রাখা যায় — বাকিগুলো যোগ করা হয়নি।`);
+    } else {
+      setFormError('');
+    }
+    if (accepted.length) setPhotos((prev) => [...prev, ...accepted]);
+  }
+
+  /**
+   * Remove a photo.
+   *
+   * The first slot is special: dropping it does not shift the gallery up into
+   * the cover position, because the seller chose that photo as the one buyers
+   * see in the grid. Removing it leaves a gap the cover should fill, so the
+   * cover is removed and the next photo takes over.
+   */
+  function removePhoto(key: string) {
+    setPhotos((prev) => {
+      const next = prev.filter((slot) => slot.key !== key);
+      return next.length ? next : [];
+    });
+  }
+
+  /** Promote a gallery photo to be the cover. */
+  function makeCover(key: string) {
+    setPhotos((prev) => {
+      const index = prev.findIndex((slot) => slot.key === key);
+      if (index <= 0) return prev;
+      const next = [...prev];
+      const [picked] = next.splice(index, 1);
+      next.unshift(picked);
+      return next;
+    });
   }
 
   return (
@@ -520,6 +646,54 @@ export default function PostForm({
                   ))}
                 </select>
               </Field>
+
+              {/* Seller contact. Required, because a marketplace listing whose
+                  buyer cannot call the seller is not a listing. The number goes
+                  to `author_phone`, which the public page reads back only
+                  through `fetch_market_contact` — see `lib/catalog-service.ts`.
+                  Kept out of the news and job forms entirely: nothing in those
+                  two workflows asks an author to publish a number. */}
+              <fieldset className="rounded-xl border border-mist-200 bg-mist-50/60 p-3">
+                <legend className="px-1 text-[12px] font-extrabold text-ink-700">
+                  বিক্রেতার যোগাযোগ
+                </legend>
+
+                <Field
+                  id="sellerPhone"
+                  label="মোবাইল নম্বর"
+                  required
+                  error={errors.sellerPhone}
+                  hint="অ্যাডমিন অনুমোদনের পর ক্রেতারা এই নম্বরে কল করতে পারবেন"
+                >
+                  <input
+                    id="field-sellerPhone"
+                    value={values.sellerPhone}
+                    onChange={(e) => set('sellerPhone', e.target.value)}
+                    inputMode="tel"
+                    required
+                    aria-invalid={Boolean(errors.sellerPhone)}
+                    className={inputClass(Boolean(errors.sellerPhone))}
+                  />
+                </Field>
+
+                <div className="mt-3">
+                  <Field
+                    id="whatsapp"
+                    label="হোয়াটসঅ্যাপ নম্বর"
+                    error={errors.whatsapp}
+                    hint="না দিলে উপরের নম্বরটিই হোয়াটসঅ্যাপে ব্যবহার হবে"
+                  >
+                    <input
+                      id="field-whatsapp"
+                      value={values.whatsapp}
+                      onChange={(e) => set('whatsapp', e.target.value)}
+                      inputMode="tel"
+                      aria-invalid={Boolean(errors.whatsapp)}
+                      className={inputClass(Boolean(errors.whatsapp))}
+                    />
+                  </Field>
+                </div>
+              </fieldset>
             </>
           )}
 
@@ -539,45 +713,90 @@ export default function PostForm({
             </select>
           </Field>
 
-          {/* Cover image */}
-          <div>
-            <span className="mb-1.5 block text-[12.5px] font-bold text-ink-700">ছবি</span>
-            {imagePreview && (
-              <div className="relative mb-2 w-fit">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imagePreview}
-                  alt="নির্বাচিত ছবির প্রিভিউ"
-                  className="h-32 w-44 rounded-lg border border-brand-100 object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setImageFile(null);
-                    setImagePreview('');
-                  }}
-                  className={`absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-ink-500 shadow-sm ring-1 ring-brand-100 ${LIGHT_FOCUS}`}
-                >
-                  <X className="h-3.5 w-3.5" aria-hidden="true" />
-                  <span className="sr-only">ছবি সরান</span>
-                </button>
-              </div>
+          {/* Photos. The first one is the cover the card grid shows; the rest form the
+            gallery on the detail page. buy_sell needs at least one — see the
+            note in `validate`. */}
+          <div
+            id="field-photos"
+            tabIndex={-1}
+            className="outline-none"
+            aria-invalid={Boolean(errors.photos)}
+          >
+            <span className="mb-1.5 block text-[12.5px] font-bold text-ink-700">
+              ছবি
+              {kind === 'buy_sell' && <span className="text-rose-600"> *</span>}
+            </span>
+
+            {photos.length > 0 && (
+              <ul className="mb-2 flex flex-wrap gap-2">
+                {photos.map((slot, index) => (
+                  <li key={slot.key} className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={slot.url}
+                      alt={index === 0 ? 'প্রচ্ছদ ছবি' : `ছবি ${index + 1}`}
+                      className={`h-24 w-32 rounded-lg border object-cover ${
+                        index === 0 ? 'border-brand-500' : 'border-mist-200'
+                      }`}
+                    />
+                    {index === 0 ? (
+                      <span className="absolute bottom-1 left-1 rounded bg-ink-900/75 px-1.5 py-0.5 text-[9.5px] font-bold text-white">
+                        প্রচ্ছদ
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => makeCover(slot.key)}
+                        className={`absolute bottom-1 left-1 rounded bg-white/90 px-1.5 py-0.5 text-[9.5px] font-bold text-ink-700 ${LIGHT_FOCUS}`}
+                      >
+                        প্রচ্ছদ করুন
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(slot.key)}
+                      aria-label={`ছবি ${index + 1} সরান`}
+                      className={`absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-ink-500 shadow-sm ring-1 ring-mist-200 ${LIGHT_FOCUS}`}
+                    >
+                      <X className="h-3.5 w-3.5" aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
             )}
+
             <input
               ref={fileRef}
               type="file"
               accept="image/*"
-              onChange={(e) => pickImage(e.target.files?.[0] ?? null)}
+              multiple={kind === 'buy_sell'}
+              onChange={(e) => {
+                pickImages(e.target.files);
+                // Reset so picking the same file twice in a row still fires
+                // `onChange` — otherwise the second pick looks like nothing
+                // happened and the seller cannot retry a bad photo.
+                e.target.value = '';
+              }}
               className="hidden"
             />
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              className={`min-h-[44px] w-full rounded-lg border border-dashed border-brand-200 bg-white px-4 text-sm font-bold text-brand-700 transition-colors hover:bg-mist-50 ${LIGHT_FOCUS}`}
+              disabled={photos.length >= MAX_PHOTOS}
+              className={`min-h-[44px] w-full rounded-lg border border-dashed border-brand-200 bg-white px-4 text-sm font-bold text-brand-700 transition-colors hover:bg-mist-50 disabled:cursor-not-allowed disabled:text-ink-400 ${LIGHT_FOCUS}`}
             >
-              {imagePreview ? 'ছবি বদলান' : 'ছবি যোগ করুন'}
+              {photos.length === 0
+                ? 'ছবি যোগ করুন'
+                : `আরও ছবি যোগ করুন (${photos.length}/${MAX_PHOTOS})`}
             </button>
-            <p className="mt-1 text-[11px] text-ink-400">সর্বোচ্চ ৫MB।</p>
+            <p className="mt-1 text-[11px] text-ink-400">
+              প্রতিটি ছবি সর্বোচ্চ ৫MB। প্রথম ছবিটি তালিকায় দেখাবে।
+            </p>
+            {errors.photos && (
+              <p role="alert" className="mt-1 text-[11.5px] font-medium text-rose-600">
+                {errors.photos}
+              </p>
+            )}
           </div>
 
           {/* Free-text tags */}
@@ -626,10 +845,14 @@ export default function PostForm({
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}
               {submitting
-                ? 'পাঠানো হচ্ছে…'
+                ? photos.some((slot) => slot.file)
+                  ? `ছবি আপলোড হচ্ছে… (${uploadedCount}/${photos.filter((slot) => slot.file).length})`
+                  : 'পাঠানো হচ্ছে…'
                 : editing
                   ? 'পরিবর্তন জমা দিন'
-                  : 'অ্যাডমিনের কাছে পাঠান'}
+                  : kind === 'buy_sell'
+                    ? 'বিজ্ঞাপন পাঠান'
+                    : 'অ্যাডমিনের কাছে পাঠান'}
             </button>
 
             {editing && (

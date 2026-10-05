@@ -35,6 +35,7 @@ import {
   TOLET_LISTING_STATUS_INFO,
 } from '@/lib/tolet-types';
 import { ListingStatusBadge, RequestStatusBadge } from '@/components/tolet/ListingStatusBadge';
+import { ToletListingStatsPanel } from '@/components/tolet/admin/ToletAnalytics';
 import { getAreaById } from '@/lib/locations';
 
 interface AdminToletDetailProps {
@@ -409,6 +410,12 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
                 {listing.publishedAt ? ` • প্রকাশ: ${new Date(listing.publishedAt).toLocaleDateString('bn-BD')}` : ''}
               </p>
             </div>
+
+            {/* Engagement, before the request list: a moderator deciding whether
+                to approve/publish wants to know if anyone is actually looking at
+                this listing, and "requests" only counts logged-in tenants who
+                filled in a form — button presses cover far more intent. */}
+            <ToletListingStatsPanel listingId={listing.id} />
 
             {/* Requests */}
             <div className="bg-white rounded-2xl border border-slate-200 p-5">

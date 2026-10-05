@@ -16,13 +16,23 @@
  *  3. USER WRITES    — authors may write only their own rows, and every insert
  *                      is forced to `pending` so a user cannot self-approve.
  *
- * There is deliberately NO mock/seed fallback. When Supabase is unconfigured or
- * the tables have not been migrated yet, these functions return an empty list
- * and pages render an honest empty state. Inventing providers, prices or
- * emergency phone numbers is exactly what this platform must never do.
+ * On seeds: when Supabase is unconfigured or the tables have not been migrated,
+ * these functions return an empty list and the page renders an honest empty
+ * state. Inventing providers, prices or emergency phone numbers is exactly what
+ * this platform must never do.
+ *
+ * Two categories are the exception, and only because the alternative was an
+ * undesignable page: `vehicle` and the `buy_sell` post kind fall back to the
+ * sample rows in `lib/vehicle-demo-data.ts` / `lib/market-demo-data.ts`, but
+ * ONLY while the live directory is completely empty — the first real listing
+ * replaces them wholesale, so a sample item is never shown beside a real one.
+ * Coaching, bus, wifi, job and news have no such fallback on purpose: a demo
+ * coaching centre or a fake vacancy would be a fabricated local commercial fact.
  */
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
+import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
+import { DEMO_VEHICLE_LISTINGS, getDemoVehicleListing } from './vehicle-demo-data';
 import type {
   CommunityPost,
   CommunityPostInput,
@@ -48,12 +58,27 @@ const NOT_SIGNED_IN = 'এই কাজটি করতে আগে লগই�
 // Row mapping
 // ---------------------------------------------------------------------------
 
-/** Columns a public (non-admin) reader is allowed to see. */
+/**
+ * Columns a public (non-admin) reader is allowed to see.
+ *
+ * `contact_phone_private` is deliberately absent: it is admin-only at the RLS
+ * layer AND omitted here, so the public path cannot reach it even if the policy
+ * were ever relaxed. Note `photos`/`model_*` are vehicle-only columns that older
+ * rows simply do not have — Supabase returns them as null and `mapListing` drops
+ * them, so a pre-migration row still renders.
+ */
 const PUBLIC_LISTING_COLUMNS =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, seat_count, is_active, is_featured, created_at, updated_at';
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, is_active, is_featured, created_at, updated_at';
 
+/**
+ * `author_name` is public — a buyer has to know who is selling. `author_phone`
+ * and `whatsapp_number` are NOT here even though they are readable on an
+ * approved row, because `community_posts` also backs news and job posts where a
+ * number must never surface, and omitting a column from a PostgREST `select` is
+ * a convention rather than a boundary. `fetchMarketContact` is the boundary.
+ */
 const PUBLIC_POST_COLUMNS =
-  'id, kind, slug, author_id, title_bn, summary_bn, body_bn, cover_image_url, category, area_id, tags, salary_min, salary_max, price, job_type, deadline, condition_label, status, is_featured, published_at, created_at, updated_at';
+  'id, kind, slug, author_id, author_name, title_bn, summary_bn, body_bn, cover_image_url, gallery, category, area_id, tags, salary_min, salary_max, price, job_type, deadline, condition_label, status, is_featured, published_at, created_at, updated_at';
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : '';
@@ -95,6 +120,15 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     originBn: optStr(c.originBn),
     destinationBn: optStr(c.destinationBn),
     seatCount: optNum(c.seatCount),
+    // --- vehicle only; absent on every other category and on pre-migration
+    // rows, where they arrive as null and `optStr`/`optNum` drop them.
+    photos: c.photos ? strArray(c.photos) : undefined,
+    modelNameBn: optStr(c.modelNameBn),
+    modelYear: optNum(c.modelYear),
+    hasAc: typeof c.hasAc === 'boolean' ? c.hasAc : undefined,
+    driverIncluded: typeof c.driverIncluded === 'boolean' ? c.driverIncluded : undefined,
+    availableTimeBn: optStr(c.availableTimeBn),
+    priceNoteBn: optStr(c.priceNoteBn),
     // Admin-only column: only populated on the authenticated admin path.
     contactPhonePrivate: admin ? optStr(c.contactPhonePrivate) : undefined,
     isActive: c.isActive !== false,
@@ -111,10 +145,22 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     kind: c.kind as PostKind,
     slug: str(c.slug),
     authorId: str(c.authorId),
+    // Public on purpose: a marketplace buyer has to know who is selling. The
+    // column did not exist when this table was first written, which is why
+    // `PostDetail` used to print "সদস্য" for everyone.
+    authorName: optStr(c.authorName),
+    // Never mapped here even when the caller selected `*`. Reaching the number
+    // goes through `fetchMarketContact`, which checks the row is an approved
+    // marketplace item first. An admin edit path calls `mapPost` on a row that
+    // already carries the number; leaving it unmapped is deliberate — the admin
+    // UI reads it from the admin listing column list instead.
+    authorPhone: undefined,
+    whatsappNumber: undefined,
     titleBn: str(c.titleBn),
     summaryBn: optStr(c.summaryBn),
     bodyBn: optStr(c.bodyBn),
     coverImageUrl: optStr(c.coverImageUrl),
+    gallery: c.gallery ? strArray(c.gallery) : undefined,
     category: optStr(c.category),
     areaId: optStr(c.areaId),
     tags: strArray(c.tags),
@@ -164,6 +210,9 @@ function mapVehicleRequest(row: Record<string, unknown>): VehicleRequest {
     destinationAreaId: optStr(c.destinationAreaId),
     travelDate: optStr(c.travelDate),
     travelTime: optStr(c.travelTime),
+    passengerCount: optNum(c.passengerCount),
+    tripDuration: optStr(c.tripDuration),
+    budget: optNum(c.budget),
     notes: optStr(c.notes),
     status: (c.status as VehicleRequestStatus) || 'new',
     createdAt: str(c.createdAt),
@@ -219,13 +268,40 @@ export type AckResult = { success: true } | { success: false; error: string };
 // Service listings (admin-curated)
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Showcase fallback
+// ---------------------------------------------------------------------------
+//
+// Mirrors the rule in `lib/tolet-service.ts`: a curated page with an empty table
+// teaches you nothing about the design, but a fake listing presented as real is
+// worse than an empty state. So the demo rows appear ONLY while the live
+// directory is empty, they never mix with real inventory, and a deep link to a
+// demo slug resolves in every mode so the page is always shareable.
+//
+// Only two categories get a showcase today — `vehicle` and the `buy_sell` post
+// kind. Everything else stays empty on purpose: a demo coaching centre or a
+// demo bus route would be inventing local commercial facts, whereas a demo
+// phone for sale or a demo Toyota Axio is plainly a sample.
+
+/** Demo rows are only worth showing for the categories that have them. */
+function showcaseFor(category: ServiceCategory): ServiceListing[] {
+  return category === 'vehicle' ? [...DEMO_VEHICLE_LISTINGS] : [];
+}
+
+function withListingShowcase(
+  category: ServiceCategory,
+  real: ServiceListing[]
+): ServiceListing[] {
+  return real.length > 0 ? real : showcaseFor(category);
+}
+
 /** Active listings for a public category page. */
 export async function fetchServiceListings(
   category: ServiceCategory
 ): Promise<ServiceListing[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) return withListingShowcase(category, []);
   const client = createClient();
-  if (!client) return [];
+  if (!client) return withListingShowcase(category, []);
   const { data, error } = await client
     .from('service_listings')
     .select(PUBLIC_LISTING_COLUMNS)
@@ -233,8 +309,14 @@ export async function fetchServiceListings(
     .eq('is_active', true)
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map((row) => mapListing(row, false));
+  // A query error (e.g. the new vehicle columns have not been migrated yet)
+  // must not leave the page blank: fall back to the showcase rather than to
+  // nothing, matching how `tolet-service` degrades to its in-memory store.
+  if (error || !data) return withListingShowcase(category, []);
+  return withListingShowcase(
+    category,
+    (data as Record<string, unknown>[]).map((row) => mapListing(row, false))
+  );
 }
 
 /** A single listing by slug, public read (active only). */
@@ -242,6 +324,9 @@ export async function fetchServiceListingBySlug(
   category: ServiceCategory,
   slug: string
 ): Promise<ServiceListing | null> {
+  // Showcase slugs resolve in every mode, before any database check.
+  const demo = getDemoVehicleListing(slug);
+  if (demo && demo.category === category) return demo;
   if (!isSupabaseConfigured) return null;
   const client = createClient();
   if (!client) return null;
@@ -269,6 +354,10 @@ export async function fetchServiceListingForContact(
   category: ServiceCategory,
   slug: string
 ): Promise<ServiceListing | null> {
+  // A demo listing has no private number to release, so it resolves through the
+  // public path and the page renders its request CTA instead of a call button.
+  const demo = getDemoVehicleListing(slug);
+  if (demo && demo.category === category) return demo;
   if (!isSupabaseConfigured) return null;
   const client = createClient();
   if (!client) return null;
@@ -368,11 +457,19 @@ export async function adminDeleteServiceListing(
 // Community posts (user-authored: news / jobs / buy-sell)
 // ---------------------------------------------------------------------------
 
-/** Approved posts of one kind, newest first. */
+/**
+ * Approved posts of one kind, newest first.
+ *
+ * Only `buy_sell` has a showcase. News and jobs are local reporting and real
+ * vacancies — inventing either would put a fabricated headline or a fake job in
+ * front of a reader, so an empty table there stays genuinely empty.
+ */
 export async function fetchApprovedPosts(kind: PostKind): Promise<CommunityPost[]> {
-  if (!isSupabaseConfigured) return [];
+  const showcase = (): CommunityPost[] =>
+    kind === 'buy_sell' ? [...DEMO_MARKET_POSTS] : [];
+  if (!isSupabaseConfigured) return showcase();
   const client = createClient();
-  if (!client) return [];
+  if (!client) return showcase();
   const { data, error } = await client
     .from('community_posts')
     .select(PUBLIC_POST_COLUMNS)
@@ -380,8 +477,9 @@ export async function fetchApprovedPosts(kind: PostKind): Promise<CommunityPost[
     .eq('status', 'approved')
     .order('published_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map(mapPost);
+  if (error || !data) return showcase();
+  const real = (data as Record<string, unknown>[]).map(mapPost);
+  return real.length > 0 ? real : showcase();
 }
 
 /** Approved posts for every kind at once — used by the homepage rails. */
@@ -406,6 +504,9 @@ export async function fetchApprovedPostBySlug(
   kind: PostKind,
   slug: string
 ): Promise<CommunityPost | null> {
+  // Showcase slugs resolve in every mode, so a demo listing is always shareable.
+  const demo = getDemoMarketPost(slug);
+  if (demo && demo.kind === kind) return demo;
   if (!isSupabaseConfigured) return null;
   const client = createClient();
   if (!client) return null;
@@ -418,6 +519,87 @@ export async function fetchApprovedPostBySlug(
     .maybeSingle();
   if (error || !data) return null;
   return mapPost(data as Record<string, unknown>);
+}
+
+/**
+ * Seller contact for an approved marketplace item — or `null` if there is none.
+ *
+ * Why an RPC instead of just reading `author_phone`:
+ *
+ * `community_posts` is one table serving three very different surfaces. A
+ * marketplace buyer must be able to call the seller, but the same table stores
+ * news articles and job ads, where the author's number must never appear. RLS
+ * operates on rows, not columns, and PostgREST will happily serve `select=*`, so
+ * "the public column list does not include it" is a habit rather than a
+ * boundary — one careless `select('*')` anywhere in the codebase would leak it.
+ *
+ * `fetch_market_contact` moves the check server-side. It is `SECURITY DEFINER`,
+ * so it can read a column the anon role cannot, and it returns nothing unless
+ * the row is `kind = 'buy_sell'` and `status = 'approved'`. The grants are
+ * `REVOKE ALL … FROM PUBLIC` plus explicit `anon, authenticated`, so the function
+ * is not reachable by any future role that has not been thought about.
+ *
+ * It returns `null` — never a fabricated number — when the row is absent, the
+ * post is still in moderation, the post is news or a job, or the function has
+ * not been deployed yet (the migration has to be applied). Each of those is a
+ * normal, expected state for the caller to handle, which is why this is a
+ * nullable result rather than an error.
+ */
+export async function fetchMarketContact(
+  slug: string
+): Promise<{ authorName?: string; authorPhone?: string; whatsappNumber?: string } | null> {
+  if (!isSupabaseConfigured) return null;
+  const client = createClient();
+  if (!client) return null;
+  const { data, error } = await client.rpc('fetch_market_contact', { p_slug: slug });
+  // `PGRST116` / an undefined function both mean the same thing to this caller:
+  // there is no contact to show. Swallowing the error keeps the marketplace
+  // working on a database that has not been migrated yet.
+  if (error || !Array.isArray(data) || data.length === 0) return null;
+  const row = (data[0] as Record<string, unknown>) ?? {};
+  const c = toCamelObject(row) as Record<string, unknown>;
+  const authorPhone = optStr(c.authorPhone);
+  const whatsappNumber = optStr(c.whatsappNumber);
+  const authorName = optStr(c.authorName);
+  // A row with no number in it is not a contact. Returning null here is what
+  // makes the detail page show "number নেই" instead of a dead call button.
+  if (!authorPhone && !whatsappNumber) return null;
+  return { authorName, authorPhone, whatsappNumber };
+}
+
+/**
+ * Files a report against a marketplace post.
+ *
+ * Separate from `createListingReport` in the tolet service because
+ * `listing_reports` is FK-bound to `tolet_listings`; this writes to
+ * `community_post_reports`, which cascades on delete so a report about a removed
+ * post cannot sit unresolved in the moderation queue forever.
+ *
+ * Guests can report, and that is not an oversight: a fake listing is precisely
+ * the case where the person who spotted it has no account. RLS allows the
+ * INSERT for `anon` and creates no SELECT policy at all, so success is keyed on
+ * the absence of an insert error rather than on re-reading the row — the same
+ * reasoning as `createVehicleRequest`.
+ */
+export async function createCommunityPostReport(input: {
+  postId: string;
+  reporterId: string | null;
+  reporterName: string;
+  reason: string;
+  details?: string;
+}): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('community_post_reports').insert({
+    post_id: input.postId,
+    reporter_id: input.reporterId,
+    reporter_name: input.reporterName.trim() || 'অতিথি',
+    reason: input.reason,
+    details: input.details?.trim() || null,
+  });
+  if (error) return { success: false, error: error.message };
+  return { success: true };
 }
 
 /**

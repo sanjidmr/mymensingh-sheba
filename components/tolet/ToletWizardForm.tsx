@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
-import { Check, ChevronLeft, ChevronRight, Save, Send, Loader2 } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Save, Send, Loader2, X } from 'lucide-react';
 import {
   getAllMCCAreas,
 } from '@/lib/locations';
@@ -54,7 +54,7 @@ interface ToletWizardFormProps {
   onDone: (action: 'created' | 'updated' | 'draft_saved') => void;
 }
 
-const defaultForm: ToletListingInput = {
+const defaultForm: ToletFormState = {
   title: '',
   propertyType: 'family',
   areaId: '',
@@ -67,11 +67,21 @@ const defaultForm: ToletListingInput = {
   floor: '',
   availableFrom: undefined,
   facilities: [],
+  unavailableFacilities: [],
   description: '',
   photos: [],
 };
 
-function toInput(listing: ToletListing): ToletListingInput {
+/**
+ * Wizard-local form state: `ToletListingInput` with `unavailableFacilities`
+ * made REQUIRED. The domain type keeps it optional (a listing may have no
+ * recorded absences), but while the owner is filling the form the list is always
+ * a concrete array — so every toggle can read and spread it without a guard, and
+ * a mis-tap can never leave the field `undefined` mid-edit.
+ */
+type ToletFormState = ToletListingInput & { unavailableFacilities: string[] };
+
+function toInput(listing: ToletListing): ToletFormState {
   return {
     title: listing.title,
     propertyType: listing.propertyType,
@@ -85,6 +95,7 @@ function toInput(listing: ToletListing): ToletListingInput {
     floor: listing.floor || '',
     availableFrom: listing.availableFrom,
     facilities: listing.facilities,
+    unavailableFacilities: listing.unavailableFacilities ?? [],
     description: listing.description,
     photos: listing.photos,
   };
@@ -138,7 +149,7 @@ export function ToletWizardForm({
   onDone,
 }: ToletWizardFormProps) {
   const [step, setStep] = useState(0);
-  const [form, setForm] = useState<ToletListingInput>(() =>
+  const [form, setForm] = useState<ToletFormState>(() =>
     initialListing ? toInput(initialListing) : { ...defaultForm }
   );
   const [alreadyPublished] = useState(() => initialListing?.status === 'approved');
@@ -151,7 +162,7 @@ export function ToletWizardForm({
   const isMessLike = typeInfo?.isMessLike ?? false;
   const isEditing = Boolean(initialListing);
 
-  const set = <K extends keyof ToletListingInput>(key: K, value: ToletListingInput[K]) => {
+  const set = <K extends keyof ToletFormState>(key: K, value: ToletFormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setError('');
   };
@@ -240,6 +251,7 @@ export function ToletWizardForm({
     floor: form.floor,
     availableFrom: form.availableFrom,
     facilities: form.facilities,
+    unavailableFacilities: form.unavailableFacilities,
     description: form.description,
     photos: form.photos,
     isVerified: false,
@@ -462,36 +474,104 @@ export function ToletWizardForm({
 
         {/* STEP 5: FACILITIES */}
         {step === 4 && (
-          <div>
-            <h3 className="text-base font-bold text-slate-900 mb-1">সুবিধাসমূহ</h3>
-            <p className="text-xs text-slate-500 mb-4">যেগুলো রয়েছে সেগুলো বেছে নিন।</p>
-            <div className="grid grid-cols-2 gap-2.5">
-              {TOLET_FACILITY_OPTIONS.map((fac) => {
-                const selected = form.facilities.includes(fac.id);
-                return (
-                  <button
-                    key={fac.id}
-                    type="button"
-                    onClick={() =>
-                      set(
-                        'facilities',
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-base font-bold text-slate-900 mb-1">সুবিধাসমূহ</h3>
+              <p className="text-xs text-slate-500 mb-4">যেগুলো রয়েছে সেগুলো বেছে নিন।</p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {TOLET_FACILITY_OPTIONS.map((fac) => {
+                  const selected = form.facilities.includes(fac.id);
+                  return (
+                    <button
+                      key={fac.id}
+                      type="button"
+                      onClick={() =>
+                        set(
+                          'facilities',
+                          selected
+                            ? form.facilities.filter((f) => f !== fac.id)
+                            : [...form.facilities, fac.id]
+                        )
+                      }
+                      className={cn(
+                        'p-3 rounded-xl text-xs font-medium border flex items-center justify-between gap-2 text-left transition-all',
                         selected
-                          ? form.facilities.filter((f) => f !== fac.id)
-                          : [...form.facilities, fac.id]
-                      )
-                    }
-                    className={cn(
-                      'p-3 rounded-xl text-xs font-medium border flex items-center justify-between gap-2 text-left transition-all',
-                      selected
-                        ? 'bg-emerald-50 text-emerald-950 border-emerald-700 font-bold'
-                        : 'bg-white text-slate-700 border-slate-200'
-                    )}
-                  >
-                    <span>{fac.labelBn}</span>
-                    {selected && <Check className="w-4 h-4 text-emerald-700 shrink-0" />}
-                  </button>
-                );
-              })}
+                          ? 'bg-emerald-50 text-emerald-950 border-emerald-700 font-bold'
+                          : 'bg-white text-slate-700 border-slate-200'
+                      )}
+                    >
+                      <span>{fac.labelBn}</span>
+                      {selected && <Check className="w-4 h-4 text-emerald-700 shrink-0" />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/*
+              "এই বাসায় যা নেই" — optional and OPT-IN.
+
+              Why this exists: a tenant's most common regret about a local rental
+              ad is discovering a deal-breaker after moving in (cylinder-only
+              gas, no lift on the fifth floor, no parking). When the owner states
+              those absences up front, the listing reads as honest and the
+              platform looks like it is on the tenant's side.
+
+              Why it is a separate, separately-labelled choice: an unselected
+              facility here must NOT silently mean "not present". Absence from
+              the list above is already visible as absence; this field is only
+              for absences the owner wants stated outright. A facility cannot be
+              in both lists.
+            */}
+            <div>
+              <h3 className="text-base font-bold text-slate-900 mb-1">
+                এই বাসায় যা নেই
+              </h3>
+              <p className="text-xs text-slate-500 mb-4">
+                ঐচ্ছিক। ভাড়াটিয়া যেন ভুল না বোঝেন, যেসব সুবিধা একেবারে নেই তা
+                উল্লেখ করতে পারেন।
+              </p>
+              <div className="grid grid-cols-2 gap-2.5">
+                {TOLET_FACILITY_OPTIONS.map((fac) => {
+                  // A facility already claimed above cannot also be claimed as
+                  // absent — the detail page would then print it twice.
+                  const alreadyPresent = form.facilities.includes(fac.id);
+                  const markedMissing = form.unavailableFacilities.includes(fac.id);
+                  const disabled = alreadyPresent;
+                  return (
+                    <button
+                      key={fac.id}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() =>
+                        set(
+                          'unavailableFacilities',
+                          markedMissing
+                            ? form.unavailableFacilities.filter((f) => f !== fac.id)
+                            : [...form.unavailableFacilities, fac.id]
+                        )
+                      }
+                      aria-pressed={markedMissing}
+                      className={cn(
+                        'p-3 rounded-xl text-xs font-medium border flex items-center justify-between gap-2 text-left transition-all',
+                        markedMissing
+                          ? 'bg-slate-100 text-slate-900 border-slate-400 font-bold'
+                          : disabled
+                            ? 'bg-slate-50 text-slate-300 border-slate-100 cursor-not-allowed'
+                            : 'bg-white text-slate-600 border-slate-200 hover:border-slate-400'
+                      )}
+                    >
+                      <span className="truncate">{fac.labelBn}</span>
+                      {markedMissing && (
+                        <X className="w-4 h-4 text-slate-600 shrink-0" aria-hidden="true" />
+                      )}
+                      {disabled && !markedMissing && (
+                        <Check className="w-4 h-4 text-emerald-600 shrink-0" aria-hidden="true" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
           </div>
         )}

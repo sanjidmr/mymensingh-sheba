@@ -43,6 +43,7 @@ import {
   mockFetchDonorModuleStats,
   mockFetchMyContactReleases,
 } from './blood-donor-mock';
+import { DEMO_DONOR_PROFILES, getDemoDonor } from './blood-donor-demo-data';
 
 // PRIVACY: deliberately no private_phone here.
 const PUBLIC_DONOR_COLUMNS =
@@ -144,10 +145,36 @@ export interface PublicDonorFilters {
   isAvailableNow?: boolean;
 }
 
+// SHOWCASE FALLBACK — same rule as `lib/tolet-service.ts`.
+//
+// A donor card is the entire blood-donor design, and a directory with no cards
+// in it teaches nothing about it. So `lib/blood-donor-demo-data.ts` stands in
+// while the live directory is empty, and the first real donor replaces it
+// wholesale.
+//
+// The showcase has to honour the same filters the database query does, or a
+// reader who taps "O+" would still be shown an A- donor — a filter that
+// silently does nothing is worse than no filter at all.
+//
+// The existing `blood-donor-mock` store is left alone: it also feeds the admin
+// console's verification queue, so replacing it would break moderation.
+
+/** Applies `PublicDonorFilters` to the sample donors, mirroring the query above. */
+function filterDemoDonors(filters?: PublicDonorFilters): BloodDonorProfile[] {
+  return DEMO_DONOR_PROFILES.filter((donor) => {
+    if (filters?.bloodGroup && filters.bloodGroup !== 'all') {
+      if (donor.bloodGroup !== filters.bloodGroup) return false;
+    }
+    if (filters?.areaId && donor.areaId !== filters.areaId) return false;
+    if (filters?.isAvailableNow && !donor.isAvailable) return false;
+    return true;
+  });
+}
+
 export async function fetchPublishedDonors(filters?: PublicDonorFilters): Promise<BloodDonorProfile[]> {
-  if (!isSupabaseConfigured) return mockFetchPublishedDonors(filters);
+  if (!isSupabaseConfigured) return filterDemoDonors(filters);
   const client = createClient();
-  if (!client) return mockFetchPublishedDonors(filters);
+  if (!client) return filterDemoDonors(filters);
   let query = client.from('blood_donor_profiles').select(PUBLIC_DONOR_COLUMNS).eq('status', 'approved');
   if (filters?.bloodGroup && filters.bloodGroup !== 'all') {
     query = query.eq('blood_group', filters.bloodGroup);
@@ -159,11 +186,16 @@ export async function fetchPublishedDonors(filters?: PublicDonorFilters): Promis
     query = query.eq('is_available', true);
   }
   const { data, error } = await query.order('published_at', { ascending: false });
-  if (error) return [];
-  return (data || []).map((row) => mapDonorRow(row as Record<string, unknown>));
+  if (error) return filterDemoDonors(filters);
+  const real = (data || []).map((row) => mapDonorRow(row as Record<string, unknown>));
+  // The live directory wins outright, unfiltered by the showcase's presence.
+  return real.length > 0 ? real : filterDemoDonors(filters);
 }
 
 export async function fetchPublishedDonorById(id: string): Promise<BloodDonorProfile | null> {
+  // Showcase ids resolve in every mode so a shared card link always lands.
+  const demo = getDemoDonor(id);
+  if (demo) return demo;
   if (!isSupabaseConfigured) return mockFetchPublishedDonorById(id) || null;
   const client = createClient();
   if (!client) return mockFetchPublishedDonorById(id) || null;

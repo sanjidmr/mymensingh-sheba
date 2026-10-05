@@ -20,6 +20,8 @@ import type {
   TutorProfileStatus,
   TutorReview,
   TutorReport,
+  TutorEducation,
+  TutorCurrentActivity,
 } from '@/lib/supabase/types';
 import {
   mockFetchPublishedTutors,
@@ -35,6 +37,7 @@ import {
 } from './home-tutor-mock';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
 import { TUTOR_STATUS_META } from './home-tutor-types';
+import { DEMO_TUTOR_PROFILES, getDemoTutor as getDemoTutorProfile } from './home-tutor-demo-data';
 
 /** Normalized admin-console shape of a 'home-tutor' service request. */
 export interface AdminTutorRequest {
@@ -62,7 +65,7 @@ export interface AdminTutorRequest {
 
 // PRIVACY: deliberately no private_phone / nid_number here.
 const PUBLIC_TUTOR_COLUMNS =
-  'id, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary_min, expected_salary_max, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at';
+  'id, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary_min, expected_salary_max, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at, educations, current_activity, class_duration_minutes, preferred_student_type';
 
 function mapTutorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {}): HomeTutorProfile {
   const c = toCamelObject(row) as Record<string, unknown>;
@@ -91,6 +94,14 @@ function mapTutorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {
     teachingMode: (c.teachingMode as HomeTutorProfile['teachingMode']) || 'both',
     availability: (c.availability as TutorAvailability) || 'available',
     profilePhotoUrl: (c.profilePhotoUrl as string) || undefined,
+    // --- the four fields a profile page needs but the original form never had
+    educations: Array.isArray(c.educations)
+      ? (c.educations as unknown as TutorEducation[])
+      : undefined,
+    currentActivity: (c.currentActivity as unknown as TutorCurrentActivity) || undefined,
+    classDurationMinutes:
+      c.classDurationMinutes != null ? Number(c.classDurationMinutes) : undefined,
+    preferredStudentType: (c.preferredStudentType as string) || undefined,
     adminNotes: opts.admin ? (c.adminNotes as string) || undefined : undefined,
     rejectionReason: opts.admin ? (c.rejectionReason as string) || undefined : undefined,
     publishedAt: (c.publishedAt as string) || undefined,
@@ -121,22 +132,46 @@ function mapReviewRow(row: Record<string, unknown>): TutorReview {
 // Public queries (directory)
 // ---------------------------------------------------------------------------
 
+// SHOWCASE FALLBACK — same rule as `lib/tolet-service.ts`.
+//
+// A tutor profile page is a design surface, and a design surface with an empty
+// table teaches nothing. So `lib/home-tutor-demo-data.ts` stands in while the
+// live directory has no approved rows, and the first real tutor replaces it
+// wholesale — a sample profile is never shown beside a real one. A deep link to
+// a demo id resolves in every mode so the page stays shareable.
+//
+// The existing `home-tutor-mock` store is a different thing and is left alone: it
+// also feeds the admin console's pending/rejected queue, so swapping it out would
+// break moderation review.
+
+/** Live rows if there are any, otherwise the sample profiles. */
+function withTutorShowcase(real: HomeTutorProfile[]): HomeTutorProfile[] {
+  return real.length > 0 ? real : [...DEMO_TUTOR_PROFILES];
+}
+
 export async function fetchPublishedTutors(): Promise<HomeTutorProfile[]> {
-  if (!isSupabaseConfigured) return mockFetchPublishedTutors();
+  if (!isSupabaseConfigured) return withTutorShowcase(mockFetchPublishedTutors());
   const client = createClient();
-  if (!client) return mockFetchPublishedTutors();
+  if (!client) return withTutorShowcase(mockFetchPublishedTutors());
   const { data, error } = await client
     .from('home_tutor_profiles')
     .select(PUBLIC_TUTOR_COLUMNS)
     .eq('status', 'approved')
     .order('published_at', { ascending: false });
-  if (error) return [];
-  return (data || [])
-    .map((row) => mapTutorRow(row as Record<string, unknown>))
-    .map((t) => ({ ...t, privatePhone: '__protected__' }));
+  // An error here usually means the four new columns have not been migrated.
+  // Falling back keeps the page reviewable instead of blank.
+  if (error) return withTutorShowcase(mockFetchPublishedTutors());
+  return withTutorShowcase(
+    (data || [])
+      .map((row) => mapTutorRow(row as Record<string, unknown>))
+      .map((t) => ({ ...t, privatePhone: '__protected__' }))
+  );
 }
 
 export async function fetchPublishedTutorById(id: string): Promise<HomeTutorProfile | null> {
+  // Showcase ids resolve before any database check, in every mode.
+  const demo = getDemoTutorProfile(id);
+  if (demo) return demo;
   if (!isSupabaseConfigured) return mockFetchPublishedTutorById(id) || null;
   const client = createClient();
   if (!client) return mockFetchPublishedTutorById(id) || null;

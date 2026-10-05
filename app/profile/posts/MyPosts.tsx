@@ -64,26 +64,30 @@ export default function MyPosts() {
   const submittedSlug = searchParams.get('submitted');
 
   const [posts, setPosts] = useState<CommunityPost[]>([]);
-  const [loading, setLoading] = useState(true);
+  // `loaded` rather than `loading`: there is no user to fetch for, so "done"
+  // and "nothing to wait for" are the same state. Deriving the spinner from
+  // `!loaded` below means the effect never has to synchronously setState to
+  // "not loading", which is what caused the cascading re-render.
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
-    if (!user) {
-      setLoading(false);
-      return;
-    }
+    if (!user) return;
     let active = true;
     (async () => {
       try {
         const data = await fetchMyPosts();
         if (active) setPosts(data);
       } finally {
-        if (active) setLoading(false);
+        if (active) setLoaded(true);
       }
     })();
     return () => {
       active = false;
     };
   }, [user]);
+
+  // Only wait while there is actually an account whose posts are in flight.
+  const loading = !!user && !loaded;
 
   const grouped = useMemo(
     () =>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, RotateCcw } from 'lucide-react';
 import { LIGHT_FOCUS, DARK_FOCUS } from '@/components/about/AboutSectionBits';
@@ -51,8 +51,17 @@ export default function FilterSheet({
   // mismatch and throws away the tree. `mounted` keeps the very first client
   // render identical to the server's null, and the portal appears on the
   // following paint.
-  const [mounted, setMounted] = useState(false);
-  useEffect(() => setMounted(true), []);
+  //
+  // `useSyncExternalStore` expresses this directly instead of parking a
+  // `setMounted(true)` in an effect: the server snapshot is `false` and the
+  // client snapshot is `true`, which is precisely "have we hydrated". The
+  // subscription never fires — hydration itself is the change — so there is no
+  // state to synchronously set and no cascading render before first paint.
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   // Body scroll lock while open.
   useEffect(() => {

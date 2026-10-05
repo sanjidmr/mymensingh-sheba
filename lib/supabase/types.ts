@@ -8,6 +8,55 @@ export type TutorProfileStatus = 'draft' | 'pending_approval' | 'approved' | 're
 export type TutorTeachingMode = 'home' | 'online' | 'both';
 export type TutorAvailability = 'available' | 'limited' | 'busy';
 
+/**
+ * One row of a tutor's education timeline.
+ *
+ * A tutor can hold several qualifications at once (an SSC, a current
+ * undergraduate degree, a teaching training certificate), and a profile page
+ * that can only show one of them either truncates the person or lies about
+ * their standing. So the timeline is a list, not three columns.
+ *
+ * `status` is deliberately three-valued rather than a boolean: "পাস করেছেন",
+ * "পড়ছেন" and "সম্পন্ন" are genuinely different things to a parent, and
+ * collapsing them into passed/not-passed loses the one fact that matters most
+ * when picking a tutor for a child who is still studying.
+ */
+export type TutorEducationStatus = 'passed' | 'studying' | 'completed';
+
+/** A qualification with the institution and subject it was earned in. */
+export interface TutorEducation {
+  institution: string;
+  /** বিভাগ / বিষয় — "গণিত", "ইংরেজি", "কম্পিউটার সায়েন্স". */
+  department?: string;
+  /** ডিগ্রি বা ক্লাস — "এইচএসসি", "বিএস (সম্মান) চলতে". */
+  degree: string;
+  status: TutorEducationStatus;
+  /** Year passed, or the year the course is expected to finish. */
+  year?: string;
+}
+
+/**
+ * What a tutor is doing right now.
+ *
+ * The single most common question a parent asks before calling is not "what is
+ * their fee" but "do they actually have a job, or are they still a student" —
+ * because that decides whether they can commit to a fixed weekly slot. One
+ * optional block answers it, and any part of it may be absent rather than
+ * invented.
+ */
+export interface TutorCurrentActivity {
+  /** Short role line shown beside the name, e.g. "বিএস শিক্ষার্থী". */
+  roleLabelBn?: string;
+  /** Institution they are currently studying at. */
+  studyingAt?: string;
+  /** Institution or class they currently teach at. */
+  teachingAt?: string;
+  /** Workplace, for a tutor who holds a day job. */
+  workingAt?: string;
+  /** A free line for anything the three above cannot express. */
+  note?: string;
+}
+
 export type BloodDonorStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'paused' | 'suspended';
 export type BloodRequestStatus =
   | 'pending_review'
@@ -78,6 +127,19 @@ export interface HomeTutorProfile {
   // Availability: available / limited / busy
   availability: TutorAvailability;
   profilePhotoUrl?: string;
+  /**
+   * The full education timeline, newest first. Optional because the original
+   * single `institution` / `department` / `qualification` triple is still what
+   * most rows carry; when this is absent the UI synthesises one timeline entry
+   * from that triple rather than hiding the section.
+   */
+  educations?: TutorEducation[];
+  /** What they are studying / teaching / working at right now. */
+  currentActivity?: TutorCurrentActivity;
+  /** Minutes in one class — the number a parent needs to plan a weekly budget. */
+  classDurationMinutes?: number;
+  /** "ছেলে / মেয়ে / যেকোনো", or a grade band the tutor prefers to teach. */
+  preferredStudentType?: string;
   adminNotes?: string;
   rejectionReason?: string;
   publishedAt?: string;
@@ -85,6 +147,13 @@ export interface HomeTutorProfile {
   ratingCount?: number;
   createdAt: string;
   updatedAt: string;
+  /**
+   * Set only on rows from `lib/home-tutor-demo-data.ts`. It exists so the
+   * directory can label a fallback profile honestly; the fetch layer widens the
+   * demo rows to this type, so the flag has to live here rather than only on the
+   * demo module's own intersection type.
+   */
+  isDemo?: boolean;
 }
 
 export interface TutorReview {
@@ -138,6 +207,8 @@ export interface BloodDonorProfile {
   publishedAt?: string;
   createdAt: string;
   updatedAt: string;
+  /** Only set on `lib/blood-donor-demo-data.ts` rows. See `HomeTutorProfile`. */
+  isDemo?: boolean;
 }
 
 export interface BloodRequest {
@@ -244,7 +315,7 @@ export interface ServiceRequestItem {
 export interface SavedListingItem {
   id: string;
   userId: string;
-  itemType: 'tolet' | 'tutor' | 'service';
+  itemType: 'tolet' | 'tutor' | 'service' | 'market';
   title: string;
   areaName: string;
   priceOrRate?: string;

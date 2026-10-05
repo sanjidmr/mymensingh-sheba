@@ -140,7 +140,7 @@ export default function DirectorySearchBar({
             <select
               value={currentSort}
               onChange={(e) => onSortChange(e.target.value)}
-              className={`min-h-[36px] rounded-md border border-brand-100 bg-mist-50 px-2 text-xs font-medium text-ink-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-500 ${LIGHT_FOCUS}`}
+              className={`min-h-10 rounded-md border border-brand-100 bg-mist-50 px-2 text-xs font-medium text-ink-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-500 ${LIGHT_FOCUS}`}
             >
               {sortOptions.map((opt) => (
                 <option key={opt.id} value={opt.id}>

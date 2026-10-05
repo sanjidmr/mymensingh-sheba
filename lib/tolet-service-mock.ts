@@ -1,9 +1,14 @@
 /**
  * In-memory mock store for To-Let system.
- * Used when Supabase is not configured (preview mode).
- * Seeded from SAMPLE_TOLET_LISTINGS with isVerified=false (no fake verification).
+ * Used when Supabase is not configured, or as a graceful fallback when the
+ * Supabase query fails (e.g. the migration has not been applied yet).
+ *
+ * Seeded from DEMO_TOLET_LISTINGS — the same showcase inventory the detail
+ * page renders — so preview mode, the owner wizard and the detail page all
+ * describe an identical set of homes. Seeded with isVerified=false (no fake
+ * verification).
  */
-import { SAMPLE_TOLET_LISTINGS } from './services-data';
+import { DEMO_TOLET_LISTINGS } from './tolet-demo-data';
 import type {
   ToletListing,
   ToletListingInput,
@@ -13,87 +18,23 @@ import type {
   ListingReport,
   ListingReportStatus,
 } from './tolet-types';
-import type { ToletFeeRules } from './tolet-fees';
-import { getToletFeeRules } from './tolet-fees';
-import type { ToletPropertyType } from './tolet-types';
 
-const FACILITY_MAP: Record<string, string> = {
-  'লিফট': 'lift',
-  'লিফট ও জেনারেটর': 'generator',
-  'তিতাস লাইন গ্যাস': 'gas',
-  'তিতাস গ্যাস': 'gas',
-  'সিলিন্ডার গ্যাস': 'cylinder',
-  'জেনারেটর ব্যাকআপ': 'generator',
-  'সিসিটিভি নিরাপত্তা': 'cctv',
-  'সার্বক্ষণিক সিকিউরিটি গার্ড': 'cctv',
-  'কার পার্কিং': 'parking',
-  'মোটরসাইকেল পার্কিং': 'parking',
-  'গ্যাস সংযোগ': 'gas',
-  'গ্যাস সুবিধা': 'gas',
-  'ওয়াইফাই ইন্টারনেট': 'wifi',
-  'মিল সিস্টেম': 'mill',
-  'ফিল্টার খাওয়ার পানি': 'water_purifier',
-  'বুয়া সুবিধা': 'service',
-  '২৪ ঘণ্টা পানি': 'water',
-  '২৪ ঘণ্টা বিদ্যুৎ': 'power_backup',
-  'খোলা বারান্দা': 'balcony',
-  'পার্কিং স্পেস': 'parking',
-  'মোটর পানি সুবিধা': 'water',
-  'আলাদা বাথরুম': 'private_bath',
-  'বারান্দা': 'balcony',
-  'কিচেন শেয়ারিং': 'shared_kitchen',
-  'খোলামেলা ছাদ': 'rooftop',
-};
-
-function mapSampleFacility(text: string): string {
-  return FACILITY_MAP[text] || text;
-}
-
-function computeFee(rent: number, type: string): { fee: number; total: number } {
-  const r = getToletFeeRules();
-  const MESS = ['mess', 'hostel', 'seat'];
-  let fee: number;
-  if (MESS.includes(type)) {
-    fee = r.messSeatFee;
-  } else if (rent <= 10000) {
-    fee = r.tier1Max10k;
-  } else if (rent <= 20000) {
-    fee = r.tier2Max20k;
-  } else {
-    fee = r.tier3Above20k;
-  }
-  return { fee, total: rent + fee };
-}
-
-let listings: ToletListing[] = SAMPLE_TOLET_LISTINGS.map((s) => {
-  const { fee, total } = computeFee(s.rentAmount, s.propertyType);
-  return {
-    id: s.id,
-    ownerId: 'demo-owner',
-    ownerName: 'নমুনা মালিক',
-    ownerVerified: false,
-    title: s.titleBn,
-    propertyType: s.propertyType as ToletPropertyType,
-    areaId: s.areaId,
-    specificAddress: s.specificAddressBn,
-    rentPrice: s.rentAmount,
-    bedrooms: s.bedrooms,
-    bathrooms: s.bathrooms,
-    balconies: s.balconies,
-    floor: s.floor,
-    totalRooms: undefined,
-    availableFrom: s.availableFromBn,
-    facilities: s.facilitiesBn.map(mapSampleFacility),
-    description: s.descriptionBn,
-    photos: [s.imageUrl],
-    isVerified: false,
-    status: 'approved' as const,
-    rejectionReason: undefined,
-    createdAt: '2026-09-20T00:00:00Z',
-    updatedAt: '2026-09-20T00:00:00Z',
-    publishedAt: '2026-09-20T00:00:00Z',
-  };
-});
+/**
+ * Clone the showcase seed so the store is mutable per browser session (owners
+ * can edit/archive their own demo listings without corrupting the seed).
+ *
+ * The platform fee is deliberately NOT precomputed here — `lib/tolet-fees.ts`
+ * is the single source of truth and every surface calls it live, so a fee-rule
+ * change can never leave a stale total baked into a cached row.
+ */
+let listings: ToletListing[] = DEMO_TOLET_LISTINGS.map((seed) => ({
+  ...seed,
+  facilities: [...seed.facilities],
+  unavailableFacilities: seed.unavailableFacilities
+    ? [...seed.unavailableFacilities]
+    : undefined,
+  photos: [...seed.photos],
+}));
 
 let requests: ToletRequest[] = [];
 let reports: ListingReport[] = [];

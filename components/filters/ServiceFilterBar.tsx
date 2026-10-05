@@ -349,9 +349,10 @@ export default function ServiceFilterBar({
             <div className="flex items-center gap-1.5">
               <ArrowUpDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
               <select
+                aria-label="ফলাফল সাজান"
                 value={currentSort}
                 onChange={(e) => onSortChange?.(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-700"
+                className="min-h-10 rounded-lg border border-mist-200 bg-mist-50 px-2.5 text-xs font-medium text-ink-800 outline-none transition-colors focus:border-brand-500"
               >
                 {sortOptions.map((opt) => (
                   <option key={opt.id} value={opt.id}>

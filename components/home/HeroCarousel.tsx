@@ -1,6 +1,12 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 /**
@@ -31,16 +37,25 @@ function usePrefersReducedMotion() {
   // state initialiser would make the first client render disagree with the
   // server HTML for anyone who has reduced motion on, and the transition style
   // below depends on this value.
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
-    setReduced(mq.matches);
-    const onChange = (e: MediaQueryListEvent) => setReduced(e.matches);
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
-  return reduced;
+  //
+  // `useSyncExternalStore` gives that for free: the media query *is* an
+  // external store, the browser already manages the subscription, and the
+  // server snapshot is `false`. The previous version subscribed by hand and
+  // called `setReduced(mq.matches)` in the effect body — a synchronous setState
+  // on every mount, which cascades a render before first paint for no reason,
+  // and duplicated change-listener bookkeeping the browser already does.
+  return useSyncExternalStore(
+    (onChange) => {
+      if (typeof window === 'undefined') return () => {};
+      const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+      mq.addEventListener('change', onChange);
+      return () => mq.removeEventListener('change', onChange);
+    },
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+    () => false
+  );
 }
 
 export default function HeroCarousel() {

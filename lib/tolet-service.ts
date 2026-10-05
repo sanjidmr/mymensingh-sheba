@@ -35,6 +35,8 @@ import {
   mockGetReportsForListing,
 } from './tolet-service-mock';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
+import { mockTrackListingMeta } from './tolet-tracking';
+import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
 
 export const toletStorageConfigured = isSupabaseConfigured;
 
@@ -76,6 +78,9 @@ function mapListingRow(row: RawListingRow): ToletListing {
     totalRooms: c.totalRooms != null ? Number(c.totalRooms) : undefined,
     availableFrom: (c.availableFrom as string) || undefined,
     facilities: Array.isArray(c.facilities) ? (c.facilities as string[]) : [],
+    unavailableFacilities: Array.isArray(c.unavailableFacilities)
+      ? (c.unavailableFacilities as string[])
+      : undefined,
     description: (c.description as string) || '',
     photos: Array.isArray(c.photos) ? (c.photos as string[]) : [],
     isVerified: Boolean(c.isVerified),
@@ -132,9 +137,40 @@ function toListingInputObject(input: Partial<ToletListingInput>): Record<string,
     totalRooms: input.totalRooms,
     availableFrom: input.availableFrom,
     facilities: input.facilities,
+    unavailableFacilities: input.unavailableFacilities,
     description: input.description,
     photos: input.photos,
   });
+}
+
+// ---------------------------------------------------------------------------
+// Showcase fallback
+// ---------------------------------------------------------------------------
+//
+// A listing detail page is a design surface, and a design surface with nothing
+// behind it teaches you nothing. The rules below are deliberately conservative:
+//
+//  - Deep links to a seeded showcase id ALWAYS resolve, so a demo listing can be
+//    shared and opened from any entry point.
+//  - The showcase appears in the DIRECTORY only while the live marketplace has
+//    no approved listings. The moment a real listing is published, real
+//    inventory replaces it entirely — showcase data never mixes with live
+//    inventory, so a tenant is never shown a fake flat as if it were real.
+
+/** Records label metadata so preview-mode analytics rows can name a listing. */
+function rememberListingMeta(listing: ToletListing): void {
+  mockTrackListingMeta(listing.id, {
+    title: listing.title,
+    areaId: listing.areaId,
+    propertyType: listing.propertyType,
+    rentPrice: listing.rentPrice,
+  });
+}
+
+function withShowcaseFallback(realListings: ToletListing[]): ToletListing[] {
+  const merged = realListings.length > 0 ? realListings : [...DEMO_TOLET_LISTINGS];
+  merged.forEach(rememberListingMeta);
+  return merged;
 }
 
 // ---------------------------------------------------------------------------
@@ -142,19 +178,26 @@ function toListingInputObject(input: Partial<ToletListingInput>): Record<string,
 // ---------------------------------------------------------------------------
 
 export async function fetchPublicListings(): Promise<ToletListing[]> {
-  if (!isSupabaseConfigured) return mockFetchPublicListings();
+  if (!isSupabaseConfigured) return withShowcaseFallback(mockFetchPublicListings());
   const client = createClient();
-  if (!client) return mockFetchPublicListings();
+  if (!client) return withShowcaseFallback(mockFetchPublicListings());
   const { data, error } = await client
     .from('tolet_listings')
     .select('*, owner:owner_id(full_name, is_verified)')
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
-  if (error) return [];
-  return (data || []).map((row) => mapListingRow(row as RawListingRow));
+  // A query error (e.g. the table has not been migrated yet) must not leave the
+  // directory blank: degrade to the in-memory store instead.
+  if (error) return withShowcaseFallback(mockFetchPublicListings());
+  return withShowcaseFallback((data || []).map((row) => mapListingRow(row as RawListingRow)));
 }
 
 export async function fetchListingById(id: string): Promise<ToletListing | null> {
+  // Showcase ids resolve in every mode so demo links are always shareable.
+  if (getDemoListing(id)) {
+    rememberListingMeta(DEMO_TOLET_LISTINGS.find((l) => l.id === id)!);
+    return getDemoListing(id) ?? null;
+  }
   if (!isSupabaseConfigured) return mockFetchListingById(id) || null;
   const client = createClient();
   if (!client) return mockFetchListingById(id) || null;
@@ -163,8 +206,44 @@ export async function fetchListingById(id: string): Promise<ToletListing | null>
     .select('*, owner:owner_id(full_name, is_verified)')
     .eq('id', id)
     .maybeSingle();
-  if (error || !data) return null;
-  return mapListingRow(data as RawListingRow);
+  if (error || !data) return mockFetchListingById(id) || null;
+  const listing = mapListingRow(data as RawListingRow);
+  rememberListingMeta(listing);
+  return listing;
+}
+
+/**
+ * "আপনার জন্য আরও কিছু বাসা" — related listings for the detail page.
+ *
+ * Scoring is intentionally simple and explainable rather than clever, because
+ * a tenant can sanity-check it: same area first, then same property type, then
+ * a rent that is close to this one's budget. Everything else is filler. The
+ * property being viewed is always excluded.
+ */
+export async function fetchSimilarListings(
+  listing: ToletListing,
+  limit = 4
+): Promise<ToletListing[]> {
+  const pool = (await fetchPublicListings()).filter((l) => l.id !== listing.id);
+
+  const score = (candidate: ToletListing): number => {
+    let value = 0;
+    if (candidate.areaId === listing.areaId) value += 100;
+    if (candidate.propertyType === listing.propertyType) value += 40;
+    // Within half a month's rent is "same budget"; within one month is close.
+    const gap = Math.abs(candidate.rentPrice - listing.rentPrice);
+    if (gap <= listing.rentPrice * 0.25) value += 25;
+    else if (gap <= listing.rentPrice * 0.5) value += 10;
+    // Prefer published over older stock when everything else is equal.
+    if (candidate.publishedAt) value += 2;
+    return value;
+  };
+
+  return pool
+    .map((candidate) => ({ candidate, value: score(candidate) }))
+    .sort((a, b) => b.value - a.value || b.candidate.rentPrice - a.candidate.rentPrice)
+    .slice(0, limit)
+    .map(({ candidate }) => candidate);
 }
 
 export async function fetchMyListings(ownerId: string): Promise<ToletListing[]> {
@@ -324,6 +403,9 @@ export async function adminUpdateListing(
     ...(patch.description !== undefined ? { description: patch.description } : {}),
     ...(patch.photos !== undefined ? { photos: patch.photos } : {}),
     ...(patch.facilities !== undefined ? { facilities: patch.facilities } : {}),
+    ...(patch.unavailableFacilities !== undefined
+      ? { unavailableFacilities: patch.unavailableFacilities }
+      : {}),
     ...(patch.availableFrom !== undefined ? { availableFrom: patch.availableFrom } : {}),
     ...(patch.status !== undefined ? { status: patch.status } : {}),
     ...(patch.isVerified !== undefined ? { isVerified: patch.isVerified } : {}),

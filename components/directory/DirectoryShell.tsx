@@ -23,6 +23,17 @@ export interface DirectoryShellProps {
   action?: React.ReactNode;
   /** A short trust/benefit line rendered as a compact chip row. */
   highlights?: string[];
+  /**
+   * Detail pages pass this: their own body already renders the page's one real
+   * `<h1>` (next to the photo, where a reader actually looks for it), so the
+   * shell must not print a second heading. Without it the same string appears as
+   * two `<h1>`s, which is both an a11y error and a screen-reader trap — the
+   * heading list shows the listing title twice.
+   *
+   * The `action` slot still renders; on a detail page the "সেবা নিন" button in
+   * the header is the point of using the shell at all.
+   */
+  hideHeading?: boolean;
   children: React.ReactNode;
 }
 
@@ -45,6 +56,7 @@ export default function DirectoryShell({
   breadcrumbs,
   action,
   highlights,
+  hideHeading,
   children,
 }: DirectoryShellProps) {
   return (
@@ -52,12 +64,19 @@ export default function DirectoryShell({
       <Navbar />
 
       <main className="mx-auto w-full max-w-7xl flex-1 px-4 pb-6 pt-3 sm:px-6 sm:pt-4 lg:px-8">
-        {/* Breadcrumb — the first thing after the navbar, kept to one line. */}
+        {/* Breadcrumb — the first thing after the navbar, kept to one line.
+            The links are 11–12px type but `min-h-10` hit areas: a breadcrumb is
+            navigation, not prose, and at 17px tall "হোম" is unhittable with a
+            thumb. The chevrons stay at their own size so the trail still reads
+            as a hairline strip rather than a row of buttons. */}
         <nav
           aria-label="ব্রেডক্রাম্ব"
-          className="flex items-center gap-1 text-[11px] text-ink-400 sm:text-xs"
+          className="-mx-1 flex items-center gap-1 px-1 text-[11px] text-ink-400 sm:text-xs"
         >
-          <Link href="/" className={`shrink-0 transition-colors hover:text-brand-800 ${LIGHT_FOCUS}`}>
+          <Link
+            href="/"
+            className={`-ml-1 inline-flex min-h-10 min-w-10 shrink-0 items-center justify-center px-1 transition-colors hover:text-brand-800 ${LIGHT_FOCUS}`}
+          >
             হোম
           </Link>
           {breadcrumbs.map((crumb, idx) => (
@@ -66,13 +85,16 @@ export default function DirectoryShell({
               {crumb.href ? (
                 <Link
                   href={crumb.href}
-                  className={`truncate transition-colors hover:text-brand-800 ${LIGHT_FOCUS}`}
+                  className={`inline-flex min-h-10 items-center transition-colors hover:text-brand-800 ${LIGHT_FOCUS}`}
                 >
-                  {crumb.label}
+                  <span className="truncate">{crumb.label}</span>
                 </Link>
               ) : (
-                <span aria-current="page" className="truncate font-medium text-ink-600">
-                  {crumb.label}
+                <span
+                  aria-current="page"
+                  className="inline-flex min-h-10 items-center font-medium text-ink-600"
+                >
+                  <span className="truncate">{crumb.label}</span>
                 </span>
               )}
             </React.Fragment>
@@ -80,18 +102,22 @@ export default function DirectoryShell({
         </nav>
 
         {/* Compact header. `flex-wrap` keeps the action button on the same
-            block as the title on phones instead of pushing it far down. */}
+            block as the title on phones instead of pushing it far down.
+            Collapses to just the action slot when the page supplies its own
+            `<h1>`. */}
         <div className="mt-2 flex flex-wrap items-start justify-between gap-x-4 gap-y-2.5 sm:mt-3">
-          <div className="min-w-0 flex-1 basis-64">
-            <h1 className="text-[1.35rem] font-extrabold leading-tight tracking-tight text-ink-900 sm:text-2xl lg:text-[1.75rem]">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink-500 sm:text-sm">
-                {subtitle}
-              </p>
-            )}
-          </div>
+          {!hideHeading && (
+            <div className="min-w-0 flex-1 basis-64">
+              <h1 className="text-[1.35rem] font-extrabold leading-tight tracking-tight text-ink-900 sm:text-2xl lg:text-[1.75rem]">
+                {title}
+              </h1>
+              {subtitle && (
+                <p className="mt-1 max-w-2xl text-[13px] leading-relaxed text-ink-500 sm:text-sm">
+                  {subtitle}
+                </p>
+              )}
+            </div>
+          )}
 
           {action && <div className="shrink-0">{action}</div>}
         </div>

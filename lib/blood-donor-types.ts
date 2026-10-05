@@ -142,6 +142,107 @@ export function formatLastDonation(date?: string): string {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Recovery window
+// ---------------------------------------------------------------------------
+//
+// `is_available` is a flag somebody set; the last-donation date is arithmetic.
+// They do not always agree, and the card has to say something true either way:
+//
+//  - `is_available: false` wins outright. A donor goes on a break for reasons
+//    the date cannot express — travel, illness, being under weight — so this is
+//    never second-guessed.
+//  - When they do agree on "available", the date decides whether the mandatory
+//    gap has actually elapsed. A row that still says available three weeks after
+//    a donation is a stale flag, and calling that person would be asking a body
+//    that is still rebuilding to give again.
+//
+// Four months is the standard donor interval in Bangladesh. It is a floor for
+// the UI, not medical advice: anything clinical is the donor's and the
+// hospital's call, not this directory's.
+
+/** Months in the standard donor recovery gap. */
+const RECOVERY_MONTHS = 4;
+
+/** How many whole months ago a donation happened; `null` if there isn't one. */
+function monthsSinceDonation(date?: string): number | null {
+  if (!date) return null;
+  const then = new Date(date).getTime();
+  if (!Number.isFinite(then)) return null;
+  return Math.max(0, Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24 * 30)));
+}
+
+export type DonorRecoveryState = 'ready' | 'due-soon' | 'recovering' | 'on-break';
+
+export interface DonorRecovery {
+  state: DonorRecoveryState;
+  /** Short status for the card's chip. */
+  labelBn: string;
+  /** One line explaining the state, e.g. "আর প্রায় ২ মাস অপেক্ষা করতে হবে". */
+  detailBn: string;
+  /** Tailwind classes for the chip: warm gold while waiting, brand when ready. */
+  chipClassName: string;
+  /** False when this donor must not be called right now. */
+  canRequest: boolean;
+}
+
+export function donorRecovery(donor: BloodDonorProfile): DonorRecovery {
+  if (!donor.isAvailable) {
+    return {
+      state: 'on-break',
+      labelBn: 'বিরতিতে',
+      detailBn: 'রক্তদাতা নিজে বিরতির ঘোষণা দিয়েছেন। অন্য কোনো রক্তদাতা খুঁজে দেখুন।',
+      chipClassName: 'border-ink-300 bg-mist-100 text-ink-600',
+      canRequest: false,
+    };
+  }
+  const months = monthsSinceDonation(donor.lastDonationDate);
+  if (months === null) {
+    return {
+      state: 'ready',
+      labelBn: 'দানে প্রস্তুত',
+      detailBn: 'এখনো কোনো সময়সূচি নেই, যেকোনো সময় অনুরোধ পাঠানো যাবে।',
+      chipClassName: 'border-brand-200 bg-brand-50 text-brand-700',
+      canRequest: true,
+    };
+  }
+  if (months >= RECOVERY_MONTHS) {
+    return {
+      state: 'ready',
+      labelBn: 'দানে প্রস্তুত',
+      detailBn: `সর্বশেষ দান ছিল ${toBnDigits(months)} মাস আগে — পুনরায় দেওয়ার সময় হয়েছে।`,
+      chipClassName: 'border-brand-200 bg-brand-50 text-brand-700',
+      canRequest: true,
+    };
+  }
+  if (months >= RECOVERY_MONTHS - 1) {
+    return {
+      state: 'due-soon',
+      labelBn: 'শীঘ্রই প্রস্তুত',
+      detailBn: `সর্বশেষ দান ছিল ${toBnDigits(months)} মাস আগে, আরেকটি মাস অপেক্ষার পর দেওয়া যাবে।`,
+      chipClassName: 'border-accent-200 bg-accent-100/60 text-accent-700',
+      canRequest: true,
+    };
+  }
+  const left = RECOVERY_MONTHS - months;
+  return {
+    state: 'recovering',
+    labelBn: 'বিরতি চলছে',
+    detailBn: `দেহে পুনরুদ্ধারের সময় চলছে, আর প্রায় ${toBnDigits(left)} মাস অপেক্ষা করতে হবে।`,
+    chipClassName: 'border-accent-200 bg-accent-100/60 text-accent-700',
+    canRequest: false,
+  };
+}
+
+/** Bangla digits for the few numbers this module prints. */
+function toBnDigits(n: number): string {
+  const digits = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+  return String(n)
+    .split('')
+    .map((d) => digits[Number(d)] ?? d)
+    .join('');
+}
+
 /** Estimated compatibility — an honest, safe helper for Bangladeshi blood banks. */
 const COMPATIBLE_DONORS: Record<string, string[]> = {
   'A+': ['A+', 'A-', 'O+', 'O-'],

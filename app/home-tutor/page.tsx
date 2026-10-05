@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { PlusCircle, Lock, Loader2 } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
+import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
 import EmptyFilterResults from '@/components/filters/EmptyFilterResults';
 import TutorCard from '@/components/home-tutor/TutorCard';
@@ -152,24 +153,24 @@ function HomeTutorContent() {
       breadcrumbs={[{ label: 'গৃহশিক্ষক' }]}
     >
       {/* Top Banner with Post Profile CTA */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-xs">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs font-bold text-emerald-800 bg-emerald-50 px-2.5 py-0.5 rounded-full">
+      <div className="mb-5 flex flex-col gap-3 border-b border-mist-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <div>
+            <span className="block text-[11.5px] font-bold uppercase tracking-wide text-brand-600">
               মেডিকেল • আনন্দ মোহন • বাকৃবি
             </span>
           </div>
-          <h2 className="text-base sm:text-lg font-bold text-slate-900">
+          <h2 className="mt-1 text-[16px] font-extrabold leading-snug text-ink-900 sm:text-[18px]">
             শিক্ষার্থী ও অভিজ্ঞ গৃহশিক্ষক খুঁজুন অথবা পড়াতে প্রোফাইল খুলুন
           </h2>
-          <p className="text-xs text-slate-500 mt-0.5">
+          <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-ink-500">
             একই অ্যাকাউন্ট ব্যবহার করে গৃহশিক্ষক প্রোফাইল তৈরি ও আপডেট করতে পারবেন।
           </p>
         </div>
 
         <Link
           href="/profile/home-tutor/setup"
-          className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-xs sm:text-sm font-semibold hover:bg-emerald-900 transition-colors shrink-0 shadow-2xs"
+          className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-xl bg-brand-700 px-4 text-[12.5px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:self-auto ${LIGHT_FOCUS}`}
         >
           <PlusCircle className="w-4 h-4" />
           <span>গৃহশিক্ষক প্রোফাইল খুলুন</span>
@@ -189,8 +190,8 @@ function HomeTutorContent() {
       />
 
       {loading ? (
-        <div className="py-16 flex flex-col items-center gap-3 text-slate-500">
-          <Loader2 className="w-6 h-6 animate-spin text-emerald-700" />
+        <div className="flex flex-col items-center gap-3 py-16 text-ink-500">
+          <Loader2 className="h-6 w-6 animate-spin text-brand-600" />
           <span className="text-sm">গৃহশিক্ষকদের তালিকা লোড হচ্ছে...</span>
         </div>
       ) : filteredTutors.length === 0 ? (
@@ -207,8 +208,8 @@ function HomeTutorContent() {
       )}
 
       {/* Privacy Notice */}
-      <div className="mt-8 p-4 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-500 flex items-center gap-2">
-        <Lock className="w-4 h-4 text-slate-400 shrink-0" />
+      <div className="mt-8 flex items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 p-4 text-xs leading-relaxed text-ink-500">
+        <Lock className="h-4 w-4 shrink-0 text-ink-400" />
         <span>
           সুরক্ষা নীতি: গৃহশিক্ষকের ব্যক্তিগত মোবাইল নম্বর উন্মুক্ত রাখা হয় না। অভিভাবকের প্রাথমিক
           রিকোয়েস্ট যাচাই সাপেক্ষে অ্যাডমিন টিম যোগাযোগ সমন্বয় করে। রিভিউ কেবল সম্পন্ন টিউশনের পর
@@ -223,7 +224,7 @@ export default function HomeTutorPage() {
   return (
     <Suspense
       fallback={
-        <div className="max-w-7xl mx-auto px-4 py-12 text-center text-slate-500 text-sm">
+        <div className="mx-auto max-w-7xl px-4 py-12 text-center text-sm text-ink-500">
           গৃহশিক্ষকদের তালিকা লোড হচ্ছে...
         </div>
       }
