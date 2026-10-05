@@ -199,21 +199,37 @@ GRANT EXECUTE ON FUNCTION public.fetch_market_contact(TEXT) TO anon, authenticat
 --  no "ADD VALUE" for a CHECK, and this is the only statement in this file that
 --  is not `IF NOT EXISTS` — so the block is guarded by a catalogue lookup that
 --  makes it a no-op once 'market' is present.
+--
+--  The lookup identifies the constraint by WHAT it checks, not by its name.
+--  Matching on `conname = 'saved_items_item_type_check'` looks safer but is
+--  strictly weaker: a database created before this file existed may hold that
+--  check under a different generated name, and then the guard matches nothing,
+--  the block quietly does nothing, and `'market'` is still rejected at runtime
+--  with no error anywhere to explain why. Matching on the table plus a check
+--  whose definition mentions `item_type` finds the real constraint whatever it
+--  is called, and the block then fails loudly rather than silently.
 DO $$
+DECLARE
+    target TEXT;
 BEGIN
-    IF EXISTS (
-        SELECT 1
-        FROM pg_constraint
-        WHERE conrelid = 'public.saved_items'::regclass
-          AND conname = 'saved_items_item_type_check'
-          AND NOT (pg_get_constraintdef(oid) LIKE '%market%')
-    ) THEN
-        ALTER TABLE public.saved_items
-            DROP CONSTRAINT saved_items_item_type_check;
-        ALTER TABLE public.saved_items
-            ADD CONSTRAINT saved_items_item_type_check
-            CHECK (item_type IN ('tolet', 'tutor', 'service', 'market'));
+    SELECT c.conname INTO target
+    FROM pg_constraint c
+    WHERE c.conrelid = 'public.saved_items'::regclass
+      AND c.contype = 'c'
+      AND pg_get_constraintdef(c.oid) LIKE '%item_type%'
+      AND pg_get_constraintdef(c.oid) NOT LIKE '%market%'
+    LIMIT 1;
+
+    IF target IS NULL THEN
+        -- Either 'market' is already accepted, or there is no check on
+        -- `item_type` at all. Both are fine: nothing to widen.
+        RETURN;
     END IF;
+
+    EXECUTE format('ALTER TABLE public.saved_items DROP CONSTRAINT %I', target);
+    EXECUTE 'ALTER TABLE public.saved_items
+             ADD CONSTRAINT saved_items_item_type_check
+             CHECK (item_type IN (''tolet'', ''tutor'', ''service'', ''market''))';
 END $$;
 
 COMMENT ON COLUMN public.saved_items.item_type IS

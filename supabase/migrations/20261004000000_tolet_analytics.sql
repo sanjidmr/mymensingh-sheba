@@ -19,6 +19,36 @@
 --   …or paste into the Supabase SQL editor.
 
 -- ---------------------------------------------------------------------------
+-- 0. public.is_admin() — declared here so this file stands on its own
+-- ---------------------------------------------------------------------------
+-- Every RLS policy below is written `USING (public.is_admin())`, and
+-- `CREATE POLICY` resolves that function at creation time — so if the function
+-- is missing, creating the policy errors and the whole migration stops.
+--
+-- The definition is not in any earlier MIGRATION: `20260920000000_auth_and_profiles.sql`
+-- is only `\i lib/supabase/schema.sql`, and `\i` is a psql meta-command that
+-- `supabase db push` does not expand. On a database whose only migration history
+-- is `db push`, `is_admin()` therefore need not exist, and this file would fail
+-- on its first policy.
+--
+-- `CREATE OR REPLACE` makes this a no-op where the function already exists, and
+-- the body is identical to the one in `lib/supabase/schema.sql`, so the two can
+-- never disagree. Do not "improve" one without the other.
+CREATE OR REPLACE FUNCTION public.is_admin()
+RETURNS BOOLEAN
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    RETURN EXISTS (
+        SELECT 1 FROM public.profiles
+        WHERE id = auth.uid() AND role = 'admin'
+    );
+END;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 1. "এই বাসায় যা নেই"
 -- ---------------------------------------------------------------------------
 -- Nullable-by-default on older rows: adding the column with a '{}' default
