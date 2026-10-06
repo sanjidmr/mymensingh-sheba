@@ -115,7 +115,7 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
         )}
 
         {typeInfo?.labelBn && (
-          <span className="absolute left-1.5 top-1.5 inline-flex items-center rounded-md bg-white/95 px-1.5 py-[3px] text-[10px] font-extrabold text-ink-800 shadow-sm">
+          <span className="absolute left-1.5 top-1.5 inline-flex items-center rounded-md bg-white/95 px-1.5 py-[3px] text-[11px] font-extrabold text-ink-800 shadow-sm">
             {typeInfo.labelBn}
           </span>
         )}
@@ -127,7 +127,7 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
           <span className="text-[15px] font-extrabold tracking-tight text-brand-800">
             ৳{toBengaliDigits(total)}
           </span>
-          <span className="text-[10px] font-semibold text-ink-400">/মাস</span>
+          <span className="text-[11px] font-semibold text-ink-400">/মাস</span>
         </p>
 
         <h3 className="mt-1 line-clamp-2 text-[12.5px] font-bold leading-snug text-ink-900 sm:text-[13px]">
@@ -144,7 +144,7 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
             {chips.slice(0, 2).map((chip) => (
               <li
                 key={chip}
-                className="rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[10px] font-medium text-ink-600"
+                className="rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[11px] font-medium text-ink-600"
               >
                 {chip}
               </li>

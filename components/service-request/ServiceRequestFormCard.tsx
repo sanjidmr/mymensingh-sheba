@@ -46,10 +46,10 @@ import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 /**
  * 52px minimum height: comfortably above the 44px touch target the design
  * tokens require, and large enough that the Bangla text does not look cramped.
- * `text-[15px]` on phones keeps iOS from zooming the viewport on focus.
+ * `text-[16px]` on phones keeps iOS from zooming the viewport on focus.
  */
 const CONTROL =
-  'w-full min-h-[52px] rounded-lg border bg-white px-3.5 py-2.5 text-[15px] text-ink-900 placeholder:text-ink-300 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-600/25 sm:text-sm';
+  'w-full min-h-[52px] rounded-lg border bg-white px-3.5 py-2.5 text-[16px] text-ink-900 placeholder:text-ink-300 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-600/25 sm:text-sm';
 
 function controlClass(error?: string): string {
   return `${CONTROL} ${

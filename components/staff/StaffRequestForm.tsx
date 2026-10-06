@@ -82,7 +82,7 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
     : 'কাজের জন্য অনুরোধ করুন';
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-6">
+    <div className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-6">
       <div className="flex items-center gap-2 text-xs font-semibold text-slate-900 mb-2">
         <Lock className={`w-4 h-4 ${accent.text}`} />
         <span>নিরাপদ যোগাযোগ প্রোটোকল</span>
@@ -110,49 +110,49 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
           <p className="text-xs text-slate-600 mb-3 leading-relaxed">
             অনুরোধ পাঠাতে অ্যাকাউন্টে লগইন করুন। আপনার তথ্য গোপন রাখা হবে।
           </p>
-          <div className="flex gap-2 justify-center">
-            <Link href="/login" className={`px-4 py-2 rounded-xl text-white text-xs font-semibold ${accent.btn} ${accent.btnHover}`}>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:justify-center">
+            <Link href="/login" className={`min-h-11 px-3 sm:px-4 py-2 rounded-xl text-white text-[13px] sm:text-xs font-semibold flex items-center justify-center ${accent.btn} ${accent.btnHover}`}>
               লগইন করুন
             </Link>
-            <Link href="/register" className={`px-4 py-2 rounded-xl border text-xs font-semibold ${accent.btn} ${accent.btn} border-current`}>
+            <Link href="/register" className={`min-h-11 px-3 sm:px-4 py-2 rounded-xl border text-[13px] sm:text-xs font-semibold flex items-center justify-center ${accent.btn} ${accent.btn} border-current`}>
               অ্যাকাউন্ট খুলুন
             </Link>
           </div>
         </div>
       ) : (
         <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">আপনার নাম:</label>
+              <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">আপনার নাম:</label>
               <input
                 type="text"
                 required
                 value={visitorName}
                 onChange={(e) => setVisitorName(e.target.value)}
                 placeholder="পূর্ণ নাম"
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">মোবাইল নম্বর:</label>
+              <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">মোবাইল নম্বর:</label>
               <input
                 type="tel"
                 required
                 value={visitorPhone}
                 onChange={(e) => setVisitorPhone(e.target.value)}
                 placeholder="01XXXXXXXXX"
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">আপনার এলাকা:</label>
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">আপনার এলাকা:</label>
             <select
               required
               value={visitorArea}
               onChange={(e) => setVisitorArea(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs"
             >
               <option value="">এলাকা নির্বাচন করুন</option>
               {getAllMCCAreas({ activeOnly: true }).map((a) => (
@@ -164,26 +164,26 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">বাসা/প্রতিষ্ঠানের ঠিকানা:</label>
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">বাসা/প্রতিষ্ঠানের ঠিকানা:</label>
             <input
               type="text"
               required
               value={addressLine}
               onChange={(e) => setAddressLine(e.target.value)}
               placeholder="যেমন: বাড়ি ১২, রোড ৫, সেক্টর ২..."
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
+              className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">
               {profile.serviceSlug === 'kajer-bua' ? 'কী ধরনের কাজ প্রয়োজন:' : 'প্রয়োজনীয় কাজের ধরন:'}
             </label>
             <select
               required
               value={workType}
               onChange={(e) => setWorkType(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+              className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs"
             >
               <option value="">নির্বাচন করুন</option>
               {(WORK_TYPE_OPTIONS[profile.serviceSlug] || []).map((o) => (
@@ -194,24 +194,24 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
             </select>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">
+              <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">
                 {profile.serviceSlug === 'kajer-bua' ? 'কোন তারিখ থেকে (ঐচ্ছিক):' : 'পছন্দের তারিখ (ঐচ্ছিক):'}
               </label>
               <input
                 type="date"
                 value={preferredDate}
                 onChange={(e) => setPreferredDate(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">পছন্দের সময়:</label>
+              <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">পছন্দের সময়:</label>
               <select
                 value={preferredTime}
                 onChange={(e) => setPreferredTime(e.target.value)}
-                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
+                className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs"
               >
                 <option value="">যেকোনো সময়</option>
                 {STAFF_PREFERRED_TIMES.map((t) => (
@@ -224,22 +224,22 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1">বিস্তারিত (ঐচ্ছিক):</label>
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">বিস্তারিত (ঐচ্ছিক):</label>
             <textarea
               rows={2}
               value={details}
               onChange={(e) => setDetails(e.target.value)}
               placeholder={profile.serviceSlug === 'kajer-bua' ? 'যেমন: ৩ জনের পরিবারে রান্না, ৪ দিন/সপ্তাহ...' : 'সমস্যার সংক্ষিপ্ত বিবরণ দিন...'}
-              className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
+              className="w-full px-3 py-2 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs focus:outline-none focus:ring-2 focus:ring-emerald-700"
             />
           </div>
 
           {serviceUi.hasPhotoOnRequest && (
             <div>
-              <label className="block text-xs font-semibold text-slate-700 mb-1">ছবি সংযুক্ত করুন (ঐচ্ছিক):</label>
-              <label className="flex items-center justify-center gap-2 w-full px-3 py-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:border-slate-400 transition-colors">
+              <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">ছবি সংযুক্ত করুন (ঐচ্ছিক):</label>
+              <label className="flex items-center justify-center gap-2 min-h-11 w-full px-3 py-3 rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 cursor-pointer hover:border-slate-400 transition-colors">
                 <Camera className="w-4 h-4 text-slate-500" />
-                <span className="text-xs text-slate-600">
+                <span className="text-[13px] sm:text-xs text-slate-600">
                   {uploadingPhoto ? 'আপলোড হচ্ছে...' : attachmentUrl ? 'ছবি যুক্ত হয়েছে ✓' : 'সমস্যার ছবি (সর্বোচ্চ ৫MB)'}
                 </span>
                 <input
@@ -267,7 +267,7 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
           <button
             type="submit"
             disabled={submitting}
-            className={`w-full py-3 px-4 rounded-xl text-white font-medium text-sm flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-60 ${accent.btn} ${accent.btnHover}`}
+            className={`w-full min-h-11 py-3 px-4 rounded-xl text-white font-medium text-sm flex items-center justify-center gap-2 shadow-xs transition-colors disabled:opacity-60 ${accent.btn} ${accent.btnHover}`}
           >
             {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             <span>{submitting ? 'পাঠানো হচ্ছে...' : 'অনুরোধ পাঠান'}</span>

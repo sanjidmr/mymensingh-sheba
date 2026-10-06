@@ -158,7 +158,7 @@ export function ReportSheet({ open, onClose, listingId, user }: ReportSheetProps
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
                   placeholder="কী সমস্যা হচ্ছে তা সংক্ষেপে লিখুন..."
-                  className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2.5 text-[13px] text-ink-900 placeholder:text-ink-300 transition-colors focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/25"
+                  className="w-full rounded-lg border border-brand-200 bg-white px-3 py-2.5 text-[16px] text-ink-900 placeholder:text-ink-300 transition-colors focus:border-rose-400 focus:outline-none focus:ring-2 focus:ring-rose-500/25 sm:text-[13px]"
                 />
               </div>
 

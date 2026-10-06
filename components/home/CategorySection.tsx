@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import type { HomepageCategory } from '@/lib/homepage-catalog';
 import CategoryHeader from '@/components/home/CategoryHeader';
-import CategoryCard from '@/components/home/CategoryCard';
+import CategoryTile from '@/components/home/CategoryTile';
 
 interface CategorySectionProps {
   category: HomepageCategory;
@@ -10,19 +10,29 @@ interface CategorySectionProps {
 
 /**
  * CategorySection — one reusable shell for all three homepage categories.
- * Renders a refined centered category header, a clean desktop grid of equal
- * CategoryCards, and the "সব সেবা দেখুন" action at the very bottom of the
- * section. Sub-categories get visual rhythm through the section background
- * (`tone`: white → mist → deep forest) while the card system stays identical.
+ * Renders a refined centered category header, a clean responsive grid of equal
+ * CategoryTiles (photo + name, nothing else), and the "সব সেবা দেখুন" action at
+ * the very bottom of the section. Sub-categories get visual rhythm through the
+ * section background (`tone`: white → mist → deep forest) while the tile system
+ * stays identical.
  */
 export default function CategorySection({ category }: CategorySectionProps) {
   const dark = category.tone === 'dark';
+  const total = category.items.length;
   const bgClass =
     category.tone === 'mist'
       ? 'border-b border-brand-100/70 bg-mist-50'
       : category.tone === 'dark'
         ? 'bg-brand-600'
         : 'border-b border-brand-100/70 bg-white';
+
+  /**
+   * Phones run three tiles per row, so a 7-service category leaves one tile
+   * alone on the last row. Nudging it into the middle column keeps the grid
+   * looking deliberate instead of trailing off to the left. Only ever applies
+   * to the 3-up phone layout — from `sm` up the authored column counts decide.
+   */
+  const centreLastOnPhone = total % 3 === 1;
 
   return (
     <section className={bgClass} aria-label={category.title}>
@@ -33,19 +43,22 @@ export default function CategorySection({ category }: CategorySectionProps) {
           dark={dark}
         />
 
-        {/* One grid for every category: exactly three cards per row on phones,
-            then the same rhythm the desktop already had from `sm` upwards. */}
-        <div className={`mt-4 grid gap-2 sm:gap-4 ${category.grid ?? 'grid-cols-3 sm:grid-cols-3 lg:grid-cols-3'}`}>
+        {/* Three compact tiles per row on phones, then the same rhythm the
+            desktop already had from `sm` upwards. Every service in the category
+            is rendered — nothing is dropped on small screens. */}
+        <div
+          className={`mt-5 grid grid-cols-3 gap-x-2 gap-y-4 sm:mt-6 sm:gap-x-3 sm:gap-y-5 lg:gap-x-4 lg:gap-y-6 ${
+            category.grid ?? 'sm:grid-cols-4 lg:grid-cols-7'
+          }`}
+        >
           {category.items.map((item, index) => (
             <div
               key={item.id}
-              className={`${item.layoutClass ?? ''}${index >= 6 ? ' max-sm:hidden' : ''}`}
+              className={`${item.layoutClass ?? ''}${
+                centreLastOnPhone && index === total - 1 ? ' max-sm:col-start-2' : ''
+              }`}
             >
-              <CategoryCard
-                item={item}
-                compact={category.compact}
-                dense={category.dense}
-              />
+              <CategoryTile item={item} />
             </div>
           ))}
         </div>

@@ -98,7 +98,7 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
 
   if (!user) {
     return (
-      <div className="p-5 text-center">
+      <div className="p-4 sm:p-5 text-center">
         <Lock className="w-8 h-8 text-rose-600 mx-auto mb-3" />
         <p className="text-sm font-bold text-slate-900 mb-1">রক্তের অনুরোধ পাঠাতে লগইন প্রয়োজন</p>
         <p className="text-xs text-slate-500 mb-4">
@@ -116,7 +116,7 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
 
   if (done) {
     return (
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-center">
           <CheckCircle2 className="w-9 h-9 text-emerald-700 mx-auto mb-2" />
           <div className="font-bold">অনুরোধ পাঠানো হয়েছে</div>
@@ -149,7 +149,7 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
               <User className="w-3.5 h-3.5 text-rose-600" /> রোগী / যোগাযোগকারীর নাম *
             </label>
             <input
@@ -157,11 +157,11 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
               value={patientName}
               onChange={(e) => setPatientName(e.target.value)}
               placeholder="যেমন: রুহুল আমিন"
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+              className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
               <Phone className="w-3.5 h-3.5 text-rose-600" /> আপনার ফোন নম্বর *
             </label>
             <input
@@ -169,18 +169,18 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="01XXXXXXXXX"
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+              className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">রক্তের গ্রুপ *</label>
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">রক্তের গ্রুপ *</label>
             <select
               value={bloodGroup}
               onChange={(e) => setBloodGroup(e.target.value as BloodGroup)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+              className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
             >
               {BLOOD_GROUPS.map((g) => (
                 <option key={g} value={g}>
@@ -191,7 +191,7 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">কত ইউনিট লাগবে *</label>
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">কত ইউনিট লাগবে *</label>
             <div className="flex items-center gap-1.5">
               {[1, 2, 3, 4, 5, 6].map((n) => (
                 <button
@@ -213,7 +213,7 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+          <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
             <Hospital className="w-3.5 h-3.5 text-rose-600" /> হাসপাতাল / ক্লিনিকের নাম *
           </label>
           <input
@@ -221,17 +221,17 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
             value={hospitalName}
             onChange={(e) => setHospitalName(e.target.value)}
             placeholder="যেমন: ময়মনসিংহ মেডিকেল কলেজ হাসপাতাল"
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+            className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
           />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">হাসপাতালের এলাকা *</label>
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">হাসপাতালের এলাকা *</label>
             <select
               value={hospitalAreaId}
               onChange={(e) => setHospitalAreaId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+              className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
             >
               {AREAS.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -241,20 +241,20 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
             </select>
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5">হাসপাতালের অবস্থান (বিস্তারিত) *</label>
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">হাসপাতালের অবস্থান (বিস্তারিত) *</label>
             <input
               type="text"
               value={hospitalLocation}
               onChange={(e) => setHospitalLocation(e.target.value)}
               placeholder="যেমন: ৩ নম্বর সার্জারি ওয়ার্ড"
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+              className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
             />
           </div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
               <CalendarClock className="w-3.5 h-3.5 text-rose-600" /> প্রয়োজনীয় তারিখ / সময়
             </label>
             <input
@@ -262,17 +262,17 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
               value={requiredDateTime}
               onChange={(e) => setRequiredDateTime(e.target.value)}
               placeholder="যেমন: ২৩ সেপ্টেম্বর, সকাল ১০টা"
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+              className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
+            <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5 flex items-center gap-1">
               <MapPin className="w-3.5 h-3.5 text-rose-600" /> এলাকা *
             </label>
             <select
               value={areaId}
               onChange={(e) => setAreaId(e.target.value)}
-              className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+              className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
             >
               {AREAS.map((a) => (
                 <option key={a.id} value={a.id}>
@@ -284,19 +284,19 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
         </div>
 
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">রোগী সম্পর্কে সংক্ষিপ্ত তথ্য</label>
+          <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">রোগী সম্পর্কে সংক্ষিপ্ত তথ্য</label>
           <textarea
             rows={2}
             value={patientInfo}
             onChange={(e) => setPatientInfo(e.target.value)}
             placeholder="যেমন: শল্যচিকিৎসার জন্য রক্ত প্রয়োজন..."
-            className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
+            className="w-full min-h-11 px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-sm focus:outline-none focus:ring-2 focus:ring-rose-600"
           />
         </div>
 
         {/* Prescription upload — REQUIRED */}
         <div>
-          <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+          <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">
             প্রেসক্রিপশন / ডাক্তারের লিখন (আপলোড বাধ্যতামূলক) *
           </label>
           <input
@@ -340,7 +340,7 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
 
         {error && <p className="text-xs text-rose-600 font-semibold">{error}</p>}
 
-        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-500 leading-relaxed">
+        <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-[11.5px] sm:text-[11px] text-slate-500 leading-relaxed">
           রক্তদান একটি সম্পূর্ণ স্বেচ্ছাসেবী ও অ-বাণিজ্যিক সেবা। রক্ত কেনা-বেচা কঠোরভাবে নিষিদ্ধ।
           অনুরোধটি<b> পর্যালোচনায়</b> যাবে এবং অ্যাডমিন যাচাইয়ের পর রক্তদাতার সঙ্গে সমন্বয় করা হবে।
         </div>
@@ -348,7 +348,7 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
         <button
           type="submit"
           disabled={sending}
-          className="w-full py-3.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
+          className="w-full min-h-11 py-3.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-sm font-bold flex items-center justify-center gap-2 disabled:opacity-60 shadow-sm"
         >
           {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
           <span>{sending ? ' পাঠানো হচ্ছে...' : 'রক্তদান অনুরোধ পাঠান'}</span>
@@ -360,12 +360,12 @@ export function BloodRequestForm({ donor, user, onClose }: BloodRequestFormProps
 
 export function RequestSheetHeader({ onClose }: { onClose: () => void }) {
   return (
-    <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between rounded-t-3xl">
+    <div className="sticky top-0 bg-white border-b border-slate-100 px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between rounded-t-3xl">
       <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
         <Droplets className="w-4 h-4 text-rose-600" />
         <span>রক্তের জন্য অনুরোধ</span>
       </div>
-      <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100" aria-label="বন্ধ করুন">
+      <button type="button" onClick={onClose} className="-my-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-slate-100" aria-label="বন্ধ করুন">
         <X className="w-4 h-4" />
       </button>
     </div>

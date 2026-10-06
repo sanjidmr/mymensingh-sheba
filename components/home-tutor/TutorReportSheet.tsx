@@ -55,20 +55,20 @@ export function TutorReportSheet({ open, onClose, tutorId, user }: TutorReportSh
       onClick={onClose}
     >
       <div
-        className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto"
+        className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl max-h-[90vh] overflow-y-auto pb-[max(env(safe-area-inset-bottom),1rem)] sm:pb-0"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white border-b border-slate-100 px-5 py-4 flex items-center justify-between rounded-t-3xl">
+        <div className="sticky top-0 bg-white border-b border-slate-100 px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between rounded-t-3xl">
           <div className="flex items-center gap-2 text-sm font-bold text-slate-900">
             <Flag className="w-4 h-4 text-rose-600" />
             <span>টিউটর প্রোফাইল রিপোর্ট করুন</span>
           </div>
-          <button type="button" onClick={onClose} className="p-2 rounded-lg hover:bg-slate-100" aria-label="বন্ধ করুন">
+          <button type="button" onClick={onClose} className="-my-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-lg hover:bg-slate-100" aria-label="বন্ধ করুন">
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-5">
+        <div className="p-4 sm:p-5">
           {done ? (
             <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-center">
               <CheckCircle2 className="w-8 h-8 text-emerald-700 mx-auto mb-2" />
@@ -91,7 +91,7 @@ export function TutorReportSheet({ open, onClose, tutorId, user }: TutorReportSh
               </p>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-2">কারণ *</label>
+                <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-2">কারণ *</label>
                 <div className="space-y-2">
                   {TUTOR_REPORT_REASONS.map((r) => (
                     <button
@@ -102,7 +102,7 @@ export function TutorReportSheet({ open, onClose, tutorId, user }: TutorReportSh
                         setError('');
                       }}
                       className={cn(
-                        'w-full p-3 rounded-xl text-xs font-semibold border text-left transition-colors',
+                        'w-full min-h-11 p-3 rounded-xl text-[13px] sm:text-xs font-semibold border text-left transition-colors',
                         reason === r
                           ? 'bg-rose-50 text-rose-900 border-rose-300'
                           : 'bg-white text-slate-700 border-slate-200'
@@ -115,13 +115,13 @@ export function TutorReportSheet({ open, onClose, tutorId, user }: TutorReportSh
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">বিস্তারিত (ঐচ্ছিক):</label>
+                <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1">বিস্তারিত (ঐচ্ছিক):</label>
                 <textarea
                   rows={3}
                   value={details}
                   onChange={(e) => setDetails(e.target.value)}
                   placeholder="কী সমস্যা হচ্ছে তা সংক্ষেপে লিখুন..."
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-600"
+                  className="w-full min-h-11 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs focus:outline-none focus:ring-2 focus:ring-rose-600"
                 />
               </div>
 
@@ -140,7 +140,7 @@ export function TutorReportSheet({ open, onClose, tutorId, user }: TutorReportSh
               <button
                 type="submit"
                 disabled={sending}
-                className="w-full py-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-60"
+                className="w-full min-h-11 py-3 rounded-xl bg-rose-700 hover:bg-rose-800 text-white text-[13px] sm:text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-60"
               >
                 {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flag className="w-4 h-4" />}
                 <span>{sending ? 'পাঠানো হচ্ছে...' : 'রিপোর্ট পাঠান'}</span>

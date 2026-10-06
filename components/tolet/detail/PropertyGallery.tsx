@@ -239,7 +239,7 @@ export function PropertyGallery({ listing, isFavorite, onToggleFavorite }: Prope
               )}
             >
               {failed[i] ? (
-                <span className="flex h-full w-full items-center justify-center bg-mist-100 text-[10px] font-bold text-ink-400">
+                <span className="flex h-full w-full items-center justify-center bg-mist-100 text-[11px] font-bold text-ink-400">
                   নেই
                 </span>
               ) : (

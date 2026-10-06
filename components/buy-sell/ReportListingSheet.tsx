@@ -104,7 +104,7 @@ export function ReportListingSheet({
             type="button"
             onClick={onClose}
             aria-label="বন্ধ করুন"
-            className={`flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-mist-100 ${LIGHT_FOCUS}`}
+            className={`flex h-11 w-11 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-mist-100 ${LIGHT_FOCUS}`}
           >
             <X className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -169,7 +169,7 @@ export function ReportListingSheet({
                 rows={3}
                 maxLength={600}
                 placeholder="যা দেখেছেন তা লিখুন…"
-                className="w-full rounded-xl border border-mist-200 px-3 py-2.5 text-[13.5px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500"
+                className="w-full rounded-xl border border-mist-200 px-3 py-2.5 text-[16px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 sm:text-[13.5px]"
               />
             </label>
 

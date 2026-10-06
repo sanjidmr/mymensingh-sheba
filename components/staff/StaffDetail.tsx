@@ -38,7 +38,7 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
   return (
     <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
       {imageless ? (
-        <div className={`relative flex items-center justify-between gap-3 bg-gradient-to-r ${accent.gradient} px-5 py-3.5`}>
+        <div className={`relative flex flex-wrap items-center justify-between gap-2 sm:gap-3 bg-gradient-to-r ${accent.gradient} px-4 py-3 sm:px-5 sm:py-3.5`}>
           <div className="flex items-center gap-2 flex-wrap">
             {profile.isVerified && (
               <span className="inline-flex items-center gap-1 text-xs font-bold text-white bg-white/20 px-2.5 py-1 rounded-full border border-white/30">
@@ -79,9 +79,9 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
 
         <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-black/10 pointer-events-none" />
 
-        <div className="absolute top-4 left-4 right-4 flex items-start justify-between gap-2">
+        <div className="absolute top-3 left-3 right-3 sm:top-4 sm:left-4 sm:right-4 flex flex-wrap items-start justify-between gap-1.5 sm:gap-2">
           {profile.isVerified ? (
-            <span className="inline-flex items-center gap-1 text-sm font-bold text-white bg-emerald-700/95 px-3 py-1.5 rounded-full border border-white/30">
+            <span className="inline-flex items-center gap-1 text-[13px] sm:text-sm font-bold text-white bg-emerald-700/95 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/30">
               <ShieldCheck className="w-4 h-4" />
               ভেরিফাইড
             </span>
@@ -89,14 +89,14 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
             <span />
           )}
           {profile.isEmergency && (
-            <span className="inline-flex items-center gap-1 text-sm font-bold text-rose-100 bg-rose-700/90 px-3 py-1.5 rounded-full border border-white/30">
+            <span className="inline-flex items-center gap-1 text-[13px] sm:text-sm font-bold text-rose-100 bg-rose-700/90 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full border border-white/30">
               <Zap className="w-4 h-4" />
               জরুরি সার্ভিস
             </span>
           )}
         </div>
 
-        <span className="absolute bottom-4 left-4 inline-flex items-center gap-1 text-sm font-semibold text-white bg-slate-900/70 backdrop-blur-sm px-3 py-1.5 rounded-full">
+        <span className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 inline-flex items-center gap-1 text-[13px] sm:text-sm font-semibold text-white bg-slate-900/70 backdrop-blur-sm px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full">
           <Clock className="w-4 h-4" />
           {STAFF_AVAILABILITY_LABELS[profile.availability] || 'সীমিত সময়ে'}
         </span>
@@ -104,9 +104,9 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
       )}
 
       {/* Body */}
-      <div className="p-5 sm:p-6">
+      <div className="p-4 sm:p-6">
         {/* Header info */}
-        <div className="mb-5">
+        <div className="mb-4 sm:mb-5">
           <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 leading-tight">
             {profile.nameBn}
           </h1>
@@ -114,30 +114,30 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
         </div>
 
         {/* Quick stats row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5 p-4 rounded-xl bg-slate-50">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3 mb-4 sm:mb-5 p-3 sm:p-4 rounded-xl bg-slate-50">
           <div className="text-center">
             <div className="text-lg font-black text-slate-900">{profile.experienceYears || 0}</div>
-            <div className="text-[11px] text-slate-500">বছর অভিজ্ঞতা</div>
+            <div className="text-xs sm:text-[11px] text-slate-500">বছর অভিজ্ঞতা</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-black text-slate-900">{areas.length}</div>
-            <div className="text-[11px] text-slate-500">সার্ভিস এলাকা</div>
+            <div className="text-xs sm:text-[11px] text-slate-500">সার্ভিস এলাকা</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-black text-slate-900">{labels.length}</div>
-            <div className="text-[11px] text-slate-500">কার্য প্রকার</div>
+            <div className="text-xs sm:text-[11px] text-slate-500">কার্য প্রকার</div>
           </div>
           <div className="text-center">
             <div className="text-lg font-black text-slate-900">
               {serviceUi.usesSalary && (profile.salaryMin != null || profile.salaryMax != null) ? 'বেতন' : 'হার'}
             </div>
-            <div className="text-[11px] text-slate-500">{serviceUi.usesSalary ? 'বেতন' : 'হার'}</div>
+            <div className="text-xs sm:text-[11px] text-slate-500">{serviceUi.usesSalary ? 'বেতন' : 'হার'}</div>
           </div>
         </div>
 
         {/* Work types chips */}
         {labels.length > 0 && (
-          <section className="mb-5">
+          <section className="mb-4 sm:mb-5">
             <h2 className="text-sm font-bold text-slate-900 mb-2.5 flex items-center gap-1.5">
               <Award className="w-4 h-4" />
               দক্ষতা ও কাজের ধরন
@@ -154,7 +154,7 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
 
         {/* About */}
         {profile.aboutBn && (
-          <section className="mb-5">
+          <section className="mb-4 sm:mb-5">
             <h2 className="text-sm font-bold text-slate-900 mb-2.5 flex items-center gap-1.5">
               <User className="w-4 h-4" />
               সম্পর্কে
@@ -164,13 +164,13 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
         )}
 
         {/* Schedule & details */}
-        <section className="mb-5 space-y-3">
+        <section className="mb-4 sm:mb-5 space-y-3">
           <h2 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
             <Clock className="w-4 h-4" />
             সময়সূচী ও উপলব্ধতা
           </h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+          <div className="grid grid-cols-1 gap-2 sm:gap-3 text-sm sm:grid-cols-4">
+            <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-slate-50 rounded-xl">
               <span className="text-slate-400">{profile.workMode ? '•' : ''}</span>
               <span className="text-slate-600">
                 {profile.workMode === 'full_time' ? 'ফুল-টাইম'
@@ -180,11 +180,11 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
                   : 'নির্ধারিত নয়'}
               </span>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+            <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-slate-50 rounded-xl">
               <span className="text-slate-400">{profile.timeSlot ? '•' : ''}</span>
               <span className="text-slate-600">{profile.timeSlot || 'নির্ধারিত নয়'}</span>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+            <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-slate-50 rounded-xl">
               <Calendar className="w-4 h-4 text-slate-400" />
               <span className="text-slate-600">
                 {serviceUi.usesSalary && (profile.salaryMin != null || profile.salaryMax != null)
@@ -192,7 +192,7 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
                   : profile.rateLabel || 'নির্ধারিত নয়'}
               </span>
             </div>
-            <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl">
+            <div className="flex items-center gap-2 p-2.5 sm:p-3 bg-slate-50 rounded-xl">
               <span className="text-slate-400">{profile.availability ? '•' : ''}</span>
               <span className="text-slate-600 capitalize">{profile.availability}</span>
             </div>
@@ -200,7 +200,7 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
         </section>
 
         {/* Service areas */}
-        <section className="mb-5">
+        <section className="mb-4 sm:mb-5">
           <h2 className="text-sm font-bold text-slate-900 mb-2.5 flex items-center gap-1.5">
             <MapPin className="w-4 h-4" />
             সার্ভিস এলাকা
@@ -226,14 +226,14 @@ export function StaffDetail({ profile, serviceUi, imageless = false }: StaffDeta
             <button
               type="button"
               onClick={() => setShowReport(true)}
-              className="w-full sm:w-auto px-4 py-3 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
+              className="w-full sm:w-auto min-h-11 px-4 py-3 rounded-xl border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-50 transition-colors flex items-center justify-center gap-2"
             >
               <Flag className="w-4 h-4" />
               রিপোর্ট
             </button>
           </div>
 
-          <p className="text-[11px] text-slate-500 text-center mt-4 leading-relaxed">
+          <p className="text-[11.5px] sm:text-[11px] text-slate-500 text-center mt-4 leading-relaxed">
             ফোন নম্বর সুরক্ষার জন্য সরাসরি দেখা যায় না। অনুরোধ পাঠালে কর্মী আপনার সাথে যোগাযোগ করবেন।
           </p>
         </div>

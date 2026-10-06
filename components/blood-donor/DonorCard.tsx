@@ -146,7 +146,7 @@ export default function DonorCard({ donor }: DonorCardProps) {
                 />
               )}
               {donor.isDemo && (
-                <span className="shrink-0 rounded-full border border-accent-200 bg-accent-100/70 px-1.5 py-0.5 text-[10px] font-bold text-accent-700">
+                <span className="shrink-0 rounded-full border border-accent-200 bg-accent-100/70 px-1.5 py-0.5 text-[11px] font-bold text-accent-700 sm:text-[10px]">
                   নমুনা
                 </span>
               )}
@@ -196,11 +196,11 @@ export default function DonorCard({ donor }: DonorCardProps) {
           onClick={() => setRequestOpen(false)}
         >
           <div
-            className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white sm:max-w-lg sm:rounded-3xl"
+            className="max-h-[92vh] w-full overflow-y-auto rounded-t-3xl bg-white pb-[max(env(safe-area-inset-bottom),1rem)] sm:max-w-lg sm:rounded-3xl sm:pb-0"
             onClick={(e) => e.stopPropagation()}
           >
             <RequestSheetHeader onClose={() => setRequestOpen(false)} />
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               <BloodRequestForm donor={donor} user={user} onClose={() => setRequestOpen(false)} />
             </div>
           </div>

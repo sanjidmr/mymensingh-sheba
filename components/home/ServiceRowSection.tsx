@@ -4,14 +4,30 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ArrowRight } from 'lucide-react';
 import ServiceCard from '@/components/home/ServiceCard';
+import {
+  loadToletCards,
+  loadTutorCards,
+  loadDonorCards,
+} from '@/components/home/section-loaders';
 import type { HomePreviewCard } from '@/lib/home-preview';
+
+/** Serialisable loader keys. Resolved HERE (client) rather than passed from
+ *  the page, because a Server Component may not hand a function to a Client
+ *  Component — passing `load={loadToletCards}` down from HomePage 500'd. */
+export type ServiceRowSource = 'tolet' | 'tutor' | 'donor';
+
+const ROW_LOADERS = {
+  tolet: loadToletCards,
+  tutor: loadTutorCards,
+  donor: loadDonorCards,
+} satisfies Record<ServiceRowSource, () => Promise<HomePreviewCard[]>>;
 
 interface ServiceRowSectionProps {
   kicker: string;
   title: string;
   href: string;
-  /** Async source (live listings) — optional; pass `cards` for static rows */
-  load?: () => Promise<HomePreviewCard[]>;
+  /** Async source (live listings) — resolved to a loader in this component */
+  source?: ServiceRowSource;
   /** Static card list — used when there is no live loader yet */
   cards?: HomePreviewCard[];
   tone?: 'white' | 'mist';
@@ -36,7 +52,7 @@ export default function ServiceRowSection({
   kicker,
   title,
   href,
-  load,
+  source,
   cards,
   tone = 'white',
   cardTone = 'default',
@@ -48,6 +64,9 @@ export default function ServiceRowSection({
   const [items, setItems] = useState<HomePreviewCard[] | null>(cards ?? null);
   const [error, setError] = useState(false);
   const imageMode = withImage && !hideImage;
+
+  /** Stable module-level reference, so this dep never churns between renders. */
+  const load = source ? ROW_LOADERS[source] : undefined;
 
   useEffect(() => {
     if (!load) return;

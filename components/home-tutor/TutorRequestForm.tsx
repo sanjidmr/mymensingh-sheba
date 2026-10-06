@@ -52,9 +52,9 @@ const BUDGET_OPTIONS = [
 ];
 
 const SELECT_CLASS =
-  'w-full rounded-xl border border-mist-200 bg-white px-3.5 py-2.5 text-[13.5px] text-ink-900 outline-none transition-colors focus:border-brand-500';
+  'w-full min-h-11 rounded-xl border border-mist-200 bg-white px-3.5 py-2.5 text-[16px] text-ink-900 outline-none transition-colors focus:border-brand-500 sm:min-h-0 sm:text-[13.5px]';
 
-const LABEL_CLASS = 'mb-1.5 block text-[12.5px] font-bold text-ink-800';
+const LABEL_CLASS = 'mb-1.5 block text-[13px] font-bold text-ink-800 sm:text-[12.5px]';
 
 interface TutorRequestFormProps {
   tutor: HomeTutorProfile;
@@ -162,7 +162,7 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
             on a phone keypad is the single most error-prone step in the flow. */}
         <div>
           <span className={LABEL_CLASS}>আপনার নাম</span>
-          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3.5 py-2.5 text-[13.5px] text-ink-800">
+          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3.5 py-2.5 text-[15px] text-ink-800 sm:text-[13.5px]">
             <User className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
             <span className="truncate">{user.fullName}</span>
           </div>
@@ -170,7 +170,7 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
 
         <div>
           <span className={LABEL_CLASS}>যোগাযোগের নম্বর</span>
-          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3.5 py-2.5 text-[13.5px] text-ink-800">
+          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3.5 py-2.5 text-[15px] text-ink-800 sm:text-[13.5px]">
             <Phone className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
             <span className="truncate">{user.phone}</span>
           </div>
@@ -295,7 +295,7 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
             onChange={(e) => setNote(e.target.value)}
             maxLength={500}
             placeholder="যেমন: মহিলা শিক্ষক হলে ভালো, দুর্বল গণিতের ভিত্তি আছে…"
-            className="w-full rounded-xl border border-mist-200 px-3.5 py-2.5 text-[13.5px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500"
+            className="w-full min-h-11 rounded-xl border border-mist-200 px-3.5 py-2.5 text-[16px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 sm:min-h-0 sm:text-[13.5px]"
           />
         </div>
 

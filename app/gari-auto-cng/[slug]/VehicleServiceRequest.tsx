@@ -280,7 +280,7 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value as VehicleKind)}
-            className="min-h-11 w-full appearance-none rounded-xl border border-mist-200 bg-white px-3 text-[14px] text-ink-900 outline-none transition-colors focus:border-brand-500"
+            className="min-h-11 w-full appearance-none rounded-xl border border-mist-200 bg-white px-3 text-[16px] text-ink-900 outline-none transition-colors focus:border-brand-500 sm:text-[14px]"
           >
             {VEHICLE_KINDS.map((option) => (
               <option key={option} value={option}>
@@ -327,7 +327,7 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
             rows={5}
             maxLength={1000}
             placeholder="যেমন: সকালে শহর থেকে ঢাকা যাবে, পেছনে ২ জন বয়স্ক থাকবেন, গাড়ির ভেতরে এসি দরকার।"
-            className="w-full rounded-xl border border-mist-200 bg-white px-3 py-2.5 text-[14px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500"
+            className="w-full rounded-xl border border-mist-200 bg-white px-3 py-2.5 text-[16px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 sm:text-[14px]"
           />
           <p className="mt-1 text-[11px] text-ink-400">
             {toBn(notes.length)} / {toBn(1000)}
@@ -381,7 +381,7 @@ function Field({
 }) {
   return (
     <label className="block">
-      <span className="mb-1.5 flex items-baseline gap-1.5 text-[12.5px] font-bold text-ink-900">
+      <span className="mb-1.5 flex items-baseline gap-1.5 text-[13px] font-bold text-ink-900 sm:text-[12.5px]">
         {labelBn}
         {required ? (
           <span className="text-rose-600" aria-hidden="true">
@@ -426,7 +426,7 @@ function TextInput({
         {...rest}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="min-h-11 w-full rounded-xl border border-mist-200 bg-white pl-9 pr-3 text-[14px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500"
+        className="min-h-11 w-full rounded-xl border border-mist-200 bg-white pl-9 pr-3 text-[16px] text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 sm:text-[14px]"
       />
     </div>
   );

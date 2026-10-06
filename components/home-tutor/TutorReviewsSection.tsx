@@ -134,7 +134,7 @@ export function TutorReviewsSection({ tutor }: TutorReviewsSectionProps) {
                     <span className="block text-xs font-bold text-slate-900 truncate">
                       {r.customerName || 'ভেরিফায়েড অভিভাবক'}
                     </span>
-                    <span className="block text-[10px] text-slate-400">
+                    <span className="block text-[11px] text-slate-400">
                       {formatReviewDate(r.createdAt)}
                     </span>
                   </div>

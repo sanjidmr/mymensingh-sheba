@@ -16,11 +16,6 @@ import {
   NEWS_SAMPLE_CARDS,
 } from '@/lib/home-static-rows';
 import {
-  loadToletCards,
-  loadTutorCards,
-  loadDonorCards,
-} from '@/components/home/section-loaders';
-import {
   mergeHomepageCategories,
   isHomepageSectionVisible,
 } from '@/lib/site-content';
@@ -79,7 +74,7 @@ export default async function HomePage() {
             kicker="এই শহরের তালিকা"
             title="বাসা / মেস / হোস্টেল ভাড়া"
             href="/tolet"
-            load={loadToletCards}
+            source="tolet"
             tone="mist"
             withImage
             demoImages={['/home.jpg', '/homechange.jpg', '/sheba1.png', '/sheba2.png']}
@@ -92,7 +87,7 @@ export default async function HomePage() {
             kicker="অভিজ্ঞ শিক্ষক"
             title="গৃহশিক্ষক খুঁজুন"
             href="/home-tutor"
-            load={loadTutorCards}
+            source="tutor"
             tone="white"
             withImage
             demoImages={['/tutor.jpg', '/coutching.jpg', '/sheba3.png', '/sheba4.png']}
@@ -121,7 +116,7 @@ export default async function HomePage() {
             kicker="জরুরি প্রয়োজনে"
             title="রক্তদাতা খুঁজুন"
             href="/blood-donor"
-            load={loadDonorCards}
+            source="donor"
             tone="white"
             cardTone="red"
             hideImage
