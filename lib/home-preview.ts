@@ -1,6 +1,7 @@
 ﻿import type { ToletListing } from '@/lib/tolet-types';
 import type { StaffProfile } from '@/lib/staff-types';
 import type { HomeTutorProfile, BloodDonorProfile } from '@/lib/supabase/types';
+import type { ServiceListing, CommunityPost } from '@/lib/catalog-types';
 import {
   STAFF_SERVICE_UI,
   STAFF_AVAILABILITY_LABELS,
@@ -172,6 +173,94 @@ export function donorToPreviewCard(donor: BloodDonorProfile): HomePreviewCard {
     },
     verified: donor.isVerified,
     footer: 'রক্তদানে প্রস্তুত',
+    footerLabel: 'বিস্তারিত দেখুন',
+  };
+}
+
+/** Formats a numeric salary range the way it appears on a job post. */
+function formatPostSalaryBn(min: number | undefined, max: number | undefined): string | undefined {
+  if (min != null && max != null && max > min) {
+    return `৳${min.toLocaleString('bn-BD')}-${max.toLocaleString('bn-BD')}`;
+  }
+  if (min != null) return `৳${min.toLocaleString('bn-BD')}+`;
+  if (max != null) return `৳${max.toLocaleString('bn-BD')} পর্যন্ত`;
+  return undefined;
+}
+
+export function vehicleToPreviewCard(listing: ServiceListing): HomePreviewCard {
+  const areas = listing.areaIds
+    .map((id) => getAreaById(id)?.nameBn)
+    .filter((n): n is string => Boolean(n));
+  const chips = [
+    listing.modelYear ? `${listing.modelYear} মডেল` : '',
+    listing.hasAc ? 'এসি' : '',
+    listing.driverIncluded ? 'ড্রাইভারসহ' : '',
+  ].filter(Boolean);
+  const price =
+    listing.priceNoteBn ||
+    (listing.priceMin != null && listing.priceMax != null
+      ? `৳${listing.priceMin.toLocaleString('bn-BD')}-${listing.priceMax.toLocaleString('bn-BD')}`
+      : listing.priceMin != null
+        ? `৳${listing.priceMin.toLocaleString('bn-BD')}`
+        : undefined);
+  return {
+    id: listing.id,
+    href: `/gari-auto-cng/${listing.slug}`,
+    imageUrl: listing.photos?.[0] ?? listing.imageUrl,
+    avatarLabel: listing.titleBn.charAt(0) || '?',
+    avatarTone: 'green',
+    title: listing.titleBn,
+    subtitle: listing.subtitleBn || listing.modelNameBn,
+    location: areas.length ? areas.slice(0, 2).join(', ') : 'ময়মনসিংহ সিটি কর্পোরেশন',
+    metaChips: chips,
+    availability: listing.isActive
+      ? { label: 'চলমান', tone: 'green' }
+      : { label: 'অনুপলব্ধ', tone: 'slate' },
+    footer: price || 'সরাসরি যোগাযোগ',
+    footerLabel: 'বিস্তারিত দেখুন',
+  };
+}
+
+export function postToPreviewCard(post: CommunityPost): HomePreviewCard {
+  const area = post.areaId ? getAreaById(post.areaId) : undefined;
+  const href =
+    post.kind === 'buy_sell'
+      ? `/buy-sell/${post.slug}`
+      : post.kind === 'job'
+        ? `/jobs/${post.slug}`
+        : `/news/${post.slug}`;
+  const price =
+    post.kind === 'buy_sell' && post.price != null
+      ? `৳${post.price.toLocaleString('bn-BD')}`
+      : undefined;
+  const chips =
+    post.kind === 'buy_sell'
+      ? price
+        ? [price]
+        : (post.tags || []).slice(0, 2)
+      : post.kind === 'job'
+        ? [
+            formatPostSalaryBn(post.salaryMin, post.salaryMax) || '',
+            post.jobType || '',
+          ].filter(Boolean)
+        : (post.tags || []).slice(0, 2);
+  return {
+    id: post.id,
+    href,
+    imageUrl: post.coverImageUrl,
+    avatarLabel: post.titleBn.charAt(0) || '?',
+    avatarTone: 'green',
+    title: post.titleBn,
+    subtitle: post.summaryBn,
+    location: area?.nameBn || 'ময়মনসিংহ সিটি কর্পোরেশন',
+    metaChips: chips,
+    verified: post.isFeatured,
+    footer:
+      post.kind === 'buy_sell'
+        ? price || 'সরাসরি যোগাযোগ'
+        : post.kind === 'job'
+          ? post.organizationBn || 'পূর্ণ বিজ্ঞাপন দেখুন'
+          : 'পূর্ণ খবর পড়ুন',
     footerLabel: 'বিস্তারিত দেখুন',
   };
 }

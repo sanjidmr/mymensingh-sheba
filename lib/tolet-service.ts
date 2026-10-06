@@ -178,35 +178,40 @@ function withShowcaseFallback(realListings: ToletListing[]): ToletListing[] {
 // ---------------------------------------------------------------------------
 
 export async function fetchPublicListings(): Promise<ToletListing[]> {
+  // The demo showcase exists for local previews only. With Supabase configured
+  // the directory shows real approvals alone — an empty table stays an empty
+  // directory, never a fabricated one.
   if (!isSupabaseConfigured) return withShowcaseFallback(mockFetchPublicListings());
   const client = createClient();
-  if (!client) return withShowcaseFallback(mockFetchPublicListings());
+  if (!client) return [];
   const { data, error } = await client
     .from('tolet_listings')
     .select('*, owner:owner_id(full_name, is_verified)')
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
-  // A query error (e.g. the table has not been migrated yet) must not leave the
-  // directory blank: degrade to the in-memory store instead.
-  if (error) return withShowcaseFallback(mockFetchPublicListings());
-  return withShowcaseFallback((data || []).map((row) => mapListingRow(row as RawListingRow)));
+  if (error) return [];
+  const real = (data || []).map((row) => mapListingRow(row as RawListingRow));
+  real.forEach(rememberListingMeta);
+  return real;
 }
 
 export async function fetchListingById(id: string): Promise<ToletListing | null> {
-  // Showcase ids resolve in every mode so demo links are always shareable.
-  if (getDemoListing(id)) {
-    rememberListingMeta(DEMO_TOLET_LISTINGS.find((l) => l.id === id)!);
-    return getDemoListing(id) ?? null;
+  if (!isSupabaseConfigured) {
+    const demo = getDemoListing(id);
+    if (demo) {
+      rememberListingMeta(demo);
+      return demo;
+    }
+    return mockFetchListingById(id) || null;
   }
-  if (!isSupabaseConfigured) return mockFetchListingById(id) || null;
   const client = createClient();
-  if (!client) return mockFetchListingById(id) || null;
+  if (!client) return null;
   const { data, error } = await client
     .from('tolet_listings')
     .select('*, owner:owner_id(full_name, is_verified)')
     .eq('id', id)
     .maybeSingle();
-  if (error || !data) return mockFetchListingById(id) || null;
+  if (error || !data) return null;
   const listing = mapListingRow(data as RawListingRow);
   rememberListingMeta(listing);
   return listing;
@@ -557,6 +562,7 @@ export async function createListingReport(input: {
   const { error } = await client.from('listing_reports').insert({
     listing_id: input.listingId,
     reporter_id: input.reporterId,
+    reporter_name: input.reporterName.trim() || 'অতিথি',
     reason: input.reason,
     details: input.details || null,
   });

@@ -214,11 +214,11 @@ export interface ToletRequestInput {
   preferredTime?: string;
 }
 
-export type ListingReportStatus = 'open' | 'reviewed' | 'resolved' | 'dismissed';
+// Must match the listing_reports status CHECK constraint in the schema.
+export type ListingReportStatus = 'open' | 'resolved' | 'dismissed';
 
 export const LISTING_REPORT_STATUS_INFO: Record<ListingReportStatus, { labelBn: string }> = {
   open: { labelBn: 'উন্মুক্ত' },
-  reviewed: { labelBn: 'পর্যালোচিত' },
   resolved: { labelBn: 'সমাধান হয়েছে' },
   dismissed: { labelBn: 'অগ্রাহ্য' },
 };

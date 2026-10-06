@@ -205,11 +205,13 @@ export async function adminFetchStaffProfiles(
   if (!isSupabaseConfigured) return mockAdminFetchStaffProfiles(slug);
   const client = createClient();
   if (!client) return mockAdminFetchStaffProfiles(slug);
-  let query = client.from('staff_profiles').select('*');
+  // `fn_admin_staff_profiles` is SECURITY DEFINER + is_admin() gated — the only
+  // path that may read phone_private after the column REVOKE.
+  let query = client.rpc('fn_admin_staff_profiles');
   if (slug) query = query.eq('service_slug', slug);
-  const { data, error } = await query.order('updated_at', { ascending: false });
+  const { data, error } = await query;
   if (error) return [];
-  return (data || []).map((row) => mapProfileRow(row as Record<string, unknown>, { admin: true }));
+  return ((data as Record<string, unknown>[]) || []).map((row) => mapProfileRow(row, { admin: true }));
 }
 
 export async function adminFetchStaffProfileById(id: string): Promise<StaffProfile | null> {
@@ -217,9 +219,7 @@ export async function adminFetchStaffProfileById(id: string): Promise<StaffProfi
   const client = createClient();
   if (!client) return mockAdminFetchStaffProfileById(id) || null;
   const { data, error } = await client
-    .from('staff_profiles')
-    .select('*')
-    .eq('id', id)
+    .rpc('fn_admin_staff_profile', { p_id: id })
     .maybeSingle();
   if (error || !data) return null;
   return mapProfileRow(data as Record<string, unknown>, { admin: true });
@@ -237,12 +237,13 @@ export async function adminCreateStaffProfile(
   const { data, error } = await client
     .from('staff_profiles')
     .insert(toProfileInsertObject(input))
-    .select('*')
+    .select('id')
     .single();
   if (error || !data) {
     return { success: false, error: error?.message || 'সংরক্ষণ ব্যর্থ হয়েছে' };
   }
-  return { success: true, profile: mapProfileRow(data as Record<string, unknown>, { admin: true }) };
+  const profile = await adminFetchStaffProfileById((data as { id: string }).id);
+  return { success: true, profile: profile ?? undefined };
 }
 
 export async function adminUpdateStaffProfile(
@@ -255,16 +256,15 @@ export async function adminUpdateStaffProfile(
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { data, error } = await client
+  const { error } = await client
     .from('staff_profiles')
     .update(toProfileInsertObject(patch as StaffProfileInput))
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error || !data) {
+    .eq('id', id);
+  if (error) {
     return { success: false, error: error?.message || 'আপডেট ব্যর্থ হয়েছে' };
   }
-  return { success: true, profile: mapProfileRow(data as Record<string, unknown>, { admin: true }) };
+  const profile = await adminFetchStaffProfileById(id);
+  return { success: true, profile: profile ?? undefined };
 }
 
 export async function deleteStaffProfile(

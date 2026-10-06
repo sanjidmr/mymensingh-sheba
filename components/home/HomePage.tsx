@@ -11,11 +11,6 @@ import TestimonialsSection from '@/components/home/TestimonialsSection';
 import ReviewSection from '@/components/home/ReviewSection';
 import FinalCtaSection from '@/components/home/FinalCtaSection';
 import {
-  GARI_SAMPLE_CARDS,
-  KENABECHA_SAMPLE_CARDS,
-  NEWS_SAMPLE_CARDS,
-} from '@/lib/home-static-rows';
-import {
   mergeHomepageCategories,
   isHomepageSectionVisible,
 } from '@/lib/site-content';
@@ -100,10 +95,9 @@ export default async function HomePage() {
             kicker="স্থানীয় যাতায়াত"
             title="গাড়ি, অটো ও CNG ভাড়া"
             href="/services?q=%E0%A6%97%E0%A6%BE%E0%A6%A1%E0%A6%BC%E0%A6%BF"
-            cards={GARI_SAMPLE_CARDS}
+            source="vehicle"
             tone="mist"
             withImage
-            demoImages={['/carrent.png', '/bus.jpg', '/sheba1.png', '/sheba2.png']}
           />
         )}
 
@@ -129,10 +123,9 @@ export default async function HomePage() {
             kicker="স্থানীয় বাজার"
             title="কেনাবেচা"
             href="/services?q=%E0%A6%95%E0%A7%87%E0%A6%A8%E0%A6%BE%E0%A6%AC%E0%A7%87%E0%A6%9A%E0%A6%BE"
-            cards={KENABECHA_SAMPLE_CARDS}
+            source="market"
             tone="mist"
             withImage
-            demoImages={['/buysell.jpg', '/sheba2.png', '/sheba3.png', '/sheba4.png']}
           />
         )}
 
@@ -142,10 +135,9 @@ export default async function HomePage() {
             kicker="সম্প্রতি"
             title="স্থানীয় খবর ও ঘোষণা"
             href="/services?q=news"
-            cards={NEWS_SAMPLE_CARDS}
+            source="news"
             tone="white"
             withImage
-            demoImages={['/news.jpg', '/job.jpg', '/bus.jpg', '/wifi.jpg']}
           />
         )}
 

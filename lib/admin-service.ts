@@ -132,7 +132,7 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
   if (!client) return [];
   try {
     const profilesRes = await client.from('profiles').select('*').order('created_at', { ascending: false });
-    const toletRes = await client.from('tolet_profiles').select('id, user_id, status, owner_name, phone');
+    const toletRes = await client.from('tolet_profiles').select('id, user_id, status, owner_name');
     const tutorsRes = await client.from('home_tutor_profiles').select('id, user_id, status, full_name');
     const donorsRes = await client.from('blood_donor_profiles').select('id, user_id, status, full_name');
     

@@ -29,7 +29,6 @@ const TYPE_LABELS: Record<AdminReportRow['type'], { label: string; icon: React.R
 
 const STATUS_META: Record<AdminReportStatus, { label: string; class: string }> = {
   open: { label: 'খোলা', class: 'bg-red-50 text-red-800 border-red-200' },
-  reviewed: { label: 'রিভিউড', class: 'bg-amber-50 text-amber-800 border-amber-200' },
   resolved: { label: 'সমাধান', class: 'bg-emerald-50 text-emerald-800 border-emerald-200' },
   dismissed: { label: 'বাতিল', class: 'bg-slate-100 text-slate-700 border-slate-200' },
 };
@@ -135,7 +134,6 @@ export default function AdminReportsPage() {
             >
               <option value="all">সব স্ট্যাটাস</option>
               <option value="open">খোলা</option>
-              <option value="reviewed">রিভিউড</option>
               <option value="resolved">সমাধান</option>
               <option value="dismissed">বাতিল</option>
             </select>

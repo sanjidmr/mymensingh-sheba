@@ -52,6 +52,8 @@ function HomeTutorContent() {
       if (cancelled) return;
       setTutors(data);
       setLoading(false);
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
     });
     return () => {
       cancelled = true;

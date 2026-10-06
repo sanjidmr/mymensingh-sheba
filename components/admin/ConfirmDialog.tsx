@@ -40,10 +40,13 @@ export function ConfirmDialog({
   const [typed, setTyped] = useState('');
 
   // Reset the typed confirmation each time the dialog opens, so a half-finished
-  // entry from a previous attempt cannot silently authorise this one.
-  useEffect(() => {
+  // entry from a previous attempt cannot silently authorise this one. Adjust
+  // state during render (React's recommended pattern) rather than in an effect.
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (prevOpen !== open) {
+    setPrevOpen(open);
     if (open) setTyped('');
-  }, [open]);
+  }
 
   useEffect(() => {
     if (!open) return;

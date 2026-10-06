@@ -24,7 +24,7 @@ export default function MediaActions({ item }: { item: AdminMediaItem }) {
         notify('success', result.message ?? 'মুছে ফেলা হয়েছে')
         router.refresh()
       } else {
-        notify('error', 'ব্যfford হয়েছে', result.error)
+        notify('error', 'ব্যর্থ হয়েছে', result.error)
       }
     } finally {
       setBusy(false)

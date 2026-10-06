@@ -306,7 +306,7 @@ export async function fetchServiceListings(
 ): Promise<ServiceListing[]> {
   if (!isSupabaseConfigured) return withListingShowcase(category, []);
   const client = createClient();
-  if (!client) return withListingShowcase(category, []);
+  if (!client) return [];
   const { data, error } = await client
     .from('service_listings')
     .select(PUBLIC_LISTING_COLUMNS)
@@ -314,14 +314,10 @@ export async function fetchServiceListings(
     .eq('is_active', true)
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false });
-  // A query error (e.g. the new vehicle columns have not been migrated yet)
-  // must not leave the page blank: fall back to the showcase rather than to
-  // nothing, matching how `tolet-service` degrades to its in-memory store.
-  if (error || !data) return withListingShowcase(category, []);
-  return withListingShowcase(
-    category,
-    (data as Record<string, unknown>[]).map((row) => mapListing(row, false))
-  );
+  // With Supabase configured the page shows real curated listings only; a
+  // query error or an empty category is an honest empty state, not a sample.
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map((row) => mapListing(row, false));
 }
 
 /** A single listing by slug, public read (active only). */
@@ -329,10 +325,11 @@ export async function fetchServiceListingBySlug(
   category: ServiceCategory,
   slug: string
 ): Promise<ServiceListing | null> {
-  // Showcase slugs resolve in every mode, before any database check.
-  const demo = getDemoVehicleListing(slug);
-  if (demo && demo.category === category) return demo;
-  if (!isSupabaseConfigured) return null;
+  if (!isSupabaseConfigured) {
+    const demo = getDemoVehicleListing(slug);
+    if (demo && demo.category === category) return demo;
+    return null;
+  }
   const client = createClient();
   if (!client) return null;
   const { data, error } = await client
@@ -359,22 +356,22 @@ export async function fetchServiceListingForContact(
   category: ServiceCategory,
   slug: string
 ): Promise<ServiceListing | null> {
-  // A demo listing has no private number to release, so it resolves through the
-  // public path and the page renders its request CTA instead of a call button.
-  const demo = getDemoVehicleListing(slug);
-  if (demo && demo.category === category) return demo;
-  if (!isSupabaseConfigured) return null;
+  // Preview mode resolves the demo listing; on the configured site a demo has
+  // no private number to release, so the page renders its request CTA instead.
+  if (!isSupabaseConfigured) {
+    const demo = getDemoVehicleListing(slug);
+    if (demo && demo.category === category) return demo;
+    return null;
+  }
   const client = createClient();
   if (!client) return null;
   const isAdmin = await currentUserIsAdmin();
   if (!isAdmin) return fetchServiceListingBySlug(category, slug);
 
+  // contact_phone_private is column-revoked; only the admin-gated
+  // fn_admin_service_listing RPC may return it.
   const { data, error } = await client
-    .from('service_listings')
-    .select('*')
-    .eq('category', category)
-    .eq('slug', slug)
-    .eq('is_active', true)
+    .rpc('fn_admin_service_listing', { p_category: category, p_slug: slug })
     .maybeSingle();
   if (error || !data) return null;
   return mapListing(data as Record<string, unknown>, true);
@@ -388,19 +385,14 @@ export async function adminFetchServiceListings(
   if (!(await currentUserIsAdmin())) return [];
   const client = createClient();
   if (!client) return [];
-  const { data, error } = await client
-    .from('service_listings')
-    .select('*')
-    .eq('category', category)
-    .order('is_featured', { ascending: false })
-    .order('created_at', { ascending: false });
+  const { data, error } = await client.rpc('fn_admin_service_listings', { p_category: category });
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map((row) => mapListing(row, true));
 }
 
 export async function adminCreateServiceListing(
   input: ServiceListingInput
-): Promise<WriteResult<ServiceListing>> {
+): Promise<WriteResult<ServiceListing | undefined>> {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
   if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
   const client = createClient();
@@ -413,18 +405,29 @@ export async function adminCreateServiceListing(
   const { data, error } = await client
     .from('service_listings')
     .insert(payload)
-    .select('*')
+    .select('id, category, slug')
     .single();
   if (error || !data) {
     return { success: false, error: error?.message || 'সংরক্ষণ ব্যর্থ হয়েছে' };
   }
-  return { success: true, data: mapListing(data as Record<string, unknown>, true) };
+  // Re-read through the admin RPC so the created row (incl. its contact number)
+  // returns complete — contact_phone_private is no longer an ordinary SELECT.
+  const created = await client
+    .rpc('fn_admin_service_listing', {
+      p_category: (data as { category: string }).category,
+      p_slug: (data as { slug: string }).slug,
+    })
+    .maybeSingle();
+  if (!created.error && created.data) {
+    return { success: true, data: mapListing(created.data as Record<string, unknown>, true) };
+  }
+  return { success: true, data: undefined };
 }
 
 export async function adminUpdateServiceListing(
   id: string,
   patch: Partial<ServiceListingInput>
-): Promise<WriteResult<ServiceListing>> {
+): Promise<WriteResult<ServiceListing | undefined>> {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
   if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
   const client = createClient();
@@ -438,12 +441,20 @@ export async function adminUpdateServiceListing(
     .from('service_listings')
     .update(payload)
     .eq('id', id)
-    .select('*')
+    .select('id, category, slug')
     .single();
   if (error || !data) {
     return { success: false, error: error?.message || 'আপডেট ব্যর্থ হয়েছে' };
   }
-  return { success: true, data: mapListing(data as Record<string, unknown>, true) };
+  // Re-read through the admin RPC for the same reason as create.
+  const uid = data as { category: string; slug: string };
+  const updated = await client
+    .rpc('fn_admin_service_listing', { p_category: uid.category, p_slug: uid.slug })
+    .maybeSingle();
+  if (!updated.error && updated.data) {
+    return { success: true, data: mapListing(updated.data as Record<string, unknown>, true) };
+  }
+  return { success: true, data: undefined };
 }
 
 export async function adminDeleteServiceListing(
@@ -470,11 +481,11 @@ export async function adminDeleteServiceListing(
  * front of a reader, so an empty table there stays genuinely empty.
  */
 export async function fetchApprovedPosts(kind: PostKind): Promise<CommunityPost[]> {
-  const showcase = (): CommunityPost[] =>
-    kind === 'buy_sell' ? [...DEMO_MARKET_POSTS] : [];
-  if (!isSupabaseConfigured) return showcase();
+  if (!isSupabaseConfigured) {
+    return kind === 'buy_sell' ? [...DEMO_MARKET_POSTS] : [];
+  }
   const client = createClient();
-  if (!client) return showcase();
+  if (!client) return [];
   const { data, error } = await client
     .from('community_posts')
     .select(PUBLIC_POST_COLUMNS)
@@ -482,9 +493,8 @@ export async function fetchApprovedPosts(kind: PostKind): Promise<CommunityPost[
     .eq('status', 'approved')
     .order('published_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
-  if (error || !data) return showcase();
-  const real = (data as Record<string, unknown>[]).map(mapPost);
-  return real.length > 0 ? real : showcase();
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapPost);
 }
 
 /** Approved posts for every kind at once — used by the homepage rails. */
@@ -509,10 +519,11 @@ export async function fetchApprovedPostBySlug(
   kind: PostKind,
   slug: string
 ): Promise<CommunityPost | null> {
-  // Showcase slugs resolve in every mode, so a demo listing is always shareable.
-  const demo = getDemoMarketPost(slug);
-  if (demo && demo.kind === kind) return demo;
-  if (!isSupabaseConfigured) return null;
+  if (!isSupabaseConfigured) {
+    const demo = getDemoMarketPost(slug);
+    if (demo && demo.kind === kind) return demo;
+    return null;
+  }
   const client = createClient();
   if (!client) return null;
   const { data, error } = await client
@@ -626,12 +637,11 @@ export async function fetchPostForViewer(
   if (!userId) return null;
   const client = createClient();
   if (!client) return null;
+  // `fn_my_post_by_slug` is the author-only path (author_id = auth.uid()) and is
+  // the only place a rejected post's rejection_reason can be read since the
+  // column REVOKEs.
   const { data, error } = await client
-    .from('community_posts')
-    .select('*')
-    .eq('kind', kind)
-    .eq('slug', slug)
-    .eq('author_id', userId)
+    .rpc('fn_my_post_by_slug', { p_kind: kind, p_slug: slug })
     .maybeSingle();
   if (error || !data) return null;
   return mapPost(data as Record<string, unknown>);
@@ -653,14 +663,13 @@ export async function fetchMyPostForEdit(id: string): Promise<CommunityPost | nu
   const client = createClient();
   if (!client) return null;
   const { data, error } = await client
-    .from('community_posts')
-    .select('*')
-    .eq('id', id)
-    .eq('author_id', userId)
-    .neq('status', 'approved')
+    .rpc('fn_my_post_by_id', { p_id: id })
     .maybeSingle();
   if (error || !data) return null;
-  return mapPost(data as Record<string, unknown>);
+  const post = mapPost(data as Record<string, unknown>);
+  // An already-approved post is not editable from the draft/edit screen.
+  if (post.status === 'approved') return null;
+  return post;
 }
 
 /** The signed-in author's own posts, any status. */
@@ -670,11 +679,7 @@ export async function fetchMyPosts(): Promise<CommunityPost[]> {
   if (!userId) return [];
   const client = createClient();
   if (!client) return [];
-  const { data, error } = await client
-    .from('community_posts')
-    .select('*')
-    .eq('author_id', userId)
-    .order('created_at', { ascending: false });
+  const { data, error } = await client.rpc('fn_my_posts');
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map(mapPost);
 }
@@ -712,7 +717,7 @@ export async function createCommunityPost(
   const { data, error } = await client
     .from('community_posts')
     .insert(payload)
-    .select('*')
+    .select(PUBLIC_POST_COLUMNS)
     .single();
   if (error || !data) {
     return { success: false, error: error?.message || 'পোস্ট সংরক্ষণ ব্যর্থ হয়েছে' };
@@ -750,7 +755,7 @@ export async function updateCommunityPost(
     .update(payload)
     .eq('id', id)
     .eq('author_id', userId)
-    .select('*')
+    .select(PUBLIC_POST_COLUMNS)
     .single();
   if (error || !data) {
     return {
@@ -784,7 +789,9 @@ export async function adminFetchPosts(kind?: PostKind): Promise<CommunityPost[]>
   if (!(await currentUserIsAdmin())) return [];
   const client = createClient();
   if (!client) return [];
-  let q = client.from('community_posts').select('*').order('created_at', { ascending: false });
+  // `fn_admin_posts` is the only path that may read author_phone /
+  // whatsapp_number / rejection_reason after the column REVOKEs.
+  let q = client.rpc('fn_admin_posts');
   if (kind) q = q.eq('kind', kind);
   const { data, error } = await q;
   if (error || !data) return [];

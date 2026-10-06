@@ -72,7 +72,7 @@ export function TutorReviewsSection({ tutor }: TutorReviewsSectionProps) {
     let cancelled = false;
     fetchReviewEligibility(user.id, tutor.id).then((el) => {
       if (!cancelled) setEligibility(el);
-    });
+    }).catch(() => undefined);
     return () => {
       cancelled = true;
     };

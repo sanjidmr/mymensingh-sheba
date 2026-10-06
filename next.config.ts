@@ -22,6 +22,15 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      // Supabase Storage (public buckets) serves uploaded images from
+      // https://<project-ref>.supabase.co/storage/v1/object/public/... — without
+      // this pattern every user-uploaded / admin-uploaded photo fails to render.
+      {
+        protocol: 'https',
+        hostname: '*.supabase.co',
+        port: '',
+        pathname: '/storage/v1/**',
+      },
     ],
   },
   output: 'standalone',

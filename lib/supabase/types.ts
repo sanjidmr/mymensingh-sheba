@@ -392,7 +392,7 @@ export interface ListingReport {
   createdAt: string;
 }
 
-export type ListingReportStatus = 'open' | 'reviewed' | 'resolved' | 'dismissed';
+export type ListingReportStatus = 'open' | 'resolved' | 'dismissed';
 
 // Tutor reports (already exists but ensure complete)
 export interface TutorReport {

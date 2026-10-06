@@ -62,6 +62,8 @@ export function StaffDetailShell({
       if (cancelled) return;
       setProfile(data);
       setLoading(false);
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
     });
     return () => {
       cancelled = true;

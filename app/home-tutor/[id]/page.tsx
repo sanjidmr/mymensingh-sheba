@@ -53,6 +53,8 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
       if (cancelled) return;
       setTutor(data);
       setLoading(false);
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
     });
     return () => {
       cancelled = true;

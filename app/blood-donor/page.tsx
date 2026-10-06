@@ -45,6 +45,8 @@ function BloodDonorContent() {
       if (cancelled) return;
       setDonors(data);
       setLoading(false);
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
     });
     return () => {
       cancelled = true;

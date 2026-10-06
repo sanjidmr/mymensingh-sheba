@@ -273,6 +273,9 @@ CREATE TABLE IF NOT EXISTS public.blood_contact_releases (
     donor_profile_id UUID NOT NULL REFERENCES public.blood_donor_profiles(id) ON DELETE CASCADE,
     released_by UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
     released_to_customer UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    -- Snapshot of the released number on the audit row itself: the requester can
+    -- read it from THEIR OWN row, so the donor's private_phone stays revoked.
+    contact_phone TEXT,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
 
@@ -400,9 +403,10 @@ SECURITY DEFINER
 SET search_path = ''
 AS $$
 BEGIN
+  -- A suspended/blocked admin is not an admin. `status` is admin-owned.
   RETURN EXISTS (
     SELECT 1 FROM public.profiles
-    WHERE id = auth.uid() AND role = 'admin'
+    WHERE id = auth.uid() AND role = 'admin' AND status = 'active'
   );
 END;
 $$;
@@ -484,7 +488,8 @@ WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Owners can update their tolet profile"
 ON public.tolet_profiles FOR UPDATE
 TO authenticated
-USING (auth.uid() = user_id);
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id AND status IN ('pending_approval', 'approved'));
 
 -- Admins can update any tolet profile (e.g. approve, suspend)
 CREATE POLICY "Admins manage tolet profiles"
@@ -506,7 +511,8 @@ WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their tutor profile"
 ON public.home_tutor_profiles FOR UPDATE
 TO authenticated
-USING (auth.uid() = user_id);
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id AND status IN ('pending_approval', 'approved'));
 
 CREATE POLICY "Admins manage tutor profiles"
 ON public.home_tutor_profiles FOR ALL
@@ -638,7 +644,8 @@ WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their donor profile"
 ON public.blood_donor_profiles FOR UPDATE
 TO authenticated
-USING (auth.uid() = user_id);
+USING (auth.uid() = user_id)
+WITH CHECK (auth.uid() = user_id AND status IN ('pending_approval', 'approved'));
 
 CREATE POLICY "Admins manage blood donor profiles"
 ON public.blood_donor_profiles FOR ALL
@@ -658,6 +665,12 @@ DECLARE
   _role TEXT;
 BEGIN
   IF NEW.status IN ('approved', 'suspended', 'rejected') THEN
+    -- Editing an already-published profile keeps it approved: the UPDATE just
+    -- re-asserts the status it already holds. Every other path into a guarded
+    -- status (self-INSERT or a real transition) still requires an admin.
+    IF TG_OP = 'UPDATE' AND OLD.status = NEW.status THEN
+      RETURN NEW;
+    END IF;
     SELECT role INTO _role FROM public.profiles WHERE id = auth.uid();
     IF COALESCE(_role, '') <> 'admin' THEN
       RAISE EXCEPTION 'Status change to % requires admin approval', NEW.status;
@@ -2053,7 +2066,7 @@ RETURNS TABLE (
 LANGUAGE sql
 SECURITY DEFINER
 STABLE
-SET search_path = public
+SET search_path = ''
 AS $$
     SELECT p.id, p.author_name, p.author_phone, p.whatsapp_number
     FROM public.community_posts p
@@ -2069,6 +2082,247 @@ COMMENT ON FUNCTION public.fetch_market_contact(TEXT) IS
 
 REVOKE ALL ON FUNCTION public.fetch_market_contact(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.fetch_market_contact(TEXT) TO anon, authenticated;
+
+-- ============================================================
+-- PRIVACY & SECURITY HARDENING (mirrors migration 20261006020000)
+-- Column-level REVOKEs + SECURITY DEFINER RPCs for the reads
+-- that legitimately need revoked PII. See that migration for
+-- the full rationale.
+-- ============================================================
+
+-- --- Column-level REVOKEs (anon key can no longer select PII) ---
+REVOKE SELECT (phone, emergency_phone, nid_number, nid_doc_url, holding_number, address_line)
+ON public.tolet_profiles FROM anon, authenticated;
+
+REVOKE SELECT (private_phone, nid_number, admin_notes)
+ON public.home_tutor_profiles FROM anon, authenticated;
+REVOKE SELECT (rejection_reason) ON public.home_tutor_profiles FROM anon;
+
+REVOKE SELECT (private_phone, admin_notes)
+ON public.blood_donor_profiles FROM anon, authenticated;
+REVOKE SELECT (rejection_reason) ON public.blood_donor_profiles FROM anon;
+
+REVOKE SELECT (phone_private) ON public.staff_profiles FROM anon, authenticated;
+
+REVOKE SELECT (author_phone, whatsapp_number, rejection_reason)
+ON public.community_posts FROM anon, authenticated;
+
+REVOKE SELECT (contact_phone_private) ON public.service_listings FROM anon, authenticated;
+
+-- --- Owner self-read RPCs (full caller-owned rows incl. PII) ---
+CREATE OR REPLACE FUNCTION public.fn_my_tolet_profile()
+RETURNS SETOF public.tolet_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.* FROM public.tolet_profiles t WHERE t.user_id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_my_tutor_profile()
+RETURNS SETOF public.home_tutor_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.* FROM public.home_tutor_profiles t WHERE t.user_id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_my_donor_profile()
+RETURNS SETOF public.blood_donor_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.* FROM public.blood_donor_profiles t WHERE t.user_id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_my_posts()
+RETURNS SETOF public.community_posts
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT p.* FROM public.community_posts p
+  WHERE p.author_id = auth.uid()
+  ORDER BY p.created_at DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_my_post_by_id(p_id UUID)
+RETURNS SETOF public.community_posts
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT p.* FROM public.community_posts p
+  WHERE p.id = p_id AND p.author_id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_my_post_by_slug(p_kind TEXT, p_slug TEXT)
+RETURNS SETOF public.community_posts
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT p.* FROM public.community_posts p
+  WHERE p.kind = p_kind AND p.slug = p_slug AND p.author_id = auth.uid();
+$$;
+
+-- --- Admin RPCs (moderation reads; gated by is_admin() inside) ---
+CREATE OR REPLACE FUNCTION public.fn_admin_tutor_profiles()
+RETURNS SETOF public.home_tutor_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.* FROM public.home_tutor_profiles t
+  WHERE public.is_admin()
+  ORDER BY t.updated_at DESC NULLS LAST;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_tutor_profile(p_id UUID)
+RETURNS SETOF public.home_tutor_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.* FROM public.home_tutor_profiles t
+  WHERE public.is_admin() AND t.id = p_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_donor_profiles()
+RETURNS SETOF public.blood_donor_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.* FROM public.blood_donor_profiles t
+  WHERE public.is_admin()
+  ORDER BY t.updated_at DESC NULLS LAST;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_donor_profile(p_id UUID)
+RETURNS SETOF public.blood_donor_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.* FROM public.blood_donor_profiles t
+  WHERE public.is_admin() AND t.id = p_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_donor_phone(p_donor_id UUID)
+RETURNS TEXT
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT t.private_phone FROM public.blood_donor_profiles t
+  WHERE public.is_admin() AND t.id = p_donor_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_staff_profiles()
+RETURNS SETOF public.staff_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT s.* FROM public.staff_profiles s
+  WHERE public.is_admin()
+  ORDER BY s.updated_at DESC NULLS LAST;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_staff_profile(p_id UUID)
+RETURNS SETOF public.staff_profiles
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT s.* FROM public.staff_profiles s
+  WHERE public.is_admin() AND s.id = p_id;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_posts()
+RETURNS SETOF public.community_posts
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT p.* FROM public.community_posts p WHERE public.is_admin();
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_service_listings(p_category TEXT)
+RETURNS SETOF public.service_listings
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT l.* FROM public.service_listings l
+  WHERE public.is_admin() AND l.category = p_category
+  ORDER BY l.is_featured DESC, l.created_at DESC;
+$$;
+
+CREATE OR REPLACE FUNCTION public.fn_admin_service_listing(p_category TEXT, p_slug TEXT)
+RETURNS SETOF public.service_listings
+LANGUAGE sql
+SECURITY DEFINER
+STABLE
+SET search_path = ''
+AS $$
+  SELECT l.* FROM public.service_listings l
+  WHERE public.is_admin() AND l.category = p_category AND l.slug = p_slug;
+$$;
+
+-- --- Grants: explicit, minimal ---
+REVOKE ALL ON FUNCTION public.is_admin() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_my_tolet_profile() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_my_tutor_profile() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_my_donor_profile() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_my_posts() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_my_post_by_id(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_my_post_by_slug(TEXT, TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_tutor_profiles() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_tutor_profile(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_donor_profiles() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_donor_profile(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_donor_phone(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_staff_profiles() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_staff_profile(UUID) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_posts() FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_service_listings(TEXT) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.fn_admin_service_listing(TEXT, TEXT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.is_admin() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_my_tolet_profile() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_my_tutor_profile() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_my_donor_profile() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_my_posts() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_my_post_by_id(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_my_post_by_slug(TEXT, TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_tutor_profiles() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_tutor_profile(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_donor_profiles() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_donor_profile(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_donor_phone(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_staff_profiles() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_staff_profile(UUID) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_posts() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_service_listings(TEXT) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.fn_admin_service_listing(TEXT, TEXT) TO authenticated;
 
 -- --- emergency_contacts ---
 -- Public reads active rows (verified local numbers only). No customer write.

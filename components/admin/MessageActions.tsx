@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
 import { useToast } from '@/components/admin/ToastProvider'
+import { deleteMessage } from '@/app/admin/actions/messages'
 
 export default function MessageActions({ message }: { message: { id: string; name: string; email: string | null } }) {
   const router = useRouter()
@@ -15,13 +16,16 @@ export default function MessageActions({ message }: { message: { id: string; nam
   const confirmDelete = async () => {
     setBusy(true)
     try {
-      // TODO: implement actual delete
-      if (true) {
+      const res = await deleteMessage(message.id)
+      if (res.ok) {
+        setDeleting(false)
         notify('success', 'মুছে ফেলা হয়েছে')
         router.refresh()
       } else {
-        notify('error', 'ব্যর্থ হয়েছে')
+        notify('error', res.error)
       }
+    } catch {
+      notify('error', 'মুছে ফেলতে ব্যর্থ হয়েছে')
     } finally {
       setBusy(false)
     }

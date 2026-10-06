@@ -174,7 +174,7 @@ function filterDemoDonors(filters?: PublicDonorFilters): BloodDonorProfile[] {
 export async function fetchPublishedDonors(filters?: PublicDonorFilters): Promise<BloodDonorProfile[]> {
   if (!isSupabaseConfigured) return filterDemoDonors(filters);
   const client = createClient();
-  if (!client) return filterDemoDonors(filters);
+  if (!client) return [];
   let query = client.from('blood_donor_profiles').select(PUBLIC_DONOR_COLUMNS).eq('status', 'approved');
   if (filters?.bloodGroup && filters.bloodGroup !== 'all') {
     query = query.eq('blood_group', filters.bloodGroup);
@@ -186,19 +186,20 @@ export async function fetchPublishedDonors(filters?: PublicDonorFilters): Promis
     query = query.eq('is_available', true);
   }
   const { data, error } = await query.order('published_at', { ascending: false });
-  if (error) return filterDemoDonors(filters);
-  const real = (data || []).map((row) => mapDonorRow(row as Record<string, unknown>));
-  // The live directory wins outright, unfiltered by the showcase's presence.
-  return real.length > 0 ? real : filterDemoDonors(filters);
+  // With Supabase configured the directory returns real approvals only. A query
+  // error or an empty approval list is an honest empty state, never demo rows.
+  if (error) return [];
+  return (data || []).map((row) => mapDonorRow(row as Record<string, unknown>));
 }
 
 export async function fetchPublishedDonorById(id: string): Promise<BloodDonorProfile | null> {
-  // Showcase ids resolve in every mode so a shared card link always lands.
-  const demo = getDemoDonor(id);
-  if (demo) return demo;
-  if (!isSupabaseConfigured) return mockFetchPublishedDonorById(id) || null;
+  if (!isSupabaseConfigured) {
+    const demo = getDemoDonor(id);
+    if (demo) return demo;
+    return mockFetchPublishedDonorById(id) || null;
+  }
   const client = createClient();
-  if (!client) return mockFetchPublishedDonorById(id) || null;
+  if (!client) return null;
   const { data, error } = await client
     .from('blood_donor_profiles')
     .select(PUBLIC_DONOR_COLUMNS)
@@ -320,7 +321,9 @@ export async function fetchMyContactReleases(customerId: string): Promise<BloodC
   if (!client) return mockFetchMyContactReleases(customerId);
   const { data, error } = await client
     .from('blood_contact_releases')
-    .select('*, donor_profile:blood_donor_profiles(private_phone)')
+    // contact_phone is the snapshot baked onto the audit row at release time —
+    // the customer's own row; never a join back into the donor's private_phone.
+    .select('*, donor_profile:blood_donor_profiles(full_name, blood_group)')
     .eq('released_to_customer', customerId)
     .order('created_at', { ascending: false });
   if (error) return [];
@@ -360,16 +363,20 @@ export async function adminFetchDonorProfiles(): Promise<BloodDonorProfile[]> {
   if (!isSupabaseConfigured) return mockAdminFetchDonorProfiles();
   const client = createClient();
   if (!client) return mockAdminFetchDonorProfiles();
-  const { data, error } = await client.from('blood_donor_profiles').select('*').order('updated_at', { ascending: false });
+  // `fn_admin_donor_profiles` is SECURITY DEFINER + is_admin() gated — the only
+  // path that may read private_phone / admin_notes after the column REVOKEs.
+  const { data, error } = await client.rpc('fn_admin_donor_profiles');
   if (error) return [];
-  return (data || []).map((row) => mapDonorRow(row as Record<string, unknown>, { admin: true }));
+  return ((data as Record<string, unknown>[]) || []).map((row) => mapDonorRow(row, { admin: true }));
 }
 
 export async function adminFetchDonorProfileById(id: string): Promise<BloodDonorProfile | null> {
   if (!isSupabaseConfigured) return mockAdminFetchDonorProfileById(id) || null;
   const client = createClient();
   if (!client) return mockAdminFetchDonorProfileById(id) || null;
-  const { data, error } = await client.from('blood_donor_profiles').select('*').eq('id', id).maybeSingle();
+  const { data, error } = await client
+    .rpc('fn_admin_donor_profile', { p_id: id })
+    .maybeSingle();
   if (error || !data) return null;
   return mapDonorRow(data as Record<string, unknown>, { admin: true });
 }
@@ -407,12 +414,10 @@ export async function adminUpdateDonorProfile(
     .select('user_id')
     .eq('id', id)
     .maybeSingle();
-  const { data, error } = await client
+  const { error } = await client
     .from('blood_donor_profiles')
     .update(dbPatch)
-    .eq('id', id)
-    .select('*')
-    .single();
+    .eq('id', id);
   if (error) return { success: false, error: `আপডেট ব্যর্থ: ${error.message}` };
   if (patch.status && ownerRow?.user_id) {
     notifyCustomer({
@@ -431,7 +436,8 @@ export async function adminUpdateDonorProfile(
     relatedType: 'donor_profile',
     relatedId: id,
   });
-  return { success: true, profile: mapDonorRow(data as Record<string, unknown>, { admin: true }) };
+  const refreshed = await adminFetchDonorProfileById(id);
+  return { success: true, profile: refreshed ?? undefined };
 }
 
 export async function adminFetchBloodRequests(): Promise<BloodRequest[]> {
@@ -521,15 +527,27 @@ export async function adminReleaseDonorContact(
   if (!request || !request.donorProfileId) return { success: false, error: 'আবেদনটি পাওয়া যায়নি' };
 
   const [donorRes, existingRes] = await Promise.all([
-    client.from('blood_donor_profiles').select('id, full_name, private_phone').eq('id', request.donorProfileId).maybeSingle(),
-    client.from('blood_contact_releases').select('id').eq('request_id', requestId).maybeSingle(),
+    client.from('blood_donor_profiles').select('id, full_name').eq('id', request.donorProfileId).maybeSingle(),
+    client.from('blood_contact_releases').select('id, contact_phone').eq('request_id', requestId).maybeSingle(),
   ]);
   if (donorRes.error || !donorRes.data) return { success: false, error: 'রক্তদাতার তথ্য পাওয়া যায়নি' };
+  const donorName = (donorRes.data as { full_name: string }).full_name;
+
+  // private_phone is column-revoked from the anon key; only the admin-gated
+  // fn_admin_donor_phone RPC may read it. The number is then snapshotted onto
+  // the audit row so the requester can read it from their own record.
+  const { data: phoneRows, error: phoneErr } = await client.rpc('fn_admin_donor_phone', {
+    p_donor_id: request.donorProfileId,
+  });
+  const privatePhone = (phoneRows?.[0] as { fn_admin_donor_phone?: string } | undefined)?.fn_admin_donor_phone;
+  if (phoneErr || !privatePhone) return { success: false, error: 'রক্তদাতার ফোন নম্বর পাওয়া যায়নি' };
+
   if (existingRes.data) {
+    const snapshot = (existingRes.data as { contact_phone: string | null }).contact_phone;
     return {
       success: true,
-      phone: (donorRes.data as { private_phone: string }).private_phone,
-      donorName: (donorRes.data as { full_name: string }).full_name,
+      phone: snapshot || privatePhone,
+      donorName,
       alreadyReleased: true,
     };
   }
@@ -539,6 +557,7 @@ export async function adminReleaseDonorContact(
     donor_profile_id: request.donorProfileId,
     released_by: adminId,
     released_to_customer: request.customerId,
+    contact_phone: privatePhone,
   });
   if (insErr) return { success: false, error: `মুক্তি রেকর্ড ব্যর্থ: ${insErr.message}` };
 
@@ -546,15 +565,15 @@ export async function adminReleaseDonorContact(
     .from('blood_requests')
     .update({
       contact_released_at: new Date().toISOString(),
-      contacted_donor_name: (donorRes.data as { full_name: string }).full_name,
+      contacted_donor_name: donorName,
       updated_at: new Date().toISOString(),
     })
     .eq('id', requestId);
 
   return {
     success: true,
-    phone: (donorRes.data as { private_phone: string }).private_phone,
-    donorName: (donorRes.data as { full_name: string }).full_name,
+    phone: privatePhone,
+    donorName,
     alreadyReleased: false,
   };
 }
@@ -566,7 +585,7 @@ export async function adminFetchContactReleases(requestId: string): Promise<Bloo
   const { data, error } = await client
     .from('blood_contact_releases')
     .select(
-      'id, request_id, donor_profile_id, released_by, released_to_customer, created_at, released_by:profiles!blood_contact_releases_released_by_fkey(full_name), donor_profile:blood_donor_profiles(private_phone)'
+      'id, request_id, donor_profile_id, released_by, released_to_customer, created_at, contact_phone, released_by:profiles!blood_contact_releases_released_by_fkey(full_name), donor_profile:blood_donor_profiles(full_name, blood_group)'
     )
     .eq('request_id', requestId)
     .order('created_at', { ascending: false });

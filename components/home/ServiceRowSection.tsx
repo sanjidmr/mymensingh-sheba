@@ -8,18 +8,30 @@ import {
   loadToletCards,
   loadTutorCards,
   loadDonorCards,
+  loadVehicleCards,
+  loadMarketCards,
+  loadNewsCards,
 } from '@/components/home/section-loaders';
 import type { HomePreviewCard } from '@/lib/home-preview';
 
 /** Serialisable loader keys. Resolved HERE (client) rather than passed from
  *  the page, because a Server Component may not hand a function to a Client
  *  Component — passing `load={loadToletCards}` down from HomePage 500'd. */
-export type ServiceRowSource = 'tolet' | 'tutor' | 'donor';
+export type ServiceRowSource =
+  | 'tolet'
+  | 'tutor'
+  | 'donor'
+  | 'vehicle'
+  | 'market'
+  | 'news';
 
 const ROW_LOADERS = {
   tolet: loadToletCards,
   tutor: loadTutorCards,
   donor: loadDonorCards,
+  vehicle: loadVehicleCards,
+  market: loadMarketCards,
+  news: loadNewsCards,
 } satisfies Record<ServiceRowSource, () => Promise<HomePreviewCard[]>>;
 
 interface ServiceRowSectionProps {

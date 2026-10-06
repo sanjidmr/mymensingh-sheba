@@ -130,14 +130,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       setUser({ ...profile, status: profile.status || 'active' });
 
-      const { data: toletRow } = await client.from('tolet_profiles').select('*').eq('user_id', userId).maybeSingle();
-      setToletProfile(toletRow ? (toCamelObject(toletRow) as unknown as ToletProfile) : null);
+      const { data: toletRow } = await client.rpc('fn_my_tolet_profile').maybeSingle();
+      setToletProfile(toletRow ? (toCamelObject(toletRow as Record<string, unknown>) as unknown as ToletProfile) : null);
 
-      const { data: tutorRow } = await client.from('home_tutor_profiles').select('*').eq('user_id', userId).maybeSingle();
-      setHomeTutorProfile(tutorRow ? (toCamelObject(tutorRow) as unknown as HomeTutorProfile) : null);
+      const { data: tutorRow } = await client.rpc('fn_my_tutor_profile').maybeSingle();
+      setHomeTutorProfile(tutorRow ? (toCamelObject(tutorRow as Record<string, unknown>) as unknown as HomeTutorProfile) : null);
 
-      const { data: donorRow } = await client.from('blood_donor_profiles').select('*').eq('user_id', userId).maybeSingle();
-      setBloodDonorProfile(donorRow ? (toCamelObject(donorRow) as unknown as BloodDonorProfile) : null);
+      const { data: donorRow } = await client.rpc('fn_my_donor_profile').maybeSingle();
+      setBloodDonorProfile(donorRow ? (toCamelObject(donorRow as Record<string, unknown>) as unknown as BloodDonorProfile) : null);
 
       const { data: requestRows } = await client
         .from('service_requests')
@@ -236,7 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
       setIsLoading(false);
-    });
+    }).catch(() => setIsLoading(false));
     const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         refreshUserData(client, session.user.id);
@@ -399,7 +399,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: NOT_CONFIGURED_MESSAGE };
       }
       const email = phoneOrEmail.includes('@') ? phoneOrEmail : `${phoneOrEmail}@mymensinghsheba.internal`;
-      const { error } = await client.auth.resetPasswordForEmail(email);
+      // Route the recovery link through the existing code-exchange callback so
+      // the email opens a validated session, then land on the password form.
+      const redirectTo = new URL('/auth/callback?next=/reset-password', window.location.origin).toString();
+      const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
         return { success: false, error: error.message };
       }
@@ -564,7 +567,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!keepApproved) {
           payload.status = 'pending_approval';
         }
-        await client.from('home_tutor_profiles').upsert(payload, { onConflict: 'user_id' });
+        // The self-approval guard rejects INSERTing an 'approved' row, so a new
+        // profile starts in review. An existing profile is UPDATEd in place —
+        // the guard lets an owner re-assert the 'approved' status it holds.
+        const { data: existing } = await client
+          .from('home_tutor_profiles')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (existing) {
+          await client.from('home_tutor_profiles').update(payload).eq('id', existing.id);
+        } else {
+          await client
+            .from('home_tutor_profiles')
+            .insert({ ...payload, status: 'pending_approval' });
+        }
       }
     }
   };
@@ -610,7 +627,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!keepApproved) {
           payload.status = 'pending_approval';
         }
-        await client.from('blood_donor_profiles').upsert(payload, { onConflict: 'user_id' });
+        // Same guard as the tutor flow: INSERT starts in review; UPDATE in
+        // place lets an approved donor keep publishing while being edited.
+        const { data: existing } = await client
+          .from('blood_donor_profiles')
+          .select('id, status')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        if (existing) {
+          await client.from('blood_donor_profiles').update(payload).eq('id', existing.id);
+        } else {
+          await client
+            .from('blood_donor_profiles')
+            .insert({ ...payload, status: 'pending_approval' });
+        }
       }
     }
   };
@@ -654,8 +684,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
     if (!isSupabaseConfigured) return;
     const client = createClient();
-    if (!client) return;
-    await client.from('notifications').update({ is_read: true }).eq('is_read', false);
+    if (!client || !user) return;
+    try {
+      // Personal inbox: only rows owned by this user. Admin hub rows
+      // (target_role='admin') are matched separately so a single action covers
+      // both, while never touching another user's notifications.
+      const personalPromise = client
+        .from('notifications')
+        .update({ is_read: true })
+        .eq('user_id', user.id)
+        .eq('is_read', false);
+      const adminPromise =
+        user.role === 'admin'
+          ? client
+              .from('notifications')
+              .update({ is_read: true })
+              .eq('target_role', 'admin')
+              .eq('is_read', false)
+          : Promise.resolve({ error: null });
+      await Promise.all([personalPromise, adminPromise]);
+    } catch {
+      // The optimistic UI update already happened; a failed write should not
+      // crash the page or leave an unhandled rejection in the console.
+    }
   };
 
   const createServiceRequest = async (

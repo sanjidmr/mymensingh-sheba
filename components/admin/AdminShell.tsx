@@ -45,10 +45,13 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
   const current = findAdminNavItem(pathname);
 
   // Close the drawer whenever the route changes, otherwise it stays open over
-  // the page the user just asked for.
-  useEffect(() => {
+  // the page the user just asked for. Adjust state during render (React's
+  // recommended pattern) rather than in an effect.
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setDrawerOpen(false);
-  }, [pathname]);
+  }
 
   useEffect(() => {
     if (!drawerOpen) return;

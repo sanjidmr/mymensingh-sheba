@@ -109,7 +109,7 @@ export default function DonorCard({ donor }: DonorCardProps) {
       if (cancelled) return;
       const mine = releases.find((r) => r.donorProfileId === donor.id);
       setRelease({ donorId: donor.id, phone: mine?.contactPhone ?? null });
-    });
+    }).catch(() => undefined);
     return () => {
       cancelled = true;
     };

@@ -152,29 +152,28 @@ function withTutorShowcase(real: HomeTutorProfile[]): HomeTutorProfile[] {
 export async function fetchPublishedTutors(): Promise<HomeTutorProfile[]> {
   if (!isSupabaseConfigured) return withTutorShowcase(mockFetchPublishedTutors());
   const client = createClient();
-  if (!client) return withTutorShowcase(mockFetchPublishedTutors());
+  if (!client) return [];
   const { data, error } = await client
     .from('home_tutor_profiles')
     .select(PUBLIC_TUTOR_COLUMNS)
     .eq('status', 'approved')
     .order('published_at', { ascending: false });
-  // An error here usually means the four new columns have not been migrated.
-  // Falling back keeps the page reviewable instead of blank.
-  if (error) return withTutorShowcase(mockFetchPublishedTutors());
-  return withTutorShowcase(
-    (data || [])
-      .map((row) => mapTutorRow(row as Record<string, unknown>))
-      .map((t) => ({ ...t, privatePhone: '__protected__' }))
-  );
+  // With Supabase configured the directory is real approvals only: a query
+  // error or an empty approval list is an honest empty state, never a sample.
+  if (error) return [];
+  return (data || [])
+    .map((row) => mapTutorRow(row as Record<string, unknown>))
+    .map((t) => ({ ...t, privatePhone: '__protected__' }));
 }
 
 export async function fetchPublishedTutorById(id: string): Promise<HomeTutorProfile | null> {
-  // Showcase ids resolve before any database check, in every mode.
-  const demo = getDemoTutorProfile(id);
-  if (demo) return demo;
-  if (!isSupabaseConfigured) return mockFetchPublishedTutorById(id) || null;
+  if (!isSupabaseConfigured) {
+    const demo = getDemoTutorProfile(id);
+    if (demo) return demo;
+    return mockFetchPublishedTutorById(id) || null;
+  }
   const client = createClient();
-  if (!client) return mockFetchPublishedTutorById(id) || null;
+  if (!client) return null;
   const { data, error } = await client
     .from('home_tutor_profiles')
     .select(PUBLIC_TUTOR_COLUMNS)
@@ -295,12 +294,12 @@ export async function adminFetchTutorProfiles(): Promise<HomeTutorProfile[]> {
   if (!isSupabaseConfigured) return mockAdminFetchTutorProfiles();
   const client = createClient();
   if (!client) return mockAdminFetchTutorProfiles();
-  const { data, error } = await client
-    .from('home_tutor_profiles')
-    .select('*')
-    .order('updated_at', { ascending: false });
+  // `fn_admin_tutor_profiles` is SECURITY DEFINER + is_admin() gated — the only
+  // path that may read private_phone / nid_number / admin_notes since those
+  // columns are now revoked from the anon key.
+  const { data, error } = await client.rpc('fn_admin_tutor_profiles');
   if (error) return [];
-  return (data || []).map((row) => mapTutorRow(row as Record<string, unknown>, { admin: true }));
+  return ((data as Record<string, unknown>[]) || []).map((row) => mapTutorRow(row, { admin: true }));
 }
 
 export async function adminFetchTutorProfileById(id: string): Promise<HomeTutorProfile | null> {
@@ -308,9 +307,7 @@ export async function adminFetchTutorProfileById(id: string): Promise<HomeTutorP
   const client = createClient();
   if (!client) return mockAdminFetchTutorProfileById(id) || null;
   const { data, error } = await client
-    .from('home_tutor_profiles')
-    .select('*')
-    .eq('id', id)
+    .rpc('fn_admin_tutor_profile', { p_id: id })
     .maybeSingle();
   if (error || !data) return null;
   return mapTutorRow(data as Record<string, unknown>, { admin: true });
@@ -349,13 +346,11 @@ export async function adminUpdateTutorProfile(
     .select('user_id')
     .eq('id', id)
     .maybeSingle();
-  const { data, error } = await client
+  const { error } = await client
     .from('home_tutor_profiles')
     .update(dbPatch)
-    .eq('id', id)
-    .select('*')
-    .single();
-  if (error || !data) {
+    .eq('id', id);
+  if (error) {
     return { success: false, error: error?.message || 'আপডেট ব্যর্থ হয়েছে' };
   }
   if (patch.status && ownerRow?.user_id) {
@@ -377,7 +372,8 @@ export async function adminUpdateTutorProfile(
       relatedId: id,
     });
   }
-  return { success: true, profile: mapTutorRow(data as Record<string, unknown>, { admin: true }) };
+  const refreshed = await adminFetchTutorProfileById(id);
+  return { success: true, profile: refreshed ?? undefined };
 }
 
 export async function adminFetchTutorRequests(): Promise<AdminTutorRequest[]> {

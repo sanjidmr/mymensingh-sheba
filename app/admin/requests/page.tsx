@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { TablePager } from '@/components/admin/TablePager';
 import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
-import { FilterSelect } from '@/components/admin/PageSizeSelect';
+import { FilterNav } from '@/components/admin/FilterNav';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
 import { StatusPill } from '@/components/admin/StatCard';
 import { formatDateTime, lookupStatus, STATUS_OPTIONS } from '@/lib/admin/format';
@@ -108,15 +108,16 @@ export default async function AdminRequestsPage({
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <AdminSearch placeholder="নাম, নম্বর বা সেবা খুঁজুন…" />
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <FilterSelect
+          <FilterNav
             id="request-status"
             label="স্ট্যাটাস"
             value={String(params.status ?? '')}
             placeholder="সব স্ট্যাটাস"
             options={STATUS_OPTIONS.service_requests}
-            onChange={() => {}}
+            param="status"
+            searchParams={resolvedSearchParams}
           />
-          <FilterSelect
+          <FilterNav
             id="request-service"
             label="সেবা"
             value={String(params.service ?? '')}
@@ -125,7 +126,8 @@ export default async function AdminRequestsPage({
               value,
               label,
             }))}
-            onChange={() => {}}
+            param="service"
+            searchParams={resolvedSearchParams}
           />
           <ClearFilters searchParams={new URLSearchParams()} />
         </div>

@@ -3,7 +3,7 @@ import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { TablePager } from '@/components/admin/TablePager';
 import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
-import { FilterSelect } from '@/components/admin/PageSizeSelect';
+import { FilterNav } from '@/components/admin/FilterNav';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
 import { formatDateTime } from '@/lib/admin/format';
 import type { AdminMediaItem } from '@/lib/admin/queries';
@@ -117,13 +117,14 @@ export default async function AdminMediaPage({
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <AdminSearch placeholder="ফাইলের নাম খুঁজুন…" />
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <FilterSelect
+          <FilterNav
             id="media-bucket"
             label="বাকেট"
             value={String(params.category ?? '')}
             placeholder="সব বাকেট"
             options={BUCKETS}
-            onChange={() => {}}
+            param="category"
+            searchParams={resolvedSearchParams}
           />
           <ClearFilters searchParams={new URLSearchParams()} />
         </div>

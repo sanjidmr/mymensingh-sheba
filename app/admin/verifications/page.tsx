@@ -53,6 +53,9 @@ export default function AdminTutorVerificationsPage() {
       .then((data) => {
         if (active) setProfiles(data);
       })
+      .catch(() => {
+        if (active) setError('তথ্য লোড করা যায়নি');
+      })
       .finally(() => {
         if (active) setLoading(false);
       });

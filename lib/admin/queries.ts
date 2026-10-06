@@ -409,12 +409,13 @@ export async function fetchPosts(params: ListParams): Promise<Paged<AdminPostRow
   const from = (params.page - 1) * params.pageSize;
   const to = from + params.pageSize - 1;
 
+  // `fn_admin_posts` is the only path that may read author_phone /
+  // whatsapp_number / rejection_reason after the column REVOKEs. It is
+  // SECURITY DEFINER, is_admin() gated, and set-returning, so PostgREST still
+  // applies search / status / kind / category filters, ordering and paging.
+  // (count goes in the rpc() options — the RPC builder's .select() takes no options.)
   let query = client
-    .from('community_posts')
-    .select(
-      'id, kind, slug, title_bn, summary_bn, category, area_id, author_name, author_phone, status, is_featured, rejection_reason, published_at, created_at, updated_at',
-      { count: 'exact' }
-    )
+    .rpc('fn_admin_posts', {}, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, to);
 

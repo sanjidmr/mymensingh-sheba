@@ -24,7 +24,9 @@ export interface AdminReportRow {
   relatedId?: string;
 }
 
-export type AdminReportStatus = 'open' | 'reviewed' | 'resolved' | 'dismissed';
+// NOTE: must match the report tables' status CHECK constraint — every report
+// table in the schema accepts only ('open', 'resolved', 'dismissed').
+export type AdminReportStatus = 'open' | 'resolved' | 'dismissed';
 
 export interface AdminDashboardStats {
   users: number;

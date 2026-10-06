@@ -7,7 +7,7 @@ import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { TablePager } from '@/components/admin/TablePager';
 import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
-import { FilterSelect } from '@/components/admin/PageSizeSelect';
+import { FilterNav } from '@/components/admin/FilterNav';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
 import { StatusPill } from '@/components/admin/StatCard';
 import { formatDateTime, lookupStatus } from '@/lib/admin/format';
@@ -167,7 +167,7 @@ export default async function AdminCatalogPage({
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <AdminSearch placeholder="শিরোনাম বা এলাকা খুঁজুন…" />
           <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-            <FilterSelect
+            <FilterNav
               id="listing-category"
               label="ক্যাটাগরি"
               value={String(params.category ?? '')}
@@ -178,9 +178,10 @@ export default async function AdminCatalogPage({
                 { value: 'bus', label: 'বাস' },
                 { value: 'vehicle', label: 'গাড়ি' },
               ]}
-              onChange={() => {}}
+              param="category"
+              searchParams={resolvedSearchParams}
             />
-            <FilterSelect
+            <FilterNav
               id="listing-status"
               label="স্ট্যাটাস"
               value={String(params.status ?? '')}
@@ -189,7 +190,8 @@ export default async function AdminCatalogPage({
                 { value: 'active', label: 'চালু' },
                 { value: 'inactive', label: 'বন্ধ' },
               ]}
-              onChange={() => {}}
+              param="status"
+              searchParams={resolvedSearchParams}
             />
             <ClearFilters searchParams={new URLSearchParams()} />
           </div>
@@ -223,7 +225,7 @@ export default async function AdminCatalogPage({
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <AdminSearch placeholder="নাম বা নম্বর খুঁজুন…" />
           <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-            <FilterSelect
+            <FilterNav
               id="contact-service"
               label="সেবা"
               value={String(params.service ?? '')}
@@ -234,9 +236,10 @@ export default async function AdminCatalogPage({
                 { value: 'ambulance', label: 'অ্যাম্বুলেন্স' },
                 { value: 'fire_service', label: 'ফায়ার সার্ভিস' },
               ]}
-              onChange={() => {}}
+              param="service"
+              searchParams={resolvedSearchParams}
             />
-            <FilterSelect
+            <FilterNav
               id="contact-status"
               label="স্ট্যাটাস"
               value={String(params.status ?? '')}
@@ -245,7 +248,8 @@ export default async function AdminCatalogPage({
                 { value: 'active', label: 'চালু' },
                 { value: 'inactive', label: 'বন্ধ' },
               ]}
-              onChange={() => {}}
+              param="status"
+              searchParams={resolvedSearchParams}
             />
             <ClearFilters searchParams={new URLSearchParams()} />
           </div>

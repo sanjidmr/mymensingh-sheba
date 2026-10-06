@@ -33,9 +33,14 @@ export function AdminSearch({
 
   // If the URL changes from elsewhere (a filter reset, a back navigation), the
   // box has to follow or it will show a query that is no longer applied.
-  useEffect(() => {
-    setValue(searchParams.get(param) ?? '');
-  }, [searchParams, param]);
+  // Adjust state during render (React's recommended pattern) rather than in an
+  // effect, so there is no cascading render.
+  const currentParam = searchParams.get(param) ?? '';
+  const [prevParam, setPrevParam] = useState(currentParam);
+  if (prevParam !== currentParam) {
+    setPrevParam(currentParam);
+    setValue(currentParam);
+  }
 
   useEffect(
     () => () => {

@@ -63,7 +63,7 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
       if (r.donorProfileId) {
         adminFetchDonorProfileById(r.donorProfileId).then((d) => {
           if (active) setDonor(d);
-        });
+        }).catch(() => undefined);
       }
     }).finally(() => {
       if (active) setLoading(false);
@@ -136,8 +136,8 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
     if (res.success && res.phone) {
       setReleasedPhone(res.phone);
       await Promise.all([
-        adminFetchContactReleases(req.id).then(setReleases),
-        adminFetchBloodRequestById(req.id).then((r) => r && setReq(r)),
+        adminFetchContactReleases(req.id).then(setReleases).catch(() => undefined),
+        adminFetchBloodRequestById(req.id).then((r) => r && setReq(r)).catch(() => undefined),
       ]);
     } else {
       setError(res.error || 'নম্বর প্রকাশ ব্যর্থ হয়েছে');
