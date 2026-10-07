@@ -49,12 +49,12 @@ export default function CategoryTile({ item }: { item: HomepageService }) {
           label, so the tile's accessible name is the name and nothing else. */}
       <span
         aria-hidden="true"
-        className="relative block aspect-square w-full overflow-hidden rounded-2xl bg-mist-100 ring-1 ring-brand-900/[0.07] motion-safe:group-hover:ring-brand-900/[0.14]"
+        className="relative block aspect-square w-full overflow-hidden rounded-lg bg-mist-100 ring-1 ring-brand-900/[0.07] motion-safe:group-hover:ring-brand-900/[0.14] sm:rounded-xl"
       >
         {media}
       </span>
       <span
-        className={`mt-2.5 line-clamp-2 break-words text-center text-[12.5px] font-semibold leading-[1.35] tracking-tight transition-colors sm:text-sm lg:text-[15px] ${
+        className={`mt-1.5 line-clamp-2 break-words text-center text-[11.5px] font-semibold leading-[1.3] tracking-tight transition-colors sm:mt-2 sm:text-[13px] lg:text-sm ${
           red ? 'text-red-700 group-hover:text-red-800' : 'text-ink-900 group-hover:text-brand-700'
         }`}
       >

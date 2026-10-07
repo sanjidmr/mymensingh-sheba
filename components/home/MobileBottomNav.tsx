@@ -2,12 +2,15 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, CalendarClock, UserRound, Plus } from 'lucide-react';
+import { Home, LayoutGrid, Newspaper, UserRound, Plus } from 'lucide-react';
 
 const ITEMS = [
   { name: 'হোম', href: '/', icon: Home },
   { name: 'সেবা', href: '/services', icon: LayoutGrid },
-  { name: 'বুকিং', href: '/profile/requests', icon: CalendarClock },
+  // The community feed. This slot used to be "বুকিং" (/profile/requests); the
+  // requests list still lives behind the profile screen, but the bar now puts
+  // one thumb-tap between the reader and everything the community published.
+  { name: 'পোস্ট', href: '/posts', icon: Newspaper },
   { name: 'প্রোফাইল', href: '/profile', icon: UserRound },
 ];
 

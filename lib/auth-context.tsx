@@ -72,7 +72,7 @@ interface AuthContextType {
     primaryAreaId: string;
     password: string;
     email?: string;
-  }) => Promise<{ success: boolean; error?: string }>;
+  }) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>;
   resetPassword: (phoneOrEmail: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
@@ -353,32 +353,83 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!client) {
         return { success: false, error: NOT_CONFIGURED_MESSAGE };
       }
-      const email = data.email || `${data.phone}@mymensinghsheba.internal`;
+      const email = (data.email?.trim() || '').toLowerCase() || `${data.phone}@mymensinghsheba.internal`;
+      // Pass the full registration payload into the auth user's metadata. The
+      // profiles row mirrors these values (see the DB-side trigger in
+      // supabase/migrations/...fix_user_registration_profiles.sql), so the
+      // row always matches the INSERT RLS policy for self-registration:
+      //   auth.uid() = id, role = 'customer', status = 'active', is_verified = false
       const { data: signUpData, error } = await client.auth.signUp({
         email,
         password: data.password,
-        options: { data: { phone: data.phone, full_name: data.fullName } },
+        options: {
+          data: {
+            phone: data.phone,
+            full_name: data.fullName,
+            primary_area_id: data.primaryAreaId,
+            email,
+          },
+        },
       });
       if (error) {
         return { success: false, error: error.message };
       }
-      if (signUpData.user) {
-        await client.from('profiles').upsert({
-          id: signUpData.user.id,
+      if (!signUpData.user) {
+        return { success: false, error: 'একাউন্ট তৈরি করা যায়নি। একটু পরে আবার চেষ্টা করুন।' };
+      }
+
+      const userId = signUpData.user.id;
+      const hasSession = Boolean(signUpData.session);
+
+      // When Supabase hands back a live session (email confirmation off) the
+      // new user is authenticated immediately, so we can (and must) create
+      // their profiles row right here — with exactly the values the INSERT
+      // policy demands. When confirmation is required there is no session yet
+      // and the row is created by the DB trigger on first signup instead.
+      if (hasSession) {
+        const { error: profileError } = await client.from('profiles').upsert({
+          id: userId,
           full_name: data.fullName,
           phone: data.phone,
           email,
           primary_area_id: data.primaryAreaId,
           role: 'customer',
+          status: 'active',
           is_verified: false,
         });
+        if (profileError) {
+          return {
+            success: false,
+            error: 'প্রোফাইল তৈরি করা যায়নি। একটু পরে আবার চেষ্টা করুন।',
+          };
+        }
       }
+
       const { data: signInData, error: signInError } = await client.auth.signInWithPassword({ email, password: data.password });
-      if (signInError) {
-        return { success: true };
+      // When email confirmation is on, signUp returns no session and the sign-in
+      // right after will be rejected until the confirmation link is opened. The
+      // account was still created successfully (its DB trigger will have made
+      // the profiles row), so surface the happy path and let the user confirm +
+      // sign in — matching the previous success UX. With a session already in
+      // hand, a redundant sign-in hiccup must not flip success into failure.
+      if (signInError && !hasSession && signUpData.user?.confirmation_sent_at) {
+        // `needsConfirmation` tells the caller that this "success" has no
+        // session behind it yet, so it must NOT be treated as a completed
+        // sign-in (no redirect to /profile — that page would bounce straight
+        // back to /login until the link in the email is opened).
+        return { success: true, needsConfirmation: true };
+      }
+      if (signInError && !hasSession) {
+        return { success: false, error: signInError.message };
       }
       if (signInData.user) {
         await refreshUserData(client, signInData.user.id);
+      } else if (hasSession && signUpData.session?.user) {
+        // signUp already handed back a live session but the follow-up sign-in
+        // hiccuped: hydrate from the session we already have, so "success"
+        // always leaves `user` populated and the caller's redirect lands on a
+        // profile page that can actually render.
+        await refreshUserData(client, signUpData.session.user.id);
       }
       return { success: true };
     } catch (err: unknown) {

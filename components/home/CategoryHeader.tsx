@@ -17,7 +17,7 @@ export default function CategoryHeader({
   return (
     <div className="flex flex-col items-center text-center">
       <h2
-        className={`max-w-3xl text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl ${
+        className={`max-w-3xl text-[22px] font-extrabold leading-tight tracking-tight sm:text-3xl lg:text-[2rem] ${
           dark ? 'text-white' : 'text-ink-900'
         }`}
       >
@@ -25,7 +25,7 @@ export default function CategoryHeader({
       </h2>
       {description && (
         <p
-          className={`mt-2.5 max-w-2xl text-sm leading-relaxed sm:text-[15px] ${
+          className={`mt-1.5 max-w-2xl text-[13px] leading-relaxed sm:text-sm ${
             dark ? 'text-brand-100/75' : 'text-ink-500'
           }`}
         >

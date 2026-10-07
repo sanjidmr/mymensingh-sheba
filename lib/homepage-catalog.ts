@@ -86,7 +86,9 @@ export const DAILY_CATEGORY: HomepageCategory = {
   description:
     'বাসা, মেরামত, যাতায়াত, পড়াশোনা, গৃহকর্মী — জীবন চলার কাজগুলো এখন এক পরিচিত জায়গায়।',
   tone: 'white',
-  grid: 'grid-cols-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7',
+  // Phones show FOUR compact tiles per row (all four must sit inside one row
+  // with no sideways overflow), then the desktop rhythm from `sm` upwards.
+  grid: 'grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-7',
   compact: true,
   viewAll: { href: '/services', label: 'সব সেবা দেখুন' },
   items: [
@@ -182,7 +184,7 @@ export const SHOP_TRAVEL_CATEGORY: HomepageCategory = {
   description:
     'শুধু সেবা নয় — জীবনযাপন আর জ্ঞানের জায়গাগুলোও যেন হাতের কাছেই থাকে।',
   tone: 'mist',
-  grid: 'grid-cols-3 sm:grid-cols-3 lg:grid-cols-7',
+  grid: 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-7',
   compact: true,
   viewAll: { href: '/services', label: 'সব সেবা দেখুন' },
   items: [
@@ -277,7 +279,9 @@ export const EMERGENCY_CATEGORY: HomepageCategory = {
   description:
     'জরুরি মুহূর্তে সঠিক নম্বরটা খুঁজতে গিয়ে সময় নষ্ট নয় — এক ট্যাপে সরাসরি সেবায়।',
   tone: 'white',
-  grid: 'grid-cols-3 sm:grid-cols-3 lg:grid-cols-5',
+  // Four compact tiles per row on phones; five columns keep the desktop row
+  // exactly one line tall from `lg` upwards.
+  grid: 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-5',
   compact: true,
   dense: true,
   items: [
@@ -336,7 +340,11 @@ export const EMERGENCY_CATEGORY: HomepageCategory = {
       image: '/sheba1.png',
       cta: 'যোগাযোগ করুন',
       icon: Phone,
-      layoutClass: 'sm:col-span-2 lg:col-span-1',
+      // Five services on a four-column phone grid leaves this one alone on the
+      // last row: centring it there and letting it sit two-up on tablets keeps
+      // the row looking deliberate. From `lg` the five-column row fits one per
+      // column, so the span is released.
+      layoutClass: 'sm:col-start-2 sm:col-span-2 lg:col-start-auto lg:col-span-1',
     },
   ],
 };

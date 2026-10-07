@@ -74,7 +74,7 @@ export default function RegisterPage() {
     }
 
     setLoading(true);
-    let res: { success: boolean; error?: string };
+    let res: { success: boolean; error?: string; needsConfirmation?: boolean };
     try {
       res = await register({
         fullName: fullName.trim(),
@@ -89,7 +89,16 @@ export default function RegisterPage() {
     setLoading(false);
 
     if (res.success) {
-      setDone(true);
+      // register() signs the user in, so a completed signup goes straight to
+      // /profile — no interstitial screen in between. The single exception is
+      // a signup Supabase still wants confirmed by email: there is no session
+      // behind it yet, so /profile would only bounce back to /login and the
+      // confirmation notice stays for that case.
+      if (res.needsConfirmation) {
+        setDone(true);
+        return;
+      }
+      router.replace('/profile');
       return;
     }
     setFormError(res.error || 'অ্যাকাউন্ট তৈরি করা যায়নি। একটু পরে আবার চেষ্টা করুন।');
@@ -99,8 +108,8 @@ export default function RegisterPage() {
     return (
       <div className="flex min-h-screen flex-col bg-mist-50">
         <Navbar />
-        <main className="flex flex-1 items-center justify-center bg-mist-50 px-4 py-12 sm:px-6">
-          <div className="w-full max-w-md rounded-xl border border-brand-100 bg-white px-6 py-10 text-center shadow-sm">
+        <main className="flex flex-1 items-center justify-center bg-mist-50 px-4 py-8 sm:px-6 sm:py-12">
+          <div className="w-full max-w-md rounded-xl border border-brand-100 bg-white px-6 py-8 text-center shadow-sm">
             <span
               aria-hidden="true"
               className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-700"
@@ -113,7 +122,7 @@ export default function RegisterPage() {
             <p className="mx-auto mt-2 max-w-xs text-[14px] leading-relaxed text-ink-500">
               আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। এখন সেবা খুঁজতে ও নিজের প্রোফাইল সাজাতে পারেন।
             </p>
-            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
+            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <button
                 type="button"
                 onClick={() => router.replace('/profile')}
@@ -154,7 +163,7 @@ export default function RegisterPage() {
           {formError && (
             <p
               role="alert"
-              className="mb-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900"
+              className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900"
             >
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
               {formError}
@@ -314,7 +323,7 @@ export default function RegisterPage() {
             </span>
           </label>
 
-          <div className="pt-3">
+          <div className="pt-2">
             <AuthSubmit
               loading={loading || authLoading}
               loadingLabel="অ্যাকাউন্ট তৈরি হচ্ছে…"

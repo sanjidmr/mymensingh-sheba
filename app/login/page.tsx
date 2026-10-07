@@ -85,7 +85,7 @@ function LoginForm() {
         {formError && (
           <p
             role="alert"
-            className="mb-4 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900"
+            className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
             {formError}
@@ -141,8 +141,8 @@ export default function LoginPage() {
       <Navbar />
       <Suspense
         fallback={
-          <main className="flex-1 bg-mist-50 px-4 py-10 sm:px-6">
-            <div className="mx-auto w-full max-w-5xl rounded-xl border border-brand-100 bg-white px-5 py-12 shadow-sm">
+          <main className="flex-1 bg-mist-50 px-4 py-8 sm:px-6">
+            <div className="mx-auto w-full max-w-md rounded-2xl border border-brand-100 bg-white px-5 py-12 shadow-sm">
               <p className="text-sm text-ink-500">লোড হচ্ছে…</p>
             </div>
           </main>

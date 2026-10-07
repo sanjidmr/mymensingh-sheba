@@ -17,7 +17,9 @@ import {
   ArrowRight,
   Search,
   Landmark,
+  Newspaper,
 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import MymensinghLiveBar from '@/components/MymensinghLiveBar';
 
@@ -35,7 +37,8 @@ export default function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
-  const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin } = useAuth();
+  const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
+    useAuth();
 
   // The homepage navbar is transparent at the top and adapts to a soft cream
   // blur after scrolling so content never collides with the links.
@@ -47,9 +50,19 @@ export default function Navbar() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
-  const navLinks = [
+  /**
+   * Shared by the desktop top bar and the mobile drawer so both stay in sync.
+   *
+   * `desktopOnly` marks the one item the top bar carries alone: `/posts`
+   * already has its own slot in the fixed bottom bar on phones, so the drawer
+   * keeps exactly the links it had before instead of growing a duplicate.
+   */
+  type NavLink = { name: string; href: string; icon: LucideIcon; desktopOnly?: boolean };
+
+  const navLinks: NavLink[] = [
     { name: 'হোম', href: '/', icon: Home },
     { name: 'সেবা সমূহ', href: '/services', icon: LayoutGrid },
+    { name: 'পোস্ট', href: '/posts', icon: Newspaper, desktopOnly: true },
     { name: 'কিভাবে কাজ করে', href: '/how-it-works', icon: Workflow },
     { name: 'আমাদের সম্পর্কে', href: '/about', icon: Info },
     { name: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh', icon: Landmark },
@@ -138,6 +151,7 @@ export default function Navbar() {
             {user ? (
               <Link
                 href="/profile"
+                aria-label="আমার প্রোফাইল"
                 className="flex items-center gap-2 rounded-xl border border-brand-200 bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:bg-brand-100/40"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-400 text-xs font-bold text-brand-900">
@@ -152,6 +166,16 @@ export default function Navbar() {
                   </span>
                 </div>
               </Link>
+            ) : authLoading ? (
+              // The stored session is still being restored (page refresh), so a
+              // signed-in visitor would otherwise see লগইন / রেজিস্ট্রেশন flash
+              // for a moment before their avatar resolves. This placeholder
+              // holds the same footprint until `isLoading` clears, which keeps
+              // the swap flicker-free in both directions.
+              <div
+                aria-hidden="true"
+                className="h-11 w-[212px] animate-pulse rounded-xl bg-brand-100/60 motion-reduce:animate-none"
+              />
             ) : (
               <>
                 <Link
@@ -191,32 +215,34 @@ export default function Navbar() {
           className="relative z-10 max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-brand-700/70 bg-white px-4 pb-8 pt-3 shadow-xl lg:hidden"
         >
           <nav className="space-y-1">
-            {navLinks.map((link) => {
-              const Icon = link.icon;
-              const active = isActive(link.href);
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileMenuOpen(false)}
-                  className={`flex items-center justify-between rounded-xl px-3.5 py-3 text-[15px] font-medium transition-colors ${
-                    active
-                      ? 'bg-brand-50 font-semibold text-brand-800'
-                      : 'text-ink-700 hover:bg-mist-50'
-                  }`}
-                >
-                  <span className="flex items-center gap-3">
-                    <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : 'text-ink-400'}`} />
-                    {link.name}
-                  </span>
-                  <ChevronRight className="h-4 w-4 text-ink-400" />
-                </Link>
-              );
-            })}
+            {navLinks
+              .filter((link) => !link.desktopOnly)
+              .map((link) => {
+                const Icon = link.icon;
+                const active = isActive(link.href);
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center justify-between rounded-xl px-3.5 py-3 text-[15px] font-medium transition-colors ${
+                      active
+                        ? 'bg-brand-50 font-semibold text-brand-800'
+                        : 'text-ink-700 hover:bg-mist-50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : 'text-ink-400'}`} />
+                      {link.name}
+                    </span>
+                    <ChevronRight className="h-4 w-4 text-ink-400" />
+                  </Link>
+                );
+              })}
           </nav>
 
           <div className="mt-4 flex flex-col gap-2.5 border-t border-brand-100 pt-4">
-            {!user && (
+            {!user && !authLoading && (
               <Link
                 href="/login"
                 onClick={() => setMobileMenuOpen(false)}
