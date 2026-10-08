@@ -17,7 +17,6 @@ import {
   ShieldCheck,
   Ambulance,
   Flame,
-  Phone,
   HeartHandshake,
 } from 'lucide-react';
 
@@ -279,9 +278,9 @@ export const EMERGENCY_CATEGORY: HomepageCategory = {
   description:
     'জরুরি মুহূর্তে সঠিক নম্বরটা খুঁজতে গিয়ে সময় নষ্ট নয় — এক ট্যাপে সরাসরি সেবায়।',
   tone: 'white',
-  // Four compact tiles per row on phones; five columns keep the desktop row
-  // exactly one line tall from `lg` upwards.
-  grid: 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-5',
+  // Four compact tiles per row on phones and four equal columns from `lg`
+  // upwards, so the four emergency cards always sit in exactly one row.
+  grid: 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-4',
   compact: true,
   dense: true,
   items: [
@@ -330,21 +329,6 @@ export const EMERGENCY_CATEGORY: HomepageCategory = {
       image: '/fireservice.jpg',
       cta: 'কল করুন',
       icon: Flame,
-    },
-    {
-      id: 'helpline',
-      name: 'Mymensingh Sheba',
-      en: 'Helpline',
-      text: 'সেবা সংক্রান্ত যেকোনো প্রশ্নে যোগাযোগ করুন।',
-      href: '/contact',
-      image: '/sheba1.png',
-      cta: 'যোগাযোগ করুন',
-      icon: Phone,
-      // Five services on a four-column phone grid leaves this one alone on the
-      // last row: centring it there and letting it sit two-up on tablets keeps
-      // the row looking deliberate. From `lg` the five-column row fits one per
-      // column, so the span is released.
-      layoutClass: 'sm:col-start-2 sm:col-span-2 lg:col-start-auto lg:col-span-1',
     },
   ],
 };

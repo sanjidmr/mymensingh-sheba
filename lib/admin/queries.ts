@@ -1,5 +1,11 @@
 import { createServerSideClient } from '@/lib/supabase/server';
 import { clampPage, clampPageSize } from './format';
+// ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
+import { DEV_AUTH_BYPASS } from '@/lib/dev-auth-bypass';
+import {
+  createDevServiceRoleClient,
+  resolveDevAdminIdentity,
+} from '@/lib/admin/dev-service-role';
 
 /**
  * The admin console's server-side data layer.
@@ -51,6 +57,17 @@ export interface AdminClient {
  * browser's claim to be an admin.
  */
 export async function getAdminDataClient(): Promise<AdminClient | null> {
+  // DEV AUTH BYPASS — never active in a production build. Reads run through
+  // the server-only service-role client so `/admin` is fully usable without a
+  // signed-in session. Never reached in production.
+  if (DEV_AUTH_BYPASS) {
+    const devClient = createDevServiceRoleClient();
+    if (devClient) {
+      const identity = await resolveDevAdminIdentity();
+      return { client: devClient, userId: identity.userId };
+    }
+  }
+
   const client = await createServerSideClient();
   if (!client) return null;
 

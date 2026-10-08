@@ -1,6 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createServerSideClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
+// ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
+import { DEV_AUTH_BYPASS } from '@/lib/dev-auth-bypass';
+import { resolveDevAdminIdentity } from '@/lib/admin/dev-service-role';
 
 /**
  * Server-side admin gate for every `/admin/*` route.
@@ -55,6 +58,13 @@ export async function requireUserId(nextPath?: string): Promise<string> {
  * admin. Use this when you want to branch rather than redirect.
  */
 export async function getAdminSession(): Promise<AdminSession | null> {
+  // DEV AUTH BYPASS — never active in a production build. Opening `/admin`
+  // without a session returns a stand-in admin identity instead of null, so
+  // `requireAdmin()` neither redirects nor renders an auth error.
+  if (DEV_AUTH_BYPASS) {
+    return resolveDevAdminIdentity();
+  }
+
   const supabase = await createServerSideClient();
   if (!supabase) return null;
 

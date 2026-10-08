@@ -29,11 +29,13 @@ import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+// ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
+import { DEV_AUTH_BYPASS, DEV_PROFILE_USER } from '@/lib/dev-auth-bypass';
 
 export default function ProfilePage() {
   const router = useRouter();
   const {
-    user,
+    user: sessionUser,
     toletProfile,
     homeTutorProfile,
     bloodDonorProfile,
@@ -41,8 +43,14 @@ export default function ProfilePage() {
     savedListings,
     notifications,
     logout,
-    isAdmin,
+    isAdmin: sessionIsAdmin,
   } = useAuth();
+
+  // DEV AUTH BYPASS — never active in a production build. With no session this
+  // substitutes a stand-in customer so the real profile UI renders instead of
+  // the "লগইন প্রয়োজন" screen; a real signed-in user always takes precedence.
+  const user = sessionUser ?? (DEV_AUTH_BYPASS ? DEV_PROFILE_USER : null);
+  const isAdmin = sessionIsAdmin || DEV_AUTH_BYPASS;
 
   if (!user) {
     return (

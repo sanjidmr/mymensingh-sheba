@@ -10,6 +10,8 @@ import {
   Workflow,
   ArrowRight,
   Star,
+  Landmark,
+  BookOpen,
 } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 
@@ -132,6 +134,37 @@ export default function CommunityInviteSection() {
               <MessageCircle className="h-4 w-4 shrink-0" />
               আমাদের সাথে যোগাযোগ
             </Link>
+          </div>
+
+          {/* ময়মনসিংহের ইতিহাস — পরিচিতি পেজের কল-আউট */}
+          <div className="mx-auto mt-7 max-w-2xl rounded-2xl border border-white/30 bg-white/12 p-4 text-left shadow-lg shadow-brand-900/15 backdrop-blur-sm sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:gap-5">
+              <span className="hidden h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-800 text-accent-300 ring-1 ring-white/20 sm:flex">
+                <Landmark className="h-6 w-6" />
+              </span>
+
+              <div className="min-w-0 flex-1">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-400/90 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-900">
+                  ইতিহাস · ঐতিহ্য · সংস্কৃতি
+                </span>
+                <h3 className="mt-2 text-base font-extrabold leading-snug text-white sm:text-lg">
+                  ময়মনসিংহের ইতিহাস জানুন
+                </h3>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-white/85">
+                  ষোড়শ শতকের মোমেনশাহী থেকে আজকের চারটি জেলা — নামের উৎপত্তি, ব্রহ্মপুত্রের
+                  গল্প, জমিদারি ঐতিহ্য আর মুক্তিযুদ্ধের স্মৃতি এক জায়গায়।
+                </p>
+              </div>
+
+              <Link
+                href="/mymensingh"
+                className="group/history inline-flex min-h-[46px] shrink-0 items-center justify-center gap-2 self-stretch rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-950/30 ring-1 ring-white/15 transition-all duration-150 hover:bg-brand-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:self-center"
+              >
+                <BookOpen className="h-4 w-4 shrink-0" />
+                ময়মনসিংহ পরিচিতি
+                <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover/history:translate-x-0.5" />
+              </Link>
+            </div>
           </div>
 
           {/* সহায়ক লাইন */}

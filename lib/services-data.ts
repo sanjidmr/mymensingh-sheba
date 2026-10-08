@@ -258,17 +258,6 @@ iconName: 'GraduationCap',
     number: '১০২',
     coverImage: '/fireservice.jpg',
   },
-  {
-    id: 'helpline',
-    slug: 'helpline',
-    nameBn: 'Mymensingh Sheba',
-    nameEn: 'Helpline',
-    shortDesc: 'সেবা সংক্রান্ত যেকোনো প্রশ্নে যোগাযোগ করুন',
-    iconName: 'Phone',
-    categoryType: 'community',
-    tagBadge: 'সেবা',
-    coverImage: '/sheba1.png',
-  },
 ];
 
 /**

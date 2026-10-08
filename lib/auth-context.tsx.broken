@@ -1,0 +1,114 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import {
+  UserProfile,
+  ToletProfile,
+  HomeTutorProfile,
+  BloodDonorProfile,
+  ServiceRequestItem,
+  SavedListingItem,
+  NotificationItem,
+} from './supabase/types';
+import { createClient, isSupabaseConfigured } from './supabase/client';
+import { LAUNCH_SERVICES } from './services-data';
+
+const NOT_CONFIGURED_MESSAGE =
+  'লগইন ও রেজিস্ট্রেশন পরিষেবা এখনো চালু হয়নি। প্রকল্পে Supabase সেটআপ সম্পন্ন হলে এই সেবা সক্রিয় হবে।';
+
+function toCamelObject(row: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(row)) {
+    out[key.replace(/_([a-z])/g, (_, c: string) => c.toUpperCase())] = value;
+  }
+  return out;
+}
+
+function toSnakeObject(obj: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    out[key.replace(/[A-Z]/g, (c: string) => `_${c.toLowerCase()}`)] = value;
+  }
+  return out;
+}
+
+/** Builds a sensible in-app link for a notification based on its type/id. */
+function notificationLink(n: {
+  targetRole: string;
+  relatedType?: string;
+  relatedId?: string;
+}): string | undefined {
+  const id = n.relatedId;
+  if (!id) return undefined;
+  if (n.targetRole === 'admin') {
+    if (n.relatedType === 'service_request') return `/admin/requests/${id}`;
+    if (n.relatedType === 'blood_request') return `/admin/blood/${id}`;
+    return '/admin/reports';
+  }
+  // Customer-facing decisions point at the customer dashboard: a moderation
+  // verdict belongs next to the posts list, not in a generic inbox.
+  if (n.relatedType === 'community_post') return '/dashboard/posts';
+  if (n.relatedType === 'tolet_listing') return '/profile/tolet';
+  return '/profile/requests';
+}
+
+interface AuthContextType {
+  user: UserProfile | null;
+  toletProfile: ToletProfile | null;
+  homeTutorProfile: HomeTutorProfile | null;
+  bloodDonorProfile: BloodDonorProfile | null;
+  requests: ServiceRequestItem[];
+  savedListings: SavedListingItem[];
+  notifications: NotificationItem[];
+  isLoading: boolean;
+  isAdmin: boolean;
+  isConfiguredWithSupabase: boolean;
+  login: (phoneOrEmail: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  register: (data: {
+    fullName: string;
+    phone: string;
+    primaryAreaId: string;
+    password: string;
+    email?: string;
+  }) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>;
+  resetPassword: (phoneOrEmail: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  /** Upload a new profile photo to the owner-scoped `avatars` bucket. */
+  uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string; url?: string }>;
+  /** Change the signed-in user's password via Supabase Auth. */
+  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  markNotificationsReadAll: () => Promise<void>;
+  activateToletProfile: (details: Omit<ToletProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'totalListingsCount' | 'status'>) => Promise<void>;
+  activateHomeTutorProfile: (details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>) => Promise<void>;
+  activateBloodDonorProfile: (details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>) => Promise<void>;
+  toggleSaveItem: (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => Promise<void>;
+  createServiceRequest: (
+    request: Omit<ServiceRequestItem, 'id' | 'customerId' | 'createdAt' | 'status' | 'serviceTitleBn'>
+  ) => Promise<void>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [user, setUser] = useState<UserProfile | null>(null);
+  const [toletProfile, setToletProfile] = useState<ToletProfile | null>(null);
+  const [homeTutorProfile, setHomeTutorProfile] = useState<HomeTutorProfile | null>(null);
+  const [bloodDonorProfile, setBloodDonorProfile] = useState<BloodDonorProfile | null>(null);
+  const [requests, setRequests] = useState<ServiceRequestItem[]>([]);
+  const [savedListings, setSavedListings] = useState<SavedListingItem[]>([]);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
+
+  const clearSessionState = useCallback(() => {
+    setUser(null);
+    setToletProfile(null);
+    setHomeTutorProfile(null);
+    setBloodDonorProfile(null);
+    setRequests([]);
+    setSavedListings([]);
+    setNotifications([]);
+  }, []);
+}

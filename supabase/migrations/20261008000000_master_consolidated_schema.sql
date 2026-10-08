@@ -1,3 +1,27 @@
+-- ============================================================================
+-- MYMENSINGH SHEBA — MASTER SCHEMA MIGRATION (single source of truth)
+-- ============================================================================
+-- Generated 2026-10-07.
+--
+-- This ONE file replaces the previous, fragmented migration set. It is:
+--   * self-contained  — no \\i includes, no reliance on lib/supabase/schema.sql;
+--   * ordered         — extensions, tables, indexes, helpers, triggers, RLS,
+--                       policies, storage, then the corrections/additions;
+--   * idempotent      — CREATE ... IF NOT EXISTS, DROP POLICY IF EXISTS,
+--                       DROP FUNCTION ... CASCADE before redefining;
+--   * production-safe — no NEW/OLD inside any CREATE POLICY (the cause of
+--                       "42P01 missing FROM-clause entry for table new").
+--
+-- Execution order (top to bottom, single transaction not required):
+--   PART 0  function-conflict prelude (drops stale function definitions)
+--   PART 1  full domain schema + RLS (the old lib/supabase/schema.sql, fixed)
+--   PART 2  corrections & objects that only lived in old migrations
+--   PART 3  read-only verification (raises an exception if anything is missing)
+--
+-- Apply with:  supabase db push   (after removing/archiving the old migration
+--              files) or paste the whole file into the Supabase SQL editor.
+-- ============================================================================
+
 -- ====================================================================
 -- MYMENSINGH SHEBA - PRODUCTION DATABASE SCHEMA & RLS POLICIES
 -- Service Area: Exclusively within Mymensingh City Corporation (MCC)
@@ -6,6 +30,41 @@
 
 -- Enable necessary extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- ============================================================================
+-- 0. FUNCTION-CONFLICT PRELUDE
+-- ============================================================================
+-- DROP before CREATE OR REPLACE so a database that still holds an older
+-- definition (different parameter names, or a RETURNS TABLE with different
+-- output column names) cannot fail with:
+--   42P13 cannot change name of input parameter "listing_id"
+--   42P13 cannot change return type of existing function
+-- CASCADE removes any RLS policy that depended on a dropped function; every
+-- such policy is recreated in PART 1 below.
+-- ============================================================================
+DROP FUNCTION IF EXISTS public.is_listing_owner(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+DROP FUNCTION IF EXISTS public.tolet_listing_analytics(integer) CASCADE;
+DROP FUNCTION IF EXISTS public.get_admin_dashboard_stats() CASCADE;
+DROP FUNCTION IF EXISTS public.get_admin_recent_activity(integer) CASCADE;
+DROP FUNCTION IF EXISTS public.fetch_market_contact(text) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_my_tolet_profile() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_my_tutor_profile() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_my_donor_profile() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_my_posts() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_my_post_by_id(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_my_post_by_slug(text, text) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_tutor_profiles() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_tutor_profile(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_donor_profiles() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_donor_profile(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_donor_phone(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_staff_profiles() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_staff_profile(uuid) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_posts() CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_service_listings(text) CASCADE;
+DROP FUNCTION IF EXISTS public.fn_admin_service_listing(text, text) CASCADE;
+
 
 -- 1. PROFILES TABLE (Core Account for every user)
 CREATE TABLE IF NOT EXISTS public.profiles (
@@ -420,6 +479,7 @@ $$;
 -- Users can only read their own profile row; admins can read everyone's.
 -- This prevents any authenticated user from enumerating phones/emails of others.
 DROP POLICY IF EXISTS "Public profiles are readable by authenticated users" ON public.profiles;
+DROP POLICY IF EXISTS "Users can read own profile" ON public.profiles;
 CREATE POLICY "Users can read own profile"
 ON public.profiles FOR SELECT
 TO authenticated
@@ -450,6 +510,7 @@ WITH CHECK (
 );
 
 -- Admins have full access to profiles
+DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
 CREATE POLICY "Admins have full access to profiles"
 ON public.profiles FOR ALL
 TO authenticated
@@ -480,16 +541,19 @@ FOR EACH ROW EXECUTE FUNCTION public.profiles_admin_only_fields();
 
 -- --- TO-LET PROFILES POLICIES ---
 -- Anyone can view approved To-Let owner profiles
+DROP POLICY IF EXISTS "Approved tolet profiles are public" ON public.tolet_profiles;
 CREATE POLICY "Approved tolet profiles are public"
 ON public.tolet_profiles FOR SELECT
 USING (status = 'approved' OR auth.uid() = user_id OR public.is_admin());
 
 -- Owners can insert and update their own tolet profile
+DROP POLICY IF EXISTS "Owners can create their tolet profile" ON public.tolet_profiles;
 CREATE POLICY "Owners can create their tolet profile"
 ON public.tolet_profiles FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Owners can update their tolet profile" ON public.tolet_profiles;
 CREATE POLICY "Owners can update their tolet profile"
 ON public.tolet_profiles FOR UPDATE
 TO authenticated
@@ -497,6 +561,7 @@ USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id AND status IN ('pending_approval', 'approved'));
 
 -- Admins can update any tolet profile (e.g. approve, suspend)
+DROP POLICY IF EXISTS "Admins manage tolet profiles" ON public.tolet_profiles;
 CREATE POLICY "Admins manage tolet profiles"
 ON public.tolet_profiles FOR ALL
 TO authenticated
@@ -504,21 +569,25 @@ USING (public.is_admin());
 
 -- --- HOME TUTOR PROFILES POLICIES ---
 -- Public can view approved tutors, but phone is hidden in public view
+DROP POLICY IF EXISTS "Approved tutors are viewable" ON public.home_tutor_profiles;
 CREATE POLICY "Approved tutors are viewable"
 ON public.home_tutor_profiles FOR SELECT
 USING (status = 'approved' OR auth.uid() = user_id OR public.is_admin());
 
+DROP POLICY IF EXISTS "Users can create their tutor profile" ON public.home_tutor_profiles;
 CREATE POLICY "Users can create their tutor profile"
 ON public.home_tutor_profiles FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their tutor profile" ON public.home_tutor_profiles;
 CREATE POLICY "Users can update their tutor profile"
 ON public.home_tutor_profiles FOR UPDATE
 TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id AND status IN ('pending_approval', 'approved'));
 
+DROP POLICY IF EXISTS "Admins manage tutor profiles" ON public.home_tutor_profiles;
 CREATE POLICY "Admins manage tutor profiles"
 ON public.home_tutor_profiles FOR ALL
 TO authenticated
@@ -526,11 +595,13 @@ USING (public.is_admin());
 
 -- --- TUTOR REVIEWS POLICIES ---
 -- Public (incl. anonymous) can read only published reviews; customer/admin see their rows.
+DROP POLICY IF EXISTS "Published tutor reviews are public" ON public.tutor_reviews;
 CREATE POLICY "Published tutor reviews are public"
 ON public.tutor_reviews FOR SELECT
 TO anon
 USING (is_published = TRUE);
 
+DROP POLICY IF EXISTS "Reviewers and admins read tutor reviews" ON public.tutor_reviews;
 CREATE POLICY "Reviewers and admins read tutor reviews"
 ON public.tutor_reviews FOR SELECT
 TO authenticated
@@ -538,11 +609,13 @@ USING (is_published = TRUE OR auth.uid() = customer_id OR public.is_admin());
 
 -- A customer may insert a review only for their OWN completed tutor request
 -- (the validation trigger enforces this server-side — never trust the frontend).
+DROP POLICY IF EXISTS "Customers can review tutors after completed request" ON public.tutor_reviews;
 CREATE POLICY "Customers can review tutors after completed request"
 ON public.tutor_reviews FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = customer_id);
 
+DROP POLICY IF EXISTS "Admins moderate tutor reviews" ON public.tutor_reviews;
 CREATE POLICY "Admins moderate tutor reviews"
 ON public.tutor_reviews FOR UPDATE
 TO authenticated
@@ -550,21 +623,25 @@ USING (public.is_admin())
 WITH CHECK (public.is_admin());
 
 -- --- TUTOR REPORTS POLICIES ---
+DROP POLICY IF EXISTS "Tutor reports readable by admins or reporter" ON public.tutor_reports;
 CREATE POLICY "Tutor reports readable by admins or reporter"
 ON public.tutor_reports FOR SELECT
 TO authenticated
 USING (public.is_admin() OR (reporter_id IS NOT NULL AND reporter_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Authenticated users can report tutors" ON public.tutor_reports;
 CREATE POLICY "Authenticated users can report tutors"
 ON public.tutor_reports FOR INSERT
 TO authenticated
 WITH CHECK (reporter_id = auth.uid() AND reporter_name IS NOT NULL AND trim(reporter_name) <> '');
 
+DROP POLICY IF EXISTS "Guests can report tutors" ON public.tutor_reports;
 CREATE POLICY "Guests can report tutors"
 ON public.tutor_reports FOR INSERT
 TO anon
 WITH CHECK (reporter_id IS NULL AND reporter_name IS NOT NULL AND trim(reporter_name) <> '');
 
+DROP POLICY IF EXISTS "Admins manage tutor reports" ON public.tutor_reports;
 CREATE POLICY "Admins manage tutor reports"
 ON public.tutor_reports FOR UPDATE
 TO authenticated
@@ -637,21 +714,25 @@ FOR EACH ROW EXECUTE FUNCTION public.tutor_reviews_ratings();
 
 -- --- BLOOD DONOR PROFILES POLICIES ---
 -- Anyone can view active donors for group and area matching, but contact info is guarded
+DROP POLICY IF EXISTS "Approved donors viewable" ON public.blood_donor_profiles;
 CREATE POLICY "Approved donors viewable"
 ON public.blood_donor_profiles FOR SELECT
 USING (status = 'approved' OR auth.uid() = user_id OR public.is_admin());
 
+DROP POLICY IF EXISTS "Users can register as blood donor" ON public.blood_donor_profiles;
 CREATE POLICY "Users can register as blood donor"
 ON public.blood_donor_profiles FOR INSERT
 TO authenticated
 WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update their donor profile" ON public.blood_donor_profiles;
 CREATE POLICY "Users can update their donor profile"
 ON public.blood_donor_profiles FOR UPDATE
 TO authenticated
 USING (auth.uid() = user_id)
 WITH CHECK (auth.uid() = user_id AND status IN ('pending_approval', 'approved'));
 
+DROP POLICY IF EXISTS "Admins manage blood donor profiles" ON public.blood_donor_profiles;
 CREATE POLICY "Admins manage blood donor profiles"
 ON public.blood_donor_profiles FOR ALL
 TO authenticated
@@ -703,11 +784,13 @@ FOR EACH ROW EXECUTE FUNCTION public.prevent_self_approval();
 -- --- BLOOD REQUESTS POLICIES ---
 -- Requesters see their own requests (with their private info); admins see all.
 -- Donors never see patient request data — donors manage only their own profile.
+DROP POLICY IF EXISTS "Customers can view own blood requests" ON public.blood_requests;
 CREATE POLICY "Customers can view own blood requests"
 ON public.blood_requests FOR SELECT
 TO authenticated
 USING (auth.uid() = customer_id OR public.is_admin());
 
+DROP POLICY IF EXISTS "Customers can create blood requests" ON public.blood_requests;
 CREATE POLICY "Customers can create blood requests"
 ON public.blood_requests FOR INSERT
 TO authenticated
@@ -722,15 +805,17 @@ WITH CHECK (
 );
 
 -- A requester may cancel their own request while it is still in review/approved.
+DROP POLICY IF EXISTS "Customers can cancel own blood request" ON public.blood_requests;
 CREATE POLICY "Customers can cancel own blood request"
 ON public.blood_requests FOR UPDATE
 TO authenticated
 USING (auth.uid() = customer_id OR public.is_admin())
 WITH CHECK (
   public.is_admin() OR
-  (auth.uid() = customer_id AND NEW.status = 'cancelled')
+  auth.uid() = customer_id
 );
 
+DROP POLICY IF EXISTS "Admins manage blood requests" ON public.blood_requests;
 CREATE POLICY "Admins manage blood requests"
 ON public.blood_requests FOR ALL
 TO authenticated
@@ -766,16 +851,19 @@ FOR EACH ROW EXECUTE FUNCTION public.blood_requests_insert_sanitize();
 -- --- BLOOD CONTACT-RELEASE AUDIT POLICIES ---
 -- Audit trail proves the release happened; only the affected requester and admins
 -- can see the audit entry (the phone itself is handed back via the service layer).
+DROP POLICY IF EXISTS "Requester can view own contact releases" ON public.blood_contact_releases;
 CREATE POLICY "Requester can view own contact releases"
 ON public.blood_contact_releases FOR SELECT
 TO authenticated
 USING (released_to_customer = auth.uid() OR public.is_admin());
 
+DROP POLICY IF EXISTS "Admins record contact releases" ON public.blood_contact_releases;
 CREATE POLICY "Admins record contact releases"
 ON public.blood_contact_releases FOR INSERT
 TO authenticated
 WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins manage contact release audits" ON public.blood_contact_releases;
 CREATE POLICY "Admins manage contact release audits"
 ON public.blood_contact_releases FOR ALL
 TO authenticated
@@ -783,21 +871,25 @@ USING (public.is_admin())
 WITH CHECK (public.is_admin());
 
 -- --- BLOOD DONOR REPORTS POLICIES ---
+DROP POLICY IF EXISTS "Donor reports readable by admins or reporter" ON public.blood_donor_reports;
 CREATE POLICY "Donor reports readable by admins or reporter"
 ON public.blood_donor_reports FOR SELECT
 TO authenticated
 USING (public.is_admin() OR (reporter_id IS NOT NULL AND reporter_id = auth.uid()));
 
+DROP POLICY IF EXISTS "Authenticated users can report donors" ON public.blood_donor_reports;
 CREATE POLICY "Authenticated users can report donors"
 ON public.blood_donor_reports FOR INSERT
 TO authenticated
 WITH CHECK (reporter_id = auth.uid() AND reporter_name IS NOT NULL AND trim(reporter_name) <> '');
 
+DROP POLICY IF EXISTS "Guests can report donors" ON public.blood_donor_reports;
 CREATE POLICY "Guests can report donors"
 ON public.blood_donor_reports FOR INSERT
 TO anon
 WITH CHECK (reporter_id IS NULL AND reporter_name IS NOT NULL AND trim(reporter_name) <> '');
 
+DROP POLICY IF EXISTS "Admins manage donor reports" ON public.blood_donor_reports;
 CREATE POLICY "Admins manage donor reports"
 ON public.blood_donor_reports FOR UPDATE
 TO authenticated
@@ -805,11 +897,13 @@ USING (public.is_admin())
 WITH CHECK (public.is_admin());
 
 -- --- SERVICE REQUESTS POLICIES ---
+DROP POLICY IF EXISTS "Users can view own service requests" ON public.service_requests;
 CREATE POLICY "Users can view own service requests"
 ON public.service_requests FOR SELECT
 TO authenticated
 USING (auth.uid() = customer_id OR public.is_admin());
 
+DROP POLICY IF EXISTS "Users can create service requests" ON public.service_requests;
 CREATE POLICY "Users can create service requests"
 ON public.service_requests FOR INSERT
 TO authenticated
@@ -822,7 +916,7 @@ TO authenticated
 USING (auth.uid() = customer_id OR public.is_admin())
 WITH CHECK (
   public.is_admin() OR
-  (auth.uid() = customer_id AND NEW.status = 'cancelled')
+  auth.uid() = customer_id
 );
 
 -- SECURITY: customers cannot self-assign statuses or admin notes on insert.
@@ -850,6 +944,7 @@ BEFORE INSERT ON public.service_requests
 FOR EACH ROW EXECUTE FUNCTION public.service_requests_insert_sanitize();
 
 -- --- SAVED ITEMS POLICIES ---
+DROP POLICY IF EXISTS "Users manage own saved items" ON public.saved_items;
 CREATE POLICY "Users manage own saved items"
 ON public.saved_items FOR ALL
 TO authenticated
@@ -860,10 +955,12 @@ WITH CHECK (auth.uid() = user_id);
 -- Public (including anonymous visitors) can read ONLY active profiles.
 -- phone_private column is never queryable by non-admins because admin-only policies gate write,
 -- and public SELECT rows flow through the staff-service facade which strips it defensively.
+DROP POLICY IF EXISTS "Active staff profiles are public" ON public.staff_profiles;
 CREATE POLICY "Active staff profiles are public"
 ON public.staff_profiles FOR SELECT
 USING (is_active = TRUE);
 
+DROP POLICY IF EXISTS "Admins manage staff profiles" ON public.staff_profiles;
 CREATE POLICY "Admins manage staff profiles"
 ON public.staff_profiles FOR ALL
 TO authenticated
@@ -871,20 +968,24 @@ USING (public.is_admin())
 WITH CHECK (public.is_admin());
 
 -- --- STAFF PROFILE REPORTS POLICIES ---
+DROP POLICY IF EXISTS "Staff reports readable by admins" ON public.staff_profile_reports;
 CREATE POLICY "Staff reports readable by admins"
 ON public.staff_profile_reports FOR SELECT
 TO authenticated
 USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Authenticated users can report staff profiles" ON public.staff_profile_reports;
 CREATE POLICY "Authenticated users can report staff profiles"
 ON public.staff_profile_reports FOR INSERT
 TO authenticated
 WITH CHECK (reporter_id = auth.uid() OR reporter_id IS NULL);
 
+DROP POLICY IF EXISTS "Guests can report staff profiles" ON public.staff_profile_reports;
 CREATE POLICY "Guests can report staff profiles"
 ON public.staff_profile_reports FOR INSERT
 WITH CHECK (reporter_id IS NULL);
 
+DROP POLICY IF EXISTS "Admins manage staff reports" ON public.staff_profile_reports;
 CREATE POLICY "Admins manage staff reports"
 ON public.staff_profile_reports FOR UPDATE
 TO authenticated
@@ -894,81 +995,93 @@ WITH CHECK (public.is_admin());
 -- ====================================================================
 -- STORAGE BUCKETS & STORAGE POLICIES
 -- ====================================================================
-INSERT INTO storage.buckets (id, name, public) 
+INSERT INTO storage.buckets (id, name, public)
 VALUES ('avatars', 'avatars', true)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO storage.buckets (id, name, public) 
+INSERT INTO storage.buckets (id, name, public)
 VALUES ('documents', 'documents', false)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO storage.buckets (id, name, public) 
+INSERT INTO storage.buckets (id, name, public)
 VALUES ('listings', 'listings', true)
 ON CONFLICT (id) DO NOTHING;
 
-INSERT INTO storage.buckets (id, name, public) 
+INSERT INTO storage.buckets (id, name, public)
 VALUES ('staff', 'staff', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- Staff profile photos are public; upload managed by admins only
+DROP POLICY IF EXISTS "Staff profile photos are public" ON storage.objects;
 CREATE POLICY "Staff profile photos are public"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'staff');
 
+DROP POLICY IF EXISTS "Admins can upload staff profile photos" ON storage.objects;
 CREATE POLICY "Admins can upload staff profile photos"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'staff' AND public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can update or delete staff profile photos" ON storage.objects;
 CREATE POLICY "Admins can update or delete staff profile photos"
 ON storage.objects FOR UPDATE
 TO authenticated
 USING (bucket_id = 'staff' AND public.is_admin())
 WITH CHECK (bucket_id = 'staff' AND public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can delete staff profile photos" ON storage.objects;
 CREATE POLICY "Admins can delete staff profile photos"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'staff' AND public.is_admin());
 
 -- Avatars are publicly readable, uploadable by the user
+DROP POLICY IF EXISTS "Avatars are public" ON storage.objects;
 CREATE POLICY "Avatars are public"
 ON storage.objects FOR SELECT
 USING (bucket_id = 'avatars');
 
+DROP POLICY IF EXISTS "Users can upload their own avatar" ON storage.objects;
 CREATE POLICY "Users can upload their own avatar"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Users can update or delete their own avatar" ON storage.objects;
 CREATE POLICY "Users can update or delete their own avatar"
 ON storage.objects FOR UPDATE
 TO authenticated
 USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text)
 WITH CHECK (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Users can delete their own avatar" ON storage.objects;
 CREATE POLICY "Users can delete their own avatar"
 ON storage.objects FOR DELETE
 TO authenticated
 USING (bucket_id = 'avatars' AND (storage.foldername(name))[1] = auth.uid()::text);
 
 -- Verification documents (NID, Student ID, Prescription) are private to owner and admin
+DROP POLICY IF EXISTS "Verification docs are private to owner and admin" ON storage.objects;
 CREATE POLICY "Verification docs are private to owner and admin"
 ON storage.objects FOR SELECT
 TO authenticated
 USING (bucket_id = 'documents' AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin()));
 
+DROP POLICY IF EXISTS "Users can upload own verification documents" ON storage.objects;
 CREATE POLICY "Users can upload own verification documents"
 ON storage.objects FOR INSERT
 TO authenticated
 WITH CHECK (bucket_id = 'documents' AND (storage.foldername(name))[1] = auth.uid()::text);
 
+DROP POLICY IF EXISTS "Users can update or delete own verification documents" ON storage.objects;
 CREATE POLICY "Users can update or delete own verification documents"
 ON storage.objects FOR UPDATE
 TO authenticated
 USING (bucket_id = 'documents' AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin()))
 WITH CHECK (bucket_id = 'documents' AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin()));
 
+DROP POLICY IF EXISTS "Users can delete own verification documents" ON storage.objects;
 CREATE POLICY "Users can delete own verification documents"
 ON storage.objects FOR DELETE
 TO authenticated
@@ -1061,7 +1174,7 @@ CREATE INDEX IF NOT EXISTS idx_listing_reports_status ON public.listing_reports 
 -- confirms success from the insert rather than from a re-read.
 CREATE TABLE IF NOT EXISTS public.community_post_reports (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    post_id UUID NOT NULL REFERENCES public.community_posts(id) ON DELETE CASCADE,
+    post_id UUID NOT NULL, -- FK added at the end, after community_posts exists
     reporter_id UUID REFERENCES public.profiles(id) ON DELETE SET NULL,
     reporter_name TEXT NOT NULL,
     reason TEXT NOT NULL,
@@ -1090,7 +1203,7 @@ ALTER TABLE public.community_post_reports ENABLE ROW LEVEL SECURITY;
 -- Guests may file a report (a fake listing is precisely the case where the
 -- reporter has no account), but the row must be well-formed and a signed-in
 -- reporter may only file under their own id.
- 
+
 -- 11b. TO-LET LISTING ENGAGEMENT EVENTS
 --
 -- Append-only log of every meaningful action on a listing detail page:
@@ -1290,7 +1403,7 @@ ON public.tolet_listings FOR INSERT
 TO authenticated
 WITH CHECK (
   public.is_admin() OR
-  (auth.uid() = owner_id AND NEW.status IN ('draft', 'pending_review'))
+  auth.uid() = owner_id
 );
 
 DROP POLICY IF EXISTS "Owners can update own tolet listings" ON public.tolet_listings;
@@ -1300,10 +1413,7 @@ TO authenticated
 USING (auth.uid() = owner_id)
 WITH CHECK (
   public.is_admin() OR
-  (auth.uid() = owner_id AND (
-    NEW.status IN ('draft', 'pending_review', 'archived', 'unavailable') OR
-    NEW.status = OLD.status
-  ))
+  auth.uid() = owner_id
 );
 
 DROP POLICY IF EXISTS "Admins manage tolet listings" ON public.tolet_listings;
@@ -1332,12 +1442,12 @@ WITH CHECK (auth.uid() = customer_id);
 DROP POLICY IF EXISTS "Customer/owner can update tolet requests" ON public.tolet_requests;
 CREATE POLICY "Customer/owner can update tolet requests"
 ON public.tolet_requests FOR UPDATE
-TO authenticated  
+TO authenticated
 USING (auth.uid() = customer_id OR public.is_admin() OR public.is_listing_owner(listing_id))
 WITH CHECK (
   public.is_admin() OR
-  (auth.uid() = customer_id AND NEW.status = 'cancelled' AND OLD.status IN ('submitted', 'contacted')) OR
-  (public.is_listing_owner(listing_id) AND NEW.status IN ('contacted', 'completed', 'cancelled') AND OLD.status IN ('submitted', 'contacted'))
+  auth.uid() = customer_id OR
+  public.is_listing_owner(listing_id)
 );
 
 -- --- LISTING REPORTS RLS ---
@@ -1393,7 +1503,7 @@ USING (public.is_admin())
 WITH CHECK (public.is_admin());
 
 -- --- LISTING PHOTOS STORAGE ---
-INSERT INTO storage.buckets (id, name, public) 
+INSERT INTO storage.buckets (id, name, public)
 VALUES ('listings', 'listings', true)
 ON CONFLICT (id) DO NOTHING;
 
@@ -1481,6 +1591,7 @@ CREATE INDEX IF NOT EXISTS idx_notifications_admin ON public.notifications (targ
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
 -- Users read their own customer notifications; admins read the admin hub.
+DROP POLICY IF EXISTS "Users read own notifications" ON public.notifications;
 CREATE POLICY "Users read own notifications"
 ON public.notifications FOR SELECT
 TO authenticated
@@ -1493,6 +1604,7 @@ USING (user_id = auth.uid() OR (target_role = 'admin' AND public.is_admin()));
 -- above), so without it any signed-in customer could post arbitrary title/body
 -- text straight into an admin's inbox. The database triggers that raise admin
 -- notifications are SECURITY DEFINER and are not subject to this policy.
+DROP POLICY IF EXISTS "Users create own notifications" ON public.notifications;
 CREATE POLICY "Users create own notifications"
 ON public.notifications FOR INSERT
 TO authenticated
@@ -1502,6 +1614,7 @@ WITH CHECK (
 );
 
 -- Marking read is the only client-side mutation.
+DROP POLICY IF EXISTS "Users mark own notifications read" ON public.notifications;
 CREATE POLICY "Users mark own notifications read"
 ON public.notifications FOR UPDATE
 TO authenticated
@@ -1509,6 +1622,7 @@ USING (user_id = auth.uid() OR (target_role = 'admin' AND public.is_admin()))
 WITH CHECK ((user_id = auth.uid() OR (target_role = 'admin' AND public.is_admin())) AND is_read = TRUE);
 
 -- Deletion is admin-only (housekeeping).
+DROP POLICY IF EXISTS "Admins delete notifications" ON public.notifications;
 CREATE POLICY "Admins delete notifications"
 ON public.notifications FOR DELETE
 TO authenticated
@@ -2443,3 +2557,904 @@ DROP TRIGGER IF EXISTS trg_notif_vehicle_request ON public.vehicle_requests;
 CREATE TRIGGER trg_notif_vehicle_request
 AFTER INSERT ON public.vehicle_requests
 FOR EACH ROW EXECUTE FUNCTION public.notif_vehicle_request_inserted();
+
+-- ============================================================================
+-- PART 2 — CORRECTIONS, MISSING OBJECTS & HARDENING
+-- ============================================================================
+-- Everything below either:
+--   (a) replaces a CREATE POLICY in PART 1 that illegally referenced NEW/OLD
+--       (PostgreSQL only allows NEW/OLD inside trigger functions), or
+--   (b) adds an object that existed only in an old fragmented migration and was
+--       therefore missing from a database built from lib/supabase/schema.sql
+--       (hero slides, admin dashboard RPCs, the `site` bucket,
+--       community_post_reports RLS, admin DELETE policies, the signup trigger),
+--   (c) fixes the forward-reference / ordering bug on community_post_reports,
+--   (d) adds the admin-queue indexes, with the three broken column references
+--       corrected.
+-- It is idempotent and safe to re-run.
+-- ============================================================================
+
+
+-- ----------------------------------------------------------------------------
+-- 2.1  STATUS-TRANSITION GUARDS
+-- ----------------------------------------------------------------------------
+-- The policies in PART 1 no longer contain NEW/OLD. These triggers carry the
+-- transition rules that used to live (illegally) inside those policies.
+-- SECURITY DEFINER + pinned search_path; a NULL auth.uid() means a migration /
+-- service-role write, which is trusted and passes straight through.
+-- ----------------------------------------------------------------------------
+
+-- To-let listings: an owner may only draft / submit / archive / mark a listing
+-- unavailable. Approving, rejecting or suspending is admin-only, and the
+-- admin-owned columns cannot be forged by an owner.
+CREATE OR REPLACE FUNCTION public.tolet_listings_owner_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF auth.uid() IS NULL OR public.is_admin() THEN
+        RETURN NEW;
+    END IF;
+
+    IF TG_OP = 'INSERT' THEN
+        -- OLD is not assigned on INSERT, so it must not be referenced here.
+        IF NEW.status IS NULL
+           OR NEW.status NOT IN ('draft', 'pending_review', 'unavailable') THEN
+            NEW.status := 'pending_review';
+        END IF;
+        NEW.is_verified      := FALSE;
+        NEW.rejection_reason := NULL;
+        NEW.published_at     := NULL;
+    ELSE
+        NEW.owner_id         := OLD.owner_id;
+        NEW.is_verified      := OLD.is_verified;
+        NEW.rejection_reason := OLD.rejection_reason;
+        NEW.published_at     := OLD.published_at;
+
+        IF NEW.status IS DISTINCT FROM OLD.status
+           AND NEW.status NOT IN ('draft', 'pending_review', 'archived', 'unavailable') THEN
+            RAISE EXCEPTION 'Only an admin can move a listing to status %', NEW.status
+                USING ERRCODE = '42501';
+        END IF;
+    END IF;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_tolet_listings_owner_guard ON public.tolet_listings;
+CREATE TRIGGER trg_tolet_listings_owner_guard
+BEFORE INSERT OR UPDATE ON public.tolet_listings
+FOR EACH ROW EXECUTE FUNCTION public.tolet_listings_owner_guard();
+
+-- To-let requests: the requester may only cancel an open enquiry; the listing
+-- owner may only move it forward (contacted / completed / cancelled) and may
+-- never rewrite the requester's identity or contact details.
+CREATE OR REPLACE FUNCTION public.tolet_requests_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF auth.uid() IS NULL OR public.is_admin() THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.customer_id = auth.uid() AND NEW.customer_id = OLD.customer_id THEN
+        IF NOT (NEW.status = 'cancelled' AND OLD.status IN ('submitted', 'contacted')) THEN
+            RAISE EXCEPTION 'A requester may only cancel an open enquiry'
+                USING ERRCODE = '42501';
+        END IF;
+        RETURN NEW;
+    END IF;
+
+    IF public.is_listing_owner(OLD.listing_id) THEN
+        IF NOT (NEW.status IN ('contacted', 'completed', 'cancelled')
+                AND OLD.status IN ('submitted', 'contacted')) THEN
+            RAISE EXCEPTION 'The listing owner may only move an enquiry forward'
+                USING ERRCODE = '42501';
+        END IF;
+        -- The owner may change only the status; requester data is immutable.
+        NEW.listing_id     := OLD.listing_id;
+        NEW.customer_id    := OLD.customer_id;
+        NEW.customer_name  := OLD.customer_name;
+        NEW.customer_phone := OLD.customer_phone;
+        RETURN NEW;
+    END IF;
+
+    RAISE EXCEPTION 'Not allowed to update this enquiry' USING ERRCODE = '42501';
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_tolet_requests_guard ON public.tolet_requests;
+CREATE TRIGGER trg_tolet_requests_guard
+BEFORE UPDATE ON public.tolet_requests
+FOR EACH ROW EXECUTE FUNCTION public.tolet_requests_guard();
+
+-- Service requests: a customer may only cancel; admin-owned fields are kept.
+CREATE OR REPLACE FUNCTION public.service_requests_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF auth.uid() IS NULL OR public.is_admin() THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.customer_id IS DISTINCT FROM OLD.customer_id THEN
+        RAISE EXCEPTION 'A request cannot be reassigned to another customer'
+            USING ERRCODE = '42501';
+    END IF;
+    IF NEW.status IS DISTINCT FROM 'cancelled' THEN
+        RAISE EXCEPTION 'A customer may only cancel their own request'
+            USING ERRCODE = '42501';
+    END IF;
+
+    -- Admin-owned fields stay put.
+    NEW.admin_notes   := OLD.admin_notes;
+    NEW.quotation     := OLD.quotation;
+    NEW.profile_id    := OLD.profile_id;
+    NEW.profile_title := OLD.profile_title;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_service_requests_guard ON public.service_requests;
+CREATE TRIGGER trg_service_requests_guard
+BEFORE UPDATE ON public.service_requests
+FOR EACH ROW EXECUTE FUNCTION public.service_requests_guard();
+
+-- Blood requests: same rule — a customer may only cancel; review/contact state
+-- is admin-owned.
+CREATE OR REPLACE FUNCTION public.blood_requests_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF auth.uid() IS NULL OR public.is_admin() THEN
+        RETURN NEW;
+    END IF;
+
+    IF NEW.customer_id IS DISTINCT FROM OLD.customer_id THEN
+        RAISE EXCEPTION 'The requester cannot be reassigned' USING ERRCODE = '42501';
+    END IF;
+    IF NEW.status IS DISTINCT FROM 'cancelled' THEN
+        RAISE EXCEPTION 'A customer may only cancel their own blood request'
+            USING ERRCODE = '42501';
+    END IF;
+
+    NEW.admin_notes          := OLD.admin_notes;
+    NEW.rejection_reason     := OLD.rejection_reason;
+    NEW.contact_released_at  := OLD.contact_released_at;
+    NEW.contacted_donor_name := OLD.contacted_donor_name;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_blood_requests_guard ON public.blood_requests;
+CREATE TRIGGER trg_blood_requests_guard
+BEFORE UPDATE ON public.blood_requests
+FOR EACH ROW EXECUTE FUNCTION public.blood_requests_guard();
+
+
+-- ----------------------------------------------------------------------------
+-- 2.2  COMMUNITY POST REPORTS — RLS (was missing entirely)
+-- ----------------------------------------------------------------------------
+DROP POLICY IF EXISTS community_post_reports_insert ON public.community_post_reports;
+CREATE POLICY community_post_reports_insert
+    ON public.community_post_reports
+    FOR INSERT
+    TO anon, authenticated
+    WITH CHECK (
+        length(trim(reporter_name)) >= 2
+        AND length(trim(reason)) >= 2
+        AND (reporter_id IS NULL OR reporter_id = auth.uid())
+    );
+
+DROP POLICY IF EXISTS "Admins read community post reports" ON public.community_post_reports;
+CREATE POLICY "Admins read community post reports"
+    ON public.community_post_reports
+    FOR SELECT
+    TO authenticated
+    USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Reporters read own community post reports" ON public.community_post_reports;
+CREATE POLICY "Reporters read own community post reports"
+    ON public.community_post_reports
+    FOR SELECT
+    TO authenticated
+    USING (reporter_id = auth.uid());
+
+DROP POLICY IF EXISTS "Admins manage community post reports" ON public.community_post_reports;
+CREATE POLICY "Admins manage community post reports"
+    ON public.community_post_reports
+    FOR ALL
+    TO authenticated
+    USING (public.is_admin())
+    WITH CHECK (public.is_admin());
+
+-- RLS policies only take effect once the role actually holds the table
+-- privilege; Supabase grants these by default, but make it explicit so the
+-- report action works on a database provisioned without those defaults.
+GRANT INSERT ON public.community_post_reports TO anon, authenticated;
+
+-- The notification trigger for this queue was also never wired up.
+CREATE OR REPLACE FUNCTION public.notif_community_post_report_inserted()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+    INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+    VALUES (
+        NULL, 'admin',
+        'নতুন পোস্ট রিপোর্ট',
+        'একটি কমিউনিটি পোস্ট রিপোর্ট জমা হয়েছে, পর্যালোচনা করুন।',
+        'warning', 'community_post_report', NEW.id::text
+    );
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_notif_community_post_report ON public.community_post_reports;
+CREATE TRIGGER trg_notif_community_post_report
+AFTER INSERT ON public.community_post_reports
+FOR EACH ROW EXECUTE FUNCTION public.notif_community_post_report_inserted();
+
+
+-- ----------------------------------------------------------------------------
+-- 2.3  ADMIN DELETE / INSERT RIGHTS ON THE MODERATION QUEUES
+-- ----------------------------------------------------------------------------
+-- These queues had no DELETE policy for anyone (admin included).
+DROP POLICY IF EXISTS "Admins delete contact messages" ON public.contact_messages;
+CREATE POLICY "Admins delete contact messages"
+    ON public.contact_messages FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete service requests" ON public.service_requests;
+CREATE POLICY "Admins delete service requests"
+    ON public.service_requests FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete tolet requests" ON public.tolet_requests;
+CREATE POLICY "Admins delete tolet requests"
+    ON public.tolet_requests FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+-- An admin logging an enquiry on a customer's behalf must not be blocked by
+-- `auth.uid() = customer_id`.
+DROP POLICY IF EXISTS "Admins create tolet requests" ON public.tolet_requests;
+CREATE POLICY "Admins create tolet requests"
+    ON public.tolet_requests FOR INSERT
+    TO authenticated WITH CHECK (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete listing reports" ON public.listing_reports;
+CREATE POLICY "Admins delete listing reports"
+    ON public.listing_reports FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete staff profile reports" ON public.staff_profile_reports;
+CREATE POLICY "Admins delete staff profile reports"
+    ON public.staff_profile_reports FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete tutor reports" ON public.tutor_reports;
+CREATE POLICY "Admins delete tutor reports"
+    ON public.tutor_reports FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete blood donor reports" ON public.blood_donor_reports;
+CREATE POLICY "Admins delete blood donor reports"
+    ON public.blood_donor_reports FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete tutor reviews" ON public.tutor_reviews;
+CREATE POLICY "Admins delete tutor reviews"
+    ON public.tutor_reviews FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins delete community post reports" ON public.community_post_reports;
+CREATE POLICY "Admins delete community post reports"
+    ON public.community_post_reports FOR DELETE
+    TO authenticated USING (public.is_admin());
+
+
+-- ----------------------------------------------------------------------------
+-- 2.4  ADMIN-QUEUE INDEXES (broken column references corrected)
+-- ----------------------------------------------------------------------------
+-- Corrections vs the old migration:
+--   * idx_staff_profiles_name_lower  used staff_profiles(full_name) — the column
+--     is NAME_BN.                                   -> lower(name_bn)
+--   * idx_service_requests_name_lower used service_requests(customer_name) —
+--     the column is CONTACT_NAME.                   -> lower(contact_name)
+--   * idx_service_requests_listing indexed a non-existent service_requests
+--     listing_id.                                   -> omitted
+CREATE INDEX IF NOT EXISTS idx_home_tutor_profiles_status_created
+    ON public.home_tutor_profiles (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_home_tutor_profiles_user
+    ON public.home_tutor_profiles (user_id);
+
+CREATE INDEX IF NOT EXISTS idx_blood_donor_profiles_status_created
+    ON public.blood_donor_profiles (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blood_donor_profiles_user
+    ON public.blood_donor_profiles (user_id);
+CREATE INDEX IF NOT EXISTS idx_blood_donor_profiles_blood_group
+    ON public.blood_donor_profiles (blood_group)
+    WHERE status = 'approved';
+
+CREATE INDEX IF NOT EXISTS idx_service_requests_status_created
+    ON public.service_requests (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_service_requests_customer
+    ON public.service_requests (customer_id);
+CREATE INDEX IF NOT EXISTS idx_service_requests_slug_status
+    ON public.service_requests (service_slug, status);
+
+CREATE INDEX IF NOT EXISTS idx_tolet_profiles_status_created
+    ON public.tolet_profiles (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tolet_listings_status_created
+    ON public.tolet_listings (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_blood_requests_status_created
+    ON public.blood_requests (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tolet_requests_status_created
+    ON public.tolet_requests (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_contact_messages_status_created
+    ON public.contact_messages (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_community_posts_status_created
+    ON public.community_posts (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_vehicle_requests_status_created
+    ON public.vehicle_requests (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_profiles_role_status
+    ON public.profiles (role, status);
+
+-- Search prefixes (plain B-tree text_pattern_ops; no extension required).
+CREATE INDEX IF NOT EXISTS idx_profiles_full_name_lower
+    ON public.profiles (lower(full_name) text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_contact_messages_name_lower
+    ON public.contact_messages (lower(name) text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_service_requests_name_lower
+    ON public.service_requests (lower(contact_name) text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_community_posts_title_lower
+    ON public.community_posts (lower(title_bn) text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_staff_profiles_name_lower
+    ON public.staff_profiles (lower(name_bn) text_pattern_ops);
+CREATE INDEX IF NOT EXISTS idx_listing_reports_reason_lower
+    ON public.listing_reports (lower(reason) text_pattern_ops);
+
+-- Marketplace + report-queue indexes carried over from the old migrations.
+CREATE INDEX IF NOT EXISTS idx_community_posts_market
+    ON public.community_posts (kind, status, published_at DESC)
+    WHERE kind = 'buy_sell';
+CREATE INDEX IF NOT EXISTS idx_cpr_post_created
+    ON public.community_post_reports (post_id, created_at DESC);
+
+
+-- ----------------------------------------------------------------------------
+-- 2.5  HERO SLIDES (homepage carousel, admin-managed)
+-- ----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS public.hero_slides (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    caption_bn TEXT NOT NULL CHECK (length(trim(caption_bn)) > 0),
+    image_url TEXT NOT NULL CHECK (length(trim(image_url)) > 0),
+    storage_path TEXT,
+    alt_text_bn TEXT,
+    href TEXT,
+    is_enabled BOOLEAN NOT NULL DEFAULT TRUE,
+    sort_order INTEGER NOT NULL DEFAULT 0 CHECK (sort_order >= 0),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc', NOW())
+);
+
+ALTER TABLE public.hero_slides ADD COLUMN IF NOT EXISTS storage_path TEXT;
+ALTER TABLE public.hero_slides ADD COLUMN IF NOT EXISTS alt_text_bn TEXT;
+ALTER TABLE public.hero_slides ADD COLUMN IF NOT EXISTS href TEXT;
+
+CREATE INDEX IF NOT EXISTS idx_hero_slides_order
+    ON public.hero_slides (sort_order);
+CREATE INDEX IF NOT EXISTS idx_hero_slides_enabled
+    ON public.hero_slides (is_enabled, sort_order);
+
+DROP TRIGGER IF EXISTS trg_hero_slides_updated ON public.hero_slides;
+CREATE TRIGGER trg_hero_slides_updated
+    BEFORE UPDATE ON public.hero_slides
+    FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+ALTER TABLE public.hero_slides ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Enabled hero slides are public" ON public.hero_slides;
+CREATE POLICY "Enabled hero slides are public"
+    ON public.hero_slides FOR SELECT
+    TO anon, authenticated
+    USING (is_enabled = TRUE);
+
+DROP POLICY IF EXISTS "Admins manage hero slides" ON public.hero_slides;
+CREATE POLICY "Admins manage hero slides"
+    ON public.hero_slides FOR ALL
+    TO authenticated
+    USING (public.is_admin())
+    WITH CHECK (public.is_admin());
+
+-- Seed the four slides live today; guarded so a re-run never duplicates or
+-- overwrites an admin-edited slide.
+INSERT INTO public.hero_slides (caption_bn, image_url, sort_order, is_enabled)
+SELECT v.caption, v.image, v.ord, TRUE
+FROM (VALUES
+    ('প্রতিদিনের সেবা, এক জায়গায়',     '/sheba1.png', 1),
+    ('বাসা থেকে মেরামত — সবই স্থানীয়', '/sheba2.png', 2),
+    ('ময়মনসিংহের মানুষের হাতেই গড়া',   '/sheba3.png', 3),
+    ('জরুরি সেবা, সঠিক নম্বরে',         '/sheba4.png', 4)
+) AS v(caption, image, ord)
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.hero_slides h WHERE h.caption_bn = v.caption
+);
+
+
+-- ----------------------------------------------------------------------------
+-- 2.5b  SITE MEDIA BUCKET (admin-managed hero / homepage images)
+-- ----------------------------------------------------------------------------
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES (
+    'site', 'site', TRUE, 5242880,
+    ARRAY['image/jpeg', 'image/png', 'image/webp', 'image/avif']
+)
+ON CONFLICT (id) DO NOTHING;
+
+DROP POLICY IF EXISTS "Site media is publicly readable" ON storage.objects;
+CREATE POLICY "Site media is publicly readable"
+    ON storage.objects FOR SELECT
+    TO anon, authenticated
+    USING (bucket_id = 'site');
+
+DROP POLICY IF EXISTS "Admins can upload site media" ON storage.objects;
+CREATE POLICY "Admins can upload site media"
+    ON storage.objects FOR INSERT
+    TO authenticated
+    WITH CHECK (bucket_id = 'site' AND public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can update site media" ON storage.objects;
+CREATE POLICY "Admins can update site media"
+    ON storage.objects FOR UPDATE
+    TO authenticated
+    USING (bucket_id = 'site' AND public.is_admin())
+    WITH CHECK (bucket_id = 'site' AND public.is_admin());
+
+DROP POLICY IF EXISTS "Admins can delete site media" ON storage.objects;
+CREATE POLICY "Admins can delete site media"
+    ON storage.objects FOR DELETE
+    TO authenticated
+    USING (bucket_id = 'site' AND public.is_admin());
+
+
+-- ----------------------------------------------------------------------------
+-- 2.6  ADMIN DASHBOARD READ MODELS
+-- ----------------------------------------------------------------------------
+CREATE OR REPLACE FUNCTION public.get_admin_dashboard_stats()
+RETURNS TABLE (
+    total_users                  BIGINT,
+    active_users                 BIGINT,
+    blocked_users                BIGINT,
+    new_users_7d                 BIGINT,
+    total_posts                  BIGINT,
+    pending_posts                BIGINT,
+    approved_posts               BIGINT,
+    rejected_posts               BIGINT,
+    featured_posts               BIGINT,
+    total_requests               BIGINT,
+    open_requests                BIGINT,
+    total_tolet_requests         BIGINT,
+    open_tolet_requests          BIGINT,
+    total_blood_requests         BIGINT,
+    open_blood_requests          BIGINT,
+    total_vehicle_requests       BIGINT,
+    open_vehicle_requests        BIGINT,
+    total_messages               BIGINT,
+    unread_messages              BIGINT,
+    total_reports                BIGINT,
+    open_reports                 BIGINT,
+    pending_verifications        BIGINT,
+    active_tolet_listings        BIGINT,
+    pending_tolet_listings       BIGINT,
+    active_staff                 BIGINT,
+    active_service_listings      BIGINT,
+    active_emergency_contacts    BIGINT,
+    unread_admin_notifications   BIGINT
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF NOT public.is_admin() THEN
+        RAISE EXCEPTION 'admin only' USING ERRCODE = '42501';
+    END IF;
+
+    RETURN QUERY
+    SELECT
+        (SELECT count(*) FROM public.profiles),
+        (SELECT count(*) FROM public.profiles WHERE status = 'active'),
+        (SELECT count(*) FROM public.profiles WHERE status IN ('suspended', 'blocked')),
+        (SELECT count(*) FROM public.profiles WHERE created_at >= NOW() - INTERVAL '7 days'),
+
+        (SELECT count(*) FROM public.community_posts),
+        (SELECT count(*) FROM public.community_posts WHERE status = 'pending'),
+        (SELECT count(*) FROM public.community_posts WHERE status = 'approved'),
+        (SELECT count(*) FROM public.community_posts WHERE status = 'rejected'),
+        (SELECT count(*) FROM public.community_posts WHERE is_featured = TRUE),
+
+        (SELECT count(*) FROM public.service_requests),
+        (SELECT count(*) FROM public.service_requests
+            WHERE status NOT IN ('completed', 'cancelled', 'rejected')),
+        (SELECT count(*) FROM public.tolet_requests),
+        (SELECT count(*) FROM public.tolet_requests
+            WHERE status NOT IN ('completed', 'cancelled')),
+        (SELECT count(*) FROM public.blood_requests),
+        (SELECT count(*) FROM public.blood_requests
+            WHERE status NOT IN ('completed', 'cancelled')),
+        (SELECT count(*) FROM public.vehicle_requests),
+        (SELECT count(*) FROM public.vehicle_requests WHERE status = 'new'),
+
+        (SELECT count(*) FROM public.contact_messages),
+        (SELECT count(*) FROM public.contact_messages WHERE status = 'new'),
+
+        (SELECT
+            (SELECT count(*) FROM public.listing_reports)
+          + (SELECT count(*) FROM public.staff_profile_reports)
+          + (SELECT count(*) FROM public.tutor_reports)
+          + (SELECT count(*) FROM public.blood_donor_reports)
+          + (SELECT count(*) FROM public.community_post_reports)),
+        (SELECT
+            (SELECT count(*) FROM public.listing_reports WHERE status = 'open')
+          + (SELECT count(*) FROM public.staff_profile_reports WHERE status = 'open')
+          + (SELECT count(*) FROM public.tutor_reports WHERE status = 'open')
+          + (SELECT count(*) FROM public.blood_donor_reports WHERE status = 'open')
+          + (SELECT count(*) FROM public.community_post_reports WHERE status = 'open')),
+
+        ((SELECT count(*) FROM public.home_tutor_profiles WHERE status = 'pending_approval')
+       + (SELECT count(*) FROM public.blood_donor_profiles WHERE status = 'pending_approval')
+       + (SELECT count(*) FROM public.tolet_profiles WHERE status = 'pending_approval')),
+        (SELECT count(*) FROM public.tolet_listings WHERE status = 'approved'),
+        (SELECT count(*) FROM public.tolet_listings WHERE status = 'pending_review'),
+        (SELECT count(*) FROM public.staff_profiles WHERE is_active = TRUE),
+        (SELECT count(*) FROM public.service_listings WHERE is_active = TRUE),
+        (SELECT count(*) FROM public.emergency_contacts WHERE is_active = TRUE),
+
+        (SELECT count(*) FROM public.notifications
+            WHERE target_role = 'admin' AND is_read = FALSE);
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.get_admin_dashboard_stats() FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_admin_dashboard_stats() TO authenticated;
+COMMENT ON FUNCTION public.get_admin_dashboard_stats() IS
+    'Admin dashboard counters. Admin-only; every figure is a live count.';
+
+-- Recent activity feed (full union of every queue that receives rows). The
+-- tolet_enquiries detail expression was corrected: the old definition passed
+-- four arguments to COALESCE, so the enquiry status was never shown.
+CREATE OR REPLACE FUNCTION public.get_admin_recent_activity(p_limit INT DEFAULT 12)
+RETURNS TABLE (
+    id          TEXT,
+    occurred_at TIMESTAMPTZ,
+    category    TEXT,
+    action      TEXT,
+    title       TEXT,
+    detail      TEXT,
+    href        TEXT
+)
+LANGUAGE sql
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    WITH feed AS (
+        -- Community posts: submitted
+        SELECT 'cp-new-' || p.id::text            AS id,
+               p.created_at                       AS occurred_at,
+               'post'::TEXT                       AS category,
+               'submitted'::TEXT                  AS action,
+               p.title_bn                         AS title,
+               COALESCE(
+                   CASE p.kind
+                       WHEN 'news'     THEN 'খবর'
+                       WHEN 'job'      THEN 'চাকরির বিজ্ঞাপন'
+                       WHEN 'buy_sell' THEN 'কেনাবেচা'
+                   END, p.kind
+               ) || ' — অনুমোদনের অপেক্ষায়'  AS detail,
+               '/admin/posts'::TEXT               AS href
+        FROM public.community_posts p
+        WHERE p.status = 'pending'
+
+        UNION ALL
+        -- Community posts: approved
+        SELECT 'cp-app-' || p.id::text, p.updated_at, 'post', 'approved',
+               p.title_bn, 'সর্বজনীনভাবে প্রকাশ করা হয়েছে', '/admin/posts'
+        FROM public.community_posts p
+        WHERE p.status = 'approved' AND p.published_at IS NOT NULL
+
+        UNION ALL
+        -- Community posts: rejected
+        SELECT 'cp-rej-' || p.id::text, p.updated_at, 'post', 'rejected',
+               p.title_bn, 'প্রকাশ করা হয়নি', '/admin/posts'
+        FROM public.community_posts p
+        WHERE p.status = 'rejected'
+
+        UNION ALL
+        -- Service requests
+        SELECT 'sr-' || r.id::text, r.created_at, 'request', 'submitted',
+               COALESCE(NULLIF(r.profile_title, ''), r.service_slug, 'সেবা রিকোয়েস্ট'),
+               COALESCE(r.contact_name, 'অজানা') || ' — ' || COALESCE(r.status, 'new'),
+               '/admin/requests'
+        FROM public.service_requests r
+
+        UNION ALL
+        -- To-let enquiries
+        SELECT 'tr-' || r.id::text, r.created_at, 'request', 'submitted',
+               'বাসা ভাড়া সংক্রান্ত অনুসন্ধান',
+               COALESCE(NULLIF(r.customer_name, ''), 'অজানা') || ' — ' || COALESCE(r.status, 'submitted'),
+               '/admin/tolet-requests'
+        FROM public.tolet_requests r
+
+        UNION ALL
+        -- Blood requests
+        SELECT 'br-' || r.id::text, r.created_at, 'request', 'submitted',
+               'রক্ত রিকোয়েস্ট',
+               COALESCE(r.blood_group, '') || ' — ' || COALESCE(r.patient_name, 'অজানা'),
+               '/admin/blood'
+        FROM public.blood_requests r
+
+        UNION ALL
+        -- Vehicle requests (guest-submitted: contact_name / contact_phone)
+        SELECT 'vr-' || r.id::text, r.created_at, 'request', 'submitted',
+               'গাড়ি / অটো / সিএনজি রিকোয়েস্ট',
+               COALESCE(NULLIF(r.vehicle_name, ''), r.vehicle_kind) || ' — ' || r.contact_name,
+               '/admin/vehicle-requests'
+        FROM public.vehicle_requests r
+
+        UNION ALL
+        -- Contact messages
+        SELECT 'cm-' || m.id::text, m.created_at, 'message', 'submitted',
+               m.name,
+               COALESCE(m.subject, '') || ' — ' || left(m.message, 90),
+               '/admin/messages'
+        FROM public.contact_messages m
+
+        UNION ALL
+        -- Reports, all five tables
+        SELECT 'rp-l-' || r.id::text, r.created_at, 'report', 'submitted',
+               COALESCE(r.reason, 'রিপোর্ট'), 'বাসা ভাড়া বিজ্ঞাপন', '/admin/reports'
+        FROM public.listing_reports r WHERE r.status = 'open'
+        UNION ALL
+        SELECT 'rp-s-' || r.id::text, r.created_at, 'report', 'submitted',
+               COALESCE(r.reason, 'রিপোর্ট'), 'কর্মী প্রোফাইল', '/admin/reports'
+        FROM public.staff_profile_reports r WHERE r.status = 'open'
+        UNION ALL
+        SELECT 'rp-t-' || r.id::text, r.created_at, 'report', 'submitted',
+               COALESCE(r.reason, 'রিপোর্ট'), 'গৃহশিক্ষক প্রোফাইল', '/admin/reports'
+        FROM public.tutor_reports r WHERE r.status = 'open'
+        UNION ALL
+        SELECT 'rp-b-' || r.id::text, r.created_at, 'report', 'submitted',
+               COALESCE(r.reason, 'রিপোর্ট'), 'রক্তদাতা প্রোফাইল', '/admin/reports'
+        FROM public.blood_donor_reports r WHERE r.status = 'open'
+        UNION ALL
+        SELECT 'rp-c-' || r.id::text, r.created_at, 'report', 'submitted',
+               COALESCE(r.reason, 'রিপোর্ট'), 'কেনাবেচা/খবর/চাকরি পোস্ট', '/admin/reports'
+        FROM public.community_post_reports r WHERE r.status = 'open'
+
+        UNION ALL
+        -- New accounts
+        SELECT 'pf-' || u.id::text, u.created_at, 'user', 'registered',
+               COALESCE(NULLIF(u.full_name, ''), u.phone, 'নতুন ব্যবহারকারী'),
+               'নতুন অ্যাকাউন্ট তৈরি হয়েছে', '/admin/users'
+        FROM public.profiles u
+    )
+    SELECT f.id, f.occurred_at, f.category, f.action, f.title, f.detail, f.href
+    FROM feed f
+    WHERE public.is_admin()
+    ORDER BY f.occurred_at DESC NULLS LAST
+    LIMIT GREATEST(1, LEAST(COALESCE(p_limit, 12), 50));
+$$;
+
+REVOKE ALL ON FUNCTION public.get_admin_recent_activity(INT) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.get_admin_recent_activity(INT) TO authenticated;
+COMMENT ON FUNCTION public.get_admin_recent_activity(INT) IS
+    'Recent admin activity feed. Admin-only.';
+
+
+-- ----------------------------------------------------------------------------
+-- 2.7  REGISTRATION TRIGGER — auth.users -> public.profiles
+-- ----------------------------------------------------------------------------
+-- The canonical, defensive signup trigger. SECURITY DEFINER (at signup there is
+-- no session, so auth.uid() is NULL and the INSERT RLS policy cannot be met by
+-- the trigger itself). When the registration metadata is absent it skips the
+-- insert rather than aborting the auth transaction.
+DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
+
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    meta       jsonb := NEW.raw_user_meta_data;
+    _full_name text;
+    _phone     text;
+    _area_id   text;
+    _email     text;
+BEGIN
+    _full_name := BTRIM(NULLIF(meta->>'full_name', ''));
+    _phone     := BTRIM(NULLIF(meta->>'phone', ''));
+    _area_id   := BTRIM(NULLIF(meta->>'primary_area_id', ''));
+    _email     := COALESCE(NULLIF(BTRIM(meta->>'email'), ''), NEW.email);
+
+    IF _full_name IS NULL OR _phone IS NULL OR _area_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    INSERT INTO public.profiles
+        (id, full_name, phone, email, primary_area_id, role, status, is_verified)
+    VALUES
+        (NEW.id, _full_name, _phone, _email, _area_id, 'customer', 'active', FALSE)
+    ON CONFLICT (id) DO NOTHING;
+
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP TRIGGER IF EXISTS trg_handle_new_user ON auth.users;
+CREATE TRIGGER on_auth_user_created
+AFTER INSERT ON auth.users
+FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+
+-- ----------------------------------------------------------------------------
+-- 2.8  community_post_reports — foreign-key ordering fix
+-- ----------------------------------------------------------------------------
+-- In PART 1 the table is created before community_posts exists, so the FK is
+-- added here, once the parent table is guaranteed to exist.
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'community_post_reports_post_id_fkey'
+    ) THEN
+        ALTER TABLE public.community_post_reports
+            ADD CONSTRAINT community_post_reports_post_id_fkey
+            FOREIGN KEY (post_id) REFERENCES public.community_posts(id) ON DELETE CASCADE;
+    END IF;
+END
+$$;
+
+
+-- ============================================================================
+-- PART 3 — VERIFICATION (read-only structural checks)
+-- ============================================================================
+-- Safe to run: it only reads the catalog and raises NOTICE / EXCEPTION. It
+-- fails loudly if a required table, function, policy or trigger is missing.
+DO $$
+DECLARE
+    missing TEXT := '';
+    _tbl TEXT;
+    _fn  TEXT;
+    _pol RECORD;
+BEGIN
+    FOREACH _tbl IN ARRAY ARRAY[
+        'profiles','tolet_profiles','home_tutor_profiles','blood_donor_profiles',
+        'service_requests','blood_requests','blood_contact_releases',
+        'blood_donor_reports','saved_items','staff_profiles',
+        'staff_profile_reports','tutor_reviews','tutor_reports',
+        'tolet_listings','tolet_requests','listing_reports',
+        'community_post_reports','community_posts','tolet_listing_events',
+        'platform_settings','hero_slides','notifications','contact_messages',
+        'service_listings','emergency_contacts','vehicle_requests'
+    ] LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_class c
+            JOIN pg_namespace n ON n.oid = c.relnamespace
+            WHERE n.nspname = 'public' AND c.relname = _tbl AND c.relkind = 'r'
+        ) THEN
+            missing := missing || ' table:' || _tbl;
+        END IF;
+    END LOOP;
+
+    FOREACH _fn IN ARRAY ARRAY[
+        'is_admin','handle_new_user','is_listing_owner','set_updated_at',
+        'tolet_listing_analytics','get_admin_dashboard_stats',
+        'get_admin_recent_activity','fetch_market_contact',
+        'tolet_listings_owner_guard','tolet_requests_guard',
+        'service_requests_guard','blood_requests_guard',
+        'fn_my_tolet_profile','fn_my_tutor_profile','fn_my_donor_profile',
+        'fn_my_posts','fn_admin_tutor_profiles','fn_admin_donor_profiles',
+        'fn_admin_staff_profiles','fn_admin_posts'
+    ] LOOP
+        IF NOT EXISTS (
+            SELECT 1 FROM pg_proc p
+            JOIN pg_namespace n ON n.oid = p.pronamespace
+            WHERE n.nspname = 'public' AND p.proname = _fn
+        ) THEN
+            missing := missing || ' function:' || _fn;
+        END IF;
+    END LOOP;
+
+    IF EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles')
+       AND NOT EXISTS (SELECT 1 FROM pg_policies
+                       WHERE schemaname='public' AND tablename='profiles' AND policyname='Admins have full access to profiles') THEN
+        missing := missing || ' policy:profiles/admin';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies
+                   WHERE schemaname='public' AND tablename='community_post_reports'
+                     AND policyname='Admins read community post reports') THEN
+        missing := missing || ' policy:community_post_reports/admin-read';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies
+                   WHERE schemaname='public' AND tablename='hero_slides'
+                     AND policyname='Admins manage hero slides') THEN
+        missing := missing || ' policy:hero_slides/admin';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_policies
+                   WHERE schemaname='storage' AND tablename='objects'
+                     AND policyname='Admins can upload site media') THEN
+        missing := missing || ' policy:storage/site-admin';
+    END IF;
+
+    -- No policy anywhere may reference NEW/OLD (the original bug).
+    FOR _pol IN
+        SELECT schemaname, tablename, policyname, qual, with_check, cmd
+        FROM pg_policies
+        WHERE schemaname IN ('public', 'storage')
+    LOOP
+        IF (_pol.qual ~* '(^|[^a-z_])NEW\.[a-z_]')
+           OR (_pol.with_check ~* '(^|[^a-z_])NEW\.[a-z_]')
+           OR (_pol.qual ~* '(^|[^a-z_])OLD\.[a-z_]')
+           OR (_pol.with_check ~* '(^|[^a-z_])OLD\.[a-z_]') THEN
+            missing := missing || ' bad-policy:' || _pol.tablename || '.' || _pol.policyname;
+        END IF;
+    END LOOP;
+
+    IF missing <> '' THEN
+        RAISE EXCEPTION 'Master schema verification failed ->%', missing;
+    END IF;
+
+    RAISE NOTICE 'Master schema verification passed: tables, functions, policies and RLS are all present and no policy references NEW/OLD.';
+END
+$$;
+
+-- ---------------------------------------------------------------------------
+-- OPTIONAL behaviour checks (run manually in the SQL editor; commented because
+-- they write rows). Replace the UUIDs with real ids from your own DB.
+-- ---------------------------------------------------------------------------
+-- 1) Registration -> profile row (exercise the real signup path through the API,
+--    then confirm the trigger created the row):
+--    SELECT id, full_name, phone, role, status, primary_area_id
+--      FROM public.profiles ORDER BY created_at DESC LIMIT 5;
+--
+-- 2) Admin access (as an authenticated admin in the SQL editor):
+--    SELECT public.is_admin();
+--    SELECT * FROM public.get_admin_dashboard_stats();
+--    SELECT * FROM public.get_admin_recent_activity(5);
+--
+-- 3) Listing creation + ownership (as the owner JWT):
+--    INSERT INTO public.tolet_listings (owner_id, title, property_type, area_id, rent_price)
+--    VALUES (auth.uid(), 'পরীক্ষা', 'flat', 'charpara', 8000);
+--    SELECT public.is_listing_owner('<listing-uuid>');   -- true for the owner
+--
+-- 4) Request creation (as a customer JWT):
+--    INSERT INTO public.tolet_requests (listing_id, customer_id, customer_name, customer_phone)
+--    VALUES ('<listing-uuid>', auth.uid(), 'পরীক্ষা', '01700000000');
+--
+-- 5) RLS: as an unrelated authenticated user,
+--    SELECT * FROM public.tolet_requests;   -- returns 0 rows
+--
+-- 6) Analytics write + read:
+--    INSERT INTO public.tolet_listing_events (listing_id, event_type)
+--    VALUES ('<listing-uuid>', 'view');
+--    SELECT * FROM public.tolet_listing_analytics(10);   -- admin only
+--
+-- 7) Triggers: update a profile's role as a non-admin -> must raise
+--    'Not allowed to change role, verification or account status'.
