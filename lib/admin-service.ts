@@ -377,39 +377,64 @@ export async function savePlatformSettings(patch: {
 // ---------------------------------------------------------------------------
 
 export async function adminFetchNotifications(): Promise<NotificationItem[]> {
-  if (!isSupabaseConfigured) return [];
-  const client = createClient();
-  if (!client) return [];
-  try {
-    const { data } = await client
-      .from('notifications')
-      .select('*')
-      .eq('target_role', 'admin')
-      .order('created_at', { ascending: false })
-      .limit(100);
-    return (data || []).map(
-      (row) =>
-        ({
-          ...toCamelObject(row as Record<string, unknown>),
-          linkHref: undefined,
-        } as unknown as NotificationItem)
-    );
-  } catch {
-    return [];
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; অ্যাডমিন নোটিফিকেশন লোড করা যায়নি।');
   }
+  const client = createClient();
+  if (!client) {
+    throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
+  }
+
+  const { data, error } = await client
+    .from('notifications')
+    .select('*')
+    .eq('target_role', 'admin')
+    .order('created_at', { ascending: false })
+    .limit(100);
+  if (error) throw new Error(`নোটিফিকেশন লোড ব্যর্থ হয়েছে: ${error.message}`);
+
+  return (data ?? []).map((row) => {
+    const notification = toCamelObject(row as Record<string, unknown>) as unknown as NotificationItem;
+    const id = notification.relatedId;
+    const links: Record<string, string> = {
+      service_request: id ? `/admin/requests/${id}` : '/admin/requests',
+      blood_request: id ? `/admin/blood/${id}` : '/admin/blood',
+      vehicle_request: '/admin/vehicle-requests',
+      community_post: '/admin/posts',
+      community_post_report: '/admin/reports',
+      contact_message: '/admin/messages',
+      listing_reports: '/admin/reports',
+      staff_profile_reports: '/admin/reports',
+      tutor_reports: '/admin/reports',
+      blood_donor_reports: '/admin/reports',
+    };
+    return {
+      ...notification,
+      linkHref: notification.relatedType
+        ? links[notification.relatedType] ?? '/admin/notifications'
+        : undefined,
+    };
+  });
 }
 
-export async function adminMarkNotificationsRead(): Promise<{ success: boolean }> {
-  if (!isSupabaseConfigured) return { success: true };
-  const client = createClient();
-  if (!client) return { success: false } as { success: boolean };
-  try {
-    const { error } = await client.from('notifications').update({ is_read: true }).eq('target_role', 'admin').eq('is_read', false);
-    if (error) return { success: false };
-    return { success: true };
-  } catch {
-    return { success: false };
+export async function adminMarkNotificationsRead(): Promise<{
+  success: boolean;
+  error?: string;
+}> {
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase সংযুক্ত নেই; নোটিফিকেশন আপডেট করা যায়নি।' };
   }
+  const client = createClient();
+  if (!client) {
+    return { success: false, error: 'Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।' };
+  }
+  const { error } = await client
+    .from('notifications')
+    .update({ is_read: true })
+    .eq('target_role', 'admin')
+    .eq('is_read', false);
+  if (error) return { success: false, error: `নোটিফিকেশন আপডেট ব্যর্থ হয়েছে: ${error.message}` };
+  return { success: true };
 }
 
 export function reportTargetLink(type: AdminReportRow['type'], relatedId?: string): string {

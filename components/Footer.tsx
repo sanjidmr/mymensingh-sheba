@@ -43,8 +43,27 @@ export default function Footer() {
   const services = mergeLaunchServices(LAUNCH_SERVICES, overrides?.launch_services);
 
   const serviceLinks = services.filter(
-    (s) => ['tolet', 'kajer-bua', 'electrician', 'plumber', 'home-moving', 'home-tutor', 'blood-donor'].includes(s.slug)
+    (s) =>
+      [
+        'tolet',
+        'kajer-bua',
+        'electrician',
+        'plumber',
+        'home-moving',
+        'home-tutor',
+        'blood-donor',
+        'doctor',
+        'police',
+        'ambulance',
+        'fire-service',
+      ].includes(s.slug)
   );
+  const serviceHref: Record<string, string> = {
+    doctor: '/doctors',
+    police: '/police',
+    ambulance: '/ambulance',
+    'fire-service': '/fireservice',
+  };
 
   const companyLinks = [
     { name: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh' },
@@ -64,8 +83,8 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-brand-900 bg-brand-950 text-brand-100/80">
-      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <div className="grid grid-cols-2 gap-x-6 gap-y-10 lg:grid-cols-12 lg:gap-x-8">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-7 lg:px-8">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-6 lg:grid-cols-12 lg:gap-x-7">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-4">
             <Link href="/" className="inline-flex items-center gap-3">
@@ -86,17 +105,17 @@ export default function Footer() {
               </div>
             </Link>
 
-            <p className="mt-4 max-w-sm text-sm leading-relaxed text-brand-100/70">
+            <p className="mt-2.5 max-w-sm text-[13px] leading-relaxed text-brand-100/70">
               ময়মনসিংহ সিটি কর্পোরেশন এলাকার অধিবাসীদের জন্য একটি বিশ্বস্ত স্থানীয় সেবা প্ল্যাটফর্ম —
               বাসা ভাড়া, গৃহকর্মী, মেরামত, গৃহশিক্ষক ও জরুরি রক্তদান এক জায়গায়।
             </p>
 
-            <div className="mt-5 inline-flex items-center gap-2 rounded-lg border border-bronze-400/25 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-brand-100/90">
+            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-bronze-400/25 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-brand-100/90">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-bronze-300" />
               শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশনের ৩৩টি ওয়ার্ডে সক্রিয়
             </div>
 
-            <div className="mt-6 space-y-2 text-sm">
+            <div className="mt-3 space-y-1.5 text-[13px]">
               {/* Reads from SITE_CONTACT so the footer can never advertise a
                   number that isn't published — the same rule the /contact page
                   follows. Previously this was a dead tel: link to an invented
@@ -118,7 +137,7 @@ export default function Footer() {
               </a>
             </div>
 
-            <div className="mt-6 flex items-center gap-2.5">
+            <div className="mt-3 flex items-center gap-2.5">
               {contact.socials.length > 0 ? (
                 contact.socials.map((social) =>
                   social.href ? (
@@ -173,11 +192,11 @@ export default function Footer() {
           {/* সেবা */}
           <div className="lg:col-span-3">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">সেবা</h4>
-            <ul className="mt-4 space-y-2.5 text-sm">
+            <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {serviceLinks.map((s) => (
                 <li key={s.id}>
                   <Link
-                    href={`/${s.slug}`}
+                    href={serviceHref[s.slug] ?? `/${s.slug}`}
                     className="text-brand-100/70 transition-colors hover:text-white"
                   >
                     {s.nameBn}
@@ -190,7 +209,7 @@ export default function Footer() {
           {/* কোম্পানি */}
           <div className="lg:col-span-2">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">কোম্পানি</h4>
-            <ul className="mt-4 space-y-2.5 text-sm">
+            <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {companyLinks.map((l) => (
                 <li key={l.href}>
                   <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
@@ -204,7 +223,7 @@ export default function Footer() {
           {/* সহায়তা */}
           <div className="col-span-2 lg:col-span-3">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">সহায়তা ও অ্যাকাউন্ট</h4>
-            <ul className="mt-4 space-y-2.5 text-sm">
+            <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {supportLinks.map((l) => (
                 <li key={l.name}>
                   <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
@@ -216,7 +235,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-12 flex flex-col items-center justify-between gap-4 border-t border-white/10 pt-6 text-xs text-brand-100/60 sm:flex-row">
+        <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-4 text-xs text-brand-100/60 sm:flex-row">
           <p>© {currentYear} Mymensingh Sheba (ময়মনসিংহ সেবা)। সর্বস্বত্ব সংরক্ষিত।</p>
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5 text-brand-300" />

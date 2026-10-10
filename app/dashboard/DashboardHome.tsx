@@ -1,21 +1,35 @@
 'use client';
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Bell, Bookmark, CheckCircle2, ClipboardList, Clock, FileText, Home, PlusCircle, UserRound, XCircle } from 'lucide-react';
+import { ArrowRight, Bell, Bookmark, CheckCircle2, ClipboardList, Clock, FileText, Home, Mail, PlusCircle, UserRound, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { fetchMyPosts } from '@/lib/catalog-service';
 import { fetchMyListings } from '@/lib/tolet-service';
 import { bnRelativeTime, type CommunityPost } from '@/lib/catalog-types';
 import type { ToletListing } from '@/lib/tolet-types';
+import type { ServiceRequestStatus } from '@/lib/supabase/types';
 import { mergeRows } from '@/lib/dashboard';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+
+const REQUEST_STATUS_LABEL: Record<ServiceRequestStatus, string> = {
+  new: 'নতুন',
+  reviewing: 'পর্যালোচনাধীন',
+  contacted: 'যোগাযোগ হয়েছে',
+  in_progress: 'কাজ চলছে',
+  completed: 'সম্পন্ন',
+  cancelled: 'বাতিল',
+  rejected: 'প্রত্যাখ্যাত',
+  submitted: 'জমা দেওয়া হয়েছে',
+  assigned: 'কর্মী নির্ধারিত',
+};
 
 export default function DashboardHome() {
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, savedListings, requests, notifications, isLoading: authLoading } = useAuth();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [listings, setListings] = useState<ToletListing[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -26,6 +40,10 @@ export default function DashboardHome() {
         if (!active) return;
         setPosts(myPosts);
         setListings(myListings);
+      } catch (error) {
+        if (active) {
+          setLoadError(error instanceof Error ? error.message : 'আপনার পোস্ট লোড করা যায়নি।');
+        }
       } finally {
         if (active) setLoaded(true);
       }
@@ -35,14 +53,44 @@ export default function DashboardHome() {
 
   const rows = useMemo(() => mergeRows(posts, listings), [posts, listings]);
   const stats = useMemo(() => {
-    let pending = 0, approved = 0, rejected = 0;
-    for (const r of rows) { if (r.bucket === 'pending') pending++; else if (r.bucket === 'approved') approved++; else if (r.bucket === 'rejected') rejected++; }
-    return { total: rows.length, pending, approved, rejected };
+    let pending = 0, approved = 0, rejected = 0, active = 0;
+    for (const r of rows) {
+      if (r.bucket === 'pending') pending++;
+      else if (r.bucket === 'approved') { approved++; active++; }
+      else if (r.bucket === 'rejected') rejected++;
+    }
+    return { total: rows.length, pending, approved, rejected, active };
   }, [rows]);
   const unread = notifications.filter((n) => !n.isRead);
+  const unreadMessages = unread.filter((notification) => notification.relatedType === 'contact_message').length;
   const recentRows = rows.slice(0, 4);
   const recentNotifs = notifications.slice(0, 3);
   const svcCount = [toletProfile, homeTutorProfile, bloodDonorProfile].filter(Boolean).length;
+  const activity = [
+    ...rows.map((row) => ({
+      id: `post-${row.source}-${row.id}`,
+      date: row.date,
+      title: row.title,
+      detail: `${row.typeLabel} · ${row.statusLabel}`,
+      href: row.viewHref,
+    })),
+    ...requests.map((request) => ({
+      id: `request-${request.id}`,
+      date: request.createdAt,
+      title: request.serviceTitleBn,
+      detail: `সেবা রিকোয়েস্ট · ${REQUEST_STATUS_LABEL[request.status]}`,
+      href: '/profile/requests',
+    })),
+    ...notifications.map((notification) => ({
+      id: `notification-${notification.id}`,
+      date: notification.createdAt,
+      title: notification.title,
+      detail: notification.body,
+      href: notification.linkHref ?? '/dashboard/notifications',
+    })),
+  ]
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 6);
 
   if (authLoading || (!!user && !loaded)) {
     return (
@@ -67,6 +115,11 @@ export default function DashboardHome() {
           <div className="min-w-0 flex-1">
             <h1 className="text-lg font-extrabold leading-tight text-ink-900">স্বাগতম, {firstName}</h1>
             <p className="mt-0.5 text-[12.5px] leading-relaxed text-ink-500">আপনার পোস্ট, সেভ করা আইটেম আর নোটিফিকেশন এখান থেকেই পরিচালনা করুন।</p>
+            <span className={`mt-1.5 inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold ${
+              user.status === 'active' ? 'bg-emerald-50 text-emerald-800' : 'bg-amber-50 text-amber-800'
+            }`}>
+              অ্যাকাউন্ট: {user.status === 'active' ? 'সক্রিয়' : user.status || 'যাচাইাধীন'}
+            </span>
           </div>
           <Link href="/dashboard/notifications" aria-label="নোটিফিকেশন" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-100 bg-mist-50 text-ink-600 hover:bg-brand-50 ${LIGHT_FOCUS}`}>
             <Bell className="h-5 w-5" />
@@ -80,11 +133,13 @@ export default function DashboardHome() {
       </section>
       <section aria-labelledby="stats-h">
         <h2 id="stats-h" className="mb-2 text-[13px] font-extrabold text-ink-900">আমার পোস্ট</h2>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
           <Stat href="/dashboard/posts" icon={FileText} label="মোট পোস্ট" v={stats.total} ic="text-brand-600" />
           <Stat href="/dashboard/posts?status=pending" icon={Clock} label="অপেক্ষায়" v={stats.pending} ic="text-amber-600" />
           <Stat href="/dashboard/posts?status=approved" icon={CheckCircle2} label="অনুমোদিত" v={stats.approved} ic="text-brand-600" />
           <Stat href="/dashboard/posts?status=rejected" icon={XCircle} label="বাতিল" v={stats.rejected} ic="text-red-600" />
+          <Stat href="/profile/requests" icon={ClipboardList} label="সেবা রিকোয়েস্ট" v={requests.length} ic="text-indigo-600" />
+          <Stat href="/dashboard/notifications" icon={Bell} label="অপঠিত বার্তা" v={unread.length} ic="text-rose-600" />
         </div>
       </section>
       <section aria-labelledby="recent-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
@@ -120,11 +175,35 @@ export default function DashboardHome() {
           </ul>
         )}
       </section>
+      <section aria-labelledby="activity-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="activity-h" className="text-[13px] font-extrabold text-ink-900">সাম্প্রতিক কার্যকলাপ</h2>
+          <Link href="/dashboard/notifications" className={`text-[11px] font-bold text-brand-700 hover:underline ${LIGHT_FOCUS}`}>সব আপডেট</Link>
+        </div>
+        {loadError && <p role="alert" className="mt-2 rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">{loadError}</p>}
+        {activity.length === 0 ? (
+          <p className="mt-2 text-[12px] text-ink-500">আপনার পোস্ট, অনুরোধ বা নোটিফিকেশনের আপডেট এখানে দেখা যাবে।</p>
+        ) : (
+          <ol className="mt-2 divide-y divide-brand-100/70">
+            {activity.map((item) => (
+              <li key={item.id}>
+                <Link href={item.href} className={`block py-2.5 ${LIGHT_FOCUS}`}>
+                  <span className="block truncate text-[12px] font-bold text-ink-800">{item.title}</span>
+                  <span className="mt-0.5 block line-clamp-1 text-[11px] text-ink-500">{item.detail}</span>
+                  <time className="mt-0.5 block text-[10px] text-ink-400" dateTime={item.date}>{bnRelativeTime(item.date) ?? ''}</time>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
       <section aria-labelledby="quick-h">
         <h2 id="quick-h" className="mb-2 text-[13px] font-extrabold text-ink-900">দ্রুত মেনু</h2>
         <div className="grid grid-cols-2 gap-3">
+          <Quick href="/dashboard/posts?status=approved" icon={CheckCircle2} label="সক্রিয় পোস্ট" hint="অনুমোদিত ও প্রকাশিত" v={stats.active} />
           <Quick href="/profile/saved" icon={Bookmark} label="সেভ করা" hint="পছন্দের তালিকা" v={savedListings.length} />
           <Quick href="/profile/requests" icon={ClipboardList} label="আমার রিকোয়েস্ট" hint="সেবার আবেদন" v={requests.length} />
+          <Quick href="/dashboard/messages" icon={Mail} label="সাপোর্ট বার্তা" hint={unreadMessages ? 'নতুন উত্তর এসেছে' : 'সাপোর্টের সাথে কথা বলুন'} v={unreadMessages} />
           <Quick href="/dashboard/notifications" icon={Bell} label="নোটিফিকেশন" hint={unread.length > 0 ? 'নতুন বার্তা আছে' : 'সব পড়া হয়েছে'} v={unread.length} />
           <Quick href="/dashboard/profile" icon={UserRound} label="আমার প্রোফাইল" hint={svcCount > 0 ? 'টি সার্ভিস প্রোফাইল' : 'তথ্য হালনাগাদ করুন'} v={svcCount > 0 ? svcCount : undefined} />
         </div>
@@ -170,4 +249,3 @@ function Quick({ href, icon: Icon, label, hint, v }: { href: string; icon: typeo
     </Link>
   );
 }
-

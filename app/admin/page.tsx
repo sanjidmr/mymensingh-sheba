@@ -16,6 +16,8 @@ import {
   Inbox,
   Wrench,
   LayoutGrid,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react';
 import { fetchDashboardStats, fetchRecentActivity } from '@/lib/admin/queries';
 import { formatRelative } from '@/lib/admin/format';
@@ -174,6 +176,19 @@ export default async function AdminDashboardPage() {
             icon={ClipboardList}
             href="/admin/requests"
             tone={stats.open_requests > 0 ? 'attention' : 'neutral'}
+          />
+          <StatCard
+            label="সম্পন্ন রিকোয়েস্ট"
+            value={stats.completed_requests}
+            icon={CheckCircle2}
+            href="/admin/requests?status=completed"
+            tone="good"
+          />
+          <StatCard
+            label="বাতিল রিকোয়েস্ট"
+            value={stats.cancelled_requests}
+            icon={XCircle}
+            href="/admin/requests?status=cancelled"
           />
           <StatCard
             label="বাসা ভাড়া অনুসন্ধান"

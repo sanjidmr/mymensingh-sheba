@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Eye, Loader2, Pencil, Archive, PlusCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { fetchMyPosts, deleteCommunityPost } from '@/lib/catalog-service';
+import { fetchMyPosts, deleteCommunityPost, deleteCommunityPostDraft } from '@/lib/catalog-service';
 import { fetchMyListings, archiveOwnListing } from '@/lib/tolet-service';
-import type { CommunityPost } from '@/lib/catalog-types';
+import type { CommunityPost, PostKind } from '@/lib/catalog-types';
 import type { ToletListing } from '@/lib/tolet-types';
 import { mergeRows, type DashboardRow, type StatusBucket } from '@/lib/dashboard';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
@@ -23,6 +23,11 @@ export default function DashboardPosts() {
   const { user } = useAuth();
   const params = useSearchParams();
   const q = params.get('status');
+  const draftCleanupKindValue = params.get('draftCleanup');
+  const draftCleanupKind: PostKind | null =
+    draftCleanupKindValue === 'news' || draftCleanupKindValue === 'job' || draftCleanupKindValue === 'buy_sell'
+      ? draftCleanupKindValue
+      : null;
   const [filter, setFilter] = useState<StatusBucket | 'all'>(
     q === 'pending' || q === 'approved' || q === 'rejected' ? q : 'all'
   );
@@ -31,6 +36,9 @@ export default function DashboardPosts() {
   const [loaded, setLoaded] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState('');
+  const [cleanupBusy, setCleanupBusy] = useState(false);
+  const [cleanupComplete, setCleanupComplete] = useState(false);
+  const [cleanupError, setCleanupError] = useState('');
   useEffect(() => {
     if (!user) return;
     let active = true;
@@ -49,6 +57,21 @@ export default function DashboardPosts() {
 
   const rows = useMemo(() => mergeRows(posts, listings), [posts, listings]);
   const shown = filter === 'all' ? rows : rows.filter((r) => r.bucket === filter);
+
+  const removeRemainingDraft = async () => {
+    if (!draftCleanupKind) return;
+    setCleanupBusy(true);
+    setCleanupError('');
+    try {
+      const result = await deleteCommunityPostDraft(draftCleanupKind);
+      if (!result.success) throw new Error(result.error);
+      setCleanupComplete(true);
+    } catch (e) {
+      setCleanupError(e instanceof Error ? e.message : 'খসড়া মুছতে সমস্যা হয়েছে।');
+    } finally {
+      setCleanupBusy(false);
+    }
+  };
 
   const removeRow = async (row: DashboardRow) => {
     if (!user) return;
@@ -83,6 +106,13 @@ export default function DashboardPosts() {
           <h1 className="text-xl font-extrabold text-ink-900">আমার পোস্ট</h1>
           <p className="mt-1 text-[12.5px] text-ink-500">মোট {rows.length}টি পোস্ট।</p>
         </div>
+        {draftCleanupKind && (
+          <div role={cleanupError ? 'alert' : 'status'} className={`rounded-xl border px-3 py-2.5 text-[12px] ${cleanupError ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`}>
+            {cleanupComplete
+              ? 'খসড়াটি মুছে ফেলা হয়েছে।'
+              : <>পোস্ট জমা হয়েছে, তবে খসড়াটি রয়ে গেছে। <button type="button" onClick={() => void removeRemainingDraft()} disabled={cleanupBusy} className="ml-1 font-bold underline disabled:opacity-50">{cleanupBusy ? 'মুছছে…' : 'খসড়া মুছুন'}</button>{cleanupError && <span className="ml-2">{cleanupError}</span>}</>}
+          </div>
+        )}
         <Link href="/dashboard/new" className={`inline-flex min-h-[44px] items-center gap-1.5 rounded-xl bg-brand-700 px-4 text-[13px] font-bold text-white hover:bg-brand-800 ${LIGHT_FOCUS}`}>
           <PlusCircle className="h-4 w-4" /> নতুন
         </Link>

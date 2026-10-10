@@ -32,12 +32,14 @@ function AvatarCard() {
   const { user, uploadAvatar } = useAuth();
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
+  const [failed, setFailed] = useState(false);
   const ref = useRef<HTMLInputElement>(null);
   const pick = async (f: File | undefined) => {
     if (!f) return;
-    setBusy(true); setMsg('');
+    setBusy(true); setMsg(''); setFailed(false);
     const r = await uploadAvatar(f);
     setBusy(false);
+    setFailed(!r.success);
     setMsg(r.success ? 'ছবি হালনাগাদ হয়েছে।' : (r.error || 'আপলোড ব্যর্থ হয়েছে।'));
   };
   return (
@@ -52,7 +54,7 @@ function AvatarCard() {
           <Camera className="h-4 w-4" /> {busy ? 'আপলোড হচ্ছে...' : 'ছবি বদলান'}
         </button>
         <input ref={ref} type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0])} />
-        {msg && <p className="mt-1.5 text-[11.5px] font-semibold text-brand-700">{msg}</p>}
+        {msg && <p role={failed ? 'alert' : 'status'} className={`mt-1.5 text-[11.5px] font-semibold ${failed ? 'text-rose-700' : 'text-brand-700'}`}>{msg}</p>}
       </div>
     </div>
   );
@@ -67,13 +69,24 @@ function InfoForm() {
   const [emg, setEmg] = useState(user?.emergencyContact ?? '');
   const [busy, setBusy] = useState(false);
   const [ok, setOk] = useState(false);
+  const [error, setError] = useState('');
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    setBusy(true); setOk(false);
-    await updateProfile({ fullName: name.trim(), email: email.trim() || undefined, bio: bio.trim() || undefined, primaryAreaId: areaId, emergencyContact: emg.trim() || undefined });
-    setBusy(false); setOk(true);
-    setTimeout(() => setOk(false), 3000);
+    setBusy(true); setOk(false); setError('');
+    try {
+      const result = await updateProfile({ fullName: name.trim(), email: email.trim() || undefined, bio: bio.trim() || undefined, primaryAreaId: areaId, emergencyContact: emg.trim() || undefined });
+      if (!result.success) {
+        setError(result.error || 'তথ্য সংরক্ষণ ব্যর্থ হয়েছে।');
+        return;
+      }
+      setOk(true);
+      setTimeout(() => setOk(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'তথ্য সংরক্ষণ ব্যর্থ হয়েছে।');
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <form onSubmit={save} className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4">
@@ -85,6 +98,7 @@ function InfoForm() {
       <div><label className={labelCls}>সংক্ষিপ্ত পরিচিতি</label><textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={300} placeholder="নিজের সম্পর্কে দু-এক লাইন..." className={`${inputCls} py-3`} /></div>
       <div><label className={labelCls}>জরুরি যোগাযোগ</label><input type="tel" value={emg} onChange={(e) => setEmg(e.target.value)} placeholder="018xxxxxxxx" className={inputCls} /></div>
       {ok && <p className="rounded-xl bg-emerald-50 px-3 py-2.5 text-[12px] font-bold text-emerald-900">তথ্য সংরক্ষণ হয়েছে।</p>}
+      {error && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2.5 text-[12px] font-bold text-rose-800">{error}</p>}
       <button type="submit" disabled={busy} className={`min-h-[48px] w-full rounded-xl bg-brand-700 text-[14px] font-extrabold text-white hover:bg-brand-800 disabled:opacity-50 ${LIGHT_FOCUS}`}>{busy ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}</button>
     </form>
   );
@@ -152,4 +166,3 @@ function LogoutCard() {
     </button>
   );
 }
-

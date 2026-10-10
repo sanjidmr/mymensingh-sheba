@@ -262,6 +262,74 @@ export type WriteResult<T = undefined> =
   | { success: true; data: T }
   | { success: false; error: string };
 
+export interface CommunityPostDraft {
+  version: number;
+  values: Record<string, string>;
+  tags: string[];
+  savedAt: string;
+}
+
+export async function loadCommunityPostDraft(
+  kind: PostKind
+): Promise<WriteResult<{ draft: unknown; updatedAt: string | null }>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const { data, error } = await client
+    .from('customer_post_drafts')
+    .select('draft, updated_at')
+    .eq('user_id', userId)
+    .eq('kind', kind)
+    .maybeSingle();
+  if (error) return { success: false, error: error.message };
+  return {
+    success: true,
+    data: { draft: data?.draft ?? null, updatedAt: data?.updated_at ?? null },
+  };
+}
+
+export async function saveCommunityPostDraft(
+  kind: PostKind,
+  draft: CommunityPostDraft
+): Promise<WriteResult<string>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const { data, error } = await client
+    .from('customer_post_drafts')
+    .upsert(
+      { user_id: userId, kind, draft, updated_at: new Date().toISOString() },
+      { onConflict: 'user_id,kind' }
+    )
+    .select('updated_at')
+    .single();
+  if (error || !data) {
+    return { success: false, error: error?.message || 'খসড়া সংরক্ষণ ব্যর্থ হয়েছে।' };
+  }
+  return { success: true, data: data.updated_at };
+}
+
+export async function deleteCommunityPostDraft(kind: PostKind): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const { error } = await client
+    .from('customer_post_drafts')
+    .delete()
+    .eq('user_id', userId)
+    .eq('kind', kind);
+  return error ? { success: false, error: error.message } : { success: true, data: undefined };
+}
+
 /**
  * A write whose row the caller is not allowed to read back — for example a
  * guest submitting a vehicle request. `success` still means the database
@@ -837,17 +905,19 @@ export async function adminDeletePost(id: string): Promise<WriteResult> {
 export async function fetchEmergencyContacts(
   service: EmergencyService
 ): Promise<EmergencyContact[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) throw new Error('জরুরি নম্বরের ডেটাবেজ সংযুক্ত নেই।');
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('জরুরি নম্বরের ডেটাবেজ সংযোগ তৈরি করা যায়নি।');
   const { data, error } = await client
     .from('emergency_contacts')
     .select('*')
     .eq('service', service)
     .eq('is_active', true)
+    .not('source_note', 'is', null)
     .order('sort_order', { ascending: true })
     .order('name_bn', { ascending: true });
-  if (error || !data) return [];
+  if (error) throw new Error(`জরুরি নম্বর লোড করা যায়নি: ${error.message}`);
+  if (!data) throw new Error('জরুরি নম্বর লোড করা যায়নি।');
   return (data as Record<string, unknown>[]).map(mapContact);
 }
 

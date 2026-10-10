@@ -13,6 +13,7 @@ import { StatusPill } from '@/components/admin/StatCard';
 import { formatDateTime, lookupStatus } from '@/lib/admin/format';
 import type { AdminServiceListingRow, AdminEmergencyContactRow } from '@/lib/admin/queries';
 import CatalogActions from '@/components/admin/CatalogActions';
+import EmergencyContactEditor from '@/components/admin/EmergencyContactEditor';
 
 export const dynamic = 'force-dynamic';
 
@@ -106,6 +107,12 @@ const contactColumns: AdminColumn<AdminEmergencyContactRow>[] = [
     render: (row) => row.phone,
   },
   {
+    key: 'source',
+    header: 'যাচাইয়ের উৎস',
+    hideOnMobile: true,
+    render: (row) => row.source_note || 'উৎস উল্লেখ করা হয়নি',
+  },
+  {
     key: 'order',
     header: 'ক্রম',
     hideOnMobile: true,
@@ -125,7 +132,12 @@ const contactColumns: AdminColumn<AdminEmergencyContactRow>[] = [
     key: 'actions',
     header: '',
     headerClassName: 'w-1',
-    render: (row) => <CatalogActions row={row} />,
+    render: (row) => (
+      <div className="flex flex-wrap items-center gap-1">
+        <EmergencyContactEditor contact={row} />
+        <CatalogActions row={row} />
+      </div>
+    ),
   },
 ];
 
@@ -148,7 +160,10 @@ export default async function AdminCatalogPage({
           title="ক্যাটালগ ও ইমার্জেন্সি"
           description="কোচিং, WiFi, বাস ও জরুরি নম্বরের তালিকা।"
         />
-        <AdminError title="ডেটাবেজ সংযুক্ত নেই" />
+        <AdminError
+          title="ক্যাটালগ বা জরুরি নম্বর লোড করা যায়নি"
+          message={listings.error ?? contacts.error ?? 'ডেটাবেজ সংযুক্ত নেই।'}
+        />
       </>
     );
   }
@@ -220,7 +235,10 @@ export default async function AdminCatalogPage({
 
       {/* ---------- Emergency contacts ---------- */}
       <section>
-        <h2 className="mb-3 text-sm font-bold text-ink-900">ইমার্জেন্সি নম্বর</h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-sm font-bold text-ink-900">ইমার্জেন্সি নম্বর</h2>
+          <EmergencyContactEditor />
+        </div>
 
         <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
           <AdminSearch placeholder="নাম বা নম্বর খুঁজুন…" />

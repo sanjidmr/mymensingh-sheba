@@ -3,11 +3,18 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, MapPin, PhoneCall, Search } from 'lucide-react';
+import { ArrowRight, MapPin, Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import CommunityBandSection from '@/components/services/CommunityBandSection';
 import { getAllMCCAreas } from '@/lib/locations';
 import type { ServiceCategory } from '@/lib/services-data';
+
+const EMERGENCY_ROUTES: Record<string, string> = {
+  doctor: '/doctors',
+  police: '/police',
+  ambulance: '/ambulance',
+  'fire-service': '/fireservice',
+};
 
 /**
  * The public services directory.
@@ -89,9 +96,8 @@ export default function ServicesContent({ services }: { services: ServiceCategor
       {/* Services Grid — same compact card size as the homepage */}
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {filteredServices.map((service) => {
-          const href = selectedArea
-            ? `/${service.slug}?area=${selectedArea}`
-            : `/${service.slug}`;
+          const route = EMERGENCY_ROUTES[service.slug] ?? `/${service.slug}`;
+          const href = selectedArea ? `${route}?area=${selectedArea}` : route;
 
           const cardClass =
             'group flex h-full flex-col overflow-hidden rounded-lg border border-brand-100/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 sm:rounded-xl';
@@ -121,31 +127,7 @@ export default function ServicesContent({ services }: { services: ServiceCategor
             </div>
           );
 
-          return service.dial ? (
-            <a key={service.id} href={service.dial} className={cardClass}>
-              {media}
-              <div className="flex flex-1 flex-col p-1.5 sm:p-3">
-                <h3 className="line-clamp-2 text-[10.5px] font-bold leading-tight text-ink-900 sm:line-clamp-1 sm:text-[13px] sm:leading-snug">
-                  {service.nameBn}
-                </h3>
-                <p className="mt-0.5 hidden line-clamp-2 text-[11px] leading-relaxed text-ink-500 sm:mt-1 sm:block">
-                  {service.shortDesc}
-                </p>
-                <div className="mt-auto flex pt-1.5 sm:pt-2">
-                  <span className="inline-flex w-full items-center justify-center gap-0.5 rounded-md bg-accent-400 px-1 py-1 text-[9.5px] font-bold text-brand-900 transition-colors duration-300 group-hover:bg-accent-500 sm:gap-1.5 sm:rounded-lg sm:px-3 sm:py-1.5 sm:text-xs">
-                    <PhoneCall className="h-2.5 w-2.5 sm:h-3.5 sm:w-3.5" />
-                    কল করুন
-                    {service.number ? (
-                      <>
-                        <span className="hidden sm:inline"> {service.number}</span>
-                        <span className="sm:hidden"> {service.number?.replace(/\D/g, '').slice(-3)}</span>
-                      </>
-                    ) : null}
-                  </span>
-                </div>
-              </div>
-            </a>
-          ) : (
+          return (
             <Link key={service.id} href={href} className={cardClass}>
               {media}
               <div className="flex flex-1 flex-col p-1.5 sm:p-3">

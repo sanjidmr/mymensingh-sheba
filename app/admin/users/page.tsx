@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Users,
   ShieldCheck,
@@ -15,8 +16,12 @@ import {
   XCircle,
   RotateCcw,
   PauseCircle,
+  ShieldOff,
 } from 'lucide-react';
 import { adminFetchUsers, adminUpdateUserStatus } from '@/lib/admin-service';
+import { setAdminRole } from '@/app/admin/actions/users';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { useToast } from '@/components/admin/ToastProvider';
 import type { AdminUserRow } from '@/lib/admin-types';
 import { DONOR_STATUS_META } from '@/lib/blood-donor-types';
 import { TUTOR_STATUS_META } from '@/lib/home-tutor-types';
@@ -31,11 +36,15 @@ const SERVICE_STATUS_LABELS: Record<ServiceProfileStatus, string> = {
 };
 
 export default function AdminUsersPage() {
+  const router = useRouter();
+  const { notify } = useToast();
   const [users, setUsers] = useState<AdminUserRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [error, setError] = useState('');
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [roleTarget, setRoleTarget] = useState<AdminUserRow | null>(null);
+  const [roleBusy, setRoleBusy] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -61,6 +70,31 @@ export default function AdminUsersPage() {
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)));
     } else {
       setError(res.error || 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে');
+    }
+  };
+
+  const handleRoleChange = async () => {
+    if (!roleTarget) return;
+    const target = roleTarget;
+    const nextRole = target.role === 'admin' ? 'customer' : 'admin';
+    setRoleBusy(true);
+    setError('');
+    try {
+      const result = await setAdminRole(target.id, nextRole);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
+      setUsers((prev) =>
+        prev.map((user) => user.id === target.id ? { ...user, role: nextRole } : user)
+      );
+      setRoleTarget(null);
+      notify('success', result.message ?? 'भूमिका হালনাগাদ হয়েছে');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'অ্যাডমিন ভূমিকা পরিবর্তন ব্যর্থ হয়েছে।');
+    } finally {
+      setRoleBusy(false);
     }
   };
 
@@ -150,8 +184,29 @@ export default function AdminUsersPage() {
                       <span>রক্তদাতা: <strong>{u.donorStatus ? DONOR_STATUS_META[u.donorStatus as keyof typeof DONOR_STATUS_META]?.labelBn || u.donorStatus : 'না'}</strong></span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {u.status !== 'active' && (
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    {u.role !== 'admin' ? (
+                      <button
+                        type="button"
+                        disabled={roleBusy || busyId === u.id}
+                        onClick={() => setRoleTarget(u)}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-800 disabled:opacity-50"
+                      >
+                        <ShieldCheck className="h-3.5 w-3.5" />
+                        অ্যাডমিন করুন
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        disabled={roleBusy || busyId === u.id}
+                        onClick={() => setRoleTarget(u)}
+                        className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 disabled:opacity-50"
+                      >
+                        <ShieldOff className="h-3.5 w-3.5" />
+                        অ্যাডমিন ভূমিকা সরান
+                      </button>
+                    )}
+                    {u.role !== 'admin' && u.status !== 'active' && (
                       <button
                         type="button"
                         disabled={busyId === u.id}
@@ -161,7 +216,7 @@ export default function AdminUsersPage() {
                         {busyId === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'সক্রিয় করুন'}
                       </button>
                     )}
-                    {u.status !== 'suspended' && (
+                    {u.role !== 'admin' && u.status !== 'suspended' && (
                       <button
                         type="button"
                         disabled={busyId === u.id}
@@ -171,7 +226,7 @@ export default function AdminUsersPage() {
                         {busyId === u.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'নিষ্ক্রিয় করুন'}
                       </button>
                     )}
-                    {u.status !== 'blocked' && (
+                    {u.role !== 'admin' && u.status !== 'blocked' && (
                       <button
                         type="button"
                         disabled={busyId === u.id}
@@ -188,6 +243,21 @@ export default function AdminUsersPage() {
           </div>
         )}
       </main>
+      <ConfirmDialog
+        open={roleTarget !== null}
+        title={roleTarget?.role === 'admin' ? 'অ্যাডমিন ভূমিকা সরাবেন?' : 'অ্যাডমিন ভূমিকা দেবেন?'}
+        description={
+          roleTarget?.role === 'admin'
+            ? <><strong>{roleTarget.fullName}</strong> অ্যাডমিন কন্ট্রোল আর ব্যবহার করতে পারবেন না। সর্বশেষ সক্রিয় অ্যাডমিনকে সরানো যাবে না।</>
+            : <><strong>{roleTarget?.fullName}</strong> সব অ্যাডমিন রেকর্ড ও ব্যক্তিগত তথ্য দেখতে এবং পরিবর্তন করতে পারবেন।</>
+        }
+        confirmLabel={roleTarget?.role === 'admin' ? 'অ্যাডমিন ভূমিকা সরান' : 'অ্যাডমিন করুন'}
+        tone={roleTarget?.role === 'admin' ? 'danger' : 'primary'}
+        requireText="অ্যাডমিন"
+        isLoading={roleBusy}
+        onConfirm={handleRoleChange}
+        onCancel={() => setRoleTarget(null)}
+      />
     </div>
   );
 }

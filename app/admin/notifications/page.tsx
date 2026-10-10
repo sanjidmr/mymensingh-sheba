@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Loader2,
   Bell,
@@ -19,6 +20,7 @@ import { adminFetchNotifications, adminMarkNotificationsRead } from '@/lib/admin
 import type { NotificationItem } from '@/lib/supabase/types';
 
 export default function AdminNotificationsPage() {
+  const router = useRouter();
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -30,8 +32,10 @@ export default function AdminNotificationsPage() {
       .then((data) => {
         if (active) setNotifications(data);
       })
-      .catch(() => {
-        if (active) setError('নোটিফিকেশন লোড ব্যর্থ হয়েছে');
+      .catch((err: unknown) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'নোটিফিকেশন লোড ব্যর্থ হয়েছে');
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -41,10 +45,19 @@ export default function AdminNotificationsPage() {
 
   const handleMarkAllRead = async () => {
     setBusy(true);
-    const res = await adminMarkNotificationsRead();
-    setBusy(false);
-    if (res.success) {
+    setError('');
+    try {
+      const res = await adminMarkNotificationsRead();
+      if (!res.success) {
+        setError(res.error || 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
+        return;
+      }
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -100,6 +113,12 @@ export default function AdminNotificationsPage() {
             </button>
           )}
         </div>
+
+        {error && (
+          <p role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+            {error}
+          </p>
+        )}
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100 overflow-hidden">
           {notifications.length === 0 ? (

@@ -9,11 +9,11 @@ export const metadata: Metadata = {
   title: `${ui.title} — ময়মনসিংহ শেবা`,
   description:
     'ময়মনসিংহের ফায়ার ইউনিট ও অগ্নিনির্বাপণ সেবার তালিকা। নিকটস্থ ইউনিট খুঁজে ফোন নম্বর সংরক্ষণ করুন।',
-  alternates: { canonical: '/fire-service' },
+  alternates: { canonical: '/fireservice' },
   openGraph: {
     title: `${ui.title} — ময়মনসিংহ শেবা`,
     description: 'ময়মনসিংহের অ্যাডমিন-যাচাইকৃত ফায়ার সার্ভিস তালিকা ও নম্বর।',
-    url: '/fire-service',
+    url: '/fireservice',
     type: 'website',
   },
 };

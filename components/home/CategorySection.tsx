@@ -18,6 +18,7 @@ interface CategorySectionProps {
  */
 export default function CategorySection({ category }: CategorySectionProps) {
   const dark = category.tone === 'dark';
+  const emergency = category.id === 'emergency';
   const total = category.items.length;
   const bgClass =
     category.tone === 'mist'
@@ -37,11 +38,16 @@ export default function CategorySection({ category }: CategorySectionProps) {
 
   return (
     <section className={bgClass} aria-label={category.title}>
-      <div className="mx-auto w-full max-w-7xl px-4 py-4 sm:px-6 sm:py-5 lg:px-8 lg:py-6">
+      <div
+        className={`mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 ${
+          emergency ? 'py-2.5 sm:py-3 lg:py-3.5' : 'py-4 sm:py-5 lg:py-6'
+        }`}
+      >
         <CategoryHeader
           title={category.title}
-          description={category.description}
+          description={emergency ? undefined : category.description}
           dark={dark}
+          compact={emergency}
         />
 
         {/* Four compact tiles per row on phones (all four inside one row, no
@@ -49,7 +55,9 @@ export default function CategorySection({ category }: CategorySectionProps) {
             from `sm` upwards. Every service in the category is rendered —
             nothing is dropped on small screens. */}
         <div
-          className={`mt-4 grid gap-x-2 gap-y-3 sm:mt-5 sm:gap-x-3 sm:gap-y-4 lg:gap-x-4 lg:gap-y-5 ${
+          className={`grid ${
+            emergency ? 'mt-2 gap-x-1.5 gap-y-1.5 sm:mt-2 sm:gap-x-2 sm:gap-y-2 lg:gap-x-3 lg:gap-y-2' : 'mt-4 gap-x-2 gap-y-3 sm:mt-5 sm:gap-x-3 sm:gap-y-4 lg:gap-x-4 lg:gap-y-5'
+          } ${
             category.grid ?? 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-7'
           }`}
         >
@@ -60,7 +68,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
                 centreLastOnPhone && index === total - 1 ? ' max-sm:col-start-2' : ''
               }`}
             >
-              <CategoryTile item={item} />
+              <CategoryTile item={item} compact={emergency} />
             </div>
           ))}
         </div>

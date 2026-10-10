@@ -17,21 +17,33 @@ export default function SettingsPage() {
   const [emergencyContact, setEmergencyContact] = useState(user?.emergencyContact || '');
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!fullName) return;
 
     setLoading(true);
-    await updateProfile({
-      fullName,
-      email: email || undefined,
-      primaryAreaId,
-      emergencyContact: emergencyContact || undefined,
-    });
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => setSuccess(false), 3000);
+    setError('');
+    setSuccess(false);
+    try {
+      const result = await updateProfile({
+        fullName,
+        email: email || undefined,
+        primaryAreaId,
+        emergencyContact: emergencyContact || undefined,
+      });
+      if (!result.success) {
+        setError(result.error || 'তথ্য সংরক্ষণ ব্যর্থ হয়েছে।');
+        return;
+      }
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'তথ্য সংরক্ষণ ব্যর্থ হয়েছে।');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -69,6 +81,11 @@ export default function SettingsPage() {
               <span className="text-sm font-semibold">
                 তথ্য সফলভাবে আপডেট করা হয়েছে!
               </span>
+            </div>
+          )}
+          {error && (
+            <div role="alert" className="mb-6 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800">
+              {error}
             </div>
           )}
 

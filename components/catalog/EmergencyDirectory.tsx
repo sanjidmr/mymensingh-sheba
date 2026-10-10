@@ -33,6 +33,7 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
   const ui = EMERGENCY_UI[service];
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -40,6 +41,10 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
       try {
         const data = await fetchEmergencyContacts(service);
         if (active) setContacts(data);
+      } catch (caught) {
+        if (active) {
+          setError(caught instanceof Error ? caught.message : 'জরুরি নম্বর লোড করা যায়নি।');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -55,7 +60,7 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
     (c: EmergencyContact): SearchableFields => ({
       title: c.nameBn,
       area: c.areaId ? (getAreaById(c.areaId)?.nameBn ?? '') : '',
-      description: [c.organizationBn, c.addressBn, c.sourceNote]
+      description: [c.organizationBn, c.addressBn]
         .filter(Boolean)
         .join(' '),
     }),
@@ -142,6 +147,10 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
             />
           ))}
         </ul>
+      ) : error ? (
+        <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-5 text-sm text-rose-800">
+          {error}
+        </div>
       ) : results.length === 0 ? (
         <EmergencyEmpty ui={ui} hasAnyData={contacts.length > 0} />
       ) : (
@@ -158,10 +167,6 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
                   areaLabel={contact.areaId ? areaNames([contact.areaId]) : undefined}
                   address={contact.addressBn}
                   phone={contact.phone}
-                  // The source note is the trust signal here: it records where
-                  // the admin got the number, which is what makes a curated
-                  // directory auditable rather than a rumour mill.
-                  notes={contact.sourceNote}
                 />
               </li>
             ))}

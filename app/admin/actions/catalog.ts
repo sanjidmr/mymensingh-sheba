@@ -73,6 +73,18 @@ export async function setEmergencyContactActive(
   isActive: boolean
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
+    if (isActive) {
+      const { data, error: readError } = await client
+        .from('emergency_contacts')
+        .select('source_note')
+        .eq('id', contactId)
+        .maybeSingle();
+      if (readError) return { ok: false, error: readError.message };
+      if (!data || !data.source_note?.trim()) {
+        return { ok: false, error: 'যাচাইকৃত নম্বরের উৎস যোগ না করা পর্যন্ত এটি চালু করা যাবে না।' };
+      }
+    }
+
     const { error } = await client
       .from('emergency_contacts')
       .update({ is_active: isActive })
@@ -82,9 +94,11 @@ export async function setEmergencyContactActive(
 
     revalidatePath('/admin/catalog');
     revalidatePath('/doctor');
+    revalidatePath('/doctors');
     revalidatePath('/police');
     revalidatePath('/ambulance');
     revalidatePath('/fire-service');
+    revalidatePath('/fireservice');
     return { ok: true, message: isActive ? 'নম্বরটি চালু হয়েছে।' : 'নম্বরটি বন্ধ হয়েছে।' };
   });
 }
@@ -106,6 +120,12 @@ export async function setEmergencyContactOrder(
     if (error) return { ok: false, error: error.message };
 
     revalidatePath('/admin/catalog');
+    revalidatePath('/doctors');
+    revalidatePath('/doctor');
+    revalidatePath('/police');
+    revalidatePath('/ambulance');
+    revalidatePath('/fireservice');
+    revalidatePath('/fire-service');
     return { ok: true, message: 'ক্রম সংরক্ষিত হয়েছে।' };
   });
 }
@@ -116,6 +136,12 @@ export async function deleteEmergencyContact(contactId: string): Promise<ActionR
     if (error) return { ok: false, error: error.message };
 
     revalidatePath('/admin/catalog');
+    revalidatePath('/doctor');
+    revalidatePath('/doctors');
+    revalidatePath('/police');
+    revalidatePath('/ambulance');
+    revalidatePath('/fire-service');
+    revalidatePath('/fireservice');
     return { ok: true, message: 'নম্বরটি মুছে ফেলা হয়েছে।' };
   });
 }

@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState } from 'react';
 import { Bell, CheckCircle2, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
 import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
@@ -7,7 +7,21 @@ import { bnRelativeTime } from '@/lib/catalog-types';
 
 export default function DashboardNotifications() {
   const { notifications, markNotificationsReadAll } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const unread = notifications.filter((n) => !n.isRead).length;
+  const markAllRead = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await markNotificationsReadAll();
+      if (!result.success) setError(result.error || 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
+    } finally {
+      setBusy(false);
+    }
+  };
   const icon = (t: string) => {
     if (t === 'success') return <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-700" />;
     if (t === 'warning') return <AlertTriangle className="h-5 w-5 shrink-0 text-amber-700" />;
@@ -22,12 +36,13 @@ export default function DashboardNotifications() {
           <p className="mt-1 text-[12.5px] text-ink-500">{unread > 0 ? `${unread}টি নতুন বার্তা` : 'সব বার্তা পড়া হয়েছে।'}</p>
         </div>
         {unread > 0 && (
-          <button type="button" onClick={markNotificationsReadAll}
+          <button type="button" onClick={markAllRead} disabled={busy}
             className="min-h-[40px] shrink-0 rounded-xl border border-brand-200 bg-brand-50 px-3 text-[12px] font-bold text-brand-800 hover:bg-brand-100">
-            সব পড়া হয়েছে
+            {busy ? 'আপডেট হচ্ছে…' : 'সব পড়া হয়েছে'}
           </button>
         )}
       </div>
+      {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
       <div className="divide-y divide-brand-100/70 overflow-hidden rounded-2xl border border-brand-100 bg-white">
         {notifications.length === 0 ? (
           <div className="p-8 text-center">

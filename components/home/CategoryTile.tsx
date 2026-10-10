@@ -19,7 +19,13 @@ import type { HomepageService } from '@/lib/homepage-catalog';
  * every service in every category, and the name is centred directly beneath it
  * at a clamped two lines so nothing is ever cut off mid-word.
  */
-export default function CategoryTile({ item }: { item: HomepageService }) {
+export default function CategoryTile({
+  item,
+  compact = false,
+}: {
+  item: HomepageService;
+  compact?: boolean;
+}) {
   const red = item.tone === 'red';
 
   /**
@@ -64,16 +70,9 @@ export default function CategoryTile({ item }: { item: HomepageService }) {
   );
 
   const rootClass =
-    'group flex w-full flex-col items-center rounded-2xl outline-none transition-transform motion-safe:duration-150 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600 lg:max-w-[10rem]';
-
-  // Emergency services keep their existing one-tap dial target, unchanged.
-  if (item.dial) {
-    return (
-      <a href={item.dial} className={`mx-auto ${rootClass}`}>
-        {content}
-      </a>
-    );
-  }
+    `group flex w-full flex-col items-center rounded-2xl outline-none transition-transform motion-safe:duration-150 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600 ${
+      compact ? 'max-w-[4.5rem] sm:max-w-[7rem] lg:max-w-[8rem]' : 'lg:max-w-[10rem]'
+    }`;
 
   return (
     <Link href={item.href ?? '/services'} className={`mx-auto ${rootClass}`}>

@@ -36,7 +36,32 @@
 
 ## Database
 
-The full schema (tables, RLS policies, storage buckets, triggers) lives in `lib/supabase/schema.sql`. Apply it to a Supabase project with the SQL editor or Supabase CLI before enabling real login/registration.
+The deployable schema, RLS policies, storage buckets, and triggers are in
+`supabase/migrations/20261008000000_master_consolidated_schema.sql`. Apply it
+to the Supabase project before enabling real login/registration. Then apply
+newer incremental migrations in timestamp order; the admin audit log, for
+example, is added by
+`supabase/migrations/20261009000000_admin_audit_log.sql`. The older
+`lib/supabase/schema.sql` is retained for reference and is not the canonical
+deployment entry point.
+
+Apply `supabase/migrations/20261009200000_emergency_contact_verification.sql`
+after the audit-log migration. Public emergency directories only show contacts
+that an admin has activated and documented with a verification source.
+Apply `supabase/migrations/20261009220000_customer_support_conversations.sql`
+to enable private dashboard messaging and scoped conversation replies.
+Apply `supabase/migrations/20261009224500_customer_service_request_cancellation.sql`
+to restrict customer service-request updates to cancellation of new/submitted
+requests only.
+Apply `supabase/migrations/20261009230000_customer_post_drafts.sql` to enable
+private, per-category Supabase drafts for signed-in customers.
+
+Signed-in community post drafts are stored in Supabase, scoped by customer and
+post category; anonymous drafts are local to the browser. Images must be
+reselected when a draft is restored.
+The customer dashboard activity feed is assembled from the customer's existing
+posts, service requests, and notifications and does not introduce a second
+activity store.
 
 ## Scripts
 

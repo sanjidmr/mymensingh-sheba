@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Star, Trash2 } from 'lucide-react';
+import { Check, Star, Trash2 } from 'lucide-react';
 import {
   setServiceListingActive,
   setServiceListingFeatured,
@@ -14,7 +14,6 @@ import {
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { useToast } from '@/components/admin/ToastProvider';
 import { Button } from '@/components/ui/Button';
-import { cn } from '@/lib/utils';
 
 /**
  * Actions for catalog rows.
@@ -28,6 +27,7 @@ export default function CatalogActions({ row }: { row: any }) {
   const { notify } = useToast();
   const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [sortOrder, setSortOrder] = useState(String(row.sort_order ?? 0));
 
   const isListing = 'category' in row;
   const id = row.id as string;
@@ -75,6 +75,29 @@ export default function CatalogActions({ row }: { row: any }) {
   return (
     <>
       <div className="flex flex-wrap items-center gap-1.5">
+        {!isListing && (
+          <div className="flex items-center gap-1">
+            <label htmlFor={`contact-order-${id}`} className="sr-only">তালিকায় ক্রম</label>
+            <input
+              id={`contact-order-${id}`}
+              type="number"
+              min={0}
+              max={9999}
+              value={sortOrder}
+              onChange={(event) => setSortOrder(event.target.value)}
+              className="h-9 w-16 rounded-lg border border-brand-100 px-2 text-xs"
+            />
+            <Button
+              size="sm"
+              variant="ghost"
+              aria-label="ক্রম সংরক্ষণ"
+              disabled={busy || !/^\d{1,4}$/.test(sortOrder)}
+              onClick={() => void run(() => setEmergencyContactOrder(id, Number(sortOrder)))}
+            >
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        )}
         <Button
           size="sm"
           variant={isActive ? 'secondary' : 'success'}

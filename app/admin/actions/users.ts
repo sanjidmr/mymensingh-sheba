@@ -72,32 +72,71 @@ export async function setUserStatus(
  * click that suspends someone.
  */
 export async function grantAdminRole(userId: string): Promise<ActionResult> {
+  return setAdminRole(userId, 'admin');
+}
+
+/** Add or remove a platform administrator with last-admin protections. */
+export async function setAdminRole(
+  userId: string,
+  role: 'customer' | 'admin'
+): Promise<ActionResult> {
   return runAdminAction(async (client, adminId) => {
     if (userId === adminId) {
-      return { ok: false, error: 'আপনি নিজেকে অ্যাডমিন করতে পারবেন না।' };
+      return {
+        ok: false,
+        error: role === 'admin'
+          ? 'আপনার নিজের অ্যাডমিন ভূমিকা পরিবর্তন করা যাবে না।'
+          : 'আপনি নিজের অ্যাডমিন ভূমিকা সরাতে পারবেন না।',
+      };
     }
 
     const { data: target, error: readError } = await client
       .from('profiles')
-      .select('id, full_name, role')
+      .select('id, full_name, role, status')
       .eq('id', userId)
       .maybeSingle();
 
     if (readError || !target) {
       return { ok: false, error: 'ইউজারটি পাওয়া যায়নি।' };
     }
-    if (target.role === 'admin') {
-      return { ok: false, error: 'এই অ্যাকাউন্টে ইতিমধ্যে অ্যাডমিন ভূমিকা আছে।' };
+    if (target.role === role) {
+      return {
+        ok: false,
+        error: role === 'admin'
+          ? 'এই অ্যাকাউন্টে ইতিমধ্যে অ্যাডমিন ভূমিকা আছে।'
+          : 'এই অ্যাকাউন্টে ইতিমধ্যে কাস্টমার ভূমিকা আছে।',
+      };
+    }
+
+    if (role === 'admin' && target.status !== 'active') {
+      return { ok: false, error: 'নিষ্ক্রিয় বা ব্লক করা অ্যাকাউন্টকে অ্যাডমিন করা যাবে না।' };
+    }
+
+    if (role === 'customer' && target.status === 'active') {
+      const { count, error: countError } = await client
+        .from('profiles')
+        .select('id', { count: 'exact', head: true })
+        .eq('role', 'admin')
+        .eq('status', 'active');
+      if (countError) return { ok: false, error: countError.message };
+      if ((count ?? 0) <= 1) {
+        return { ok: false, error: 'সর্বশেষ সক্রিয় অ্যাডমিনের ভূমিকা সরানো যাবে না।' };
+      }
     }
 
     const { error } = await client
       .from('profiles')
-      .update({ role: 'admin' })
+      .update({ role })
       .eq('id', userId);
 
     if (error) return { ok: false, error: error.message };
 
     revalidatePath('/admin/users');
-    return { ok: true, message: 'অ্যাডমিন ভূমিকা দেওয়া হয়েছে।' };
+    return {
+      ok: true,
+      message: role === 'admin'
+        ? 'অ্যাডমিন ভূমিকা দেওয়া হয়েছে।'
+        : 'অ্যাডমিন ভূমিকা সরিয়ে কাস্টমার করা হয়েছে।',
+    };
   });
 }

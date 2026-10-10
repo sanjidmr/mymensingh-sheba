@@ -2,6 +2,7 @@ export interface CategoryHeaderProps {
   title: string;
   description?: string;
   dark?: boolean;
+  compact?: boolean;
 }
 
 /**
@@ -13,11 +14,14 @@ export default function CategoryHeader({
   title,
   description,
   dark = false,
+  compact = false,
 }: CategoryHeaderProps) {
   return (
     <div className="flex flex-col items-center text-center">
       <h2
-        className={`max-w-3xl text-[22px] font-extrabold leading-tight tracking-tight sm:text-3xl lg:text-[2rem] ${
+        className={`max-w-3xl font-extrabold leading-tight tracking-tight ${
+          compact ? 'text-lg sm:text-2xl lg:text-[1.6rem]' : 'text-[22px] sm:text-3xl lg:text-[2rem]'
+        } ${
           dark ? 'text-white' : 'text-ink-900'
         }`}
       >

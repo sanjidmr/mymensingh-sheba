@@ -41,6 +41,7 @@ import {
 } from '@/lib/blood-donor-service';
 import { BLOOD_REQUEST_STATUS_META } from '@/lib/blood-donor-types';
 import type { BloodRequest, BloodRequestStatus } from '@/lib/supabase/types';
+import { createClient } from '@/lib/supabase/client';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -65,6 +66,9 @@ export default function RequestsPage() {
   const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
   const [loadingBlood, setLoadingBlood] = useState(true);
   const [cancellingBloodId, setCancellingBloodId] = useState<string | null>(null);
+  const [cancellingServiceId, setCancellingServiceId] = useState<string | null>(null);
+  const [cancelledServiceIds, setCancelledServiceIds] = useState<Set<string>>(() => new Set());
+  const [requestError, setRequestError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -78,6 +82,11 @@ export default function RequestsPage() {
         setToletRequests(t);
         setBloodRequests(b);
       })
+      .catch((error: unknown) => {
+        if (active) {
+          setRequestError(error instanceof Error ? error.message : 'রিকোয়েস্ট লোড করা যায়নি।');
+        }
+      })
       .finally(() => {
         if (active) {
           setLoadingTolet(false);
@@ -90,11 +99,20 @@ export default function RequestsPage() {
   }, [user]);
 
   const handleCancelTolet = async (id: string) => {
+    if (!window.confirm('এই বাসা দেখার অনুরোধটি বাতিল করবেন?')) return;
     setCancellingId(id);
-    const result = await updateToletRequestStatus(id, 'cancelled');
-    setCancellingId(null);
-    if (result.success) {
-      setToletRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' as const } : r)));
+    setRequestError('');
+    try {
+      const result = await updateToletRequestStatus(id, 'cancelled');
+      if (result.success) {
+        setToletRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' as const } : r)));
+      } else {
+        setRequestError(result.error || 'অনুরোধ বাতিল করা যায়নি।');
+      }
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'অনুরোধ বাতিল করা যায়নি।');
+    } finally {
+      setCancellingId(null);
     }
   };
 
@@ -103,10 +121,46 @@ export default function RequestsPage() {
     const confirmed = window.confirm('এই রক্তদান অনুরোধটি বাতিল করবেন?');
     if (!confirmed) return;
     setCancellingBloodId(id);
-    const result = await cancelMyBloodRequest(id, user.id);
-    setCancellingBloodId(null);
-    if (result.success) {
-      setBloodRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' as BloodRequestStatus } : r)));
+    setRequestError('');
+    try {
+      const result = await cancelMyBloodRequest(id, user.id);
+      if (result.success) {
+        setBloodRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' as BloodRequestStatus } : r)));
+      } else {
+        setRequestError(result.error || 'অনুরোধ বাতিল করা যায়নি।');
+      }
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'অনুরোধ বাতিল করা যায়নি।');
+    } finally {
+      setCancellingBloodId(null);
+    }
+  };
+
+  const handleCancelServiceRequest = async (id: string) => {
+    if (!user || !window.confirm('এই সার্ভিস রিকোয়েস্টটি বাতিল করবেন?')) return;
+    const client = createClient();
+    if (!client) {
+      setRequestError('ডেটাবেজ সংযোগ তৈরি করা যায়নি।');
+      return;
+    }
+    setCancellingServiceId(id);
+    setRequestError('');
+    try {
+      const { data, error } = await client
+        .from('service_requests')
+        .update({ status: 'cancelled', updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .eq('customer_id', user.id)
+        .in('status', ['new', 'submitted'])
+        .select('id')
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) throw new Error('এই অনুরোধটি আর বাতিল করা যাবে না।');
+      setCancelledServiceIds((previous) => new Set(previous).add(id));
+    } catch (error) {
+      setRequestError(error instanceof Error ? error.message : 'অনুরোধ বাতিল করা যায়নি।');
+    } finally {
+      setCancellingServiceId(null);
     }
   };
 
@@ -138,6 +192,11 @@ export default function RequestsPage() {
               বাসা দেখার অনুরোধসহ সব সেবার বর্তমান অবস্থা এক জায়গায়
             </p>
           </div>
+          {requestError && (
+            <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800">
+              {requestError}
+            </p>
+          )}
 
           <Link
             href="/services"
@@ -340,9 +399,11 @@ export default function RequestsPage() {
               <>
                 <h2 className="text-sm font-bold text-slate-900 pt-3">সার্ভিস রিকোয়েস্ট</h2>
                 {requests.map((req) => {
-                  const statusConf = STATUS_CONFIGS[req.status] || STATUS_CONFIGS.submitted;
+                  const currentStatus = cancelledServiceIds.has(req.id) ? 'cancelled' : req.status;
+                  const statusConf = STATUS_CONFIGS[currentStatus] || STATUS_CONFIGS.submitted;
                   const StatusIcon = statusConf.icon;
                   const area = getAreaById(req.areaId);
+                  const canCancel = currentStatus === 'new' || currentStatus === 'submitted';
 
                   return (
                     <div key={req.id} className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-2xs hover:border-slate-300 transition-all">
@@ -475,6 +536,17 @@ export default function RequestsPage() {
                         >
                           সহায়তা চান
                         </button>
+                        {canCancel && (
+                          <button
+                            type="button"
+                            disabled={cancellingServiceId === req.id}
+                            onClick={() => void handleCancelServiceRequest(req.id)}
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-slate-600 font-semibold hover:bg-slate-50 disabled:opacity-50"
+                          >
+                            {cancellingServiceId === req.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                            অনুরোধ বাতিল
+                          </button>
+                        )}
                       </div>
 
                       {supportRequested === req.id && (

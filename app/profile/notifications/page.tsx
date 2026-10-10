@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { Bell, ArrowLeft, CheckCircle2, Info, AlertTriangle, ShieldAlert, MoveRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -9,6 +9,8 @@ import Footer from '@/components/Footer';
 
 export default function NotificationsPage() {
   const { notifications, markNotificationsReadAll } = useAuth();
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
   const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   const getIcon = (type: string) => {
@@ -21,6 +23,19 @@ export default function NotificationsPage() {
         return <ShieldAlert className="w-5 h-5 text-rose-700 shrink-0" />;
       default:
         return <Info className="w-5 h-5 text-sky-700 shrink-0" />;
+    }
+  };
+
+  const markAllRead = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      const result = await markNotificationsReadAll();
+      if (!result.success) setError(result.error || 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -50,13 +65,20 @@ export default function NotificationsPage() {
           {unreadCount > 0 && (
             <button
               type="button"
-              onClick={markNotificationsReadAll}
-              className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 shrink-0"
+              onClick={markAllRead}
+              disabled={busy}
+              className="min-h-11 px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50 shrink-0"
             >
-              সব পড়া হয়েছে
+              {busy ? 'আপডেট হচ্ছে…' : 'সব পড়া হয়েছে'}
             </button>
           )}
         </div>
+
+        {error && (
+          <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+            {error}
+          </p>
+        )}
 
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100 overflow-hidden">
           {notifications.length === 0 ? (

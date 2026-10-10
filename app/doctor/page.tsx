@@ -9,12 +9,12 @@ export const metadata: Metadata = {
   title: `${ui.title} — ময়মনসিংহ শেবা`,
   description:
     'ময়মনসিংহের চিকিৎসক, ডায়াগনস্টিক সেন্টার ও হাসপাতালের তালিকা। এলাকা অথবা প্রতিষ্ঠানের নাম লিখে খুঁজুন এবং সরাসরি যোগাযোগ নম্বর দেখুন।',
-  alternates: { canonical: '/doctor' },
+  alternates: { canonical: '/doctors' },
   openGraph: {
     title: `${ui.title} — ময়মনসিংহ শেবা`,
     description:
       'ময়মনসিংহের অ্যাডমিন-যাচাইকৃত চিকিৎসা সেবার তালিকা ও সরাসরি যোগাযোগ নম্বর।',
-    url: '/doctor',
+    url: '/doctors',
     type: 'website',
   },
 };

@@ -573,7 +573,7 @@ export interface EmergencyUiConfig {
 export const EMERGENCY_UI: Record<EmergencyService, EmergencyUiConfig> = {
   doctor: {
     service: 'doctor',
-    route: '/doctor',
+    route: '/doctors',
     title: 'ডাক্তার',
     subtitle:
       'ময়মনসিংহে চিকিৎসা সেবা দেওয়া প্রতিষ্ঠান ও চিকিৎসকদের তালিকা — যোগাযোগের তথ্য সরাসরি।',
@@ -581,7 +581,7 @@ export const EMERGENCY_UI: Record<EmergencyService, EmergencyUiConfig> = {
     placeholder: 'ডাক্তার, প্রতিষ্ঠান বা এলাকা লিখে খুঁজুন...',
     highlights: ['অ্যাডমিন যাচাইকৃত তথ্য', 'সরাসরি যোগাযোগ', 'এলাকাভিত্তিক তালিকা'],
     disclaimer:
-      'জরুরি অবস্থায় প্রথমে নিকটস্থ হাসপাতালের জরুরি বিভাগে যোগাযোগ করুন। জীবনঘাতী জরুরি ক্ষেত্রে জাতীয় জরুরি নম্বর ৯৯৯-এ কল করুন।',
+      'জরুরি অবস্থায় প্রথমে নিকটস্থ হাসপাতালের জরুরি বিভাগে যোগাযোগ করুন। এখানে কেবল অ্যাডমিন-যাচাইকৃত স্থানীয় যোগাযোগের তথ্য দেখানো হয়।',
   },
   police: {
     service: 'police',
@@ -607,7 +607,7 @@ export const EMERGENCY_UI: Record<EmergencyService, EmergencyUiConfig> = {
   },
   fire_service: {
     service: 'fire_service',
-    route: '/fire-service',
+    route: '/fireservice',
     title: 'ফায়ার সার্ভিস',
     subtitle: 'ময়মনসিংহে অগ্নিনির্বাপণ ও উদ্ধার সেবার তালিকা।',
     noun: 'ফায়ার ইউনিট',

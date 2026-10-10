@@ -32,6 +32,11 @@ export interface ListParams {
   pageSize: number;
   search?: string;
   status?: string;
+  kind?: string;
+  category?: string;
+  service?: string;
+  area?: string;
+  sort?: string;
   [key: string]: string | number | undefined;
 }
 
@@ -42,6 +47,8 @@ export interface Paged<T> {
   pageSize: number;
   /** Supabase is not configured — the UI must say so, not show "empty". */
   unavailable: boolean;
+  /** A query failure, distinct from a genuinely empty result set. */
+  error?: string;
 }
 
 export interface AdminClient {
@@ -217,6 +224,8 @@ export interface DashboardStats {
   featured_posts: number;
   total_requests: number;
   open_requests: number;
+  completed_requests: number;
+  cancelled_requests: number;
   total_tolet_requests: number;
   open_tolet_requests: number;
   total_blood_requests: number;
@@ -245,6 +254,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       total_users: 0, active_users: 0, blocked_users: 0, new_users_7d: 0,
       total_posts: 0, pending_posts: 0, approved_posts: 0, rejected_posts: 0,
       featured_posts: 0, total_requests: 0, open_requests: 0,
+      completed_requests: 0, cancelled_requests: 0,
       total_tolet_requests: 0, open_tolet_requests: 0, total_blood_requests: 0,
       open_blood_requests: 0, total_vehicle_requests: 0, open_vehicle_requests: 0,
       total_messages: 0, unread_messages: 0, total_reports: 0, open_reports: 0,
@@ -261,6 +271,7 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       total_users: 0, active_users: 0, blocked_users: 0, new_users_7d: 0,
       total_posts: 0, pending_posts: 0, approved_posts: 0, rejected_posts: 0,
       featured_posts: 0, total_requests: 0, open_requests: 0,
+      completed_requests: 0, cancelled_requests: 0,
       total_tolet_requests: 0, open_tolet_requests: 0, total_blood_requests: 0,
       open_blood_requests: 0, total_vehicle_requests: 0, open_vehicle_requests: 0,
       total_messages: 0, unread_messages: 0, total_reports: 0, open_reports: 0,
@@ -272,7 +283,24 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   }
 
   const row = Array.isArray(data) ? data[0] : data;
-  return { ...(row as Omit<DashboardStats, 'unavailable'>), unavailable: false };
+  const [completed, cancelled] = await Promise.all([
+    admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
+    admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
+  ]);
+  if (completed.error || cancelled.error) {
+    return {
+      ...(row as Omit<DashboardStats, 'unavailable'>),
+      completed_requests: 0,
+      cancelled_requests: 0,
+      unavailable: true,
+    };
+  }
+  return {
+    ...(row as Omit<DashboardStats, 'unavailable'>),
+    completed_requests: completed.count ?? 0,
+    cancelled_requests: cancelled.count ?? 0,
+    unavailable: false,
+  };
 }
 
 export interface ActivityItem {
@@ -308,6 +336,93 @@ export async function fetchRecentActivity(limit = 12): Promise<{
       detail: row.detail,
       href: row.href,
     })),
+    unavailable: false,
+  };
+}
+
+export interface AdminAuditEvent {
+  id: string;
+  actor_id: string | null;
+  actor_name: string | null;
+  entity_table: string;
+  record_id: string | null;
+  operation: 'insert' | 'update' | 'delete';
+  before_state: Record<string, string | null>;
+  after_state: Record<string, string | null>;
+  created_at: string;
+}
+
+/** Admin-only, paged audit entries. The database policy is the final boundary. */
+export async function fetchAdminAuditEvents(
+  params: ListParams
+): Promise<Paged<AdminAuditEvent>> {
+  const admin = await getAdminDataClient();
+  if (!admin) {
+    return { rows: [], total: 0, page: 1, pageSize: params.pageSize, unavailable: true };
+  }
+
+  let query = admin.client
+    .from('admin_audit_log')
+    .select('id, actor_id, entity_table, record_id, operation, before_state, after_state, created_at', {
+      count: 'exact',
+    });
+
+  if (params.status) query = query.eq('operation', params.status);
+  if (params.category) query = query.eq('entity_table', params.category);
+  if (params.search) {
+    const term = params.search.replace(/[%_,()]/g, '').trim();
+    if (term) {
+      query = query.or(`entity_table.ilike.%${term}%,record_id.ilike.%${term}%`);
+    }
+  }
+
+  const from = (params.page - 1) * params.pageSize;
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, from + params.pageSize - 1);
+
+  if (error) {
+    return {
+      rows: [],
+      total: 0,
+      page: params.page,
+      pageSize: params.pageSize,
+      unavailable: true,
+      error: error.message,
+    };
+  }
+
+  const rows = data ?? [];
+  const actorIds = [...new Set(rows.flatMap((row) => row.actor_id ? [row.actor_id] : []))];
+  const namesById = new Map<string, string>();
+  if (actorIds.length > 0) {
+    const { data: actors, error: actorError } = await admin.client
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', actorIds);
+    if (actorError) {
+      return {
+        rows: [],
+        total: 0,
+        page: params.page,
+        pageSize: params.pageSize,
+        unavailable: true,
+        error: actorError.message,
+      };
+    }
+    for (const actor of actors ?? []) namesById.set(actor.id, actor.full_name);
+  }
+
+  return {
+    rows: rows.map((row) => ({
+      ...row,
+      actor_name: row.actor_id ? namesById.get(row.actor_id) ?? null : null,
+      before_state: row.before_state ?? {},
+      after_state: row.after_state ?? {},
+    })),
+    total: count ?? 0,
+    page: params.page,
+    pageSize: params.pageSize,
     unavailable: false,
   };
 }
@@ -361,7 +476,16 @@ export async function fetchUsers(params: ListParams): Promise<Paged<AdminUserRow
   if (params.status) query = query.eq('status', params.status);
 
   const { data, count, error } = await query;
-  if (error || !data) return { rows: [], total: 0, page: params.page, pageSize: params.pageSize, unavailable: false };
+  if (error || !data) {
+    return {
+      rows: [],
+      total: 0,
+      page: params.page,
+      pageSize: params.pageSize,
+      unavailable: true,
+      error: error?.message ?? 'গাড়ি রিকোয়েস্ট লোড করা যায়নি।',
+    };
+  }
 
   const ids = data.map((r) => r.id);
   const [tolet, tutors, donors, postCounts, requestCounts] = await Promise.all([
@@ -569,6 +693,9 @@ export interface AdminVehicleRequestRow {
   pickup_area_id: string | null;
   destination_area_id: string | null;
   travel_date: string | null;
+  travel_time: string | null;
+  passenger_count: number | null;
+  trip_duration: string | null;
   budget: number | null;
   notes: string | null;
   status: string;
@@ -586,7 +713,7 @@ export async function fetchVehicleRequests(params: ListParams): Promise<Paged<Ad
   let query = client
     .from('vehicle_requests')
     .select(
-      'id, vehicle_kind, vehicle_name, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, budget, notes, status, created_at',
+      'id, vehicle_kind, vehicle_name, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, status, created_at',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
@@ -606,6 +733,27 @@ export async function fetchVehicleRequests(params: ListParams): Promise<Paged<Ad
     pageSize: params.pageSize,
     unavailable: false,
   };
+}
+
+/** Full vehicle booking details for its admin-only detail route. */
+export async function fetchVehicleRequestById(id: string): Promise<{
+  row: AdminVehicleRequestRow | null;
+  unavailable: boolean;
+  error?: string;
+}> {
+  const admin = await getAdminDataClient();
+  if (!admin) return { row: null, unavailable: true };
+
+  const { data, error } = await admin.client
+    .from('vehicle_requests')
+    .select(
+      'id, vehicle_kind, vehicle_name, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, status, created_at'
+    )
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error) return { row: null, unavailable: true, error: error.message };
+  return { row: data as AdminVehicleRequestRow | null, unavailable: false };
 }
 
 // ---------------------------------------------------------------------------
@@ -801,7 +949,9 @@ export interface AdminEmergencyContactRow {
   name_bn: string;
   organization_bn: string | null;
   area_id: string | null;
+  address_bn: string | null;
   phone: string;
+  source_note: string | null;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -818,7 +968,7 @@ export async function fetchEmergencyContacts(params: ListParams): Promise<Paged<
   let query = client
     .from('emergency_contacts')
     .select(
-      'id, service, name_bn, organization_bn, area_id, phone, is_active, sort_order, created_at',
+      'id, service, name_bn, organization_bn, area_id, address_bn, phone, source_note, is_active, sort_order, created_at',
       { count: 'exact' }
     )
     .order('sort_order', { ascending: true })
@@ -831,7 +981,16 @@ export async function fetchEmergencyContacts(params: ListParams): Promise<Paged<
   if (params.status === 'inactive') query = query.eq('is_active', false);
 
   const { data, count, error } = await query;
-  if (error || !data) return { rows: [], total: 0, page: params.page, pageSize: params.pageSize, unavailable: false };
+  if (error || !data) {
+    return {
+      rows: [],
+      total: 0,
+      page: params.page,
+      pageSize: params.pageSize,
+      unavailable: true,
+      error: error?.message ?? 'জরুরি যোগাযোগ লোড করা যায়নি।',
+    };
+  }
 
   return {
     rows: data as AdminEmergencyContactRow[],

@@ -115,6 +115,7 @@ export default async function AdminMessagesPage({
         columns={columns}
         rows={result.rows}
         getKey={(row) => row.id}
+        getHref={(row) => `/admin/messages/${row.id}`}
         caption="যোগাযোগ বার্তার তালিকা"
         empty={
           <AdminEmpty

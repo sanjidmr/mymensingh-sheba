@@ -441,6 +441,12 @@ export function ContactRow({
   isVerified,
 }: ContactRowProps) {
   const hasPhone = Boolean(phone && phone.trim());
+  const dialPhone = phone
+    ?.replace(/[০-৯]/g, (digit) => String('০১২৩৪৫৬৭৮৯'.indexOf(digit)))
+    .replace(/[^\d+]/g, '');
+  const normalizedDialPhone = dialPhone?.startsWith('+')
+    ? `+${dialPhone.slice(1).replace(/\+/g, '')}`
+    : dialPhone?.replace(/\+/g, '');
   return (
     <article className="flex flex-col rounded-xl border border-brand-100 bg-white p-3.5 transition-colors hover:border-brand-200 sm:p-4">
       <div className="flex items-start justify-between gap-2">
@@ -487,11 +493,11 @@ export function ContactRow({
       <div className="mt-auto pt-3">
         {hasPhone ? (
           <a
-            href={`tel:${phone!.replace(/[^\d+]/g, '')}`}
+            href={`tel:${normalizedDialPhone}`}
             className={`inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
           >
             <Phone className="h-4 w-4" aria-hidden="true" />
-            যোগাযোগ করুন
+            এখনই কল করুন
             <span className="font-bold">{phone}</span>
           </a>
         ) : (

@@ -15,7 +15,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Loader2, Trash2, X } from 'lucide-react';
+import { Eye, Loader2, Save, Trash2, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
@@ -23,9 +23,13 @@ import { useAuth } from '@/lib/auth-context';
 import {
   createCommunityPost,
   currentUserId,
+  deleteCommunityPostDraft,
   deleteCommunityPost,
+  loadCommunityPostDraft,
+  saveCommunityPostDraft,
   updateCommunityPost,
   uploadPostImage,
+  type CommunityPostDraft,
 } from '@/lib/catalog-service';
 import { getAllMCCAreas } from '@/lib/locations';
 import { normalizeBdPhone } from '@/lib/contact-types';
@@ -112,6 +116,21 @@ type PhotoSlot = { key: string; file: File | null; url: string };
 
 /** Cover plus four gallery photos. */
 const MAX_PHOTOS = 5;
+const DRAFT_VERSION = 1;
+
+type PostDraft = CommunityPostDraft;
+
+function isPostDraft(value: unknown): value is PostDraft {
+  if (typeof value !== 'object' || value === null || !('version' in value) || value.version !== DRAFT_VERSION) {
+    return false;
+  }
+  if (!('values' in value) || typeof value.values !== 'object' || value.values === null) return false;
+  if (!('tags' in value) || !Array.isArray(value.tags) || !value.tags.every((tag) => typeof tag === 'string')) {
+    return false;
+  }
+  return 'savedAt' in value && typeof value.savedAt === 'string' &&
+    Object.values(value.values).every((entry) => typeof entry === 'string');
+}
 
 /**
  * The form's starting state for an existing post.
@@ -179,9 +198,92 @@ export default function PostForm({
   const [submitting, setSubmitting] = useState(false);
   const [uploadedCount, setUploadedCount] = useState(0);
   const [formError, setFormError] = useState('');
+  const [draftNotice, setDraftNotice] = useState('');
   const [deleting, setDeleting] = useState(false);
+  const [draftLoadedFor, setDraftLoadedFor] = useState<string | null>(null);
+  const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
+  const [draftBusy, setDraftBusy] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const draftKey = `mymensingh-sheba:post-draft:${user?.id ?? 'guest'}:${kind}`;
+  const draftReady = Boolean(editing) || draftLoadedFor === draftKey;
 
   const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
+
+  useEffect(() => {
+    if (editing) return;
+    let active = true;
+    void Promise.resolve().then(async () => {
+      try {
+        let parsed: unknown = null;
+        let savedAt: string | null = null;
+        if (user) {
+          const result = await loadCommunityPostDraft(kind);
+          if (!result.success) throw new Error(`খসড়া লোড করা যায়নি: ${result.error}`);
+          parsed = result.data.draft;
+          savedAt = result.data.updatedAt;
+        } else {
+          const raw = window.localStorage.getItem(draftKey);
+          if (raw) parsed = JSON.parse(raw);
+        }
+        if (parsed !== null) {
+          if (!isPostDraft(parsed)) throw new Error('সংরক্ষিত খসড়ার তথ্য পড়া যাচ্ছে না।');
+          if (active) {
+            const restoredValues = { ...EMPTY };
+            for (const key of Object.keys(EMPTY) as (keyof FormValues)[]) {
+              const value = parsed.values[key];
+              if (typeof value === 'string') restoredValues[key] = value;
+            }
+            setValues(restoredValues);
+            setTags(parsed.tags.slice(0, 6));
+            setDraftSavedAt(savedAt ?? parsed.savedAt);
+            setDraftNotice(user
+              ? 'Supabase-এ সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে। ছবি আবার যোগ করতে হবে।'
+              : 'এই ব্রাউজারে আগে সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে। ছবি আবার যোগ করতে হবে।');
+          }
+        }
+      } catch (error) {
+        if (active) setFormError(error instanceof Error ? error.message : 'খসড়া পড়া যায়নি।');
+      } finally {
+        if (active) setDraftLoadedFor(draftKey);
+      }
+    });
+    return () => { active = false; };
+  }, [draftKey, editing, kind, user]);
+
+  useEffect(() => {
+    if (!draftReady || editing || submitting) return;
+    const timeout = window.setTimeout(() => {
+      void (async () => {
+       try {
+        const hasContent =
+          Object.values(values).some((value) => value.trim().length > 0) || tags.length > 0;
+        if (!hasContent) {
+          if (user) {
+            const result = await deleteCommunityPostDraft(kind);
+            if (!result.success) throw new Error(result.error);
+          } else {
+            window.localStorage.removeItem(draftKey);
+          }
+          setDraftSavedAt(null);
+          return;
+        }
+        const savedAt = new Date().toISOString();
+        const draft: PostDraft = { version: DRAFT_VERSION, values: { ...values }, tags, savedAt };
+        if (user) {
+          const result = await saveCommunityPostDraft(kind, draft);
+          if (!result.success) throw new Error(result.error);
+          setDraftSavedAt(result.data);
+        } else {
+          window.localStorage.setItem(draftKey, JSON.stringify(draft));
+          setDraftSavedAt(savedAt);
+        }
+       } catch (error) {
+        setFormError(error instanceof Error ? `খসড়া সংরক্ষণ করা যায়নি: ${error.message}` : 'খসড়া সংরক্ষণ করা যায়নি।');
+       }
+      })();
+    }, 700);
+    return () => window.clearTimeout(timeout);
+  }, [draftKey, draftReady, editing, kind, submitting, tags, user, values]);
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -366,7 +468,20 @@ export default function PostForm({
           setFormError(result.error);
           return;
         }
-        router.push(`/profile/posts?submitted=${encodeURIComponent(result.data.slug)}`);
+        let draftCleanupFailed = false;
+        if (user) {
+          const cleanup = await deleteCommunityPostDraft(kind);
+          draftCleanupFailed = !cleanup.success;
+        } else {
+          try {
+            window.localStorage.removeItem(draftKey);
+          } catch {
+            draftCleanupFailed = true;
+          }
+        }
+        router.push(
+          `/dashboard/posts?submitted=${encodeURIComponent(result.data.slug)}${draftCleanupFailed ? `&draftCleanup=${kind}` : ''}`
+        );
       }
     } finally {
       setSubmitting(false);
@@ -445,6 +560,29 @@ export default function PostForm({
     });
   }
 
+  async function saveDraftNow() {
+    setDraftBusy(true);
+    setFormError('');
+    try {
+      const savedAt = new Date().toISOString();
+      const draft: PostDraft = { version: DRAFT_VERSION, values: { ...values }, tags, savedAt };
+      if (user) {
+        const result = await saveCommunityPostDraft(kind, draft);
+        if (!result.success) throw new Error(result.error);
+        setDraftSavedAt(result.data);
+        setDraftNotice('খসড়া আপনার Supabase অ্যাকাউন্টে সংরক্ষিত হয়েছে। ছবি সংরক্ষিত হয়নি; পরে আবার যোগ করুন।');
+      } else {
+        window.localStorage.setItem(draftKey, JSON.stringify(draft));
+        setDraftSavedAt(savedAt);
+        setDraftNotice('খসড়া এই ব্রাউজারে সংরক্ষিত হয়েছে। ছবি সংরক্ষিত হয়নি; পরে আবার যোগ করুন।');
+      }
+    } catch (error) {
+      setFormError(error instanceof Error ? `খসড়া সংরক্ষণ করা যায়নি: ${error.message}` : 'খসড়া সংরক্ষণ করা যায়নি।');
+    } finally {
+      setDraftBusy(false);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-mist-50">
       <Navbar />
@@ -465,6 +603,12 @@ export default function PostForm({
             ? 'সম্পাদনা করলে পোস্টটি আবার অ্যাডমিন অনুমোদনের অপেক্ষায় যাবে।'
             : 'পোস্টটি অ্যাডমিন অনুমোদনের পর সবার জন্য দেখা যাবে। অনুমোদনের আগে আপনি নিজেই দেখতে পাবেন।'}
         </p>
+        {!editing && (
+          <p className="mt-1 text-[11px] text-ink-400">
+            {user ? 'খসড়া আপনার Supabase অ্যাকাউন্টে সংরক্ষিত হবে' : 'খসড়া শুধু এই ব্রাউজারে সংরক্ষিত হবে'}
+            {draftSavedAt ? ` · সর্বশেষ সংরক্ষণ ${new Date(draftSavedAt).toLocaleTimeString('bn-BD')}` : ''}।
+          </p>
+        )}
 
         {/* Why this post came back — the whole point of editing a rejected
             submission is knowing what to fix. */}
@@ -864,6 +1008,11 @@ export default function PostForm({
               {formError}
             </p>
           )}
+          {draftNotice && (
+            <p role="status" className="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-[12px] text-emerald-800">
+              {draftNotice}
+            </p>
+          )}
 
           {!isConfiguredWithSupabase && (
             <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-[12.5px] text-amber-900">
@@ -871,7 +1020,42 @@ export default function PostForm({
             </p>
           )}
 
+          {showPreview && (
+            <section aria-label="পোস্টের প্রিভিউ" className="rounded-xl border border-brand-200 bg-white p-4">
+              <p className="mb-2 text-[11px] font-extrabold text-brand-700">প্রিভিউ · {meta.noun}</p>
+              {photos[0] && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={photos[0].url} alt="" className="mb-3 max-h-56 w-full rounded-lg object-cover" />
+              )}
+              <h2 className="text-base font-extrabold text-ink-900">{values.title.trim() || 'আপনার শিরোনাম'}</h2>
+              {values.summary.trim() && <p className="mt-1 text-sm text-ink-600">{values.summary}</p>}
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-700">{values.body || 'বিস্তারিত এখানে দেখা যাবে।'}</p>
+              {values.price && <p className="mt-2 font-extrabold text-brand-700">৳ {values.price}</p>}
+              {values.organization && <p className="mt-2 text-xs text-ink-500">{values.organization}</p>}
+            </section>
+          )}
+
           <div className="flex flex-wrap gap-2 pt-1">
+            {!editing && (
+              <button
+                type="button"
+                onClick={saveDraftNow}
+                disabled={submitting || deleting || draftBusy || !draftReady}
+                className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[12px] font-bold text-brand-700 hover:bg-mist-50 disabled:opacity-60 ${LIGHT_FOCUS}`}
+              >
+                <Save className="h-4 w-4" aria-hidden="true" />
+                {draftBusy ? 'সংরক্ষণ হচ্ছে…' : 'খসড়া সংরক্ষণ'}
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowPreview((visible) => !visible)}
+              className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[12px] font-bold text-brand-700 hover:bg-mist-50 ${LIGHT_FOCUS}`}
+              aria-expanded={showPreview}
+            >
+              <Eye className="h-4 w-4" aria-hidden="true" />
+              {showPreview ? 'প্রিভিউ বন্ধ' : 'প্রিভিউ'}
+            </button>
             <button
               type="submit"
               disabled={submitting || deleting}

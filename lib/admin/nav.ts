@@ -16,6 +16,7 @@ import {
   Heart,
   Star,
   Bell,
+  Activity,
   ImageIcon,
   Settings,
 } from 'lucide-react';
@@ -181,6 +182,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: Bell,
         badgeKey: 'notifications',
         description: 'সিস্টেমের সব গুরুত্বপূর্ণ আপডেট',
+      },
+      {
+        href: '/admin/activity',
+        label: 'অডিট লগ',
+        icon: Activity,
+        description: 'অ্যাডমিনদের পরিবর্তনের ইতিহাস',
       },
       {
         href: '/admin/media',

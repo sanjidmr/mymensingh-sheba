@@ -94,6 +94,7 @@ export async function setVehicleRequestStatus(
     if (error) return { ok: false, error: error.message };
 
     revalidatePath('/admin/vehicle-requests');
+    revalidatePath(`/admin/vehicle-requests/${requestId}`);
     return { ok: true, message: 'রিকোয়েস্টের স্ট্যাটাস আপডেট হয়েছে।' };
   });
 }

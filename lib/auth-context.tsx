@@ -43,12 +43,14 @@ function notificationLink(n: {
   if (n.targetRole === 'admin') {
     if (n.relatedType === 'service_request') return `/admin/requests/${id}`;
     if (n.relatedType === 'blood_request') return `/admin/blood/${id}`;
+    if (n.relatedType === 'contact_message') return `/admin/messages/${id}`;
     return '/admin/reports';
   }
   // Customer-facing decisions point at the customer dashboard: a moderation
   // verdict belongs next to the posts list, not in a generic inbox.
   if (n.relatedType === 'community_post') return '/dashboard/posts';
   if (n.relatedType === 'tolet_listing') return '/profile/tolet';
+  if (n.relatedType === 'contact_message') return '/dashboard/messages';
   return '/profile/requests';
 }
 
@@ -75,12 +77,12 @@ interface AuthContextType {
   }) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>;
   resetPassword: (phoneOrEmail: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
-  updateProfile: (updates: Partial<UserProfile>) => Promise<void>;
+  updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
   /** Upload a new profile photo to the owner-scoped `avatars` bucket. */
   uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string; url?: string }>;
   /** Change the signed-in user's password via Supabase Auth. */
   changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
-  markNotificationsReadAll: () => Promise<void>;
+  markNotificationsReadAll: () => Promise<{ success: boolean; error?: string }>;
   activateToletProfile: (details: Omit<ToletProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'totalListingsCount' | 'status'>) => Promise<void>;
   activateHomeTutorProfile: (details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>) => Promise<void>;
   activateBloodDonorProfile: (details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>) => Promise<void>;
@@ -477,27 +479,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateProfile = async (updates: Partial<UserProfile>) => {
-    if (!user) return;
-    const updated = { ...user, ...updates, updatedAt: new Date().toISOString() };
-    setUser(updated);
-    if (isSupabaseConfigured) {
-      const client = createClient();
-      if (client) {
-        await client
-          .from('profiles')
-          .update({
-            full_name: updated.fullName,
-            phone: updated.phone,
-            email: updated.email || null,
-            avatar_url: updated.avatarUrl || null,
-            bio: updated.bio || null,
-            primary_area_id: updated.primaryAreaId,
-            emergency_contact: updated.emergencyContact || null,
-            updated_at: updated.updatedAt,
-          })
-          .eq('id', user.id);
-      }
+    if (!user) return { success: false, error: 'আপনাকে আগে লগইন করতে হবে।' };
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Supabase সংযুক্ত নেই; তথ্য সংরক্ষণ করা যায়নি।' };
     }
+    const client = createClient();
+    if (!client) {
+      return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি; আবার চেষ্টা করুন।' };
+    }
+
+    const updated = { ...user, ...updates, updatedAt: new Date().toISOString() };
+    const { error } = await client
+      .from('profiles')
+      .update({
+        full_name: updated.fullName,
+        phone: updated.phone,
+        email: updated.email || null,
+        avatar_url: updated.avatarUrl || null,
+        bio: updated.bio || null,
+        primary_area_id: updated.primaryAreaId,
+        emergency_contact: updated.emergencyContact || null,
+        updated_at: updated.updatedAt,
+      })
+      .eq('id', user.id);
+    if (error) {
+      return { success: false, error: `প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে: ${error.message}` };
+    }
+
+    setUser(updated);
+    return { success: true };
   };
 
   /**
@@ -528,7 +538,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data } = client.storage.from('avatars').getPublicUrl(path);
     if (!data.publicUrl) return { success: false, error: '???????????? ???????????? ???????????? ????????? ?????????????????????' };
-    await updateProfile({ avatarUrl: data.publicUrl });
+    const profileResult = await updateProfile({ avatarUrl: data.publicUrl });
+    if (!profileResult.success) {
+      await client.storage.from('avatars').remove([path]);
+      return profileResult;
+    }
     return { success: true, url: data.publicUrl };
   };
 
@@ -732,32 +746,39 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markNotificationsReadAll = async () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-    if (!isSupabaseConfigured) return;
-    const client = createClient();
-    if (!client || !user) return;
-    try {
-      // Personal inbox: only rows owned by this user. Admin hub rows
-      // (target_role='admin') are matched separately so a single action covers
-      // both, while never touching another user's notifications.
-      const personalPromise = client
-        .from('notifications')
-        .update({ is_read: true })
-        .eq('user_id', user.id)
-        .eq('is_read', false);
-      const adminPromise =
-        user.role === 'admin'
-          ? client
-              .from('notifications')
-              .update({ is_read: true })
-              .eq('target_role', 'admin')
-              .eq('is_read', false)
-          : Promise.resolve({ error: null });
-      await Promise.all([personalPromise, adminPromise]);
-    } catch {
-      // The optimistic UI update already happened; a failed write should not
-      // crash the page or leave an unhandled rejection in the console.
+    if (!user) return { success: false, error: 'আপনাকে আগে লগইন করতে হবে।' };
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Supabase সংযুক্ত নেই; নোটিফিকেশন আপডেট করা যায়নি।' };
     }
+    const client = createClient();
+    if (!client) {
+      return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি; আবার চেষ্টা করুন।' };
+    }
+
+    // Personal rows are scoped to the signed-in user; admin hub rows are only
+    // included for a verified admin session and remain protected by RLS.
+    const personalPromise = client
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('user_id', user.id)
+      .eq('is_read', false);
+    const adminPromise =
+      user.role === 'admin'
+        ? client
+            .from('notifications')
+            .update({ is_read: true })
+            .eq('target_role', 'admin')
+            .eq('is_read', false)
+        : Promise.resolve({ error: null });
+    const [personalResult, adminResult] = await Promise.all([personalPromise, adminPromise]);
+    if (personalResult.error || adminResult.error) {
+      return {
+        success: false,
+        error: `নোটিফিকেশন আপডেট ব্যর্থ হয়েছে: ${personalResult.error?.message ?? adminResult.error?.message}`,
+      };
+    }
+    setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+    return { success: true };
   };
 
   const createServiceRequest = async (

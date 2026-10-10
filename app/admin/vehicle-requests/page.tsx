@@ -43,15 +43,33 @@ const columns: AdminColumn<AdminVehicleRequestRow>[] = [
     ),
   },
   {
-    key: 'date',
-    header: 'ভ্রমণের তারিখ',
-    render: (row) => <span className="text-xs text-ink-500">{formatDate(row.travel_date)}</span>,
+    key: 'trip',
+    header: 'যাত্রার তথ্য',
+    render: (row) => (
+      <span className="block text-xs text-ink-600">
+        <span className="block">{formatDate(row.travel_date)}{row.travel_time ? ` · ${row.travel_time}` : ''}</span>
+        <span className="mt-0.5 block text-[11px] text-ink-400">
+          {row.passenger_count ? `${row.passenger_count} জন` : 'যাত্রী উল্লেখ নেই'}
+          {row.trip_duration ? ` · ${row.trip_duration}` : ''}
+        </span>
+      </span>
+    ),
   },
   {
     key: 'budget',
     header: 'বাজেট',
     hideOnMobile: true,
     render: (row) => <span className="text-xs text-ink-500">{row.budget ? `৳${row.budget}` : '—'}</span>,
+  },
+  {
+    key: 'notes',
+    header: 'অতিরিক্ত তথ্য',
+    hideOnMobile: true,
+    render: (row) => (
+      <span className="block max-w-xs whitespace-pre-line text-xs text-ink-500">
+        {row.notes || '—'}
+      </span>
+    ),
   },
   {
     key: 'status',
@@ -85,7 +103,10 @@ export default async function AdminVehicleRequestsPage({
           title="গাড়ি রিকোয়েস্ট"
           description="গাড়ি, অটো ও সিএনজি ভাড়ার অনুরোধ।"
         />
-        <AdminError title="ডেটাবেজ সংযুক্ত নেই" />
+        <AdminError
+          title="গাড়ি রিকোয়েস্ট লোড করা যায়নি"
+          message={result.error ?? 'ডেটাবেজ সংযুক্ত নেই।'}
+        />
       </>
     );
   }
@@ -118,6 +139,7 @@ export default async function AdminVehicleRequestsPage({
         columns={columns}
         rows={result.rows}
         getKey={(row) => row.id}
+        getHref={(row) => `/admin/vehicle-requests/${row.id}`}
         caption="গাড়ি রিকোয়েস্টের তালিকা"
         empty={
           <AdminEmpty

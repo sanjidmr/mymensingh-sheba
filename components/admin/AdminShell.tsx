@@ -10,6 +10,7 @@ import {
   ExternalLink,
   X,
   ShieldCheck,
+  Bell,
 } from 'lucide-react';
 import { ADMIN_NAV, findAdminNavItem, type AdminBadgeKey } from '@/lib/admin/nav';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -152,6 +153,30 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
     </div>
   );
 
+  const renderNotificationLink = (onDark = false) => (
+    <Link
+      href="/admin/notifications"
+      className={cn(
+        'relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg',
+        onDark
+          ? 'text-brand-100 hover:bg-brand-800'
+          : 'text-ink-500 hover:bg-mist-100 hover:text-brand-700'
+      )}
+      aria-label={
+        badges?.notifications
+          ? `নোটিফিকেশন, ${badges.notifications}টি অপঠিত`
+          : 'নোটিফিকেশন'
+      }
+    >
+      <Bell className="h-5 w-5" aria-hidden="true" />
+      {!!badges?.notifications && (
+        <span className="absolute right-0.5 top-0.5 flex min-h-4 min-w-4 items-center justify-center rounded-full bg-rose-600 px-1 text-[9px] font-bold text-white">
+          {badges.notifications > 99 ? '99+' : badges.notifications}
+        </span>
+      )}
+    </Link>
+  );
+
   const brand = (
     <div className="flex items-center gap-2.5 border-b border-brand-800/60 px-5 py-4">
       <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-400 text-brand-900">
@@ -215,6 +240,7 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
           </p>
           <p className="truncate text-[11px] leading-tight text-brand-200">Mymensingh Sheba</p>
         </div>
+        {renderNotificationLink(true)}
         <Link
           href="/admin"
           className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-brand-100 hover:bg-brand-800"
@@ -226,6 +252,13 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
 
       {/* ---------- Content ---------- */}
       <main className="lg:pl-64">
+        <div className="sticky top-0 z-20 hidden h-14 items-center justify-end border-b border-mist-200 bg-white/95 px-4 backdrop-blur-sm sm:px-6 lg:flex">
+          <div className="mx-auto flex w-full max-w-6xl justify-end">
+            <div className="rounded-lg text-ink-600 hover:bg-mist-50 hover:text-brand-700">
+              {renderNotificationLink()}
+            </div>
+          </div>
+        </div>
         <div className="mx-auto w-full max-w-6xl px-4 py-5 sm:px-6 sm:py-7 lg:px-8">
           {children}
         </div>
