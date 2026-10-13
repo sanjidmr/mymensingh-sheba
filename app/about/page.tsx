@@ -14,14 +14,20 @@ import AboutValues from '@/components/about/AboutValues';
 import AboutTrust from '@/components/about/AboutTrust';
 import AboutCommitment from '@/components/about/AboutCommitment';
 import AboutFinalCta from '@/components/about/AboutFinalCta';
+import { getSiteContentOverrides } from '@/lib/site-content-server';
 
-export const metadata: Metadata = {
+export async function generateMetadata(): Promise<Metadata> {
+  const overrides = await getSiteContentOverrides();
+  const description = overrides.about_content?.intro;
+  return {
   title: 'আমাদের সম্পর্কে — Mymensingh Sheba',
-  description:
+  description: description ||
     'ময়মনসিংহের মানুষের জন্য তৈরি Mymensingh Sheba — কেন তৈরি হয়েছে, কে তৈরি করেছেন, কীভাবে কাজ করে, কোন কোন সেবা পাওয়া যায় এবং কীভাবে নিজের সেবা পোস্ট করবেন।',
-};
+  };
+}
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const overrides = await getSiteContentOverrides();
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">
       <Navbar />
@@ -40,7 +46,10 @@ export default function AboutPage() {
           </span>
         </nav>
 
-        <AboutHero />
+        <AboutHero
+          heading={overrides.about_content?.heading}
+          intro={overrides.about_content?.intro}
+        />
         <AboutStory />
         <FounderSection />
         <WhyUsSection />

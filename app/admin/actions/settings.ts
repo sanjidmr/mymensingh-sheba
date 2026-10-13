@@ -112,6 +112,120 @@ export async function saveSiteContent(key: string, value: unknown): Promise<Acti
     if (serialized.length > 200_000) {
       return { ok: false, error: 'ডেটা খুব বড় হয়ে গেছে।' };
     }
+    const text = (item: unknown) => typeof item === 'string' ? item.trim() : '';
+    const publicPath = (item: unknown) =>
+      typeof item === 'string' && item.startsWith('/') && !item.startsWith('//') && !item.includes('\\');
+    if (
+      ['announcement', 'about_content', 'faq_content', 'footer_content', 'seo'].includes(key) &&
+      (!value || typeof value !== 'object')
+    ) {
+      return { ok: false, error: 'কনটেন্টের বিন্যাস সঠিক নয়।' };
+    }
+    if (key === 'site_contact') {
+      if (!value || typeof value !== 'object') {
+        return { ok: false, error: 'যোগাযোগের তথ্যের বিন্যাস সঠিক নয়।' };
+      }
+      const item = value as {
+        phone?: unknown;
+        email?: unknown;
+        officeAddress?: unknown;
+        serviceAreaBn?: unknown;
+        hoursBn?: unknown;
+        socials?: unknown;
+      };
+      const phone = text(item.phone);
+      const email = text(item.email);
+      const validHttps = (href: string) => {
+        try {
+          return new URL(href).protocol === 'https:';
+        } catch {
+          return false;
+        }
+      };
+      if (
+        (phone && !/^[+\d\s()-]{7,24}$/.test(phone)) ||
+        (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) ||
+        text(item.officeAddress).length > 240 ||
+        text(item.serviceAreaBn).length > 160 ||
+        text(item.hoursBn).length > 160
+      ) {
+        return { ok: false, error: 'ফোন, ইমেইল বা যোগাযোগের তথ্য সঠিক নয়।' };
+      }
+      if (
+        !Array.isArray(item.socials) ||
+        item.socials.length > 6 ||
+        item.socials.some((social) =>
+          !social ||
+          typeof social !== 'object' ||
+          !['facebook', 'messenger'].includes(String((social as { icon?: unknown }).icon)) ||
+          text((social as { labelBn?: unknown }).labelBn).length > 60 ||
+          (text((social as { href?: unknown }).href) &&
+            !validHttps(text((social as { href?: unknown }).href)))
+        )
+      ) {
+        return { ok: false, error: 'সোশ্যাল মিডিয়ার নাম বা HTTPS লিংক সঠিক নয়।' };
+      }
+    }
+    if (key === 'announcement') {
+      const item = value as { enabled?: unknown; title?: unknown; body?: unknown; href?: unknown; linkLabel?: unknown };
+      if (typeof item.enabled !== 'boolean' || text(item.title).length > 120 || text(item.body).length > 500) {
+        return { ok: false, error: 'ঘোষণার শিরোনাম, বার্তা বা চালু/বন্ধের তথ্য সঠিক নয়।' };
+      }
+      if (text(item.title) && !text(item.body)) {
+        return { ok: false, error: 'শিরোনাম দিলে ঘোষণার বার্তাও লিখুন।' };
+      }
+      if (item.enabled && (!text(item.title) || !text(item.body))) {
+        return { ok: false, error: 'প্রকাশের আগে ঘোষণার শিরোনাম ও বার্তা লিখুন।' };
+      }
+      if (item.href && !publicPath(item.href)) {
+        return { ok: false, error: 'ঘোষণার লিংকটি সাইটের অভ্যন্তরীণ পাথ হতে হবে।' };
+      }
+    }
+    if (key === 'about_content') {
+      const item = value as { heading?: unknown; intro?: unknown };
+      if (text(item.heading).length > 160 || text(item.intro).length > 1500) {
+        return { ok: false, error: 'About Us শিরোনাম বা পরিচিতি নির্ধারিত দৈর্ঘ্যের বেশি।' };
+      }
+      if (text(item.heading).length < 3 || text(item.intro).length < 20) {
+        return { ok: false, error: 'About Us শিরোনাম ও কমপক্ষে ২০ অক্ষরের পরিচিতি দিন।' };
+      }
+    }
+    if (key === 'faq_content') {
+      if (!Array.isArray(value) || value.length > 30) {
+        return { ok: false, error: 'FAQ তালিকায় সর্বোচ্চ ৩০টি প্রশ্ন রাখা যাবে।' };
+      }
+      if (value.some((item) => (
+        !item || typeof item !== 'object' ||
+        text((item as { question?: unknown }).question).length < 5 ||
+        text((item as { question?: unknown }).question).length > 240 ||
+        text((item as { answer?: unknown }).answer).length < 10 ||
+        text((item as { answer?: unknown }).answer).length > 1500
+      ))) {
+        return { ok: false, error: 'প্রতিটি FAQ-তে ৫–২৪০ অক্ষরের প্রশ্ন ও ১০–১৫০০ অক্ষরের উত্তর দিন।' };
+      }
+    }
+    if (key === 'footer_content') {
+      const item = value as { description?: unknown; companyLinks?: unknown; supportLinks?: unknown };
+      const validLinks = (links: unknown) => Array.isArray(links) && links.length <= 12 && links.every((link) => (
+        link && typeof link === 'object' &&
+        text((link as { label?: unknown }).label).length >= 2 &&
+        text((link as { label?: unknown }).label).length <= 60 &&
+        publicPath((link as { href?: unknown }).href)
+      ));
+      if (text(item.description).length > 500 || !validLinks(item.companyLinks) || !validLinks(item.supportLinks)) {
+        return { ok: false, error: 'ফুটারের বিবরণ বা লিংক সঠিক নয়; লিংক সাইটের অভ্যন্তরীণ পাথ হতে হবে।' };
+      }
+    }
+    if (key === 'seo') {
+      const item = value as { title?: unknown; description?: unknown; ogImage?: unknown };
+      const image = text(item.ogImage);
+      if (text(item.title).length > 120 || text(item.description).length > 320) {
+        return { ok: false, error: 'SEO শিরোনাম বা বিবরণ নির্ধারিত দৈর্ঘ্যের বেশি।' };
+      }
+      if (image && !(image.startsWith('/') && !image.startsWith('//')) && !/^https:\/\/\S+$/i.test(image)) {
+        return { ok: false, error: 'সামাজিক শেয়ারিং ছবির ঠিকানা HTTPS বা সাইটের অভ্যন্তরীণ পাথ হতে হবে।' };
+      }
+    }
 
     const { error } = await client
       .from('platform_settings')
@@ -122,6 +236,8 @@ export async function saveSiteContent(key: string, value: unknown): Promise<Acti
     revalidatePath('/admin/website');
     revalidatePath('/');
     revalidatePath('/services');
+    revalidatePath('/about');
+    revalidatePath('/help');
     return { ok: true, message: 'ওয়েবসাইটের তথ্য সংরক্ষিত হয়েছে।' };
   });
 }

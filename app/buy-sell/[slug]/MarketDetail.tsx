@@ -78,6 +78,7 @@ export default function MarketDetail({ slug }: { slug: string }) {
   const [similar, setSimilar] = useState<CommunityPost[]>([]);
   const [reportOpen, setReportOpen] = useState(false);
   const [guestFavorite, setGuestFavorite] = useState(false);
+  const [favoriteError, setFavoriteError] = useState('');
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
   const [now] = useState(() => Date.now());
 
@@ -126,6 +127,7 @@ export default function MarketDetail({ slug }: { slug: string }) {
 
   const toggleFavorite = useCallback(async () => {
     if (!post) return;
+    setFavoriteError('');
     const alreadySaved = savedListings.some(
       (item) => item.itemType === 'market' && item.linkHref === `/buy-sell/${post.slug}`
     );
@@ -138,15 +140,18 @@ export default function MarketDetail({ slug }: { slug: string }) {
     }
     const area = post.areaId ? getAreaById(post.areaId)?.nameBn : undefined;
     try {
-      await toggleSaveItem({
+      const result = await toggleSaveItem({
         itemType: 'market',
         title: post.titleBn,
         areaName: area ?? '',
         priceOrRate: post.price != null ? bnTaka(post.price) : undefined,
         linkHref: `/buy-sell/${post.slug}`,
       });
-    } catch {
-      // Saving is best-effort and must never take the page down with it.
+      if (!result.success) {
+        setFavoriteError(result.error || 'পছন্দের তালিকায় পরিবর্তন করা যায়নি।');
+      }
+    } catch (error) {
+      setFavoriteError(error instanceof Error ? error.message : 'পছন্দের তালিকায় পরিবর্তন করা যায়নি।');
     }
   }, [post, savedListings, toggleSaveItem, user]);
 
@@ -283,6 +288,7 @@ export default function MarketDetail({ slug }: { slug: string }) {
               isFavorite={isFavorite}
               onToggleFavorite={toggleFavorite}
             />
+            {favoriteError && <p role="alert" className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-semibold text-rose-800">{favoriteError}</p>}
 
             <div className="mt-3 rounded-2xl border border-mist-200 bg-white p-4 sm:p-5">
               <div className="flex flex-wrap items-center gap-1.5">

@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import { adminFetchTutorReviews, adminUpdateTutorReview } from '@/lib/admin-service';
 import type { TutorReview } from '@/lib/supabase/types';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { AdminError, AdminLoading } from '@/components/admin/States';
 
 export default function AdminReviewsPage() {
   const [reviews, setReviews] = useState<(TutorReview & { tutorName?: string })[]>([]);
@@ -32,8 +34,8 @@ export default function AdminReviewsPage() {
       .then((data) => {
         if (active) setReviews(data);
       })
-      .catch(() => {
-        if (active) setError('রিভিউ লোড ব্যর্থ হয়েছে');
+      .catch((err: unknown) => {
+        if (active) setError(err instanceof Error ? err.message : 'রিভিউ লোড ব্যর্থ হয়েছে');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -43,10 +45,18 @@ export default function AdminReviewsPage() {
 
   const handlePublishToggle = async (id: string, isPublished: boolean) => {
     setBusyId(id);
-    const res = await adminUpdateTutorReview(id, { isPublished });
-    setBusyId(null);
-    if (res.success) {
+    setError('');
+    try {
+      const res = await adminUpdateTutorReview(id, { isPublished });
+      if (!res.success) {
+        setError(res.error || 'রিভিউ আপডেট ব্যর্থ হয়েছে');
+        return;
+      }
       setReviews((prev) => prev.map((r) => (r.id === id ? { ...r, isPublished } : r)));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'রিভিউ আপডেট ব্যর্থ হয়েছে');
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -63,15 +73,7 @@ export default function AdminReviewsPage() {
   });
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        
-        <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-          <span className="text-sm">রিভিউ লোড হচ্ছে...</span>
-        </div>
-      </div>
-    );
+    return <AdminLoading label="রিভিউ লোড হচ্ছে…" />;
   }
 
   const renderStars = (rating: number) => (
@@ -83,18 +85,13 @@ export default function AdminReviewsPage() {
   );
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <Link href="/admin" className="mb-2 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-800">
-              ← অ্যাডমিন ড্যাশবোর্ড
-            </Link>
-            <h1 className="text-2xl font-bold text-slate-900">গৃহশিক্ষক রিভিউ মডারেশন</h1>
-            <p className="text-xs text-slate-500 mt-1">কমপ্লিটেড ক্লাসের পর রিভিউ অনুমোদন/অনুপ্রকাশন</p>
-          </div>
-        </div>
+    <div>
+      <PageHeader
+        title="গৃহশিক্ষক রিভিউ মডারেশন"
+        description="কমপ্লিটেড ক্লাসের পর রিভিউ অনুমোদন/অনুপ্রকাশন"
+        count={`মোট ${filtered.length} টি রিভিউ`}
+      />
+      {error && <AdminError title="রিভিউ ব্যবস্থাপনায় সমস্যা" message={error} className="mb-4" />}
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1 max-w-xs">
@@ -194,7 +191,6 @@ export default function AdminReviewsPage() {
             })}
           </div>
         )}
-      </main>
     </div>
   );
 }

@@ -20,6 +20,8 @@ import {
   Inbox,
   BadgeCheck,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { moderateToletListing } from '@/app/admin/actions/tolet';
 import {
   adminFetchListingById,
   adminUpdateListing,
@@ -52,6 +54,12 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
   const [rejectMode, setRejectMode] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [notice, setNotice] = useState('');
+  const [pendingAction, setPendingAction] = useState<{
+    patch: Partial<ToletListing>;
+    label: string;
+    reason?: string;
+  } | null>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -68,10 +76,10 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
       setRequests(reqData);
       setReports(repData);
       setLoading(false);
-    })().catch(() => {
+    })().catch((err: unknown) => {
       if (!active) return;
       setLoading(false);
-      setError('তথ্য লোড করতে সমস্যা হয়েছে।');
+      setError(err instanceof Error ? err.message : 'তথ্য লোড করতে সমস্যা হয়েছে।');
     });
     return () => {
       active = false;
@@ -79,9 +87,16 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
   }, [id]);
 
   const applyReportStatus = async (reportId: string, status: ListingReportStatus) => {
-    const res = await adminUpdateReportStatus(reportId, status);
-    if (res.success) {
-      setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, status } : r)));
+    setError('');
+    try {
+      const res = await adminUpdateReportStatus(reportId, status);
+      if (res.success) {
+        setReports((prev) => prev.map((r) => (r.id === reportId ? { ...r, status } : r)));
+      } else {
+        setError(res.error || 'রিপোর্ট আপডেট ব্যর্থ হয়েছে।');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'রিপোর্ট আপডেট ব্যর্থ হয়েছে।');
     }
   };
 
@@ -94,24 +109,49 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
     setBusy(label);
     setError('');
     setNotice('');
-    const result = await adminUpdateListing(listing.id, {
-      ...patch,
-      rejectionReason:
-        opts?.rejectReason !== undefined
-          ? opts.rejectReason
-          : patch.status !== 'rejected'
-            ? (listing.rejectionReason ?? undefined)
-            : listing.rejectionReason,
-    });
-    setBusy('');
-    if (!result.success || !result.listing) {
-      setError(result.error || 'আপডেট ব্যর্থ হয়েছে।');
-      return;
+    try {
+      if (patch.status) {
+        const result = await moderateToletListing({
+          id: listing.id,
+          status: patch.status,
+          reason: opts?.rejectReason,
+        });
+        if (!result.ok) {
+          setError(result.error);
+          return;
+        }
+        const refreshed = await adminFetchListingById(listing.id);
+        if (!refreshed) {
+          setError('অবস্থা সংরক্ষিত হয়েছে, কিন্তু নতুন তথ্য পুনরায় লোড করা যায়নি।');
+          return;
+        }
+        setListing(refreshed);
+        setNotice(result.message || 'অবস্থা আপডেট হয়েছে।');
+      } else {
+        const result = await adminUpdateListing(listing.id, patch);
+        if (!result.success || !result.listing) {
+          setError(result.error || 'আপডেট ব্যর্থ হয়েছে।');
+          return;
+        }
+        setListing(result.listing);
+        setNotice('অবস্থা আপডেট হয়েছে।');
+      }
+      setConfirmOpen(false);
+      setPendingAction(null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'বিজ্ঞাপন আপডেট ব্যর্থ হয়েছে।');
+    } finally {
+      setBusy('');
     }
-    setListing(result.listing);
-    if (label === 'approve') setNotice('বিজ্ঞাপনটি অনুমোদিত ও প্রকাশিত হয়েছে।');
-    else if (label === 'reject') setNotice('বিজ্ঞাপনটি মালিকের কাছে ফেরত পাঠানো হয়েছে।');
-    else setNotice('অবস্থা আপডেট হয়েছে।');
+  };
+
+  const confirmPatch = (
+    patch: Partial<ToletListing>,
+    label: string,
+    reason?: string
+  ) => {
+    setPendingAction({ patch, label, reason });
+    setConfirmOpen(true);
   };
 
   if (loading) {
@@ -205,7 +245,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
               <button
                 type="button"
                 disabled={busy !== ''}
-                onClick={() => { setRejectMode(false); applyPatch({ status: 'approved' }, 'approve'); }}
+                onClick={() => { setRejectMode(false); confirmPatch({ status: 'approved' }, 'approve'); }}
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-800 text-white text-xs font-semibold hover:bg-emerald-900 disabled:opacity-50"
               >
                 {busy === 'approve' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
@@ -215,7 +255,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
                 <button
                   type="button"
                   disabled={busy !== ''}
-                  onClick={() => applyPatch({ status: 'archived' }, 'archive')}
+                  onClick={() => confirmPatch({ status: 'archived' }, 'archive')}
                   className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50"
                 >
                   {busy === 'archive' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
@@ -258,7 +298,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
             <button
               type="button"
               disabled={busy !== ''}
-              onClick={() => applyPatch({ status: 'suspended' }, 'suspend')}
+              onClick={() => confirmPatch({ status: 'suspended' }, 'suspend')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs font-semibold hover:bg-red-100 disabled:opacity-50"
             >
               {busy === 'suspend' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <PauseCircle className="w-3.5 h-3.5" />}
@@ -267,7 +307,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
             <button
               type="button"
               disabled={busy !== ''}
-              onClick={() => applyPatch({ status: 'unavailable' }, 'unavailable')}
+              onClick={() => confirmPatch({ status: 'unavailable' }, 'unavailable')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-100 disabled:opacity-50"
             >
               <Archive className="w-3.5 h-3.5" />
@@ -322,9 +362,10 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
                   type="button"
                   disabled={busy !== '' || rejectReason.trim().length < 5}
                   onClick={() =>
-                    applyPatch(
+                    confirmPatch(
                       { status: 'rejected', rejectionReason: rejectReason.trim() },
-                      'reject'
+                      'reject',
+                      rejectReason.trim()
                     )
                   }
                   className="px-3.5 py-2 rounded-xl bg-rose-700 text-white text-xs font-semibold disabled:opacity-50"
@@ -512,6 +553,22 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
           </div>
         </div>
       </main>
+      <ConfirmDialog
+        open={confirmOpen}
+        title={pendingAction?.label === 'approve' ? 'বিজ্ঞাপন অনুমোদন করবেন?' : pendingAction?.label === 'reject' ? 'সংশোধনের কারণসহ ফেরত পাঠাবেন?' : 'বিজ্ঞাপনের অবস্থা পরিবর্তন করবেন?'}
+        description={pendingAction?.label === 'reject'
+          ? `মালিককে এই কারণটি পাঠানো হবে: ${pendingAction.reason}`
+          : `বিজ্ঞাপন “${pendingAction?.patch.status ? TOLET_LISTING_STATUS_INFO[pendingAction.patch.status].labelBn : ''}” অবস্থায় যাবে।`}
+        confirmLabel={pendingAction?.label === 'approve' ? 'অনুমোদন ও প্রকাশ' : 'নিশ্চিত করুন'}
+        tone={pendingAction?.label === 'approve' ? 'primary' : 'danger'}
+        isLoading={busy !== ''}
+        onConfirm={() => {
+          if (pendingAction) {
+            void applyPatch(pendingAction.patch, pendingAction.label, { rejectReason: pendingAction.reason });
+          }
+        }}
+        onCancel={() => { setConfirmOpen(false); setPendingAction(null); }}
+      />
       
     </div>
   );

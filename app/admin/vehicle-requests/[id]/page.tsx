@@ -1,5 +1,6 @@
 import Link from 'next/link';
-import { ArrowLeft, CalendarDays, Clock3, MapPin, Phone, Users } from 'lucide-react';
+import Image from 'next/image';
+import { CalendarDays, Clock3, MapPin, Phone, Users } from 'lucide-react';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
 import { PageHeader, DetailField, Panel } from '@/components/admin/PageHeader';
 import VehicleRequestActions from '@/components/admin/VehicleRequestActions';
@@ -20,8 +21,8 @@ export default async function AdminVehicleRequestDetailPage({
   if (result.unavailable) {
     return (
       <>
-        <PageHeader title="গাড়ি বুকিং" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }} />
-        <AdminError title="বুকিং লোড করা যায়নি" message={result.error} />
+        <PageHeader title="যানবাহন রিকোয়েস্ট" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }} />
+        <AdminError title="রিকোয়েস্ট লোড করা যায়নি" message={result.error} />
       </>
     );
   }
@@ -29,16 +30,16 @@ export default async function AdminVehicleRequestDetailPage({
   if (!result.row) {
     return (
       <>
-        <PageHeader title="গাড়ি বুকিং" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }} />
+        <PageHeader title="যানবাহন রিকোয়েস্ট" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }} />
         <AdminEmpty
-          title="বুকিংটি পাওয়া যায়নি"
-          description="রেকর্ডটি মুছে ফেলা হয়েছে অথবা লিংকটি ভুল।"
+          title="রিকোয়েস্টটি পাওয়া যায়নি"
+          description="রেকর্ডটি নেই অথবা লিংকটি ভুল।"
           action={
             <Link
               href="/admin/vehicle-requests"
               className="inline-flex min-h-11 items-center rounded-lg bg-brand-700 px-4 text-sm font-semibold text-white hover:bg-brand-800"
             >
-              বুকিং তালিকায় ফিরুন
+              রিকোয়েস্ট তালিকায় ফিরুন
             </Link>
           }
         />
@@ -54,17 +55,43 @@ export default async function AdminVehicleRequestDetailPage({
   return (
     <>
       <PageHeader
-        title="গাড়ি, অটো ও CNG বুকিং"
-        description={`${title} · জমা ${formatDateTime(booking.created_at)}`}
+        title="যানবাহন রিকোয়েস্ট"
+        description={`রিকোয়েস্ট ${booking.id} · ${title} · জমা ${formatDateTime(booking.created_at)} · সর্বশেষ আপডেট ${formatDateTime(booking.updated_at)}`}
         breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }}
         actions={<VehicleRequestActions request={booking} />}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Panel title="যাত্রার বিবরণ">
+          {booking.vehicle_image_url && (
+            <div className="relative mb-4 h-44 w-full overflow-hidden rounded-lg bg-mist-100 sm:max-w-sm">
+              <Image
+                src={booking.vehicle_image_url}
+                alt={booking.vehicle_title || booking.vehicle_name || 'নির্বাচিত যানবাহন'}
+                fill
+                sizes="(max-width: 640px) 100vw, 384px"
+                unoptimized
+                className="object-cover"
+              />
+            </div>
+          )}
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DetailField label="যানবাহনের ধরন">{booking.vehicle_kind}</DetailField>
-            <DetailField label="যানবাহন / তালিকা">{booking.vehicle_name || '—'}</DetailField>
+            <DetailField label="রিকোয়েস্টে দেওয়া ধরন">{booking.vehicle_kind}</DetailField>
+            <DetailField label="রিকোয়েস্টে সংরক্ষিত নাম">{booking.vehicle_name || 'উল্লেখ নেই'}</DetailField>
+            <DetailField label="তালিকায় সংরক্ষিত ধরন">{booking.vehicle_listing_kind || (booking.vehicle_title ? 'উল্লেখ নেই' : 'তালিকা সংযুক্ত নেই')}</DetailField>
+            <DetailField label="যানবাহন তালিকা ID">{booking.vehicle_listing_id || 'বর্তমান তালিকা সংযুক্ত নেই'}</DetailField>
+            <DetailField label="বর্তমান তালিকা" wide>
+              {booking.vehicle_title && booking.vehicle_slug ? (
+                <span className="flex flex-wrap gap-x-3 gap-y-1">
+                  {booking.vehicle_is_active
+                    ? <Link className="text-brand-700 hover:underline" href={`/gari-auto-cng/${booking.vehicle_slug}`}>{booking.vehicle_title}</Link>
+                    : <span>{booking.vehicle_title} (অপ্রকাশিত)</span>}
+                  <Link className="text-brand-700 hover:underline" href={`/admin/catalog/vehicle/${booking.vehicle_listing_id}/edit`}>অ্যাডমিন তালিকা</Link>
+                </span>
+              ) : (
+                <span>বর্তমান তালিকা সংযুক্ত নেই। রিকোয়েস্টের সংরক্ষিত নাম উপরে দেখানো হয়েছে।</span>
+              )}
+            </DetailField>
             <DetailField label="পিকআপ এলাকা">
               <span className="inline-flex items-center gap-1.5">
                 <MapPin className="h-3.5 w-3.5 text-ink-400" />
@@ -107,15 +134,20 @@ export default async function AdminVehicleRequestDetailPage({
 
         <Panel title="গ্রাহকের যোগাযোগ">
           <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <DetailField label="নাম">{booking.contact_name}</DetailField>
+            <DetailField label="প্রোফাইলের নাম">{booking.customer_full_name || 'প্রোফাইল সংযুক্ত নেই'}</DetailField>
+            <DetailField label="রিকোয়েস্টে দেওয়া নাম">{booking.contact_name}</DetailField>
             <DetailField label="ফোন">
               <a className="inline-flex items-center gap-1.5 text-brand-700 hover:underline" href={`tel:${booking.contact_phone}`}>
                 <Phone className="h-3.5 w-3.5" />
                 {booking.contact_phone}
               </a>
             </DetailField>
-            <DetailField label="বুকিং স্ট্যাটাস">{booking.status}</DetailField>
+            <DetailField label="রিকোয়েস্টের অবস্থা">{booking.status}</DetailField>
             <DetailField label="জমা দেওয়ার সময়">{formatDateTime(booking.created_at)}</DetailField>
+            <DetailField label="সর্বশেষ আপডেট">{formatDateTime(booking.updated_at)}</DetailField>
+            <DetailField label="নোট" wide>
+              অবস্থা পরিবর্তন বুকিং, পেমেন্ট বা চালক নিশ্চিত করে না। এই ব্যবস্থায় বাহ্যিক বুকিং ইন্টিগ্রেশন নেই।
+            </DetailField>
           </dl>
         </Panel>
       </div>

@@ -6,6 +6,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
-export default function Page() {
-  return <CustomerMessages />;
+export default async function Page({
+  searchParams,
+}: {
+  searchParams: Promise<{ subject?: string }>;
+}) {
+  const { subject } = await searchParams;
+  const initialSubject = subject === 'complaint' ? 'complaint' : 'general';
+  return <CustomerMessages key={initialSubject} initialSubject={initialSubject} />;
 }

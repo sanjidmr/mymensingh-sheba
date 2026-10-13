@@ -83,9 +83,8 @@ export default function CoachingDirectory() {
         priceLabel={fee}
         priceSuffix={fee ? '/মাস' : undefined}
         areaLabel={areaNames(listing.areaIds)}
-        chips={tagLabels(listing.tags)}
+        chips={[...tagLabels(listing.tags), 'যাচাইয়ের তথ্য নেই']}
         description={listing.summaryBn}
-        isVerified
         badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
         actionLabel="বিস্তারিত"
       />

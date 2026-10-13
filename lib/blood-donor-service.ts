@@ -360,24 +360,29 @@ export async function createBloodDonorReport(input: {
 // ---------------------------------------------------------------------------
 
 export async function adminFetchDonorProfiles(): Promise<BloodDonorProfile[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchDonorProfiles();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রক্তদাতা প্রোফাইল লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchDonorProfiles();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   // `fn_admin_donor_profiles` is SECURITY DEFINER + is_admin() gated — the only
   // path that may read private_phone / admin_notes after the column REVOKEs.
   const { data, error } = await client.rpc('fn_admin_donor_profiles');
-  if (error) return [];
+  if (error) throw new Error(`রক্তদাতা প্রোফাইল লোড ব্যর্থ হয়েছে: ${error.message}`);
   return ((data as Record<string, unknown>[]) || []).map((row) => mapDonorRow(row, { admin: true }));
 }
 
 export async function adminFetchDonorProfileById(id: string): Promise<BloodDonorProfile | null> {
-  if (!isSupabaseConfigured) return mockAdminFetchDonorProfileById(id) || null;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রক্তদাতা প্রোফাইল লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchDonorProfileById(id) || null;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .rpc('fn_admin_donor_profile', { p_id: id })
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`রক্তদাতা প্রোফাইল লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   return mapDonorRow(data as Record<string, unknown>, { admin: true });
 }
 
@@ -394,8 +399,7 @@ export async function adminUpdateDonorProfile(
   patch: AdminDonorPatch
 ): Promise<{ success: boolean; profile?: BloodDonorProfile; error?: string }> {
   if (!isSupabaseConfigured) {
-    const profile = mockAdminUpdateDonorProfile(id, patch);
-    return profile ? { success: true, profile } : { success: false, error: 'প্রোফাইল পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; রক্তদাতা প্রোফাইল আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -441,27 +445,32 @@ export async function adminUpdateDonorProfile(
 }
 
 export async function adminFetchBloodRequests(): Promise<BloodRequest[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchBloodRequests();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রক্তের অনুরোধ লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchBloodRequests();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('blood_requests')
     .select('*, donor_profile:blood_donor_profiles(full_name, blood_group)')
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`রক্তের অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => mapRequestRow(row as Record<string, unknown>));
 }
 
 export async function adminFetchBloodRequestById(id: string): Promise<BloodRequest | null> {
-  if (!isSupabaseConfigured) return mockAdminFetchBloodRequestById(id) || null;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রক্তের অনুরোধ লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchBloodRequestById(id) || null;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('blood_requests')
     .select('*, donor_profile:blood_donor_profiles(full_name, blood_group)')
     .eq('id', id)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`রক্তের অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   return mapRequestRow(data as Record<string, unknown>);
 }
 
@@ -470,8 +479,7 @@ export async function adminUpdateBloodRequest(
   patch: { status?: BloodRequestStatus; adminNotes?: string; rejectionReason?: string }
 ): Promise<{ success: boolean; request?: BloodRequest; error?: string }> {
   if (!isSupabaseConfigured) {
-    const request = mockAdminUpdateBloodRequest(id, patch);
-    return request ? { success: true, request } : { success: false, error: 'আবেদনটি পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; রক্তের অনুরোধ আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -514,8 +522,7 @@ export async function adminReleaseDonorContact(
   requestId: string
 ): Promise<{ success: boolean; phone?: string; donorName?: string; alreadyReleased?: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
-    const res = mockAdminReleaseDonorContact(requestId, 'admin-user');
-    return res;
+    return { success: false, error: 'Supabase সংযুক্ত নেই; যোগাযোগের তথ্য প্রকাশ করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -579,9 +586,11 @@ export async function adminReleaseDonorContact(
 }
 
 export async function adminFetchContactReleases(requestId: string): Promise<BloodContactRelease[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchContactReleases(requestId);
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; যোগাযোগ প্রকাশের ইতিহাস লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchContactReleases(requestId);
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('blood_contact_releases')
     .select(
@@ -589,18 +598,20 @@ export async function adminFetchContactReleases(requestId: string): Promise<Bloo
     )
     .eq('request_id', requestId)
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`যোগাযোগ প্রকাশের ইতিহাস লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => mapReleaseRow(row as Record<string, unknown>));
 }
 
 export async function adminFetchDonorReports(donorId?: string): Promise<BloodDonorReport[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchDonorReports(donorId);
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রক্তদাতার রিপোর্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchDonorReports(donorId);
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   let query = client.from('blood_donor_reports').select('*, donor_profile:blood_donor_profiles(full_name)');
   if (donorId) query = query.eq('donor_profile_id', donorId);
   const { data, error } = await query.order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`রক্তদাতার রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => mapReportRow(row as Record<string, unknown>));
 }
 
@@ -608,7 +619,9 @@ export async function adminUpdateDonorReport(
   id: string,
   status: BloodDonorReport['status']
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true };
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase সংযুক্ত নেই; রিপোর্ট আপডেট করা যায়নি।' };
+  }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   const { error } = await client.from('blood_donor_reports').update({ status }).eq('id', id);

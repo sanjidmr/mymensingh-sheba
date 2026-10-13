@@ -1,79 +1,36 @@
-'use client';
-
-import React, { useState, useEffect, use } from 'react';
-import { useAuth } from '@/lib/auth-context';
-import { adminFetchStaffProfileById } from '@/lib/staff-service';
-import type { StaffProfile } from '@/lib/staff-types';
-import StaffProfileForm from '@/components/admin/StaffProfileForm';
-import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
-import { AlertTriangle } from 'lucide-react';
+import StaffProfileForm from '@/components/admin/StaffProfileForm';
+import { AdminError } from '@/components/admin/States';
+import { fetchAdminStaffProfile } from '@/lib/admin/queries';
 
-interface AdminEditStaffProfilePageProps {
+export const dynamic = 'force-dynamic';
+
+export default async function AdminEditStaffProfilePage({
+  params,
+}: {
   params: Promise<{ id: string }>;
-}
-
-export default function AdminEditStaffProfilePage({ params }: AdminEditStaffProfilePageProps) {
-  const { id } = use(params);
-  const { isAdmin, isLoading } = useAuth();
-
-  const [profile, setProfile] = useState<StaffProfile | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (!isAdmin) return;
-    let active = true;
-    (async () => {
-      const data = await adminFetchStaffProfileById(id);
-      if (!active) return;
-      if (!data) setError('প্রোফাইল পাওয়া যায়নি।');
-      setProfile(data);
-      setLoading(false);
-    })().catch(() => {
-      if (!active) return;
-      setLoading(false);
-      setError('তথ্য লোড করতে সমস্যা হয়েছে।');
-    });
-    return () => {
-      active = false;
-    };
-  }, [id, isAdmin]);
-
-  if (isLoading || !isAdmin || loading) {
+}) {
+  const { id } = await params;
+  const result = await fetchAdminStaffProfile(id);
+  if (result.error) {
     return (
-      <div className="min-h-screen flex flex-col bg-mist-50">
-        
-        <main className="flex-1 flex items-center justify-center text-sm text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700 mr-2" />
-          লোড হচ্ছে...
-        </main>
-        
-      </div>
+      <>
+        <AdminError title="কর্মী প্রোফাইল লোড করা যায়নি" message={result.error} />
+        <Link href="/admin/services" className="mt-4 inline-flex text-sm font-semibold text-admin-navy hover:underline">
+          কর্মী তালিকায় ফিরুন
+        </Link>
+      </>
     );
   }
-
-  if (error || !profile) {
+  if (!result.profile) {
     return (
-      <div className="min-h-screen flex flex-col bg-mist-50">
-        
-        <main className="flex-1 flex items-center justify-center p-6">
-          <div className="bg-white p-8 rounded-2xl border border-slate-200 text-center max-w-sm w-full">
-            <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto mb-3" />
-            <h2 className="text-base font-bold text-slate-900 mb-2">সম্পাদনা সম্ভব নয়</h2>
-            <p className="text-xs text-slate-600 mb-5">{error}</p>
-            <Link
-              href="/admin/services"
-              className="inline-block px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-xs font-semibold"
-            >
-              তালিকায় ফিরে যান
-            </Link>
-          </div>
-        </main>
-        
-      </div>
+      <>
+        <AdminError title="প্রোফাইল পাওয়া যায়নি" message="এই কর্মী প্রোফাইলটি সরানো হয়েছে অথবা আইডিটি সঠিক নয়।" />
+        <Link href="/admin/services" className="mt-4 inline-flex text-sm font-semibold text-admin-navy hover:underline">
+          কর্মী তালিকায় ফিরুন
+        </Link>
+      </>
     );
   }
-
-  return <StaffProfileForm mode="edit" initialProfile={profile} />;
+  return <StaffProfileForm mode="edit" initialProfile={result.profile} />;
 }

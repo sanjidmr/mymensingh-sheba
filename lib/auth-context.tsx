@@ -12,9 +12,10 @@ import {
 } from './supabase/types';
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { LAUNCH_SERVICES } from './services-data';
+import { MCC_AREAS } from './locations';
 
 const NOT_CONFIGURED_MESSAGE =
-  '???????????? ??? ???????????????????????????????????? ????????????????????? ???????????? ???????????? ?????????????????? ???????????????????????? Supabase ??????????????? ????????????????????? ????????? ?????? ???????????? ????????????????????? ????????????';
+  'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।';
 
 function toCamelObject(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -50,6 +51,7 @@ function notificationLink(n: {
   // verdict belongs next to the posts list, not in a generic inbox.
   if (n.relatedType === 'community_post') return '/dashboard/posts';
   if (n.relatedType === 'tolet_listing') return '/profile/tolet';
+  if (n.relatedType === 'tutor_profile' || n.relatedType === 'blood_donor_profile') return '/dashboard/posts';
   if (n.relatedType === 'contact_message') return '/dashboard/messages';
   return '/profile/requests';
 }
@@ -61,7 +63,10 @@ interface AuthContextType {
   bloodDonorProfile: BloodDonorProfile | null;
   requests: ServiceRequestItem[];
   savedListings: SavedListingItem[];
+  savedListingsLoading: boolean;
+  savedListingsError: string;
   notifications: NotificationItem[];
+  notificationsError: string;
   isLoading: boolean;
   isAdmin: boolean;
   isConfiguredWithSupabase: boolean;
@@ -82,11 +87,18 @@ interface AuthContextType {
   uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string; url?: string }>;
   /** Change the signed-in user's password via Supabase Auth. */
   changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  markNotificationRead: (notificationId: string) => Promise<{ success: boolean; error?: string }>;
   markNotificationsReadAll: () => Promise<{ success: boolean; error?: string }>;
   activateToletProfile: (details: Omit<ToletProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'totalListingsCount' | 'status'>) => Promise<void>;
-  activateHomeTutorProfile: (details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>) => Promise<void>;
-  activateBloodDonorProfile: (details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>) => Promise<void>;
-  toggleSaveItem: (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => Promise<void>;
+  activateHomeTutorProfile: (
+    details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
+    mode?: 'draft' | 'submit'
+  ) => Promise<{ success: boolean; error?: string }>;
+  activateBloodDonorProfile: (
+    details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
+    mode?: 'draft' | 'submit'
+  ) => Promise<{ success: boolean; error?: string }>;
+  toggleSaveItem: (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => Promise<{ success: boolean; error?: string }>;
   createServiceRequest: (
     request: Omit<ServiceRequestItem, 'id' | 'customerId' | 'createdAt' | 'status' | 'serviceTitleBn'>
   ) => Promise<void>;
@@ -101,8 +113,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [bloodDonorProfile, setBloodDonorProfile] = useState<BloodDonorProfile | null>(null);
   const [requests, setRequests] = useState<ServiceRequestItem[]>([]);
   const [savedListings, setSavedListings] = useState<SavedListingItem[]>([]);
+  const [savedListingsLoading, setSavedListingsLoading] = useState(true);
+  const [savedListingsError, setSavedListingsError] = useState('');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [isLoading, setIsLoading] = useState(() => isSupabaseConfigured);
+  const [notificationsError, setNotificationsError] = useState('');
+  // Keep the server render and the browser's first render identical. Whether
+  // Supabase is configured is resolved after hydration in the effect below.
+  const [isLoading, setIsLoading] = useState(true);
 
   const clearSessionState = useCallback(() => {
     setUser(null);
@@ -111,7 +128,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setBloodDonorProfile(null);
     setRequests([]);
     setSavedListings([]);
+    setSavedListingsError('');
+    setSavedListingsLoading(false);
     setNotifications([]);
+    setNotificationsError('');
   }, []);
 
   const refreshUserData = useCallback(
@@ -125,6 +145,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false };
       }
       const profile = toCamelObject(profileData) as unknown as UserProfile;
+      if (profile.email?.endsWith('@mymensinghsheba.internal')) profile.email = '';
+      const rawPreferences = profileData.notification_preferences as Record<string, unknown> | null;
+      profile.notificationPreferences = {
+        postUpdates: rawPreferences?.post_updates !== false,
+        requestUpdates: rawPreferences?.request_updates !== false,
+        supportReplies: rawPreferences?.support_replies !== false,
+      };
       // Account can be suspended/blocked by admin. Such users must not stay signed in.
       if (profile.status && profile.status !== 'active') {
         clearSessionState();
@@ -158,56 +185,74 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       setRequests(mappedRequests);
 
-      const { data: savedRows } = await client.from('saved_items').select('*').eq('user_id', userId);
-      setSavedListings(
-        (savedRows ?? []).map((row: Record<string, unknown>) => {
-          const camel = toCamelObject(row) as Record<string, unknown>;
-          const itemType = camel.itemType as string;
-          const itemId = String(camel.itemId ?? '');
-          return {
-            id: String(camel.id),
-            userId: String(camel.userId),
-            itemType,
-            title:
-              itemType === 'tolet'
-                ? `??????????????? ?????????????????? ???????????? (${itemId})`
-                : itemType === 'tutor'
-                ? `??????????????????????????? (${itemId})`
-                : itemType === 'market'
-                    ? `??????????????????????????? ???????????? (${itemId})`
-                    : `???????????? (${itemId})`,
-            areaName: '',
-            linkHref:
-              itemType === 'tolet'
-                ? `/tolet/${itemId}`
-                : itemType === 'tutor'
-                ? `/home-tutor/${itemId}`
-                : itemType === 'market'
-                    ? `/buy-sell/${itemId}`
-                    : '/services',
-            savedAt: String(camel.createdAt),
-          } as SavedListingItem;
-        })
-      );
+      setSavedListingsLoading(true);
+      const { data: savedRows, error: savedError } = await client
+        .from('saved_items')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false });
+      if (savedError) {
+        setSavedListings([]);
+        setSavedListingsError(`সংরক্ষিত পোস্ট লোড করা যায়নি: ${savedError.message}`);
+      } else {
+        setSavedListingsError('');
+        setSavedListings(
+          (savedRows ?? []).flatMap((row: Record<string, unknown>) => {
+            const camel = toCamelObject(row) as Record<string, unknown>;
+            const itemType = camel.itemType;
+            const itemId = String(camel.itemId ?? '');
+            if (
+              (itemType !== 'tolet' && itemType !== 'tutor' && itemType !== 'market' && itemType !== 'service') ||
+              !itemId
+            ) {
+              return [];
+            }
+            return [{
+              id: String(camel.id),
+              userId: String(camel.userId),
+              itemType,
+              itemId,
+              title: '',
+              areaName: '',
+              linkHref:
+                itemType === 'tolet'
+                  ? `/tolet/${itemId}`
+                  : itemType === 'tutor'
+                    ? `/home-tutor/${itemId}`
+                    : itemType === 'market'
+                      ? `/buy-sell/${itemId}`
+                      : '/services',
+              savedAt: String(camel.createdAt),
+            }];
+          })
+        );
+      }
+      setSavedListingsLoading(false);
 
       // Notifications: personal ones plus (for admins) the admin hub rows.
       const isAdminUser = profile.role === 'admin';
-      const personalNotifs =
-        (await client
-          .from('notifications')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(50))?.data ?? [];
-      const adminNotifs =
-        isAdminUser
-          ? ((await client
-              .from('notifications')
-              .select('*')
-              .eq('target_role', 'admin')
-              .order('created_at', { ascending: false })
-              .limit(50))?.data ?? [])
-          : [];
+      const { data: personalNotifs, error: personalNotifError } = await client
+        .from('notifications')
+        .select('*')
+        .eq('user_id', userId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const { data: adminNotifs, error: adminNotifError } = isAdminUser
+        ? await client
+            .from('notifications')
+            .select('*')
+            .eq('target_role', 'admin')
+            .order('created_at', { ascending: false })
+            .limit(50)
+        : { data: [], error: null };
+      if (personalNotifError || adminNotifError) {
+        setNotifications([]);
+        setNotificationsError(
+          `নোটিফিকেশন লোড করা যায়নি: ${personalNotifError?.message ?? adminNotifError?.message}`
+        );
+        return { ok: false };
+      }
+      setNotificationsError('');
       const merged: NotificationItem[] = [...personalNotifs, ...adminNotifs]
         .map((row) => {
           const c = toCamelObject(row as Record<string, unknown>) as unknown as NotificationItem;
@@ -224,6 +269,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!isSupabaseConfigured) {
+      queueMicrotask(() => setIsLoading(false));
       return;
     }
     const client = createClient();
@@ -272,15 +318,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return {
             success: false,
             error: res.blocked
-              ? '??????????????? ???????????????????????????????????? ???????????????????????? ?????????????????????????????? ???????????????????????? ????????????????????? ???????????????????????? ???????????? ?????????????????? ???????????? ????????????????????? ???????????????'
-              : '???????????? ???????????? ???????????? ?????????',
+              ? 'আপনার অ্যাকাউন্টটি স্থগিত বা বন্ধ। সহায়তার জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।'
+              : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
         return { success: true };
       }
-      return { success: false, error: '???????????? ???????????? ???????????? ?????????' };
+      return { success: false, error: 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।' };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : '???????????? ???????????? ?????????????????? ??????????????????' };
+      return { success: false, error: err instanceof Error ? err.message : 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' };
     } finally {
       setIsLoading(false);
     }
@@ -327,13 +373,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return {
             success: false,
             error: res.blocked
-              ? '??????????????? ???????????????????????????????????? ???????????????????????? ?????????????????????????????? ???????????????????????? ????????????????????? ???????????????????????? ???????????? ?????????????????? ???????????? ????????????????????? ???????????????'
-              : '???????????? ??????????????? ?????????????????? ??????????????????',
+              ? 'আপনার অ্যাকাউন্টটি স্থগিত বা বন্ধ। সহায়তার জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।'
+              : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
         return { success: true };
       }
-      return { success: false, error: '???????????? ??????????????? ?????????????????? ??????????????????' };
+      return { success: false, error: 'যাচাইকরণ সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।' };
     } finally {
       setIsLoading(false);
     }
@@ -377,7 +423,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: error.message };
       }
       if (!signUpData.user) {
-        return { success: false, error: '????????????????????? ???????????? ????????? ????????????????????? ???????????? ????????? ???????????? ?????????????????? ???????????????' };
+        return { success: false, error: 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।' };
       }
 
       const userId = signUpData.user.id;
@@ -385,7 +431,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // When Supabase hands back a live session (email confirmation off) the
       // new user is authenticated immediately, so we can (and must) create
-      // their profiles row right here ??? with exactly the values the INSERT
+      // their profiles row right here, with exactly the values the INSERT
       // policy demands. When confirmation is required there is no session yet
       // and the row is created by the DB trigger on first signup instead.
       if (hasSession) {
@@ -402,7 +448,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (profileError) {
           return {
             success: false,
-            error: '???????????????????????? ???????????? ????????? ????????????????????? ???????????? ????????? ???????????? ?????????????????? ???????????????',
+            error: 'প্রোফাইল তৈরি করা যায়নি। সহায়তার জন্য যোগাযোগ করুন।',
           };
         }
       }
@@ -412,12 +458,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // right after will be rejected until the confirmation link is opened. The
       // account was still created successfully (its DB trigger will have made
       // the profiles row), so surface the happy path and let the user confirm +
-      // sign in ??? matching the previous success UX. With a session already in
+      // sign in, matching the previous success UX. With a session already in
       // hand, a redundant sign-in hiccup must not flip success into failure.
       if (signInError && !hasSession && signUpData.user?.confirmation_sent_at) {
         // `needsConfirmation` tells the caller that this "success" has no
         // session behind it yet, so it must NOT be treated as a completed
-        // sign-in (no redirect to /profile ??? that page would bounce straight
+        // sign-in (no redirect to /profile; that page would bounce straight
         // back to /login until the link in the email is opened).
         return { success: true, needsConfirmation: true };
       }
@@ -435,7 +481,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       return { success: true };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : '???????????????????????????????????? ???????????? ?????????????????? ??????????????????' };
+      return { success: false, error: err instanceof Error ? err.message : 'নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' };
     } finally {
       setIsLoading(false);
     }
@@ -470,7 +516,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       if (isSupabaseConfigured) {
         const client = createClient();
-        if (client) await client.auth.signOut();
+        if (!client) throw new Error('Supabase সংযোগ তৈরি করা যায়নি।');
+        const { error } = await client.auth.signOut();
+        if (error) throw new Error(`লগআউট করা যায়নি: ${error.message}`);
       }
       clearSessionState();
     } finally {
@@ -488,17 +536,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি; আবার চেষ্টা করুন।' };
     }
 
-    const updated = { ...user, ...updates, updatedAt: new Date().toISOString() };
+    if (updates.phone !== undefined && updates.phone !== user.phone) {
+      return { success: false, error: 'নম্বর বদলাতে আগে নতুন নম্বরে OTP যাচাই সম্পন্ন করুন।' };
+    }
+    if (updates.fullName !== undefined && updates.fullName.trim().length < 2) {
+      return { success: false, error: 'নাম কমপক্ষে ২ অক্ষরের লিখুন।' };
+    }
+    if (updates.bio !== undefined && updates.bio.length > 300) {
+      return { success: false, error: 'পরিচিতি ৩০০ অক্ষরের মধ্যে লিখুন।' };
+    }
+    if (updates.primaryAreaId !== undefined && !updates.primaryAreaId.trim()) {
+      return { success: false, error: 'আপনার এলাকা নির্বাচন করুন।' };
+    }
+    if (updates.primaryAreaId !== undefined && !MCC_AREAS.some((area) => area.id === updates.primaryAreaId)) {
+      return { success: false, error: 'ময়মনসিংহ সিটি কর্পোরেশনের একটি এলাকা নির্বাচন করুন।' };
+    }
+
+    const updated = { ...user, ...updates, phone: user.phone, updatedAt: new Date().toISOString() };
+    const notificationPreferences = updates.notificationPreferences
+      ? {
+          post_updates: updates.notificationPreferences.postUpdates,
+          request_updates: updates.notificationPreferences.requestUpdates,
+          support_replies: updates.notificationPreferences.supportReplies,
+        }
+      : undefined;
     const { error } = await client
       .from('profiles')
       .update({
         full_name: updated.fullName,
-        phone: updated.phone,
         email: updated.email || null,
         avatar_url: updated.avatarUrl || null,
         bio: updated.bio || null,
         primary_area_id: updated.primaryAreaId,
         emergency_contact: updated.emergencyContact || null,
+        ...(notificationPreferences ? { notification_preferences: notificationPreferences } : {}),
         updated_at: updated.updatedAt,
       })
       .eq('id', user.id);
@@ -510,49 +581,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: true };
   };
 
-  /**
-   * Profile photo ??? public `avatars` bucket, under the caller's own uid folder
-   * (the storage policies only allow that folder, so one account can never
-   * overwrite another's photo). The stored public URL is then persisted on the
-   * profile row through the same `updateProfile` path everything else uses.
-   */
+  /** Uploads an avatar to the caller's own folder in the public avatars bucket. */
   const uploadAvatar = async (file: File) => {
-    if (!user) return { success: false, error: '???????????? ???????????? ????????????' };
-    if (!file.type.startsWith('image/')) {
-      return { success: false, error: '??????????????????????????? ????????? ???????????? (JPG, PNG, WebP) ?????????????????? ???????????????' };
+    if (!user) return { success: false, error: 'আপনাকে আগে লগইন করতে হবে।' };
+    const avatarExtensions: Record<string, string> = {
+      'image/jpeg': 'jpg',
+      'image/png': 'png',
+      'image/webp': 'webp',
+    };
+    const extension = avatarExtensions[file.type];
+    if (!extension) {
+      return { success: false, error: 'শুধু JPG, PNG বা WebP ছবি আপলোড করুন।' };
     }
+    if (file.size === 0) return { success: false, error: 'খালি ফাইল আপলোড করা যাবে না।' };
     if (file.size > 5 * 1024 * 1024) {
-      return { success: false, error: '???????????? ???????????? ???MB-?????? ??????????????? ????????? ????????????' };
+      return { success: false, error: 'ছবির আকার সর্বোচ্চ ৫ MB হতে পারবে।' };
     }
     if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     const client = createClient();
     if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
 
-    const ext = (file.name.split('.').pop() || 'jpg').toLowerCase().slice(0, 5);
-    const path = `${user.id}/avatar-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+    const path = `${user.id}/avatar-${crypto.randomUUID()}.${extension}`;
     const { error } = await client.storage.from('avatars').upload(path, file, {
       contentType: file.type,
       upsert: false,
     });
-    if (error) return { success: false, error: `????????? ??????????????? ?????????????????? ??????????????????: ${error.message}` };
+    if (error) return { success: false, error: `ছবি আপলোড ব্যর্থ হয়েছে: ${error.message}` };
 
     const { data } = client.storage.from('avatars').getPublicUrl(path);
-    if (!data.publicUrl) return { success: false, error: '???????????? ???????????? ???????????? ????????? ?????????????????????' };
+    if (!data.publicUrl) return { success: false, error: 'ছবির ঠিকানা তৈরি করা যায়নি।' };
     const profileResult = await updateProfile({ avatarUrl: data.publicUrl });
     if (!profileResult.success) {
-      await client.storage.from('avatars').remove([path]);
+      const { error: cleanupError } = await client.storage.from('avatars').remove([path]);
+      if (cleanupError) {
+        return {
+          success: false,
+          error: `${profileResult.error || 'প্রোফাইলে ছবি সংরক্ষণ ব্যর্থ হয়েছে।'} ছবিটি আপলোড হয়েছে, কিন্তু পরিষ্কার করা যায়নি: ${cleanupError.message}`,
+        };
+      }
       return profileResult;
     }
     return { success: true, url: data.publicUrl };
   };
 
-  /** Sets a new password for the CURRENT session ??? no reset email needed. */
+  /** Sets a new password for the current authenticated session. */
   const changePassword = async (newPassword: string) => {
     if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     const client = createClient();
     if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     if (newPassword.length < 6) {
-      return { success: false, error: '?????????????????????????????? ????????????????????? ??? ????????????????????? ????????? ????????????' };
+      return { success: false, error: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' };
     }
     const { error } = await client.auth.updateUser({ password: newPassword });
     if (error) return { success: false, error: error.message };
@@ -587,162 +665,208 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const activateHomeTutorProfile = async (
-    details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>
-  ) => {
-    if (!user) return;
+    details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
+    mode: 'draft' | 'submit' = 'submit'
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'প্রোফাইল সংরক্ষণ করতে লগইন করুন।' };
+    if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    const client = createClient();
+    if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     // Editing an already-published tutor keeps them published; otherwise the edit
     // goes back into review (draft/pending_approval). Approved/Rejected status is
     // always admin-owned and never sent from the client.
-    const keepApproved = homeTutorProfile?.status === 'approved';
+    const { data: existing, error: lookupError } = await client
+      .from('home_tutor_profiles')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (lookupError) return { success: false, error: `প্রোফাইল পড়া যায়নি: ${lookupError.message}` };
+    const keepApproved = existing?.status === 'approved';
+    const status = keepApproved ? 'approved' : mode === 'draft' ? 'draft' : 'pending_approval';
+    const payload: Record<string, unknown> = {
+      user_id: user.id,
+      full_name: details.fullName,
+      gender: details.gender,
+      institution: details.institution,
+      department: details.department,
+      qualification: details.qualification,
+      experience_years: details.experienceYears,
+      preferred_areas: details.preferredAreas,
+      preferred_classes: details.preferredClasses,
+      preferred_subjects: details.preferredSubjects,
+      expected_salary_min: details.expectedSalaryMin,
+      expected_salary_max: details.expectedSalaryMax,
+      days_per_week: details.daysPerWeek,
+      bio: details.bio || null,
+      student_id_card_url: details.studentIdCardUrl || null,
+      nid_number: details.nidNumber || null,
+      private_phone: details.privatePhone,
+      teaching_mode: details.teachingMode,
+      availability: details.availability,
+      profile_photo_url: details.profilePhotoUrl || null,
+      status,
+    };
+    // The trigger permits keeping an existing approved profile approved but
+    // prevents every owner-initiated transition into a guarded status.
+    const result = existing
+      ? await client
+          .from('home_tutor_profiles')
+          .update(payload)
+          .eq('id', existing.id)
+          .select('id, created_at, updated_at')
+          .single()
+      : await client
+          .from('home_tutor_profiles')
+          .insert(payload)
+          .select('id, created_at, updated_at')
+          .single();
+    if (result.error || !result.data) {
+      return {
+        success: false,
+        error: `প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে: ${result.error?.message || 'সংরক্ষিত প্রোফাইল ফেরত পাওয়া যায়নি।'}`,
+      };
+    }
     const newProf: HomeTutorProfile = {
-      id: homeTutorProfile?.id || `tutor-${Date.now()}`,
+      id: result.data.id,
       userId: user.id,
-      status: keepApproved ? 'approved' : 'pending_approval',
-      createdAt: homeTutorProfile?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      status,
+      createdAt: result.data.created_at,
+      updatedAt: result.data.updated_at,
       ...details,
     };
     setHomeTutorProfile(newProf);
-    if (isSupabaseConfigured) {
-      const client = createClient();
-      if (client) {
-        const payload: Record<string, unknown> = {
-          user_id: user.id,
-          full_name: details.fullName,
-          gender: details.gender,
-          institution: details.institution,
-          department: details.department,
-          qualification: details.qualification,
-          experience_years: details.experienceYears,
-          preferred_areas: details.preferredAreas,
-          preferred_classes: details.preferredClasses,
-          preferred_subjects: details.preferredSubjects,
-          expected_salary_min: details.expectedSalaryMin,
-          expected_salary_max: details.expectedSalaryMax,
-          days_per_week: details.daysPerWeek,
-          bio: details.bio || null,
-          student_id_card_url: details.studentIdCardUrl || null,
-          nid_number: details.nidNumber || null,
-          private_phone: details.privatePhone,
-          teaching_mode: details.teachingMode,
-          availability: details.availability,
-          profile_photo_url: details.profilePhotoUrl || null,
-        };
-        // Never let the owner move an already-published profile out of 'approved'
-        if (!keepApproved) {
-          payload.status = 'pending_approval';
-        }
-        // The self-approval guard rejects INSERTing an 'approved' row, so a new
-        // profile starts in review. An existing profile is UPDATEd in place ???
-        // the guard lets an owner re-assert the 'approved' status it holds.
-        const { data: existing } = await client
-          .from('home_tutor_profiles')
-          .select('id, status')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (existing) {
-          await client.from('home_tutor_profiles').update(payload).eq('id', existing.id);
-        } else {
-          await client
-            .from('home_tutor_profiles')
-            .insert({ ...payload, status: 'pending_approval' });
-        }
-      }
-    }
+    return { success: true };
   };
 
   const activateBloodDonorProfile = async (
-    details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>
-  ) => {
-    if (!user) return;
+    details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
+    mode: 'draft' | 'submit' = 'submit'
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) return { success: false, error: 'প্রোফাইল সংরক্ষণ করতে লগইন করুন।' };
+    if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    const client = createClient();
+    if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     // Editing an already-published donor keeps them published; otherwise the edit
     // goes back into review (pending_approval). Approved/Rejected/Suspended status
     // is always admin-owned and never sent from the client.
-    const keepApproved = bloodDonorProfile?.status === 'approved';
+    const { data: existing, error: lookupError } = await client
+      .from('blood_donor_profiles')
+      .select('id, status')
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (lookupError) return { success: false, error: `প্রোফাইল পড়া যায়নি: ${lookupError.message}` };
+    const keepApproved = existing?.status === 'approved';
+    const status = keepApproved ? 'approved' : mode === 'draft' ? 'draft' : 'pending_approval';
+    const payload: Record<string, unknown> = {
+      user_id: user.id,
+      full_name: details.fullName,
+      blood_group: details.bloodGroup,
+      area_id: details.areaId,
+      gender: details.gender,
+      birth_year: details.birthYear ?? null,
+      weight_kg: details.weightKg ?? null,
+      is_available: details.isAvailable,
+      last_donation_date: details.lastDonationDate || null,
+      donation_count: details.donationCount,
+      // Private donor contact and verification are never public or owner-writable.
+      private_phone: details.privatePhone,
+      intro: details.intro || null,
+      profile_photo_url: details.profilePhotoUrl || null,
+      status,
+    };
+    const result = existing
+      ? await client
+          .from('blood_donor_profiles')
+          .update(payload)
+          .eq('id', existing.id)
+          .select('id, created_at, updated_at')
+          .single()
+      : await client
+          .from('blood_donor_profiles')
+          .insert(payload)
+          .select('id, created_at, updated_at')
+          .single();
+    if (result.error || !result.data) {
+      return {
+        success: false,
+        error: `প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে: ${result.error?.message || 'সংরক্ষিত প্রোফাইল ফেরত পাওয়া যায়নি।'}`,
+      };
+    }
     const newProf: BloodDonorProfile = {
-      id: bloodDonorProfile?.id || `donor-${Date.now()}`,
+      id: result.data.id,
       userId: user.id,
-      status: keepApproved ? 'approved' : 'pending_approval',
-      createdAt: bloodDonorProfile?.createdAt || new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
+      status,
+      createdAt: result.data.created_at,
+      updatedAt: result.data.updated_at,
       ...details,
     };
     setBloodDonorProfile(newProf);
-    if (isSupabaseConfigured) {
-      const client = createClient();
-      if (client) {
-        const payload: Record<string, unknown> = {
-          user_id: user.id,
-          full_name: details.fullName,
-          blood_group: details.bloodGroup,
-          area_id: details.areaId,
-          gender: details.gender,
-          birth_year: details.birthYear ?? null,
-          weight_kg: details.weightKg ?? null,
-          is_available: details.isAvailable,
-          last_donation_date: details.lastDonationDate || null,
-          donation_count: details.donationCount,
-          // PRIVACY: private_phone is stored but is only surfaced via the admin
-          // contact-release flow. is_verified is never writable by the owner.
-          private_phone: details.privatePhone,
-          intro: details.intro || null,
-          profile_photo_url: details.profilePhotoUrl || null,
-        };
-        // Never let the owner move an already-published profile out of 'approved'
-        if (!keepApproved) {
-          payload.status = 'pending_approval';
-        }
-        // Same guard as the tutor flow: INSERT starts in review; UPDATE in
-        // place lets an approved donor keep publishing while being edited.
-        const { data: existing } = await client
-          .from('blood_donor_profiles')
-          .select('id, status')
-          .eq('user_id', user.id)
-          .maybeSingle();
-        if (existing) {
-          await client.from('blood_donor_profiles').update(payload).eq('id', existing.id);
-        } else {
-          await client
-            .from('blood_donor_profiles')
-            .insert({ ...payload, status: 'pending_approval' });
-        }
-      }
-    }
+    return { success: true };
   };
 
   const toggleSaveItem = async (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => {
-    if (!user) return;
-    setSavedListings((prev) => {
-      const exists = prev.find((i) => i.itemType === item.itemType && i.title === item.title);
-      let nextList: SavedListingItem[];
-      if (exists) {
-        nextList = prev.filter((i) => i.id !== exists.id);
-      } else {
-        const newItem: SavedListingItem = {
-          ...item,
-          id: `save-${Date.now()}`,
-          userId: user.id,
-          savedAt: new Date().toISOString(),
-        };
-        nextList = [newItem, ...prev];
+    if (!user) return { success: false, error: 'সংরক্ষিত পোস্টে পরিবর্তনের আগে লগইন করুন।' };
+    if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    const client = createClient();
+    if (!client) return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি।' };
+    const itemId = item.itemId || item.linkHref.split('/').filter(Boolean).pop();
+    if (!itemId) return { success: false, error: 'পোস্টের পরিচিতি পাওয়া যায়নি।' };
+    const existing = savedListings.find((saved) => saved.itemType === item.itemType && saved.itemId === itemId);
+    if (existing) {
+      const { error } = await client
+        .from('saved_items')
+        .delete()
+        .eq('id', existing.id)
+        .eq('user_id', user.id);
+      if (error) return { success: false, error: `সংরক্ষিত পোস্ট সরানো যায়নি: ${error.message}` };
+      setSavedListings((previous) => previous.filter((saved) => saved.id !== existing.id));
+    } else {
+      const { data, error } = await client
+        .from('saved_items')
+        .insert({ user_id: user.id, item_type: item.itemType, item_id: itemId })
+        .select('id, created_at')
+        .single();
+      if (error || !data) {
+        return { success: false, error: `পোস্ট সংরক্ষণ করা যায়নি: ${error?.message ?? 'সংরক্ষিত পোস্ট ফেরত পাওয়া যায়নি।'}` };
       }
-      return nextList;
-    });
-    if (isSupabaseConfigured) {
-      const client = createClient();
-      if (client) {
-        const exists = savedListings.find((i) => i.itemType === item.itemType && i.title === item.title);
-        if (exists) {
-          await client.from('saved_items').delete().eq('id', exists.id);
-        } else {
-          await client.from('saved_items').insert({
-            user_id: user.id,
-            item_type: item.itemType,
-            item_id: item.linkHref.split('/').pop() || 'listing',
-          });
-        }
-      }
+      setSavedListings((previous) => [{
+        ...item,
+        itemId,
+        id: data.id,
+        userId: user.id,
+        savedAt: data.created_at,
+      }, ...previous]);
     }
+    return { success: true };
+  };
+
+  const markNotificationRead = async (notificationId: string) => {
+    if (!user) return { success: false, error: 'আপনাকে আগে লগইন করতে হবে।' };
+    if (!/^[0-9a-f-]{36}$/i.test(notificationId)) {
+      return { success: false, error: 'নোটিফিকেশন আইডি সঠিক নয়।' };
+    }
+    if (!isSupabaseConfigured) {
+      return { success: false, error: 'Supabase সংযুক্ত নেই; নোটিফিকেশন আপডেট করা যায়নি।' };
+    }
+    const client = createClient();
+    if (!client) return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি।' };
+
+    let query = client
+      .from('notifications')
+      .update({ is_read: true })
+      .eq('id', notificationId)
+      .eq('is_read', false);
+    query = user.role === 'admin'
+      ? query.or(`user_id.eq.${user.id},target_role.eq.admin`)
+      : query.eq('user_id', user.id).eq('target_role', 'customer');
+    const { error } = await query;
+    if (error) return { success: false, error: `নোটিফিকেশন আপডেট ব্যর্থ হয়েছে: ${error.message}` };
+    setNotifications((previous) =>
+      previous.map((notification) =>
+        notification.id === notificationId ? { ...notification, isRead: true } : notification
+      )
+    );
+    return { success: true };
   };
 
   const markNotificationsReadAll = async () => {
@@ -817,7 +941,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           profile_title: requestData.profileTitleBn || null,
           service_type: requestData.serviceType || null,
           attachment_url: requestData.attachmentUrl || null,
-          // Home Moving (???????????? ????????????????????????) private request fields
+          // Home Moving private request fields
           pickup_area_id: requestData.pickupAreaId || null,
           destination_area_id: requestData.destinationAreaId || null,
           pickup_address: requestData.pickupAddress || null,
@@ -842,7 +966,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         bloodDonorProfile,
         requests,
         savedListings,
+        savedListingsLoading,
+        savedListingsError,
         notifications,
+        notificationsError,
         isLoading,
         isAdmin: user?.role === 'admin',
         isConfiguredWithSupabase: isSupabaseConfigured,
@@ -855,6 +982,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         updateProfile,
         uploadAvatar,
         changePassword,
+        markNotificationRead,
         markNotificationsReadAll,
         activateToletProfile,
         activateHomeTutorProfile,

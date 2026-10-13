@@ -7,6 +7,7 @@ import { MapPin, Phone, Mail, ShieldCheck, Facebook, MessageCircle } from 'lucid
 import { LAUNCH_SERVICES } from '@/lib/services-data';
 import { CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
 import {
+  DEFAULT_FOOTER_CONTENT,
   mergeSiteContact,
   mergeLaunchServices,
   type SiteContentOverrides,
@@ -15,8 +16,8 @@ import {
 /**
  * The public footer.
  *
- * A Server Component so the admin's contact and service-catalog overrides are
- * applied before render. The contact block still honours the honesty rule in
+ * The admin's contact, footer and service-catalog overrides are read from the
+ * existing public site-content endpoint. The contact block honours the rule in
  * `lib/site-contact.ts`: until a real number is published, the footer offers a
  * link to the contact form rather than a `tel:` link to a number that does not
  * exist.
@@ -65,21 +66,9 @@ export default function Footer() {
     'fire-service': '/fireservice',
   };
 
-  const companyLinks = [
-    { name: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh' },
-    { name: 'আমাদের সম্পর্কে', href: '/about' },
-    { name: 'কিভাবে কাজ করে', href: '/#how-it-works' },
-    { name: 'যোগাযোগ ও ফিডব্যাক', href: '/contact' },
-    { name: 'নিরাপত্তা নীতি', href: '/safety' },
-  ];
-
-  const supportLinks = [
-    { name: 'সাহায্য ও জিজ্ঞাসা', href: '/help' },
-    { name: 'প্রাইভেসি পলিসি', href: '/safety' },
-    { name: 'ব্যবহারের শর্তাবলী', href: '/safety' },
-    { name: 'ইউজার প্রোফাইল', href: '/profile' },
-    { name: 'আমার রিকোয়েস্ট', href: '/profile/requests' },
-  ];
+  const footerContent = overrides?.footer_content ?? DEFAULT_FOOTER_CONTENT;
+  const companyLinks = footerContent.companyLinks;
+  const supportLinks = footerContent.supportLinks;
 
   return (
     <footer className="border-t border-brand-900 bg-brand-950 text-brand-100/80">
@@ -106,8 +95,7 @@ export default function Footer() {
             </Link>
 
             <p className="mt-2.5 max-w-sm text-[13px] leading-relaxed text-brand-100/70">
-              ময়মনসিংহ সিটি কর্পোরেশন এলাকার অধিবাসীদের জন্য একটি বিশ্বস্ত স্থানীয় সেবা প্ল্যাটফর্ম —
-              বাসা ভাড়া, গৃহকর্মী, মেরামত, গৃহশিক্ষক ও জরুরি রক্তদান এক জায়গায়।
+              {footerContent.description}
             </p>
 
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-bronze-400/25 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-brand-100/90">
@@ -211,9 +199,9 @@ export default function Footer() {
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">কোম্পানি</h4>
             <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {companyLinks.map((l) => (
-                <li key={l.href}>
+                <li                 key={`${l.label}-${l.href}`}>
                   <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
-                    {l.name}
+                    {l.label}
                   </Link>
                 </li>
               ))}
@@ -225,9 +213,9 @@ export default function Footer() {
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">সহায়তা ও অ্যাকাউন্ট</h4>
             <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {supportLinks.map((l) => (
-                <li key={l.name}>
+                <li                 key={`${l.label}-${l.href}`}>
                   <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
-                    {l.name}
+                    {l.label}
                   </Link>
                 </li>
               ))}

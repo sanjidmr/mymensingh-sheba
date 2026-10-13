@@ -14,7 +14,7 @@
  */
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, BadgeCheck, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, MapPin, Phone } from 'lucide-react';
 import DirectoryShell from '@/components/directory/DirectoryShell';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
@@ -56,7 +56,7 @@ export default function CatalogDetailView({
   const { isAdmin } = useAuth();
   const adminNote = isAdmin ? (
     <Link
-      href={`/admin/catalog?category=${listing.category}&edit=${listing.id}`}
+      href={`/admin/catalog/${listing.category}/${listing.id}/edit`}
       className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[13px] font-bold text-brand-700 transition-colors hover:bg-mist-50 ${LIGHT_FOCUS}`}
     >
       সম্পাদনা
@@ -89,9 +89,8 @@ export default function CatalogDetailView({
                   ফিচার্ড
                 </span>
               )}
-              <span className="inline-flex items-center gap-1 rounded-md border border-brand-100 bg-mist-50 px-1.5 py-[3px] text-[10px] font-bold text-brand-700">
-                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
-                অ্যাডমিন যাচাইকৃত
+              <span className="rounded-md border border-brand-100 bg-mist-50 px-1.5 py-[3px] text-[10px] font-bold text-ink-600">
+                অ্যাডমিন-পরিচালিত · আলাদা যাচাইয়ের তথ্য নেই
               </span>
             </div>
 

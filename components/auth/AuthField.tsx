@@ -1,8 +1,12 @@
 'use client';
 
-import React, { useId, useState } from 'react';
+import React, { useId, useState, useSyncExternalStore } from 'react';
 import { Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+
+const subscribeToHydration = () => () => {};
+const getClientSnapshot = () => true;
+const getServerSnapshot = () => false;
 
 export interface AuthFieldProps {
   label: string;
@@ -144,14 +148,21 @@ export function AuthSubmit({
   label: string;
   icon?: React.ReactNode;
 }) {
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    getClientSnapshot,
+    getServerSnapshot
+  );
+  const isLoading = isHydrated && loading;
+
   return (
     <button
       type="submit"
-      disabled={loading}
-      aria-busy={loading}
+      disabled={isLoading}
+      aria-busy={isLoading}
       className={`flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-[15px] font-extrabold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-65 ${LIGHT_FOCUS}`}
     >
-      {loading ? (
+      {isLoading ? (
         <>
           <span
             className="h-4 w-4 animate-spin rounded-full border-2 border-white/35 border-t-white"

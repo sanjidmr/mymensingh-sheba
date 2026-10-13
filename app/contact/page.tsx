@@ -9,6 +9,8 @@ import ContactPostCta from '@/components/contact/ContactPostCta';
 import ContactFaq from '@/components/contact/ContactFaq';
 import ContactLocation from '@/components/contact/ContactLocation';
 import ContactClosing from '@/components/contact/ContactClosing';
+import { getSiteContentOverrides } from '@/lib/site-content-server';
+import { mergeSiteContact } from '@/lib/site-content';
 
 export const metadata: Metadata = {
   title: 'যোগাযোগ করুন — Mymensingh Sheba',
@@ -16,7 +18,9 @@ export const metadata: Metadata = {
     'Mymensingh Sheba-এর সাথে যোগাযোগ করুন — প্রশ্ন, পরামর্শ, সমস্যা বা সহযোগিতার জন্য। অনলাইনে বার্তা পাঠান, অথবা নিজের সেবা ময়মনসিংহের মানুষের কাছে পৌঁছে দিন।',
 };
 
-export default function ContactPage() {
+export default async function ContactPage() {
+  const overrides = await getSiteContentOverrides();
+  const contact = mergeSiteContact(overrides);
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">
       <Navbar />
@@ -35,11 +39,11 @@ export default function ContactPage() {
           </span>
         </nav>
 
-        <ContactHero />
-        <ContactComposer />
+        <ContactHero contact={contact} />
+        <ContactComposer contact={contact} />
         <ContactPostCta />
         <ContactFaq />
-        <ContactLocation />
+        <ContactLocation contact={contact} />
         <ContactClosing />
       </main>
 

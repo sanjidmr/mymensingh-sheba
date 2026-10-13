@@ -84,7 +84,10 @@ export default async function AdminToletRequestsPage({
           title="বাসা ভাড়া অনুসন্ধান"
           description="বাসা ভাড়ার বিজ্ঞাপনে আসা সব ইনকোয়ারি।"
         />
-        <AdminError title="ডেটাবেজ সংযুক্ত নেই" />
+        <AdminError
+          title={result.error ? 'বাসা ভাড়ার অনুসন্ধান লোড করা যায়নি' : 'ডেটাবেজ সংযুক্ত নেই'}
+          message={result.error}
+        />
       </>
     );
   }
@@ -109,7 +112,7 @@ export default async function AdminToletRequestsPage({
             param="status"
             searchParams={resolvedSearchParams}
           />
-          <ClearFilters searchParams={new URLSearchParams()} />
+          <ClearFilters searchParams={resolvedSearchParams} />
         </div>
       </div>
 

@@ -11,6 +11,10 @@ interface Conversation {
   message: string;
   status: string;
   created_at: string;
+  complaint_category: string | null;
+  complaint_subject: string | null;
+  attachment_path: string | null;
+  attachment_url?: string;
 }
 
 interface Reply {
@@ -26,9 +30,24 @@ const SUBJECTS = [
   { value: 'service_info', label: 'সেবা সম্পর্কে' },
   { value: 'post_service', label: 'পোস্ট ও অ্যাকাউন্ট' },
   { value: 'correction', label: 'তথ্য সংশোধন' },
-  { value: 'complaint', label: 'অভিযোগ' },
   { value: 'other', label: 'অন্যান্য' },
 ];
+
+const COMPLAINT_CATEGORIES = [
+  { value: 'account', label: 'অ্যাকাউন্ট ও নিরাপত্তা' },
+  { value: 'posts', label: 'পোস্ট বা বিজ্ঞাপন' },
+  { value: 'service', label: 'সেবা বা রিকোয়েস্ট' },
+  { value: 'safety', label: 'নিরাপত্তা ও আচরণ' },
+  { value: 'payment', label: 'পেমেন্ট বা চার্জ' },
+  { value: 'other', label: 'অন্যান্য' },
+];
+
+const ATTACHMENT_TYPES: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
+  'application/pdf': 'pdf',
+};
 
 const STATUS_LABEL: Record<string, string> = {
   new: 'নতুন',
@@ -37,12 +56,20 @@ const STATUS_LABEL: Record<string, string> = {
   closed: 'বন্ধ',
 };
 
-export default function CustomerMessages() {
+export default function CustomerMessages({
+  initialSubject = 'general',
+}: {
+  initialSubject?: string;
+}) {
   const { user } = useAuth();
   const [items, setItems] = useState<Conversation[]>([]);
   const [replies, setReplies] = useState<Reply[]>([]);
-  const [subject, setSubject] = useState('general');
+  const [subject, setSubject] = useState(initialSubject === 'complaint' ? 'general' : initialSubject);
   const [message, setMessage] = useState('');
+  const [complaintCategory, setComplaintCategory] = useState('posts');
+  const [complaintSubject, setComplaintSubject] = useState('');
+  const [complaintDetails, setComplaintDetails] = useState('');
+  const [attachment, setAttachment] = useState<File | null>(null);
   const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -71,7 +98,15 @@ export default function CustomerMessages() {
         .in('message_id', conversations.map((item) => item.id))
         .order('created_at', { ascending: true });
       if (replyError) throw new Error(`কথোপকথন লোড করা যায়নি: ${replyError.message}`);
-      return { conversations, replies: (replyData ?? []) as Reply[] };
+      const withAttachments = await Promise.all(conversations.map(async (item) => {
+        if (!item.attachment_path) return item;
+        const { data: signed, error: signedError } = await client.storage
+          .from('support-attachments')
+          .createSignedUrl(item.attachment_path, 3600);
+        if (signedError) throw new Error(`অভিযোগের সংযুক্তি খোলা যায়নি: ${signedError.message}`);
+        return { ...item, attachment_url: signed.signedUrl };
+      }));
+      return { conversations: withAttachments, replies: (replyData ?? []) as Reply[] };
     }
     return { conversations, replies: [] as Reply[] };
   }, [user]);
@@ -139,6 +174,77 @@ export default function CustomerMessages() {
     setBusy(false);
   };
 
+  const submitComplaint = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    if (!user) return;
+    const title = complaintSubject.trim();
+    const details = complaintDetails.trim();
+    if (title.length < 3 || title.length > 120) {
+      setError('অভিযোগের বিষয় ৩ থেকে ১২০ অক্ষরের মধ্যে লিখুন।');
+      return;
+    }
+    if (details.length < 12 || details.length > 1500) {
+      setError('বিস্তারিত ১২ থেকে ১৫০০ অক্ষরের মধ্যে লিখুন।');
+      return;
+    }
+    if (attachment && (!ATTACHMENT_TYPES[attachment.type] || attachment.size > 5 * 1024 * 1024)) {
+      setError('সংযুক্তি JPG, PNG, WEBP বা PDF হতে হবে এবং সর্বোচ্চ ৫ MB হতে পারবে।');
+      return;
+    }
+    const client = createClient();
+    if (!client) {
+      setError('ডেটাবেজ সংযোগ তৈরি করা যায়নি।');
+      return;
+    }
+
+    setBusy(true);
+    setError('');
+    setSuccess('');
+    let attachmentPath: string | null = null;
+    try {
+      if (attachment) {
+        const extension = ATTACHMENT_TYPES[attachment.type];
+        attachmentPath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+        const { error: uploadError } = await client.storage
+          .from('support-attachments')
+          .upload(attachmentPath, attachment, { contentType: attachment.type, upsert: false });
+        if (uploadError) throw new Error(`সংযুক্তি আপলোড করা যায়নি: ${uploadError.message}`);
+      }
+
+      const { error: insertError } = await client.from('contact_messages').insert({
+        name: user.fullName,
+        phone: user.phone,
+        email: user.email || null,
+        subject: 'complaint',
+        complaint_category: complaintCategory,
+        complaint_subject: title,
+        attachment_path: attachmentPath,
+        message: details,
+        user_id: user.id,
+      });
+      if (insertError) {
+        let cleanupNote = '';
+        if (attachmentPath) {
+          const { error: cleanupError } = await client.storage
+            .from('support-attachments')
+            .remove([attachmentPath]);
+          if (cleanupError) cleanupNote = ` সংযুক্তি পরিষ্কার করা যায়নি: ${cleanupError.message}`;
+        }
+        throw new Error(`অভিযোগ জমা দেওয়া যায়নি: ${insertError.message}.${cleanupNote}`);
+      }
+
+      setComplaintSubject('');
+      setComplaintDetails('');
+      setAttachment(null);
+      setSuccess('আপনার অভিযোগ জমা হয়েছে। এই পাতায় এর স্ট্যাটাস ও সাপোর্ট টিমের উত্তর দেখতে পারবেন।');
+      await load();
+    } catch (submitError) {
+      setError(submitError instanceof Error ? submitError.message : 'অভিযোগ জমা দেওয়া যায়নি।');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const submitReply = async (event: FormEvent<HTMLFormElement>, conversationId: string) => {
     event.preventDefault();
     if (!user) return;
@@ -171,14 +277,15 @@ export default function CustomerMessages() {
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-xl font-extrabold text-ink-900">সাপোর্ট বার্তা</h1>
-        <p className="mt-1 text-[12.5px] text-ink-500">আপনার ব্যক্তিগত কথোপকথন শুধু আপনি ও সাপোর্ট টিম দেখতে পারবেন।</p>
+        <h1 className="text-xl font-extrabold text-ink-900">যোগাযোগ কেন্দ্র</h1>
+        <p className="mt-1 text-[12.5px] text-ink-500">আপনার কথোপকথন ও অভিযোগের আপডেট ব্যক্তিগতভাবে দেখুন।</p>
       </header>
 
       <form onSubmit={submitNew} className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4">
         <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-ink-900">
-          <Mail className="h-4 w-4 text-brand-700" /> নতুন বার্তা
+          <Mail className="h-4 w-4 text-brand-700" /> অ্যাডমিনকে মেসেজ দিন
         </h2>
+        <p className="text-xs leading-relaxed text-ink-500">আপনার ব্যক্তিগত কথোপকথন শুধু আপনি ও সাপোর্ট টিম দেখতে পারবেন।</p>
         <label className="grid gap-1 text-xs font-bold text-ink-700">
           বিষয়
           <select value={subject} onChange={(event) => setSubject(event.target.value)} className="min-h-11 rounded-xl border border-brand-100 px-3 text-sm">
@@ -196,8 +303,39 @@ export default function CustomerMessages() {
         </button>
       </form>
 
+      <form id="complaint-form" onSubmit={submitComplaint} className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+        <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-ink-900">
+          <MessageCircle className="h-4 w-4 text-amber-800" /> অভিযোগ ও সাহায্য
+        </h2>
+        <p className="text-xs leading-relaxed text-ink-600">অভিযোগটি সঠিক টিমে পাঠাতে বিভাগ বাছুন। প্রয়োজন হলে ছবি বা PDF যুক্ত করুন।</p>
+        <label className="grid gap-1 text-xs font-bold text-ink-700">
+          অভিযোগের বিভাগ
+          <select value={complaintCategory} onChange={(event) => setComplaintCategory(event.target.value)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 text-sm">
+            {COMPLAINT_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-ink-700">
+          বিষয়
+          <input required minLength={3} maxLength={120} value={complaintSubject} onChange={(event) => setComplaintSubject(event.target.value)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 text-sm" placeholder="সংক্ষেপে সমস্যাটি লিখুন" />
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-ink-700">
+          বিস্তারিত
+          <textarea required minLength={12} maxLength={1500} rows={4} value={complaintDetails} onChange={(event) => setComplaintDetails(event.target.value)} className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm" placeholder="কী ঘটেছে এবং কীভাবে সাহায্য করতে পারি তা লিখুন" />
+        </label>
+        <label className="grid gap-1 text-xs font-bold text-ink-700">
+          সংযুক্তি <span className="font-normal text-ink-500">(ঐচ্ছিক · JPG, PNG, WEBP বা PDF · সর্বোচ্চ ৫ MB)</span>
+          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 file:px-2 file:py-1 file:text-xs file:font-bold" />
+        </label>
+        {attachment && <p className="text-xs text-ink-500">{attachment.name} · {(attachment.size / 1024 / 1024).toFixed(1)} MB</p>}
+        {error && <p role="alert" className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">{error}</p>}
+        {success && <p role="status" className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-800">{success}</p>}
+        <button type="submit" disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber-800 px-4 text-sm font-bold text-white hover:bg-amber-900 disabled:opacity-50">
+          <Send className="h-4 w-4" />{busy ? 'জমা হচ্ছে…' : 'অভিযোগ জমা দিন'}
+        </button>
+      </form>
+
       <section className="space-y-2" aria-labelledby="conversation-heading">
-        <h2 id="conversation-heading" className="text-[13px] font-extrabold text-ink-900">কথোপকথনের ইতিহাস</h2>
+        <h2 id="conversation-heading" className="text-[13px] font-extrabold text-ink-900">কথোপকথন ও অভিযোগের ইতিহাস</h2>
         {loading ? (
           <div className="h-28 animate-pulse rounded-xl bg-mist-100" aria-label="বার্তা লোড হচ্ছে" />
         ) : error && items.length === 0 ? null : items.length === 0 ? (
@@ -210,7 +348,11 @@ export default function CustomerMessages() {
               <button type="button" onClick={() => setExpanded(isOpen ? null : item.id)} aria-expanded={isOpen} className="flex min-h-14 w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-mist-50">
                 <MessageCircle className="h-4 w-4 shrink-0 text-brand-600" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-[12.5px] font-bold text-ink-900">{SUBJECTS.find((option) => option.value === item.subject)?.label ?? item.subject}</span>
+                  <span className="block truncate text-[12.5px] font-bold text-ink-900">
+                    {item.subject === 'complaint'
+                      ? `${item.complaint_subject || 'অভিযোগ'} · ${COMPLAINT_CATEGORIES.find((option) => option.value === item.complaint_category)?.label ?? 'অভিযোগ'}`
+                      : SUBJECTS.find((option) => option.value === item.subject)?.label ?? item.subject}
+                  </span>
                   <span className="mt-0.5 block truncate text-[11px] text-ink-500">{item.message}</span>
                 </span>
                 <span className="shrink-0 rounded-full bg-mist-50 px-2 py-1 text-[10px] font-bold text-brand-800">{STATUS_LABEL[item.status] ?? item.status}</span>
@@ -218,6 +360,11 @@ export default function CustomerMessages() {
               {isOpen && (
                 <div className="space-y-3 border-t border-brand-100 p-3">
                   <MessageBubble sender="আপনি" body={item.message} time={item.created_at} />
+                  {item.attachment_url && (
+                    <a href={item.attachment_url} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center rounded-lg border border-brand-200 bg-white px-3 text-xs font-bold text-brand-800 hover:bg-brand-50">
+                      অভিযোগের সংযুক্তি দেখুন
+                    </a>
+                  )}
                   {threadReplies.map((reply) => (
                     <MessageBubble key={reply.id} sender={reply.sender_role === 'admin' ? 'সাপোর্ট টিম' : 'আপনি'} body={reply.body} time={reply.created_at} />
                   ))}

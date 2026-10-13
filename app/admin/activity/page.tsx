@@ -128,11 +128,6 @@ export default async function AdminActivityPage({
     );
   }
 
-  const clearParams = new URLSearchParams();
-  if (params.search) clearParams.set('q', params.search);
-  if (params.status) clearParams.set('status', params.status);
-  if (params.category) clearParams.set('category', params.category);
-
   return (
     <>
       <PageHeader
@@ -165,7 +160,7 @@ export default async function AdminActivityPage({
             param="category"
             searchParams={resolvedSearchParams}
           />
-          <ClearFilters searchParams={clearParams} />
+          <ClearFilters searchParams={resolvedSearchParams} />
         </div>
       </div>
 

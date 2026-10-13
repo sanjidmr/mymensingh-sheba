@@ -2,13 +2,9 @@
 
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
-import { Check, ChevronDown, Trash2 } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
 import type { AdminVehicleRequestRow } from '@/lib/admin/queries';
-import {
-  setVehicleRequestStatus,
-  deleteVehicleRequest,
-} from '@/app/admin/actions/requests';
-import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
+import { setVehicleRequestStatus } from '@/app/admin/actions/requests';
 import { useToast } from '@/components/admin/ToastProvider';
 import { Button } from '@/components/ui/Button';
 import { cn } from '@/lib/utils';
@@ -19,7 +15,6 @@ export default function VehicleRequestActions({ request }: { request: AdminVehic
   const { notify } = useToast();
   const [statusOpen, setStatusOpen] = useState(false);
   const [status, setStatus] = useState(request.status);
-  const [deleting, setDeleting] = useState(false);
   const [busy, setBusy] = useState(false);
 
   const run = async (fn: () => Promise<{ ok: boolean; error?: string; message?: string }>) => {
@@ -41,11 +36,6 @@ export default function VehicleRequestActions({ request }: { request: AdminVehic
   const saveStatus = async () => {
     const ok = await run(() => setVehicleRequestStatus(request.id, status));
     if (ok) setStatusOpen(false);
-  };
-
-  const confirmDelete = async () => {
-    const ok = await run(() => deleteVehicleRequest(request.id));
-    if (ok) setDeleting(false);
   };
 
   const statusOptions = STATUS_OPTIONS.vehicle_requests;
@@ -80,14 +70,6 @@ export default function VehicleRequestActions({ request }: { request: AdminVehic
           স্ট্যাটাস
         </Button>
 
-        <button
-          type="button"
-          onClick={() => setDeleting(true)}
-          aria-label="রিকoué request মুছুন"
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-rose-200 text-rose-600 hover:bg-rose-50"
-        >
-          <Trash2 className="h-4 w-4" />
-        </button>
       </div>
 
       {statusOpen && (
@@ -99,11 +81,14 @@ export default function VehicleRequestActions({ request }: { request: AdminVehic
             className="absolute inset-0 h-full w-full bg-ink-900/50"
           />
           <div className="relative w-full max-w-md rounded-2xl border border-mist-200 bg-white p-5 shadow-2xl">
-            <h3 className="text-base font-bold text-ink-900">স্ট্যাটাস পরিবর্তন</h3>
+            <h3 className="text-base font-bold text-ink-900">রিকোয়েস্টের অবস্থা পরিবর্তন</h3>
+            <p className="mt-2 text-xs leading-relaxed text-ink-500">
+              “যোগাযোগ নথিভুক্ত” শুধু বাস্তবে যোগাযোগ করার পর বাছুন। এই প্যানেল থেকে কোনো কল বা বার্তা পাঠানো হয় না; “রিকোয়েস্ট বন্ধ” বুকিং নিশ্চিত করে না।
+            </p>
             <div className="mt-3">
-              <label htmlFor="vehicle-request-status" className="mb-1 block text-xs font-semibold text-ink-700">স্ট্যাটাস</label>
+              <label htmlFor={`vehicle-request-status-${request.id}`} className="mb-1 block text-xs font-semibold text-ink-700">স্ট্যাটাস</label>
               <select
-                id="vehicle-request-status"
+                id={`vehicle-request-status-${request.id}`}
                 value={status}
                 onChange={(e) => setStatus(e.target.value)}
                 className="h-11 w-full rounded-lg border border-mist-200 bg-white px-3 text-sm text-ink-900"
@@ -119,26 +104,12 @@ export default function VehicleRequestActions({ request }: { request: AdminVehic
               <Button variant="ghost" onClick={() => setStatusOpen(false)} disabled={busy}>
                 বাতিল
               </Button>
-              <Button onClick={saveStatus} isLoading={busy}>সংরক্ষণ</Button>
+              <Button onClick={saveStatus} isLoading={busy} disabled={status === request.status}>সংরক্ষণ</Button>
             </div>
           </div>
         </div>
       )}
 
-      <ConfirmDialog
-        open={deleting}
-        title="রিকoué requestটি মুছে ফেলবেন?"
-        description={
-          <>
-            <span className="font-semibold">{request.contact_name}</span> এর রিকoué requestটি
-            স্থায়ীভাবে মুছে যাবে।
-          </>
-        }
-        confirmLabel="হ্যাঁ, মুছে ফেলুন"
-        isLoading={busy}
-        onConfirm={confirmDelete}
-        onCancel={() => setDeleting(false)}
-      />
     </>
   )
 }

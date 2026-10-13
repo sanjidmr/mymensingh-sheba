@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
   Loader2,
   Settings,
@@ -12,10 +11,11 @@ import {
   Save,
   CheckCircle2,
   AlertCircle,
-  ArrowLeft,
 } from 'lucide-react';
 import { fetchPlatformSettings, savePlatformSettings, type PlatformSettings } from '@/lib/admin-service';
 import type { ToletFeeRules } from '@/lib/tolet-fees';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { AdminError, AdminLoading } from '@/components/admin/States';
 
 const DEFAULT_TOLET_FEE_RULES: ToletFeeRules = {
   messSeatFee: 50,
@@ -41,8 +41,10 @@ export default function AdminSettingsPage() {
           setFeeRules(data.toletFeeRules);
         }
       })
-      .catch(() => {
-        if (active) setError('সেটিংস লোড ব্যর্থ হয়েছে');
+      .catch((err: unknown) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'সেটিংস লোড ব্যর্থ হয়েছে');
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -87,14 +89,21 @@ export default function AdminSettingsPage() {
   };
 
   if (loading) {
+    return <AdminLoading label="সেটিংস লোড হচ্ছে…" />;
+  }
+
+  if (!settings) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        
-        <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-          <span className="text-sm">সেটিংস লোড হচ্ছে...</span>
-        </div>
-      </div>
+      <>
+        <PageHeader
+          title="প্ল্যাটফর্ম সেটিংস"
+          description="ব্যবসায়িক নিয়ম, সার্ভিস উপলব্ধতা ও নোটিফিকেশন কনফিগারেশন"
+        />
+        <AdminError
+          title="সেটিংস লোড করা যায়নি"
+          message={error || 'ডেটাবেজ থেকে সেটিংস পাওয়া যায়নি; কোনো পরিবর্তন সংরক্ষণ করা হবে না।'}
+        />
+      </>
     );
   }
 
@@ -115,18 +124,11 @@ export default function AdminSettingsPage() {
   ] as const;
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <Link href="/admin" className="mb-2 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-800">
-              <ArrowLeft className="w-3.5 h-3.5" /> অ্যাডমিন ড্যাশবোর্ড
-            </Link>
-            <h1 className="text-2xl font-bold text-slate-900">প্ল্যাটফর্ম সেটিংস</h1>
-            <p className="text-xs text-slate-500 mt-1">ব্যবসায়িক নিয়ম, সার্ভিস উপলব্ধতা ও নোটিফিকেশন কনফিগারেশন</p>
-          </div>
-        </div>
+    <div>
+      <PageHeader
+        title="প্ল্যাটফর্ম সেটিংস"
+        description="ব্যবসায়িক নিয়ম, সার্ভিস উপলব্ধতা ও নোটিফিকেশন কনফিগারেশন"
+      />
 
         {error && (
           <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-center gap-2">
@@ -139,7 +141,7 @@ export default function AdminSettingsPage() {
           </div>
         )}
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           {/* To-Let Fee Rules */}
           <section className="bg-white rounded-2xl border border-slate-200 p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -286,7 +288,6 @@ export default function AdminSettingsPage() {
             </button>
           </div>
         </div>
-      </main>
     </div>
   );
 }

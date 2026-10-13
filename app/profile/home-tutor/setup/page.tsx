@@ -97,6 +97,8 @@ export default function HomeTutorSetupPage() {
   const [photoUploading, setPhotoUploading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const [error, setError] = useState('');
 
   const toggleArea = (id: string) => {
     setSelectedAreas((prev) =>
@@ -125,42 +127,63 @@ export default function HomeTutorSetupPage() {
     if (res.success && res.url) {
       setProfilePhotoUrl(res.url);
     } else {
-      alert(res.error || 'ছবি আপলোড ব্যর্থ হয়েছে');
+      setError(res.error || 'ছবি আপলোড ব্যর্থ হয়েছে');
     }
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!fullName || !department || selectedAreas.length === 0) return;
+  const saveProfile = async (mode: 'draft' | 'submit') => {
+    if (mode === 'submit' && (!fullName || !department || selectedAreas.length === 0)) {
+      setError('নাম, বিভাগ এবং অন্তত একটি এলাকা নির্বাচন করুন।');
+      return;
+    }
 
     const finalInstitution = institution === 'অন্যান্য' ? customInstitution || 'অন্যান্য' : institution;
 
     setLoading(true);
-    await activateHomeTutorProfile({
-      fullName,
-      gender,
-      institution: finalInstitution,
-      department,
-      qualification,
-      experienceYears: Number(experienceYears),
-      preferredAreas: selectedAreas,
-      preferredClasses: selectedClasses,
-      preferredSubjects: selectedSubjects,
-      expectedSalaryMin: Number(salaryMin),
-      expectedSalaryMax: Number(salaryMax),
-      daysPerWeek: Number(daysPerWeek),
-      bio,
-      privatePhone,
-      isVerified: false,
-      teachingMode,
-      availability,
-      profilePhotoUrl,
-    });
-    setLoading(false);
-    setSuccess(true);
-    setTimeout(() => {
-      router.push('/profile');
-    }, 1200);
+    setError('');
+    try {
+      const result = await activateHomeTutorProfile({
+        fullName,
+        gender,
+        institution: finalInstitution,
+        department,
+        qualification,
+        experienceYears: Number(experienceYears),
+        preferredAreas: selectedAreas,
+        preferredClasses: selectedClasses,
+        preferredSubjects: selectedSubjects,
+        expectedSalaryMin: Number(salaryMin),
+        expectedSalaryMax: Number(salaryMax),
+        daysPerWeek: Number(daysPerWeek),
+        bio,
+        privatePhone,
+        isVerified: false,
+        teachingMode,
+        availability,
+        profilePhotoUrl,
+      }, mode);
+      if (!result.success) throw new Error(result.error || 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
+      setSuccess(true);
+      setSuccessMessage(
+        homeTutorProfile?.status === 'approved'
+          ? 'পরিবর্তন সংরক্ষিত হয়েছে। আপনার প্রোফাইল প্রকাশিত অবস্থায় আছে।'
+          : mode === 'draft'
+            ? 'খসড়া সংরক্ষণ হয়েছে। পরে সম্পাদনা করে জমা দিতে পারবেন।'
+            : 'গৃহশিক্ষক প্রোফাইল জমা হয়েছে! অ্যাডমিন অনুমোদনের পরে সক্রিয় হবে।'
+      );
+      setTimeout(() => {
+        router.push('/dashboard/posts');
+      }, 1200);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    void saveProfile('submit');
   };
 
   return (
@@ -168,42 +191,47 @@ export default function HomeTutorSetupPage() {
       <Navbar />
 
       <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
-        <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
-          <Link href="/profile" className="hover:text-emerald-800 flex items-center gap-1">
+        <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
+          <Link href="/profile" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>প্রোফাইলে ফিরে যান</span>
           </Link>
           <span>/</span>
-          <span className="text-slate-800 font-semibold">গৃহশিক্ষক (Home Tutor) প্রোফাইল সেটআপ</span>
+          <span className="text-ink-800 font-semibold">গৃহশিক্ষক (Home Tutor) প্রোফাইল সেটআপ</span>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 sm:p-8">
-          <div className="flex items-center gap-3.5 mb-6 pb-6 border-b border-slate-100">
-            <div className="w-12 h-12 rounded-xl bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+        <div className="bg-white rounded-2xl border border-brand-100  p-6 sm:p-8">
+          <div className="flex items-center gap-3.5 mb-6 pb-6 border-b border-brand-100">
+            <div className="w-12 h-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
               <GraduationCap className="w-6 h-6" />
             </div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-bold text-slate-900">
+              <h1 className="text-xl sm:text-2xl font-bold text-ink-900">
                 গৃহশিক্ষক প্রোফাইল সেটআপ
               </h1>
-              <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+              <p className="text-xs sm:text-sm text-ink-500 mt-0.5">
                 ময়মনসিংহ শহরের শিক্ষার্থী ও অভিভাবকদের জন্য আপনার শিক্ষক প্রোফাইল সাজান
               </p>
             </div>
           </div>
 
+          {error && (
+            <div role="alert" className="mb-6 p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm font-semibold">
+              {error}
+            </div>
+          )}
           {success && (
-            <div className="mb-6 p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-950 flex items-center gap-2.5">
-              <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />
-<span className="text-sm font-semibold">
-                গৃহশিক্ষক প্রোফাইল জমা হয়েছে! অ্যাডমিন অনুমোদনের পরে সক্রিয় হবে।
+            <div className="mb-6 p-4 rounded-xl bg-brand-50 border border-brand-200 text-ink-900 flex items-center gap-2.5">
+              <CheckCircle2 className="w-5 h-5 text-brand-600 shrink-0" />
+              <span className="text-sm font-semibold">
+                {successMessage}
               </span>
             </div>
           )}
 
           {/* Strict Privacy Protection Notice */}
-          <div className="mb-6 p-4 rounded-2xl bg-emerald-50/90 border border-emerald-200 text-xs text-emerald-950 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-emerald-800 shrink-0 mt-0.5" />
+          <div className="mb-6 p-4 rounded-2xl bg-brand-50/90 border border-brand-200 text-xs text-ink-900 flex items-start gap-3">
+            <Lock className="w-5 h-5 text-brand-700 shrink-0 mt-0.5" />
             <div>
               <span className="font-bold text-sm block mb-1">
                 শিক্ষকদের ব্যক্তিগত তথ্যের কঠোর সুরক্ষা:
@@ -215,21 +243,21 @@ export default function HomeTutorSetupPage() {
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Profile photo (optional) */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 প্রোফাইল ছবি (ঐচ্ছিক)
               </label>
               <div className="flex items-center gap-4">
-                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-emerald-50 border border-emerald-200 flex items-center justify-center shrink-0">
+                <div className="w-20 h-20 rounded-2xl overflow-hidden bg-brand-50 border border-brand-200 flex items-center justify-center shrink-0">
                   {profilePhotoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={profilePhotoUrl} alt="প্রোফাইল ছবি" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-emerald-400">
+                    <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-brand-300">
                       {fullName.charAt(0) || '?'}
                     </div>
                   )}
                 </div>
-                <label className="px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-medium text-slate-700 inline-flex items-center gap-1.5 cursor-pointer hover:bg-slate-50">
+                <label className="px-3.5 py-2 rounded-xl border border-brand-100 bg-white text-xs font-medium text-ink-700 inline-flex items-center gap-1.5 cursor-pointer hover:bg-mist-50">
                   {photoUploading ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
@@ -242,20 +270,20 @@ export default function HomeTutorSetupPage() {
                   <button
                     type="button"
                     onClick={() => setProfilePhotoUrl('')}
-                    className="text-xs text-slate-500 flex items-center gap-1"
+                    className="text-xs text-ink-400 flex items-center gap-1"
                   >
                     <RefreshCw className="w-3 h-3" /> মুছুন
                   </button>
                 )}
               </div>
-              <p className="text-[11px] text-slate-500 mt-1.5">
+              <p className="text-[11px] text-ink-400 mt-1.5">
                 ছবিটি পাবলিক প্রোফাইলে দেখা যাবে। সর্বোচ্চ ৫MB।
               </p>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষকের পুরো নাম
                 </label>
                 <input
@@ -263,33 +291,33 @@ export default function HomeTutorSetupPage() {
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   placeholder="যেমন: তানজিম আহমেদ"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   লিঙ্গ
                 </label>
                 <div className="flex gap-3 pt-1">
-                  <label className="flex items-center gap-2 text-sm text-slate-800 cursor-pointer">
+                  <label className="flex items-center gap-2 text-sm text-ink-800 cursor-pointer">
                     <input
                       type="radio"
                       name="gender"
                       checked={gender === 'male'}
                       onChange={() => setGender('male')}
-                      className="text-emerald-800 focus:ring-emerald-700"
+                      className="text-brand-700 focus:ring-brand-500"
                     />
                     <span>পুরুষ শিক্ষক</span>
                   </label>
-                  <label className="flex items-center gap-2 text-sm text-slate-800 cursor-pointer">
+                  <label className="flex items-center gap-2 text-sm text-ink-800 cursor-pointer">
                     <input
                       type="radio"
                       name="gender"
                       checked={gender === 'female'}
                       onChange={() => setGender('female')}
-                      className="text-emerald-800 focus:ring-emerald-700"
+                      className="text-brand-700 focus:ring-brand-500"
                     />
                     <span>মহিলা শিক্ষিকা</span>
                   </label>
@@ -299,13 +327,13 @@ export default function HomeTutorSetupPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষা প্রতিষ্ঠান
                 </label>
                 <select
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 >
                   {COMMON_INSTITUTIONS.map((inst) => (
@@ -320,14 +348,14 @@ export default function HomeTutorSetupPage() {
                     value={customInstitution}
                     onChange={(e) => setCustomInstitution(e.target.value)}
                     placeholder="প্রতিষ্ঠানের নাম লিখুন"
-                    className="w-full mt-2 px-3.5 py-2 rounded-xl border border-slate-300 text-xs"
+                    className="w-full mt-2 px-3.5 py-2 rounded-xl border border-brand-200 text-xs"
                     required
                   />
                 )}
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   বিভাগ / বিষয়
                 </label>
                 <input
@@ -335,7 +363,7 @@ export default function HomeTutorSetupPage() {
                   value={department}
                   onChange={(e) => setDepartment(e.target.value)}
                   placeholder="যেমন: গণিত বিভাগ / পদার্থবিজ্ঞান"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
@@ -343,7 +371,7 @@ export default function HomeTutorSetupPage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষাগত যোগ্যতা
                 </label>
                 <input
@@ -351,13 +379,13 @@ export default function HomeTutorSetupPage() {
                   value={qualification}
                   onChange={(e) => setQualification(e.target.value)}
                   placeholder="যেমন: B.Sc Honours (3rd Year)"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষকতার অভিজ্ঞতা (বছর)
                 </label>
                 <input
@@ -366,19 +394,19 @@ export default function HomeTutorSetupPage() {
                   max="30"
                   value={experienceYears}
                   onChange={(e) => setExperienceYears(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   সপ্তাহে পড়ানোর দিন
                 </label>
                 <select
                   value={daysPerWeek}
                   onChange={(e) => setDaysPerWeek(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
                   <option value={2}>২ দিন</option>
                   <option value={3}>৩ দিন</option>
@@ -390,7 +418,7 @@ export default function HomeTutorSetupPage() {
 
             {/* Preferred Classes */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 যেসব শ্রেণি পড়াতে আগ্রহী (একাধিক নির্বাচন করা যাবে)
               </label>
               <div className="flex flex-wrap gap-2">
@@ -403,8 +431,8 @@ export default function HomeTutorSetupPage() {
                       onClick={() => toggleClass(cls)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
                         active
-                          ? 'bg-emerald-800 text-white border-emerald-800'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          ? 'bg-brand-700 text-white border-brand-700'
+                          : 'bg-white text-ink-700 border-brand-100 hover:bg-mist-50'
                       }`}
                     >
                       {cls}
@@ -416,7 +444,7 @@ export default function HomeTutorSetupPage() {
 
             {/* Preferred Subjects */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 যেসব বিষয় পড়াতে আগ্রহী
               </label>
               <div className="flex flex-wrap gap-2">
@@ -429,8 +457,8 @@ export default function HomeTutorSetupPage() {
                       onClick={() => toggleSubject(sub)}
                       className={`px-3 py-1.5 rounded-xl text-xs font-medium border transition-colors ${
                         active
-                          ? 'bg-emerald-800 text-white border-emerald-800'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          ? 'bg-brand-700 text-white border-brand-700'
+                          : 'bg-white text-ink-700 border-brand-100 hover:bg-mist-50'
                       }`}
                     >
                       {sub}
@@ -442,22 +470,22 @@ export default function HomeTutorSetupPage() {
 
             {/* Preferred Areas within MCC */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 পছন্দের এলাকা (শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশন)
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-slate-50 rounded-xl border border-slate-200 max-h-48 overflow-y-auto">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 p-3 bg-mist-50 rounded-xl border border-brand-100 max-h-48 overflow-y-auto">
                 {MCC_AREAS.map((area) => {
                   const active = selectedAreas.includes(area.id);
                   return (
                     <label
                       key={area.id}
-                      className="flex items-center gap-2 text-xs text-slate-700 cursor-pointer select-none"
+                      className="flex items-center gap-2 text-xs text-ink-700 cursor-pointer select-none"
                     >
                       <input
                         type="checkbox"
                         checked={active}
                         onChange={() => toggleArea(area.id)}
-                        className="rounded border-slate-300 text-emerald-800 focus:ring-emerald-700"
+                        className="rounded border-brand-200 text-brand-700 focus:ring-brand-500"
                       />
                       <span className="truncate">{area.nameBn}</span>
                     </label>
@@ -469,7 +497,7 @@ export default function HomeTutorSetupPage() {
             {/* Expected Salary Range */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   সর্বনিম্ন প্রত্যাশিত বেতন (৳)
                 </label>
                 <input
@@ -477,12 +505,12 @@ export default function HomeTutorSetupPage() {
                   step="500"
                   value={salaryMin}
                   onChange={(e) => setSalaryMin(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   সর্বোচ্চ প্রত্যাশিত বেতন (৳)
                 </label>
                 <input
@@ -490,7 +518,7 @@ export default function HomeTutorSetupPage() {
                   step="500"
                   value={salaryMax}
                   onChange={(e) => setSalaryMax(Number(e.target.value))}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
               </div>
@@ -498,7 +526,7 @@ export default function HomeTutorSetupPage() {
 
             {/* Teaching mode */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 পড়ানোর মাধ্যম
               </label>
               <div className="flex flex-wrap gap-2">
@@ -511,8 +539,8 @@ export default function HomeTutorSetupPage() {
                       onClick={() => setTeachingMode(mode)}
                       className={`px-3.5 py-2 rounded-xl text-xs font-medium border transition-colors ${
                         active
-                          ? 'bg-emerald-800 text-white border-emerald-800'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          ? 'bg-brand-700 text-white border-brand-700'
+                          : 'bg-white text-ink-700 border-brand-100 hover:bg-mist-50'
                       }`}
                     >
                       {mode === 'home' && <HomeIcon className="inline w-3.5 h-3.5 mr-1" />}
@@ -526,7 +554,7 @@ export default function HomeTutorSetupPage() {
 
             {/* Availability */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 বর্তমান প্রাপ্যতা
               </label>
               <div className="flex flex-wrap gap-2">
@@ -539,8 +567,8 @@ export default function HomeTutorSetupPage() {
                       onClick={() => setAvailability(av)}
                       className={`px-3.5 py-2 rounded-xl text-xs font-medium border transition-colors ${
                         active
-                          ? 'bg-emerald-800 text-white border-emerald-800'
-                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                          ? 'bg-brand-700 text-white border-brand-700'
+                          : 'bg-white text-ink-700 border-brand-100 hover:bg-mist-50'
                       }`}
                     >
                       {TUTOR_AVAILABILITY_LABELS[av].labelBn}
@@ -552,7 +580,7 @@ export default function HomeTutorSetupPage() {
 
             {/* Bio */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 অভিজ্ঞতা ও শিক্ষাদান পদ্ধতি সম্পর্কে সংক্ষেপে
               </label>
               <textarea
@@ -560,13 +588,13 @@ export default function HomeTutorSetupPage() {
                 value={bio}
                 onChange={(e) => setBio(e.target.value)}
                 placeholder="যেমন: বিগত ৩ বছর ধরে শিক্ষার্থীদের যত্ন নিয়ে বিজ্ঞান ও গণিত পড়াচ্ছি..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
               />
             </div>
 
             {/* Private contact */}
             <div>
-              <label className="block text-xs font-semibold text-slate-800 mb-1.5">
+              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                 যোগাযোগের মোবাইল নম্বর (সুরক্ষিত থাকবে)
               </label>
               <input
@@ -574,27 +602,43 @@ export default function HomeTutorSetupPage() {
                 value={privatePhone}
                 onChange={(e) => setPrivatePhone(e.target.value)}
                 placeholder="017xxxxxxxx"
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+                className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                 required
               />
-              <p className="text-[11px] text-slate-500 mt-1">
+              <p className="text-[11px] text-ink-400 mt-1">
                 এই নম্বরে শুধুমাত্র ময়মনসিংহ সেবা অ্যাডমিন টিম টিউশন রিকোয়েস্ট সমন্বয় করতে যোগাযোগ করবে।
               </p>
             </div>
 
             <div className="pt-3 flex items-center justify-end gap-3">
+              {homeTutorProfile?.status !== 'approved' && (
+                <button
+                  type="button"
+                  onClick={() => void saveProfile('draft')}
+                  disabled={loading || photoUploading}
+                  className="px-4 py-2.5 rounded-xl border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-50 disabled:opacity-50"
+                >
+                  {loading ? 'সংরক্ষণ হচ্ছে...' : 'খসড়া সংরক্ষণ'}
+                </button>
+              )}
               <Link
                 href="/profile"
-                className="px-4 py-2.5 rounded-xl border border-slate-200 text-slate-700 text-xs font-medium hover:bg-slate-50"
+                className="px-4 py-2.5 rounded-xl border border-brand-100 text-ink-700 text-xs font-medium hover:bg-mist-50"
               >
                 বাতিল করুন
               </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs flex items-center gap-1.5 cursor-pointer"
+                className="px-6 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold  flex items-center gap-1.5 cursor-pointer"
               >
-                <span>{loading ? 'সংরক্ষণ হচ্ছে...' : 'শিক্ষক প্রোফাইল সক্রিয় করুন'}</span>
+                <span>
+                  {loading
+                    ? 'সংরক্ষণ হচ্ছে...'
+                    : homeTutorProfile?.status === 'approved'
+                      ? 'পরিবর্তন সংরক্ষণ'
+                      : 'শিক্ষক প্রোফাইল সক্রিয় করুন'}
+                </span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

@@ -1,3 +1,4 @@
+import type { mergeSiteContact } from '@/lib/site-content';
 import ContactChannels from './ContactChannels';
 import ContactForm from './ContactForm';
 import Reveal from '@/components/home/Reveal';
@@ -11,7 +12,11 @@ import Reveal from '@/components/home/Reveal';
  * Below `lg` the same two blocks simply stack, channels first, so the order a
  * phone visitor meets them is still the sensible one.
  */
-export default function ContactComposer() {
+export default function ContactComposer({
+  contact,
+}: {
+  contact: ReturnType<typeof mergeSiteContact>;
+}) {
   return (
     <section
       aria-label="যোগাযোগের উপায় ও বার্তা পাঠানোর ফর্ম"
@@ -20,7 +25,7 @@ export default function ContactComposer() {
       <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-12">
           <Reveal className="lg:sticky lg:top-24">
-            <ContactChannels />
+            <ContactChannels contact={contact} />
           </Reveal>
 
           <Reveal delay={90}>

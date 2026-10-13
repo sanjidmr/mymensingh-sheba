@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Users,
@@ -18,14 +17,17 @@ import {
   PauseCircle,
   ShieldOff,
 } from 'lucide-react';
-import { adminFetchUsers, adminUpdateUserStatus } from '@/lib/admin-service';
-import { setAdminRole } from '@/app/admin/actions/users';
+import { adminFetchUsers } from '@/lib/admin-service';
+import { setAdminRole, setUserStatus } from '@/app/admin/actions/users';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { useToast } from '@/components/admin/ToastProvider';
 import type { AdminUserRow } from '@/lib/admin-types';
 import { DONOR_STATUS_META } from '@/lib/blood-donor-types';
 import { TUTOR_STATUS_META } from '@/lib/home-tutor-types';
 import { ServiceProfileStatus } from '@/lib/supabase/types';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { AdminError, AdminLoading } from '@/components/admin/States';
+import { StatusPill } from '@/components/admin/StatCard';
 
 const SERVICE_STATUS_LABELS: Record<ServiceProfileStatus, string> = {
   draft: 'খসড়া',
@@ -52,8 +54,10 @@ export default function AdminUsersPage() {
       .then((data) => {
         if (active) setUsers(data);
       })
-      .catch(() => {
-        if (active) setError('ইউজার লোড ব্যর্থ হয়েছে');
+      .catch((err: unknown) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'ইউজার লোড ব্যর্থ হয়েছে');
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -64,12 +68,19 @@ export default function AdminUsersPage() {
   const handleStatusChange = async (userId: string, newStatus: AdminUserRow['status']) => {
     setBusyId(userId);
     setError('');
-    const res = await adminUpdateUserStatus(userId, newStatus);
-    setBusyId(null);
-    if (res.success) {
+    try {
+      const res = await setUserStatus(userId, newStatus);
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
       setUsers((prev) => prev.map((u) => (u.id === userId ? { ...u, status: newStatus } : u)));
-    } else {
-      setError(res.error || 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে');
+      notify('success', res.message ?? 'অ্যাকাউন্টের অবস্থা হালনাগাদ হয়েছে।');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'স্ট্যাটাস আপডেট ব্যর্থ হয়েছে');
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -105,60 +116,38 @@ export default function AdminUsersPage() {
   });
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        
-        <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-          <span className="text-sm">ইউজার লোড হচ্ছে...</span>
-        </div>
-      </div>
-    );
+    return <AdminLoading label="ইউজার লোড হচ্ছে…" />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <Link href="/admin" className="mb-2 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-800">
-              ← অ্যাডমিন ড্যাশবোর্ড
-            </Link>
-            <h1 className="text-2xl font-bold text-slate-900">ইউজার ও প্রোফাইল ম্যানেজমেন্ট</h1>
-            <p className="text-xs text-slate-500 mt-1">One Account System — এক ইউজার, একাধিক সার্ভিস প্রোফাইল</p>
-          </div>
-        </div>
+    <div>
+      <PageHeader
+        title="ইউজার ও প্রোফাইল ম্যানেজমেন্ট"
+        description="One Account System — এক ইউজার, একাধিক সার্ভিস প্রোফাইল"
+        count={`মোট ${filtered.length} / ${users.length} জন`}
+      />
 
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-xs text-red-800 flex items-center gap-2">
-            <AlertCircle className="w-4 h-4" /> {error}
-          </div>
-        )}
+      {error && <AdminError title="ইউজার ব্যবস্থাপনায় সমস্যা" message={error} className="mb-4" />}
 
-        <div className="flex flex-col sm:flex-row gap-3 mb-6">
-          <div className="relative flex-1 max-w-xs">
-            <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="নাম / ফোন / আইডি খুঁজুন..."
-              className="w-full pl-9 pr-3 py-2 rounded-xl border border-slate-200 bg-white text-xs focus:outline-none focus:ring-2 focus:ring-emerald-600"
-            />
-          </div>
-          <div className="text-xs text-slate-500 flex items-center gap-2">
-            মোট: <span className="font-bold text-slate-900">{filtered.length}</span> / {users.length}
-          </div>
-        </div>
+      <div className="relative mb-4 max-w-sm">
+        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-300" aria-hidden="true" />
+        <input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="নাম / ফোন / আইডি খুঁজুন..."
+          aria-label="নাম, ফোন বা আইডি দিয়ে ইউজার খুঁজুন"
+          className="h-11 w-full rounded-lg border border-mist-200 bg-white pl-9 pr-3 text-sm text-ink-900 placeholder:text-ink-300 focus:border-brand-400 focus:outline-none focus:ring-2 focus:ring-brand-100"
+        />
+      </div>
 
         {filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-sm text-slate-400">
+          <div className="rounded-xl border border-dashed border-mist-200 bg-white p-10 text-center text-sm text-ink-500">
             কোনো ইউজার পাওয়া যায়নি।
           </div>
         ) : (
           <div className="space-y-3">
             {filtered.map((u) => (
-              <div key={u.id} className="bg-white rounded-2xl border border-slate-200 p-5">
+              <div key={u.id} className="rounded-xl border border-mist-200 bg-white p-4 sm:p-5">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
@@ -166,17 +155,14 @@ export default function AdminUsersPage() {
                       <span className="text-xs text-slate-500">ফোন: {u.phone}</span>
                       {u.email && <span className="text-xs text-slate-500">ইমেইল: {u.email}</span>}
                       <span className="text-[11px] text-slate-500">যোগদান: {new Date(u.createdAt).toLocaleDateString('bn-BD')}</span>
-                      <span className={`px-2 py-0.5 rounded bg-emerald-50 text-emerald-800 font-semibold flex items-center gap-1 text-xs`}>
+                      <span className="flex items-center gap-1 rounded-md border border-brand-200 bg-brand-50 px-2 py-0.5 text-xs font-semibold text-brand-800">
                         <ShieldCheck className="w-3 h-3" />
                         {u.role === 'admin' ? 'অ্যাডমিন' : 'কাস্টমার'}
                       </span>
-                      <span className={`px-2 py-0.5 rounded text-[11px] font-bold ${
-                        u.status === 'active' ? 'bg-emerald-50 text-emerald-800' :
-                        u.status === 'suspended' ? 'bg-amber-50 text-amber-800' :
-                        'bg-rose-50 text-rose-800'
-                      }`}>
-                        {u.status === 'active' ? 'সক্রিয়' : u.status === 'suspended' ? 'নিষ্ক্রিয়' : 'ব্লকড'}
-                      </span>
+                      <StatusPill
+                        label={u.status === 'active' ? 'সক্রিয়' : u.status === 'suspended' ? 'নিষ্ক্রিয়' : 'ব্লকড'}
+                        tone={u.status === 'active' ? 'success' : u.status === 'suspended' ? 'warning' : 'danger'}
+                      />
                     </div>
                     <div className="text-xs text-slate-500 flex flex-wrap gap-4">
                       <span>To-Let: <strong>{u.toletStatus ? SERVICE_STATUS_LABELS[u.toletStatus as ServiceProfileStatus] : 'না'}</strong></span>
@@ -242,7 +228,6 @@ export default function AdminUsersPage() {
             ))}
           </div>
         )}
-      </main>
       <ConfirmDialog
         open={roleTarget !== null}
         title={roleTarget?.role === 'admin' ? 'অ্যাডমিন ভূমিকা সরাবেন?' : 'অ্যাডমিন ভূমিকা দেবেন?'}

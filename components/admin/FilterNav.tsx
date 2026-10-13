@@ -20,6 +20,7 @@ export function FilterNav({
   placeholder,
   param,
   searchParams,
+  clearOnChange = [],
 }: {
   id: string;
   label: string;
@@ -29,6 +30,7 @@ export function FilterNav({
   /** Query-string key this filter writes. */
   param: string;
   searchParams: Record<string, string | string[] | undefined>;
+  clearOnChange?: string[];
 }) {
   const router = useRouter();
   return (
@@ -47,6 +49,7 @@ export function FilterNav({
         }
         if (next) params.set(param, next);
         else params.delete(param);
+        for (const key of clearOnChange) params.delete(key);
         router.push(`?${params.toString()}`);
       }}
     />

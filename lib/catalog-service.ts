@@ -39,6 +39,7 @@ import type {
   EmergencyContact,
   EmergencyContactInput,
   EmergencyService,
+  MarketplaceStatus,
   PostKind,
   ServiceCategory,
   ServiceListing,
@@ -78,7 +79,7 @@ const PUBLIC_LISTING_COLUMNS =
  * a convention rather than a boundary. `fetchMarketContact` is the boundary.
  */
 const PUBLIC_POST_COLUMNS =
-  'id, kind, slug, author_id, author_name, title_bn, summary_bn, body_bn, cover_image_url, gallery, category, area_id, tags, salary_min, salary_max, price, job_type, deadline, condition_label, organization_bn, status, is_featured, published_at, created_at, updated_at';
+  'id, kind, slug, author_id, author_name, title_bn, summary_bn, body_bn, cover_image_url, gallery, category, area_id, tags, salary_min, salary_max, price, job_type, deadline, condition_label, organization_bn, status, marketplace_status, is_featured, published_at, created_at, updated_at';
 
 function str(v: unknown): string {
   return typeof v === 'string' ? v : '';
@@ -176,6 +177,12 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     rejectionReason: optStr(c.rejectionReason),
     organizationBn: optStr(c.organizationBn),
     status: c.status as CommunityPost['status'],
+    marketplaceStatus:
+      c.marketplaceStatus === 'available' ||
+      c.marketplaceStatus === 'sold' ||
+      c.marketplaceStatus === 'closed'
+        ? c.marketplaceStatus
+        : undefined,
     isFeatured: Boolean(c.isFeatured),
     publishedAt: optStr(c.publishedAt),
     createdAt: str(c.createdAt),
@@ -266,6 +273,7 @@ export interface CommunityPostDraft {
   version: number;
   values: Record<string, string>;
   tags: string[];
+  photos?: string[];
   savedAt: string;
 }
 
@@ -741,14 +749,27 @@ export async function fetchMyPostForEdit(id: string): Promise<CommunityPost | nu
 }
 
 /** The signed-in author's own posts, any status. */
-export async function fetchMyPosts(): Promise<CommunityPost[]> {
-  if (!isSupabaseConfigured) return [];
+export async function fetchMyPosts(strict = false): Promise<CommunityPost[]> {
+  if (!isSupabaseConfigured) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
   const userId = await currentUserId();
-  if (!userId) return [];
+  if (!userId) {
+    if (strict) throw new Error(NOT_SIGNED_IN);
+    return [];
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
   const { data, error } = await client.rpc('fn_my_posts');
-  if (error || !data) return [];
+  if (error) {
+    if (strict) throw new Error(`আপনার পোস্ট লোড করা যায়নি: ${error.message}`);
+    return [];
+  }
+  if (!data) return [];
   return (data as Record<string, unknown>[]).map(mapPost);
 }
 
@@ -769,6 +790,7 @@ export async function createCommunityPost(
   // an author craftily sending one along must land on nothing.
   const {
     status: _ignoredStatus,
+    marketplaceStatus: _ignoredMarketplaceStatus,
     isFeatured: _ignoredFeature,
     authorId: _ignoredAuthor,
     rejectionReason: _ignoredReason,
@@ -806,6 +828,7 @@ export async function updateCommunityPost(
 
   const {
     status: _s,
+    marketplaceStatus: _marketplaceStatus,
     isFeatured: _f,
     authorId: _a,
     slug: _slug,
@@ -832,6 +855,27 @@ export async function updateCommunityPost(
     };
   }
   return { success: true, data: mapPost(data as Record<string, unknown>) };
+}
+
+/** Update only the seller-facing state of an approved marketplace post. */
+export async function setMyMarketplaceStatus(
+  id: string,
+  status: MarketplaceStatus
+): Promise<WriteResult<MarketplaceStatus>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return { success: false, error: 'পোস্টটি সঠিক নয়।' };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const { data, error } = await client.rpc('fn_set_my_marketplace_status', {
+    p_id: id,
+    p_status: status,
+  });
+  if (error) return { success: false, error: error.message };
+  if (data !== status) return { success: false, error: 'বিক্রির অবস্থা আপডেট নিশ্চিত করা যায়নি।' };
+  return { success: true, data: status };
 }
 
 /** Delete own post. */

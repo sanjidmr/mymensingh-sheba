@@ -16,7 +16,69 @@ export interface SiteContentOverrides {
     hoursBn?: string | null;
     socials?: Array<{ icon: SocialLink['icon']; labelBn: string; href: string | null }>;
   };
+  announcement?: {
+    enabled: boolean;
+    title: string;
+    body: string;
+    href: string | null;
+    linkLabel: string | null;
+  };
+  about_content?: { heading: string; intro: string };
+  faq_content?: Array<{ question: string; answer: string }>;
+  footer_content?: {
+    description: string;
+    companyLinks: Array<{ label: string; href: string }>;
+    supportLinks: Array<{ label: string; href: string }>;
+  };
+  seo?: { title: string; description: string; ogImage: string | null };
 }
+
+export const DEFAULT_ABOUT_CONTENT = {
+  heading: 'ময়মনসিংহের মানুষের জন্য, ময়মনসিংহেই তৈরি',
+  intro:
+    'বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, গৃহশিক্ষক কিংবা জরুরি রক্তদাতা — দৈনন্দিন জীবনের প্রয়োজনীয় প্রতিটি কাজের জন্য আলাদা আলাদা জায়গায় ছুঁতে হয়। Mymensingh Sheba তৈরি হয়েছে ঠিক এই সমস্যাটি সমাধান করার জন্য।',
+};
+
+export const DEFAULT_FAQ_CONTENT = [
+  {
+    question: 'Mymensingh Sheba কোন কোন এলাকায় সেবা দেয়?',
+    answer: 'আমরা শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশন (MCC) এলাকার ভেতরে সেবা পরিচালনা করি।',
+  },
+  {
+    question: 'বাসা ভাড়ার ক্ষেত্রে প্ল্যাটফর্ম ফি কীভাবে নির্ধারিত হয়?',
+    answer:
+      'মেস বা সিট ভাড়ার ক্ষেত্রে প্ল্যাটফর্ম ফি ৳৫০। বাসা ভাড়ার ক্ষেত্রে: ১০,০০০ টাকা পর্যন্ত ৳১০০, ১০,০০১ থেকে ২০,০০০ টাকা পর্যন্ত ৳২০০ এবং ২০,০০০ টাকার ঊর্ধ্বে ৳৪০০। এই ফি তালিকা ও রসিদে সম্পূর্ণ স্বচ্ছভাবে প্রদর্শিত হয়।',
+  },
+  {
+    question: 'কাজের বুয়া ও ইলেক্ট্রিশিয়ান সেবা কারা পরিচালনা করেন?',
+    answer:
+      'কাজের বুয়া, ইলেক্ট্রিশিয়ান, প্লাম্বার ও বাসা পাল্টানো সেবা প্ল্যাটফর্মের অ্যাডমিন টিম সরাসরি যাচাই ও পরিচালনা করে থাকেন।',
+  },
+  {
+    question: 'রক্তদাতার ফোন নম্বর সরাসরি দেওয়া হয় না কেন?',
+    answer:
+      'স্বেচ্ছাসেবী রক্তদাতাদের অহেতুক ফোন কল বা অপব্যবহার থেকে সুরক্ষিত রাখতে রোগীর সঠিক রিকুইজিশন স্লিপ যাচাইয়ের পর আমাদের টিম সরাসরি যোগাযোগ স্থাপন করে দেয়। রক্ত ক্রয়-বিক্রয় কঠোরভাবে নিষিদ্ধ।',
+  },
+];
+
+export const DEFAULT_FOOTER_CONTENT = {
+  description:
+    'ময়মনসিংহ সিটি কর্পোরেশন এলাকার অধিবাসীদের জন্য একটি বিশ্বস্ত স্থানীয় সেবা প্ল্যাটফর্ম — বাসা ভাড়া, গৃহকর্মী, মেরামত, গৃহশিক্ষক ও জরুরি রক্তদান এক জায়গায়।',
+  companyLinks: [
+    { label: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh' },
+    { label: 'আমাদের সম্পর্কে', href: '/about' },
+    { label: 'কিভাবে কাজ করে', href: '/#how-it-works' },
+    { label: 'যোগাযোগ ও ফিডব্যাক', href: '/contact' },
+    { label: 'নিরাপত্তা নীতি', href: '/safety' },
+  ],
+  supportLinks: [
+    { label: 'সাহায্য ও জিজ্ঞাসা', href: '/help' },
+    { label: 'প্রাইভেসি পলিসি', href: '/safety' },
+    { label: 'ব্যবহারের শর্তাবলী', href: '/safety' },
+    { label: 'ইউজার প্রোফাইল', href: '/profile' },
+    { label: 'আমার রিকোয়েস্ট', href: '/profile/requests' },
+  ],
+};
 
 export interface ServiceOverride {
   slug: string;

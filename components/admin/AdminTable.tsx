@@ -72,17 +72,17 @@ export function AdminTable<T>({
   return (
     <>
       {/* ---------- Desktop ---------- */}
-      <div className="hidden overflow-x-auto rounded-xl border border-mist-200 bg-white sm:block">
+      <div className="hidden overflow-x-auto rounded-admin-card border border-admin-border bg-white sm:block">
         <table className="w-full border-collapse text-sm">
           {caption && <caption className="sr-only">{caption}</caption>}
           <thead>
-            <tr className="border-b border-mist-200 bg-mist-50/60">
+            <tr className="border-b border-admin-border bg-admin-page">
               {columns.map((col) => (
                 <th
                   key={col.key}
                   scope="col"
                   className={cn(
-                    'whitespace-nowrap px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-ink-400',
+                    'whitespace-nowrap px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-wide text-admin-muted',
                     col.headerClassName,
                     col.className
                   )}
@@ -100,7 +100,7 @@ export function AdminTable<T>({
                 <tr
                   key={getKey(row)}
                   className={cn(
-                    'border-b border-mist-100 last:border-0',
+                    'border-b border-admin-border last:border-0',
                     highlighted ? 'bg-accent-100/40' : 'bg-white'
                   )}
                 >
@@ -121,7 +121,7 @@ export function AdminTable<T>({
                       <td
                         key={col.key}
                         className={cn(
-                          'px-4 py-3 align-middle text-ink-800',
+                          'px-4 py-3 align-middle text-admin-text',
                           col.className
                         )}
                       >
@@ -147,7 +147,7 @@ export function AdminTable<T>({
             <li key={getKey(row)}>
               <div
                 className={cn(
-                  'rounded-xl border bg-white',
+                  'rounded-admin-card border bg-white shadow-admin-card',
                   highlighted ? 'border-accent-300' : 'border-mist-200'
                 )}
               >
@@ -170,7 +170,7 @@ export function AdminTable<T>({
                               key={col.key}
                               className="flex min-w-0 items-baseline justify-between gap-2"
                             >
-                              <dt className="shrink-0 text-[11px] font-semibold text-ink-400">
+                              <dt className="shrink-0 text-[11px] font-semibold text-admin-muted">
                                 {col.header}
                               </dt>
                               <dd className="min-w-0 truncate text-right text-xs text-ink-700">
@@ -189,7 +189,7 @@ export function AdminTable<T>({
                 {href && (
                   <a
                     href={href}
-                    className="flex min-h-11 items-center justify-center border-t border-mist-100 text-xs font-semibold text-brand-700 hover:bg-brand-50/50"
+                    className="flex min-h-11 items-center justify-center border-t border-admin-border text-xs font-semibold text-admin-navy hover:bg-admin-page"
                   >
                     বিস্তারিত দেখুন
                   </a>
@@ -210,7 +210,7 @@ export function AdminTable<T>({
  */
 export function AdminTableScroll({ children }: { children: React.ReactNode }) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-mist-200 bg-white">
+    <div className="overflow-x-auto rounded-admin-card border border-admin-border bg-white">
       {children}
     </div>
   );

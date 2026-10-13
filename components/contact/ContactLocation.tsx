@@ -2,6 +2,7 @@ import Image from 'next/image';
 import { ExternalLink, MapPin } from 'lucide-react';
 import { AboutSection, SectionLabel } from '@/components/about/AboutSectionBits';
 import { SITE_CONTACT } from '@/lib/site-contact';
+import type { mergeSiteContact } from '@/lib/site-content';
 import Reveal from '@/components/home/Reveal';
 
 /**
@@ -12,7 +13,11 @@ import Reveal from '@/components/home/Reveal';
  * that plainly and links to the service area on a map — the same honesty rule
  * the rest of the contact page follows.
  */
-export default function ContactLocation() {
+export default function ContactLocation({
+  contact,
+}: {
+  contact: ReturnType<typeof mergeSiteContact>;
+}) {
   return (
     <AboutSection labelledBy="contact-location-heading" className="bg-white">
       <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.9fr] lg:gap-14">
@@ -28,7 +33,7 @@ export default function ContactLocation() {
           <p className="mt-3.5 max-w-lg text-[15px] leading-relaxed text-ink-600">
             Mymensingh Sheba শুধু একটি ওয়েবসাইট নয় — এটি ময়মনসিংহের দৈনন্দিন
             জীবনের প্রয়োজনগুলো এক জায়গায় সাজানোর একটি চেষ্টা। আমরা
-            {` ${SITE_CONTACT.serviceAreaBn}`}-তে কাজ করি, অর্থাৎ শহরের যেকোনো
+            {` ${contact.serviceAreaBn}`}-তে কাজ করি, অর্থাৎ শহরের যেকোনো
             প্রান্ত থেকে কেউ সেবা খুঁজতে এবং নিজের সেবা পৌঁছে দিতে পারেন।
           </p>
 
@@ -46,7 +51,7 @@ export default function ContactLocation() {
                   সেবার এলাকা
                 </p>
                 <p className="mt-0.5 text-sm font-bold text-ink-900">
-                  {SITE_CONTACT.serviceAreaBn}
+                  {contact.serviceAreaBn}
                 </p>
               </dd>
             </div>
@@ -64,7 +69,7 @@ export default function ContactLocation() {
                   অফিসের ঠিকানা
                 </p>
                 <p className="mt-0.5 text-sm leading-relaxed text-ink-600">
-                  {SITE_CONTACT.officeAddress ?? SITE_CONTACT.officeAddressPendingBn}
+                  {contact.officeAddress ?? SITE_CONTACT.officeAddressPendingBn}
                 </p>
               </dd>
             </div>

@@ -21,12 +21,18 @@ export async function setMessageStatus(
   status: 'new' | 'reviewing' | 'replied' | 'closed'
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
-    const { error } = await client
+    if (!/^[0-9a-f-]{36}$/i.test(messageId) || !['new', 'reviewing', 'replied', 'closed'].includes(status)) {
+      return { ok: false, error: 'বার্তা বা স্ট্যাটাস সঠিক নয়।' };
+    }
+    const { data, error } = await client
       .from('contact_messages')
       .update({ status })
-      .eq('id', messageId);
+      .eq('id', messageId)
+      .select('id')
+      .maybeSingle();
 
     if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'কথোপকথনটি পাওয়া যায়নি।' };
 
     revalidatePath('/admin/messages');
     return { ok: true, message: 'বার্তার স্ট্যাটাস আপডেট হয়েছে।' };
@@ -53,17 +59,23 @@ export async function saveMessageNote(
   note: string
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
+    if (!/^[0-9a-f-]{36}$/i.test(messageId)) {
+      return { ok: false, error: 'কথোপকথনের আইডি সঠিক নয়।' };
+    }
     const trimmed = note.trim();
     if (trimmed.length > 1000) {
       return { ok: false, error: 'নোটটি ১০০০ অক্ষরের বেশি হতে পারবে না।' };
     }
 
-    const { error } = await client
+    const { data, error } = await client
       .from('contact_messages')
       .update({ admin_notes: trimmed || null })
-      .eq('id', messageId);
+      .eq('id', messageId)
+      .select('id')
+      .maybeSingle();
 
     if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'কথোপকথনটি পাওয়া যায়নি।' };
 
     revalidatePath('/admin/messages');
     return { ok: true, message: 'নোট সংরক্ষিত হয়েছে।' };
@@ -107,6 +119,6 @@ export async function replyToCustomerMessage(
     revalidatePath('/admin/messages');
     revalidatePath(`/admin/messages/${messageId}`);
     revalidatePath('/dashboard/messages');
-    return { ok: true, message: 'উত্তর গ্রাহকের কাছে পাঠানো হয়েছে।' };
+    return { ok: true, message: 'উত্তরটি সংরক্ষিত হয়েছে এবং লগইন করা গ্রাহকের ড্যাশবোর্ডে দেখানো হবে।' };
   });
 }

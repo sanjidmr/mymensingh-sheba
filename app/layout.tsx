@@ -3,6 +3,7 @@ import { Noto_Sans_Bengali } from 'next/font/google';
 import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
 import MobileBottomNav from '@/components/home/MobileBottomNav';
+import { getSiteContentOverrides } from '@/lib/site-content-server';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -17,25 +18,36 @@ const notoBengali = Noto_Sans_Bengali({
   display: 'swap',
 });
 
-export const metadata: Metadata = {
+const DEFAULT_SITE_TITLE = 'Mymensingh Sheba — ময়মনসিংহে প্রয়োজনীয় সেবা, এক জায়গায়';
+const DEFAULT_SITE_DESCRIPTION = 'ময়মনসিংহ সিটি কর্পোরেশনের স্থানীয় সেবা প্ল্যাটফর্ম। বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, প্লাম্বার, বাসা পাল্টানো, গৃহশিক্ষক ও জরুরি রক্তদাতা।';
+
+export async function generateMetadata(): Promise<Metadata> {
+  const seo = (await getSiteContentOverrides()).seo;
+  const title = seo?.title?.trim() || DEFAULT_SITE_TITLE;
+  const description = seo?.description?.trim() || DEFAULT_SITE_DESCRIPTION;
+  const image = seo?.ogImage?.trim();
+  return {
   metadataBase: new URL('https://mymensinghsheba.com'),
   title: {
-    default: 'Mymensingh Sheba — ময়মনসিংহে প্রয়োজনীয় সেবা, এক জায়গায়',
+    default: title,
     template: '%s | Mymensingh Sheba',
   },
-  description: 'ময়মনসিংহ সিটি কর্পোরেশনের স্থানীয় সেবা প্ল্যাটফর্ম। বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, প্লাম্বার, বাসা পাল্টানো, গৃহশিক্ষক ও জরুরি রক্তদাতা।',
+  description,
   openGraph: {
-    title: 'Mymensingh Sheba — ময়মনসিংহে প্রয়োজনীয় সেবা, এক জায়গায়',
-    description: 'ময়মনসিংহ সিটি কর্পোরেশনের বিশ্বস্ত স্থানীয় সেবা প্ল্যাটফর্ম। বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, প্লাম্বার, বাসা পাল্টানো, গৃহশিক্ষক ও জরুরি রক্তদাতা।',
+    title,
+    description,
     type: 'website',
     locale: 'bn_BD',
+    ...(image ? { images: [image] } : {}),
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Mymensingh Sheba — ময়মনসিংহে প্রয়োজনীয় সেবা, এক জায়গায়',
-    description: 'ময়মনসিংহ সিটি কর্পোরেশনের স্থানীয় নির্ভরযোগ্য সেবা প্ল্যাটফর্ম।',
+    title,
+    description,
+    ...(image ? { images: [image] } : {}),
   },
-};
+  };
+}
 
 export default function RootLayout({
   children,

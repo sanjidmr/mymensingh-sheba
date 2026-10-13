@@ -58,6 +58,25 @@ export async function setServiceListingFeatured(
 
 export async function deleteServiceListing(listingId: string): Promise<ActionResult> {
   return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(listingId)) {
+      return { ok: false, error: 'তালিকার আইডি সঠিক নয়।' };
+    }
+    const { data: listing, error: lookupError } = await client
+      .from('service_listings')
+      .select('id, category')
+      .eq('id', listingId)
+      .maybeSingle();
+    if (lookupError) return { ok: false, error: lookupError.message };
+    if (!listing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (listing.category === 'vehicle') {
+      const { count, error: requestError } = await client
+        .from('vehicle_requests')
+        .select('id', { count: 'exact', head: true })
+        .eq('vehicle_listing_id', listingId);
+      if (requestError) return { ok: false, error: requestError.message };
+      if ((count ?? 0) > 0) return { ok: false, error: 'এই যানবাহনের সঙ্গে রিকোয়েস্ট যুক্ত আছে। ইতিহাস সংরক্ষণে তালিকাটি মুছবেন না; অপ্রকাশিত করুন।' };
+    }
+
     const { error } = await client.from('service_listings').delete().eq('id', listingId);
     if (error) return { ok: false, error: error.message };
 
@@ -81,18 +100,22 @@ export async function setEmergencyContactActive(
         .maybeSingle();
       if (readError) return { ok: false, error: readError.message };
       if (!data || !data.source_note?.trim()) {
-        return { ok: false, error: 'যাচাইকৃত নম্বরের উৎস যোগ না করা পর্যন্ত এটি চালু করা যাবে না।' };
+        return { ok: false, error: 'তথ্যসূত্র যোগ না করা পর্যন্ত এটি চালু করা যাবে না।' };
       }
     }
 
-    const { error } = await client
+    const { data, error } = await client
       .from('emergency_contacts')
       .update({ is_active: isActive })
-      .eq('id', contactId);
+      .eq('id', contactId)
+      .select('id')
+      .maybeSingle();
 
     if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
     revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctor');
     revalidatePath('/doctors');
     revalidatePath('/police');
@@ -112,14 +135,18 @@ export async function setEmergencyContactOrder(
       return { ok: false, error: 'ক্রম অবশ্যই ০ থেকে ৯৯৯৯-এর মধ্যে হতে হবে।' };
     }
 
-    const { error } = await client
+    const { data, error } = await client
       .from('emergency_contacts')
       .update({ sort_order: Math.round(sortOrder) })
-      .eq('id', contactId);
+      .eq('id', contactId)
+      .select('id')
+      .maybeSingle();
 
     if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
     revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctors');
     revalidatePath('/doctor');
     revalidatePath('/police');
@@ -132,10 +159,17 @@ export async function setEmergencyContactOrder(
 
 export async function deleteEmergencyContact(contactId: string): Promise<ActionResult> {
   return runAdminAction(async (client) => {
-    const { error } = await client.from('emergency_contacts').delete().eq('id', contactId);
+    const { data, error } = await client
+      .from('emergency_contacts')
+      .delete()
+      .eq('id', contactId)
+      .select('id')
+      .maybeSingle();
     if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
     revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctor');
     revalidatePath('/doctors');
     revalidatePath('/police');

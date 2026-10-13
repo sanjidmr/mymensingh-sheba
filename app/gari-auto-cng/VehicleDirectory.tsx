@@ -111,6 +111,7 @@ export default function VehicleDirectory() {
         chips={[
           listing.seatCount ? `${toBn(listing.seatCount)} সিট` : undefined,
           ...tagLabels(listing.tags),
+          'যাচাইয়ের তথ্য নেই',
         ]}
         badge={
           listing.isFeatured
@@ -120,7 +121,6 @@ export default function VehicleDirectory() {
               : undefined
         }
         badgeTone={listing.isDemo && !listing.isFeatured ? 'accent' : 'brand'}
-        isVerified
       />
     );
   }, []);

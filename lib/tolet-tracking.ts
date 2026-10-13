@@ -243,6 +243,54 @@ export async function fetchListingStats(
   return match ? normalizeRollup(match) : { ...EMPTY_STATS, listingId };
 }
 
+/** Reads real engagement rows for the caller's own listings; RLS enforces ownership. */
+export async function fetchOwnListingStats(
+  listingIds: string[]
+): Promise<Record<string, ToletListingStats>> {
+  const stats = Object.fromEntries(
+    listingIds.map((listingId) => [listingId, { ...EMPTY_STATS, listingId }])
+  );
+  const visitorIds = Object.fromEntries(listingIds.map((listingId) => [listingId, new Set<string>()]));
+  if (listingIds.length === 0) return stats;
+  if (!isSupabaseConfigured) throw new Error('Supabase is not configured.');
+  const client = createClient();
+  if (!client) throw new Error('Supabase client could not be created.');
+
+  const pageSize = 1000;
+  for (let offset = 0; ; offset += pageSize) {
+    const { data, error } = await client
+      .from('tolet_listing_events')
+      .select('listing_id,event_type,user_id,visitor_id,created_at')
+      .in('listing_id', listingIds)
+      .range(offset, offset + pageSize - 1);
+    if (error) throw new Error(`বাসাভাড়ার পরিসংখ্যান লোড করা যায়নি: ${error.message}`);
+
+    for (const event of data ?? []) {
+      const listingId = event.listing_id;
+      const item = stats[listingId];
+      if (!item) continue;
+      if (event.event_type === 'view') item.views += 1;
+      if (event.event_type === 'call_click') item.callClicks += 1;
+      if (event.event_type === 'whatsapp_click') item.whatsappClicks += 1;
+      if (event.event_type === 'favorite') item.favorites += 1;
+      if (event.event_type === 'share') item.shares += 1;
+      if (event.created_at && (!item.lastActivityAt || event.created_at > item.lastActivityAt)) {
+        item.lastActivityAt = event.created_at;
+      }
+      const visitorId = event.user_id || event.visitor_id;
+      if (visitorId) visitorIds[listingId].add(visitorId);
+    }
+    if ((data?.length ?? 0) < pageSize) break;
+  }
+
+  for (const listingId of listingIds) {
+    stats[listingId].uniqueVisitors = visitorIds[listingId].size;
+    stats[listingId].contactClicks =
+      stats[listingId].callClicks + stats[listingId].whatsappClicks;
+  }
+  return stats;
+}
+
 // ---------------------------------------------------------------------------
 // In-memory store (preview mode, and a safe fallback while the migration
 // has not been applied). Mirrors the SQL rollup exactly.

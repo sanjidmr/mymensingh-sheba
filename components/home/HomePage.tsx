@@ -48,6 +48,23 @@ export default async function HomePage() {
       <Navbar />
 
       <main className="flex-1">
+        {overrides.announcement?.enabled &&
+          overrides.announcement.title &&
+          overrides.announcement.body && (
+            <section aria-label="ওয়েবসাইট ঘোষণা" className="border-b border-accent-500/30 bg-accent-100 px-4 py-3 text-brand-950">
+              <div className="mx-auto flex max-w-7xl flex-col gap-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+                <div className="min-w-0">
+                  <p className="text-sm font-bold">{overrides.announcement.title}</p>
+                  <p className="break-words text-sm leading-relaxed">{overrides.announcement.body}</p>
+                </div>
+                {overrides.announcement.href && overrides.announcement.linkLabel && (
+                  <a href={overrides.announcement.href} className="shrink-0 text-sm font-bold underline underline-offset-4">
+                    {overrides.announcement.linkLabel}
+                  </a>
+                )}
+              </div>
+            </section>
+          )}
         {/* Large premium image carousel — the primary visual */}
         {visible('hero') && <HeroCarousel slides={heroSlides ?? undefined} />}
 

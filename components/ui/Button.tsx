@@ -95,6 +95,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         type={type}
         disabled={disabled || isLoading}
         aria-busy={isLoading}
+        data-button-variant={variant}
         className={cn(
           baseStyles,
           variantStyles[variant],

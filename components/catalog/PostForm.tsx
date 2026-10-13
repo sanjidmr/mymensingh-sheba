@@ -128,6 +128,9 @@ function isPostDraft(value: unknown): value is PostDraft {
   if (!('tags' in value) || !Array.isArray(value.tags) || !value.tags.every((tag) => typeof tag === 'string')) {
     return false;
   }
+  if ('photos' in value && (!Array.isArray(value.photos) || !value.photos.every((photo) => typeof photo === 'string'))) {
+    return false;
+  }
   return 'savedAt' in value && typeof value.savedAt === 'string' &&
     Object.values(value.values).every((entry) => typeof entry === 'string');
 }
@@ -235,10 +238,17 @@ export default function PostForm({
             }
             setValues(restoredValues);
             setTags(parsed.tags.slice(0, 6));
+            setPhotos((parsed.photos ?? []).slice(0, MAX_PHOTOS).map((url, index) => ({
+              key: `draft-${index}`,
+              file: null,
+              url,
+            })));
             setDraftSavedAt(savedAt ?? parsed.savedAt);
-            setDraftNotice(user
-              ? 'Supabase-এ সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে। ছবি আবার যোগ করতে হবে।'
-              : 'এই ব্রাউজারে আগে সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে। ছবি আবার যোগ করতে হবে।');
+            setDraftNotice(parsed.photos?.length
+              ? 'সংরক্ষিত খসড়া ও ছবিগুলো ফিরিয়ে আনা হয়েছে।'
+              : user
+                ? 'Supabase-এ সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে।'
+                : 'এই ব্রাউজারে আগে সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে।');
           }
         }
       } catch (error) {
@@ -251,12 +261,14 @@ export default function PostForm({
   }, [draftKey, editing, kind, user]);
 
   useEffect(() => {
-    if (!draftReady || editing || submitting) return;
+    if (!draftReady || editing || submitting || draftBusy) return;
     const timeout = window.setTimeout(() => {
       void (async () => {
        try {
         const hasContent =
-          Object.values(values).some((value) => value.trim().length > 0) || tags.length > 0;
+          Object.values(values).some((value) => value.trim().length > 0) ||
+          tags.length > 0 ||
+          photos.length > 0;
         if (!hasContent) {
           if (user) {
             const result = await deleteCommunityPostDraft(kind);
@@ -268,7 +280,13 @@ export default function PostForm({
           return;
         }
         const savedAt = new Date().toISOString();
-        const draft: PostDraft = { version: DRAFT_VERSION, values: { ...values }, tags, savedAt };
+        const draft: PostDraft = {
+          version: DRAFT_VERSION,
+          values: { ...values },
+          tags,
+          photos: photos.filter((photo) => !photo.file).map((photo) => photo.url),
+          savedAt,
+        };
         if (user) {
           const result = await saveCommunityPostDraft(kind, draft);
           if (!result.success) throw new Error(result.error);
@@ -283,7 +301,7 @@ export default function PostForm({
       })();
     }, 700);
     return () => window.clearTimeout(timeout);
-  }, [draftKey, draftReady, editing, kind, submitting, tags, user, values]);
+  }, [draftBusy, draftKey, draftReady, editing, kind, photos, submitting, tags, user, values]);
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     setValues((prev) => ({ ...prev, [key]: value }));
@@ -564,17 +582,47 @@ export default function PostForm({
     setDraftBusy(true);
     setFormError('');
     try {
+      const savedPhotos: string[] = [];
+      for (const photo of photos) {
+        if (!photo.file) {
+          savedPhotos.push(photo.url);
+          continue;
+        }
+        if (!user) continue;
+        const authorId = await currentUserId();
+        if (!authorId) {
+          throw new Error('ছবিসহ খসড়া সংরক্ষণ করতে লগইন করুন।');
+        }
+        const result = await uploadPostImage(authorId, photo.file);
+        if (!result.success) throw new Error(result.error);
+        savedPhotos.push(result.data);
+        setPhotos((current) =>
+          current.map((item) =>
+            item.key === photo.key ? { ...item, file: null, url: result.data } : item
+          )
+        );
+      }
       const savedAt = new Date().toISOString();
-      const draft: PostDraft = { version: DRAFT_VERSION, values: { ...values }, tags, savedAt };
+      const draft: PostDraft = {
+        version: DRAFT_VERSION,
+        values: { ...values },
+        tags,
+        photos: savedPhotos,
+        savedAt,
+      };
       if (user) {
         const result = await saveCommunityPostDraft(kind, draft);
         if (!result.success) throw new Error(result.error);
         setDraftSavedAt(result.data);
-        setDraftNotice('খসড়া আপনার Supabase অ্যাকাউন্টে সংরক্ষিত হয়েছে। ছবি সংরক্ষিত হয়নি; পরে আবার যোগ করুন।');
+        setDraftNotice('খসড়া ও ছবিগুলো আপনার Supabase অ্যাকাউন্টে সংরক্ষিত হয়েছে।');
       } else {
         window.localStorage.setItem(draftKey, JSON.stringify(draft));
         setDraftSavedAt(savedAt);
-        setDraftNotice('খসড়া এই ব্রাউজারে সংরক্ষিত হয়েছে। ছবি সংরক্ষিত হয়নি; পরে আবার যোগ করুন।');
+        setDraftNotice(
+          photos.some((photo) => photo.file)
+            ? 'খসড়াটি এই ব্রাউজারে সংরক্ষিত হয়েছে; ছবিগুলো সংরক্ষণ করতে লগইন করুন।'
+            : 'খসড়া এই ব্রাউজারে সংরক্ষিত হয়েছে।'
+        );
       }
     } catch (error) {
       setFormError(error instanceof Error ? `খসড়া সংরক্ষণ করা যায়নি: ${error.message}` : 'খসড়া সংরক্ষণ করা যায়নি।');
@@ -606,6 +654,10 @@ export default function PostForm({
         {!editing && (
           <p className="mt-1 text-[11px] text-ink-400">
             {user ? 'খসড়া আপনার Supabase অ্যাকাউন্টে সংরক্ষিত হবে' : 'খসড়া শুধু এই ব্রাউজারে সংরক্ষিত হবে'}
+            {' · '}
+            {user
+              ? 'ছবিসহ সংরক্ষণ করতে “খসড়া সংরক্ষণ” চাপুন'
+              : 'ছবি সংরক্ষণ করতে লগইন করুন'}
             {draftSavedAt ? ` · সর্বশেষ সংরক্ষণ ${new Date(draftSavedAt).toLocaleTimeString('bn-BD')}` : ''}।
           </p>
         )}

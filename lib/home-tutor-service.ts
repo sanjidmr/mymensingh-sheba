@@ -291,25 +291,30 @@ export async function createTutorReport(input: {
 // ---------------------------------------------------------------------------
 
 export async function adminFetchTutorProfiles(): Promise<HomeTutorProfile[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchTutorProfiles();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; টিউটর প্রোফাইল লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchTutorProfiles();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন.');
   // `fn_admin_tutor_profiles` is SECURITY DEFINER + is_admin() gated — the only
   // path that may read private_phone / nid_number / admin_notes since those
   // columns are now revoked from the anon key.
   const { data, error } = await client.rpc('fn_admin_tutor_profiles');
-  if (error) return [];
+  if (error) throw new Error(`টিউটর প্রোফাইল লোড ব্যর্থ হয়েছে: ${error.message}`);
   return ((data as Record<string, unknown>[]) || []).map((row) => mapTutorRow(row, { admin: true }));
 }
 
 export async function adminFetchTutorProfileById(id: string): Promise<HomeTutorProfile | null> {
-  if (!isSupabaseConfigured) return mockAdminFetchTutorProfileById(id) || null;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; টিউটর প্রোফাইল লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchTutorProfileById(id) || null;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .rpc('fn_admin_tutor_profile', { p_id: id })
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`টিউটর প্রোফাইল লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   return mapTutorRow(data as Record<string, unknown>, { admin: true });
 }
 
@@ -326,8 +331,7 @@ export async function adminUpdateTutorProfile(
   patch: AdminTutorPatch
 ): Promise<{ success: boolean; profile?: HomeTutorProfile; error?: string }> {
   if (!isSupabaseConfigured) {
-    const profile = mockAdminUpdateTutorProfile(id, patch);
-    return profile ? { success: true, profile } : { success: false, error: 'প্রোফাইল পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; টিউটর প্রোফাইল আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -377,15 +381,17 @@ export async function adminUpdateTutorProfile(
 }
 
 export async function adminFetchTutorRequests(): Promise<AdminTutorRequest[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchTutorRequests() as unknown as AdminTutorRequest[];
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; টিউটর রিকোয়েস্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchTutorRequests();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('service_requests')
     .select('*')
     .eq('service_slug', 'home-tutor')
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`টিউটর রিকোয়েস্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || [])
     .map((row) => {
       const c = toCamelObject(row as Record<string, unknown>) as Record<string, unknown>;
@@ -414,17 +420,18 @@ export async function adminFetchTutorRequestById(
   id: string
 ): Promise<AdminTutorRequest | null> {
   if (!isSupabaseConfigured) {
-    return mockAdminFetchTutorRequests().find((r) => r.id === id) ?? null;
+    throw new Error('Supabase সংযুক্ত নেই; রিকোয়েস্টের তথ্য লোড করা যায়নি।');
   }
   const client = createClient();
-  if (!client) return mockAdminFetchTutorRequests().find((r) => r.id === id) ?? null;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('service_requests')
     .select('*')
     .eq('id', id)
     .eq('service_slug', 'home-tutor')
-    .single();
-  if (error || !data) return null;
+    .maybeSingle();
+  if (error) throw new Error(`রিকোয়েস্টের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   const c = toCamelObject(data as Record<string, unknown>) as Record<string, unknown>;
   return {
     id: (c.id as string) || '',
@@ -452,8 +459,7 @@ export async function adminUpdateTutorRequest(
   adminNotes?: string
 ): Promise<{ success: boolean; request?: AdminTutorRequest; error?: string }> {
   if (!isSupabaseConfigured) {
-    const req = mockAdminUpdateTutorRequest(id, { status, adminNotes });
-    return req ? { success: true, request: req } : { success: false, error: 'রিকোয়েস্ট পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; টিউটর রিকোয়েস্ট আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -541,14 +547,16 @@ export function resolveTutorPhotoUrl(src?: string): string {
 // ---------------------------------------------------------------------------
 
 export async function adminFetchTutorReports(): Promise<TutorReport[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; টিউটর রিপোর্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('tutor_reports')
     .select('*')
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`টিউটর রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => toCamelObject(row as Record<string, unknown>) as unknown as TutorReport);
 }
 
@@ -556,7 +564,9 @@ export async function adminUpdateTutorReportStatus(
   id: string,
   status: TutorReport['status']
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true };
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase সংযুক্ত নেই; টিউটর রিপোর্ট আপডেট করা যায়নি।' };
+  }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   const { error } = await client.from('tutor_reports').update({ status }).eq('id', id);
@@ -565,13 +575,16 @@ export async function adminUpdateTutorReportStatus(
 }
 
 export async function adminFetchTutorReviews(): Promise<(TutorReview & { tutorName?: string })[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; টিউটর রিভিউ লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
-  const { data } = await client
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
+  const { data, error } = await client
     .from('tutor_reviews')
     .select('*')
     .order('created_at', { ascending: false });
+  if (error) throw new Error(`টিউটর রিভিউ লোড ব্যর্থ হয়েছে: ${error.message}`);
   if (!data) return [];
   return data.map((row) => {
     const c = toCamelObject(row as Record<string, unknown>) as unknown as TutorReview;
@@ -583,7 +596,9 @@ export async function adminUpdateTutorReview(
   id: string,
   patch: { isPublished?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true };
+  if (!isSupabaseConfigured) {
+    return { success: false, error: 'Supabase সংযুক্ত নেই; টিউটর রিভিউ আপডেট করা যায়নি।' };
+  }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   try {

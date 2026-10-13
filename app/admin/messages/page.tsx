@@ -33,14 +33,28 @@ const columns: AdminColumn<AdminMessageRow>[] = [
   {
     key: 'subject',
     header: 'বিষয়',
-    render: (row) => row.subject,
+    render: (row) => (
+      <span className="block">
+        <span className="block">{row.complaint_subject || row.subject}</span>
+        {row.complaint_category && (
+          <span className="block text-xs text-ink-400">{{
+            account: 'অ্যাকাউন্ট ও নিরাপত্তা',
+            posts: 'পোস্ট বা বিজ্ঞাপন',
+            service: 'সেবা বা রিকোয়েস্ট',
+            safety: 'নিরাপত্তা ও আচরণ',
+            payment: 'পেমেন্ট বা চার্জ',
+            other: 'অন্যান্য',
+          }[row.complaint_category] ?? row.complaint_category}</span>
+        )}
+      </span>
+    ),
   },
   {
     key: 'message',
     header: 'বার্তা',
     hideOnMobile: true,
     render: (row) => (
-      <span className="line-clamp-2 block max-w-xs text-xs text-ink-500">{row.message}</span>
+    <span className="line-clamp-2 block max-w-xs text-xs text-ink-500">{row.latest_message ?? row.message}</span>
     ),
   },
   {
@@ -56,7 +70,7 @@ const columns: AdminColumn<AdminMessageRow>[] = [
     header: 'তারিখ',
     hideOnMobile: true,
     render: (row) => (
-      <span className="text-xs text-ink-500">{formatDateTime(row.created_at)}</span>
+    <span className="text-xs text-ink-500">{formatDateTime(row.latest_at ?? row.created_at)}</span>
     ),
   },
   {
@@ -80,7 +94,10 @@ export default async function AdminMessagesPage({
     return (
       <>
         <PageHeader title="মেসেজ" description="যোগাযোগ ফর্মে পাঠানো সব বার্তা।" />
-        <AdminError title="ডেটাবেজ সংযুক্ত নেই" />
+        <AdminError
+          title={result.error ? 'মেসেজ লোড করা যায়নি' : 'ডেটাবেজ সংযুক্ত নেই'}
+          message={result.error}
+        />
       </>
     );
   }
@@ -96,7 +113,7 @@ export default async function AdminMessagesPage({
       />
 
       <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <AdminSearch placeholder="নাম, নম্বর বা বার্তা খুঁজুন…" />
+        <AdminSearch placeholder="টিকিট ID, নাম, নম্বর বা বার্তা খুঁজুন…" />
         <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
           <FilterNav
             id="message-status"
@@ -107,7 +124,24 @@ export default async function AdminMessagesPage({
             param="status"
             searchParams={resolvedSearchParams}
           />
-          <ClearFilters searchParams={new URLSearchParams()} />
+          <FilterNav
+            id="message-subject"
+            label="বিষয়"
+            value={String(params.category ?? '')}
+            placeholder="সব বিষয়"
+            options={[
+              { value: 'general', label: 'সাধারণ জিজ্ঞাসা' },
+              { value: 'service_info', label: 'সেবা সম্পর্কে' },
+              { value: 'post_service', label: 'পোস্ট ও অ্যাকাউন্ট' },
+              { value: 'correction', label: 'তথ্য সংশোধন' },
+              { value: 'complaint', label: 'অভিযোগ' },
+              { value: 'partnership', label: 'অংশীদারিত্ব' },
+              { value: 'other', label: 'অন্যান্য' },
+            ]}
+            param="category"
+            searchParams={resolvedSearchParams}
+          />
+          <ClearFilters searchParams={resolvedSearchParams} />
         </div>
       </div>
 

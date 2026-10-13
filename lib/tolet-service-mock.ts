@@ -104,6 +104,52 @@ export function mockUpdateListingOwned(
   return updated;
 }
 
+export function mockSetOwnListingVisibility(
+  listingId: string,
+  ownerId: string,
+  action: 'archive' | 'restore'
+): ToletListing | null {
+  const listing = listings.find((item) => item.id === listingId && item.ownerId === ownerId);
+  if (!listing) return null;
+  const index = listings.findIndex((item) => item.id === listingId && item.ownerId === ownerId);
+  if (action === 'archive') {
+    if (listing.status === 'archived' || listing.status === 'suspended') return null;
+    const updated = { ...listing, status: 'archived' as const, updatedAt: new Date().toISOString() };
+    listings[index] = updated;
+    return updated;
+  }
+  if (listing.status !== 'archived') return null;
+  if (
+    listing.title.trim().length < 8 ||
+    !listing.areaId.trim() ||
+    listing.specificAddress.trim().length < 5 ||
+    listing.rentPrice < 100 ||
+    listing.rentPrice > 500000 ||
+    (['mess', 'hostel', 'seat'].includes(listing.propertyType) && (listing.totalRooms ?? 0) < 1) ||
+    (!['mess', 'hostel', 'seat'].includes(listing.propertyType) && listing.bedrooms < 1) ||
+    listing.description.trim().length < 20
+  ) {
+    return null;
+  }
+  const updated = {
+    ...listing,
+    status: 'pending_review' as const,
+    rejectionReason: undefined,
+    updatedAt: new Date().toISOString(),
+  };
+  listings[index] = updated;
+  return updated;
+}
+
+export function mockDeleteOwnListing(listingId: string, ownerId: string): boolean {
+  const index = listings.findIndex((item) => item.id === listingId && item.ownerId === ownerId);
+  if (index < 0) return false;
+  listings.splice(index, 1);
+  requests = requests.filter((request) => request.listingId !== listingId);
+  reports = reports.filter((report) => report.listingId !== listingId);
+  return true;
+}
+
 export function mockAdminFetchListings(statusFilter?: string | null): ToletListing[] {
   if (statusFilter && statusFilter !== 'all') {
     return listings.filter((l) => l.status === statusFilter);

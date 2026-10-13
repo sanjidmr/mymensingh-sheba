@@ -15,7 +15,7 @@ export default function BloodDonorEditRedirectPage() {
   return (
     <div className="min-h-screen bg-mist-50">
       <Navbar />
-      <div className="max-w-md mx-auto px-4 py-20 text-center text-sm text-slate-500">
+      <div className="max-w-md mx-auto px-4 py-20 text-center text-sm text-ink-400">
         রক্তদাতা প্রোফাইল সম্পাদনা পেজে নিয়ে যাওয়া হচ্ছে...
       </div>
       <Footer />

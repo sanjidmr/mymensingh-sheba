@@ -1,298 +1,96 @@
-import {
-  fetchServiceListings,
-  fetchEmergencyContacts,
-  parseListParams,
-} from '@/lib/admin/queries';
-import { PageHeader } from '@/components/admin/PageHeader';
-import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
-import { TablePager } from '@/components/admin/TablePager';
-import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
-import { FilterNav } from '@/components/admin/FilterNav';
-import { AdminError, AdminEmpty } from '@/components/admin/States';
-import { StatusPill } from '@/components/admin/StatCard';
-import { formatDateTime, lookupStatus } from '@/lib/admin/format';
-import type { AdminServiceListingRow, AdminEmergencyContactRow } from '@/lib/admin/queries';
-import CatalogActions from '@/components/admin/CatalogActions';
-import EmergencyContactEditor from '@/components/admin/EmergencyContactEditor';
+import Link from 'next/link';
+import { BusFront, CarFront, GraduationCap, Router } from 'lucide-react';
+import { PageHeader, Panel } from '@/components/admin/PageHeader';
+import { AdminError } from '@/components/admin/States';
+import { StatCard } from '@/components/admin/StatCard';
+import { fetchServiceListings, parseListParams } from '@/lib/admin/queries';
+import type { ServiceCategory } from '@/lib/catalog-types';
 
 export const dynamic = 'force-dynamic';
 
-const CATEGORY_LABEL: Record<string, string> = {
-  coaching: 'কোচিং',
-  wifi: 'WiFi',
-  bus: 'বাস',
-  vehicle: 'গাড়ি',
-};
-
-const SERVICE_LABEL: Record<string, string> = {
-  doctor: 'ডাক্তার',
-  police: 'পুলিশ',
-  ambulance: 'অ্যাম্বুলেন্স',
-  fire_service: 'ফায়ার সার্ভিস',
-};
-
-const listingColumns: AdminColumn<AdminServiceListingRow>[] = [
+const MODULES: Array<{
+  category: ServiceCategory;
+  title: string;
+  description: string;
+  href: string;
+  icon: typeof CarFront;
+}> = [
   {
-    key: 'title',
-    header: 'শিরোনাম',
-    mobilePrimary: true,
-    render: (row) => (
-      <span className="block">
-        <span className="block">{row.title_bn}</span>
-        <span className="mt-0.5 block text-xs text-ink-400">
-          {CATEGORY_LABEL[row.category] ?? row.category}
-        </span>
-      </span>
-    ),
+    category: 'vehicle',
+    title: 'যানবাহন ভাড়া',
+    description: 'গাড়ি, অটো ও CNG তালিকা প্রকাশনা এবং সম্পাদনা করুন।',
+    href: '/admin/catalog/vehicle',
+    icon: CarFront,
   },
   {
-    key: 'area',
-    header: 'এলাকা',
-    render: (row) => row.area_id || '—',
+    category: 'bus',
+    title: 'বাস টিকিট তথ্য',
+    description: 'অপারেটর, রুট ও সরবরাহকৃত ভাড়ার তথ্য ডিরেক্টরি। বুকিং নয়।',
+    href: '/admin/catalog/bus',
+    icon: BusFront,
   },
   {
-    key: 'phone',
-    header: 'নম্বর',
-    hideOnMobile: true,
-    render: (row) => row.contact_phone || '—',
+    category: 'wifi',
+    title: 'WiFi প্রদানকারী',
+    description: 'প্রদানকারী, কভারেজ, স্পিড ও মূল্যতথ্য পরিচালনা করুন।',
+    href: '/admin/catalog/wifi',
+    icon: Router,
   },
   {
-    key: 'status',
-    header: 'স্ট্যাটাস',
-    render: (row) => (
-      <StatusPill
-        label={row.is_active ? 'চালু' : 'বন্ধ'}
-        tone={row.is_active ? 'success' : 'neutral'}
-      />
-    ),
-  },
-  {
-    key: 'date',
-    header: 'তারিখ',
-    hideOnMobile: true,
-    render: (row) => (
-      <span className="text-xs text-ink-500">{formatDateTime(row.created_at)}</span>
-    ),
-  },
-  {
-    key: 'actions',
-    header: '',
-    headerClassName: 'w-1',
-    render: (row) => <CatalogActions row={row} />,
+    category: 'coaching',
+    title: 'কোচিং সেন্টার',
+    description: 'প্রতিষ্ঠান, ক্লাস, বিষয় এবং সরবরাহকৃত ফি পরিচালনা করুন।',
+    href: '/admin/catalog/coaching',
+    icon: GraduationCap,
   },
 ];
 
-const contactColumns: AdminColumn<AdminEmergencyContactRow>[] = [
-  {
-    key: 'name',
-    header: 'নাম',
-    mobilePrimary: true,
-    render: (row) => (
-      <span className="block">
-        <span className="block">{row.name_bn}</span>
-        <span className="mt-0.5 block text-xs text-ink-400">
-          {SERVICE_LABEL[row.service] ?? row.service}
-        </span>
-      </span>
-    ),
-  },
-  {
-    key: 'organization',
-    header: 'প্রতিষ্ঠান',
-    render: (row) => row.organization_bn || '—',
-  },
-  {
-    key: 'phone',
-    header: 'নম্বর',
-    render: (row) => row.phone,
-  },
-  {
-    key: 'source',
-    header: 'যাচাইয়ের উৎস',
-    hideOnMobile: true,
-    render: (row) => row.source_note || 'উৎস উল্লেখ করা হয়নি',
-  },
-  {
-    key: 'order',
-    header: 'ক্রম',
-    hideOnMobile: true,
-    render: (row) => <span className="tabular-nums">{row.sort_order}</span>,
-  },
-  {
-    key: 'status',
-    header: 'স্ট্যাটাস',
-    render: (row) => (
-      <StatusPill
-        label={row.is_active ? 'চালু' : 'বন্ধ'}
-        tone={row.is_active ? 'success' : 'neutral'}
-      />
-    ),
-  },
-  {
-    key: 'actions',
-    header: '',
-    headerClassName: 'w-1',
-    render: (row) => (
-      <div className="flex flex-wrap items-center gap-1">
-        <EmergencyContactEditor contact={row} />
-        <CatalogActions row={row} />
-      </div>
-    ),
-  },
-];
-
-export default async function AdminCatalogPage({
-  searchParams,
-}: {
-  searchParams: Promise<Record<string, string | string[] | undefined>>;
-}) {
-  const resolvedSearchParams = await searchParams;
-  const params = parseListParams(resolvedSearchParams, { pageSize: 20 });
-  const [listings, contacts] = await Promise.all([
-    fetchServiceListings(params),
-    fetchEmergencyContacts(params),
-  ]);
-
-  if (listings.unavailable || contacts.unavailable) {
-    return (
-      <>
-        <PageHeader
-          title="ক্যাটালগ ও ইমার্জেন্সি"
-          description="কোচিং, WiFi, বাস ও জরুরি নম্বরের তালিকা।"
-        />
-        <AdminError
-          title="ক্যাটালগ বা জরুরি নম্বর লোড করা যায়নি"
-          message={listings.error ?? contacts.error ?? 'ডেটাবেজ সংযুক্ত নেই।'}
-        />
-      </>
-    );
-  }
+export default async function AdminCatalogPage() {
+  const counts = await Promise.all(
+    MODULES.map(async (module) => ({
+      category: module.category,
+      result: await fetchServiceListings(parseListParams({}, { pageSize: 1 }), module.category),
+    })),
+  );
+  const failed = counts.find(({ result }) => result.unavailable);
 
   return (
     <>
       <PageHeader
-        title="ক্যাটালগ ও ইমার্জেন্সি"
-        description="কোচিং, WiFi, বাস ও জরুরি সেবার তালিকা। চালু/বন্ধ করলে সাথে সাথে ওয়েবসাইটে প্রভাব পড়ে।"
+        title="ডিরেক্টরি ব্যবস্থাপনা"
+        description="যানবাহন, বাস, WiFi ও কোচিং ডিরেক্টরির বিদ্যমান রেকর্ড পরিচালনা করুন। সক্রিয় মান প্রকাশিত; এটি যাচাইকরণ বা প্রাপ্যতার প্রমাণ নয়।"
+        actions={<Link href="/admin/vehicle-requests" className="inline-flex min-h-11 items-center rounded-md border border-admin-border bg-white px-3 text-sm font-semibold">যানবাহন রিকোয়েস্ট</Link>}
       />
-
-      {/* ---------- Service listings ---------- */}
-      <section className="mb-6">
-        <h2 className="mb-3 text-sm font-bold text-ink-900">ক্যাটালগ তালিকা</h2>
-
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <AdminSearch placeholder="শিরোনাম বা এলাকা খুঁজুন…" />
-          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-            <FilterNav
-              id="listing-category"
-              label="ক্যাটাগরি"
-              value={String(params.category ?? '')}
-              placeholder="সব ক্যাটাগরি"
-              options={[
-                { value: 'coaching', label: 'কোচিং' },
-                { value: 'wifi', label: 'WiFi' },
-                { value: 'bus', label: 'বাস' },
-                { value: 'vehicle', label: 'গাড়ি' },
-              ]}
-              param="category"
-              searchParams={resolvedSearchParams}
-            />
-            <FilterNav
-              id="listing-status"
-              label="স্ট্যাটাস"
-              value={String(params.status ?? '')}
-              placeholder="সব স্ট্যাটাস"
-              options={[
-                { value: 'active', label: 'চালু' },
-                { value: 'inactive', label: 'বন্ধ' },
-              ]}
-              param="status"
-              searchParams={resolvedSearchParams}
-            />
-            <ClearFilters searchParams={new URLSearchParams()} />
-          </div>
-        </div>
-
-        <AdminTable
-          columns={listingColumns}
-          rows={listings.rows}
-          getKey={(row) => String(row.id)}
-          caption="ক্যাটালগ তালিকা"
-          empty={
-            <AdminEmpty
-              title="কোনো তালিকা পাওয়া যায়নি"
-              description="ক্যাটালগে নতুন তালিকা যোগ করলে এখানে দেখা যাবে।"
-            />
-          }
-        />
-
-        <TablePager
-          page={listings.page}
-          pageSize={listings.pageSize}
-          total={listings.total}
-          searchParams={resolvedSearchParams}
-        />
-      </section>
-
-      {/* ---------- Emergency contacts ---------- */}
-      <section>
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-sm font-bold text-ink-900">ইমার্জেন্সি নম্বর</h2>
-          <EmergencyContactEditor />
-        </div>
-
-        <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-center">
-          <AdminSearch placeholder="নাম বা নম্বর খুঁজুন…" />
-          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-            <FilterNav
-              id="contact-service"
-              label="সেবা"
-              value={String(params.service ?? '')}
-              placeholder="সব সেবা"
-              options={[
-                { value: 'doctor', label: 'ডাক্তার' },
-                { value: 'police', label: 'পুলিশ' },
-                { value: 'ambulance', label: 'অ্যাম্বুলেন্স' },
-                { value: 'fire_service', label: 'ফায়ার সার্ভিস' },
-              ]}
-              param="service"
-              searchParams={resolvedSearchParams}
-            />
-            <FilterNav
-              id="contact-status"
-              label="স্ট্যাটাস"
-              value={String(params.status ?? '')}
-              placeholder="সব স্ট্যাটাস"
-              options={[
-                { value: 'active', label: 'চালু' },
-                { value: 'inactive', label: 'বন্ধ' },
-              ]}
-              param="status"
-              searchParams={resolvedSearchParams}
-            />
-            <ClearFilters searchParams={new URLSearchParams()} />
-          </div>
-        </div>
-
-        <AdminTable
-          columns={contactColumns}
-          rows={contacts.rows}
-          getKey={(row) => String(row.id)}
-          caption="ইমার্জেন্সি নম্বরের তালিকা"
-          empty={
-            <AdminEmpty
-              title="কোনো নম্বর পাওয়া যায়নি"
-              description="ইমার্জেন্সি নম্বর যোগ করলে এখানে দেখা যাবে।"
-            />
-          }
-        />
-
-        <TablePager
-          page={contacts.page}
-          pageSize={contacts.pageSize}
-          total={contacts.total}
-          searchParams={resolvedSearchParams}
-        />
-      </section>
+      {failed && <AdminError title="ডিরেক্টরি গণনা করা যায়নি" message={failed.result.error} className="mb-4" />}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+        {MODULES.map((module) => {
+          const result = counts.find((item) => item.category === module.category)?.result;
+          const Icon = module.icon;
+          return (
+            <Panel key={module.category} className="h-full" bodyClassName="flex h-full flex-col">
+              <div className="flex items-start gap-3">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-admin-page text-admin-navy">
+                  <Icon className="h-5 w-5" aria-hidden="true" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-base font-bold text-admin-text">{module.title}</h2>
+                  <p className="mt-1 text-sm leading-relaxed text-admin-muted">{module.description}</p>
+                </div>
+              </div>
+              {!result?.unavailable && (
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  <StatCard label="মোট" value={result?.counts.total ?? 0} />
+                  <StatCard label="প্রকাশিত" value={result?.counts.active ?? 0} tone="good" />
+                  <StatCard label="অপ্রকাশিত" value={result?.counts.inactive ?? 0} />
+                </div>
+              )}
+              <Link href={module.href} className="mt-4 inline-flex min-h-11 items-center justify-center rounded-md bg-admin-navy px-4 text-sm font-semibold text-white hover:bg-admin-navy/90">
+                মডিউল খুলুন
+              </Link>
+            </Panel>
+          );
+        })}
+      </div>
     </>
   );
 }

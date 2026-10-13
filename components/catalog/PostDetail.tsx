@@ -189,6 +189,16 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
               <span className="rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[10px] font-extrabold text-brand-700">
                 {POST_META[kind]}
               </span>
+              {post.kind === 'buy_sell' && post.marketplaceStatus === 'sold' && (
+                <span className="rounded bg-slate-100 px-1.5 py-[2px] text-[10px] font-extrabold text-slate-700">
+                  বিক্রি হয়েছে
+                </span>
+              )}
+              {post.kind === 'buy_sell' && post.marketplaceStatus === 'closed' && (
+                <span className="rounded bg-mist-100 px-1.5 py-[2px] text-[10px] font-extrabold text-ink-600">
+                  বন্ধ
+                </span>
+              )}
               {post.category && (
                 <span className="truncate text-[11px] font-bold text-brand-600">
                   {tagLabel(post.category)}
@@ -205,10 +215,17 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
               {post.titleBn}
             </h1>
 
-            <p className="mt-1.5 text-[12px] text-ink-500">
-              {post.authorName || 'সদস্য'}
-              {areaName ? ` · ${areaName}` : ''}
-            </p>
+            {(post.authorName || areaName) && (
+              <p className="mt-1.5 text-[12px] text-ink-500">
+                {post.authorName
+                  ? kind === 'news'
+                    ? `সূত্র: ${post.authorName}`
+                    : post.authorName
+                  : null}
+                {post.authorName && areaName ? ' · ' : ''}
+                {areaName || ''}
+              </p>
+            )}
 
             {post.summaryBn && (
               <p className="mt-3 rounded-lg border border-brand-100 bg-mist-50 p-3 text-[13.5px] font-medium leading-relaxed text-ink-700 sm:text-[15px]">

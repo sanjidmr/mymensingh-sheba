@@ -202,26 +202,31 @@ export async function createStaffReport(input: {
 export async function adminFetchStaffProfiles(
   slug?: StaffServiceKey
 ): Promise<StaffProfile[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchStaffProfiles(slug);
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; কর্মী প্রোফাইল লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchStaffProfiles(slug);
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   // `fn_admin_staff_profiles` is SECURITY DEFINER + is_admin() gated — the only
   // path that may read phone_private after the column REVOKE.
   let query = client.rpc('fn_admin_staff_profiles');
   if (slug) query = query.eq('service_slug', slug);
   const { data, error } = await query;
-  if (error) return [];
+  if (error) throw new Error(`কর্মী প্রোফাইল লোড ব্যর্থ হয়েছে: ${error.message}`);
   return ((data as Record<string, unknown>[]) || []).map((row) => mapProfileRow(row, { admin: true }));
 }
 
 export async function adminFetchStaffProfileById(id: string): Promise<StaffProfile | null> {
-  if (!isSupabaseConfigured) return mockAdminFetchStaffProfileById(id) || null;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; কর্মী প্রোফাইল লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchStaffProfileById(id) || null;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .rpc('fn_admin_staff_profile', { p_id: id })
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`কর্মী প্রোফাইল লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   return mapProfileRow(data as Record<string, unknown>, { admin: true });
 }
 
@@ -229,8 +234,7 @@ export async function adminCreateStaffProfile(
   input: StaffProfileInput
 ): Promise<{ success: boolean; profile?: StaffProfile; error?: string }> {
   if (!isSupabaseConfigured) {
-    const profile = mockCreateStaffProfile(input);
-    return { success: true, profile };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; কর্মী প্রোফাইল সংরক্ষণ করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -251,8 +255,7 @@ export async function adminUpdateStaffProfile(
   patch: Partial<StaffProfileInput>
 ): Promise<{ success: boolean; profile?: StaffProfile; error?: string }> {
   if (!isSupabaseConfigured) {
-    const profile = mockUpdateStaffProfile(id, patch);
-    return profile ? { success: true, profile } : { success: false, error: 'প্রোফাইল পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; কর্মী প্রোফাইল আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -271,7 +274,7 @@ export async function deleteStaffProfile(
   id: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
-    return { success: mockDeleteStaffProfile(id), error: undefined };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; প্রোফাইল মুছে ফেলা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -287,28 +290,33 @@ export async function deleteStaffProfile(
 export async function adminFetchStaffRequests(
   slug?: StaffServiceKey
 ): Promise<StaffRequest[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchStaffRequests(slug);
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; সার্ভিস রিকোয়েস্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchStaffRequests(slug);
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   let query = client.from('service_requests').select('*');
   if (slug) query = query.eq('service_slug', slug);
   const { data, error } = await query.order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`সার্ভিস রিকোয়েস্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || [])
     .filter((r) => r.service_slug === 'kajer-bua' || r.service_slug === 'electrician' || r.service_slug === 'plumber')
     .map((row) => mapRequestRow(row as Record<string, unknown>));
 }
 
 export async function adminFetchStaffRequestById(id: string): Promise<StaffRequest | null> {
-  if (!isSupabaseConfigured) return mockAdminFetchStaffRequestById(id) || null;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রিকোয়েস্টের তথ্য লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchStaffRequestById(id) || null;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('service_requests')
     .select('*')
     .eq('id', id)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`রিকোয়েস্টের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   const slug = data.service_slug as string;
   if (slug !== 'kajer-bua' && slug !== 'electrician' && slug !== 'plumber') return null;
   return mapRequestRow(data as Record<string, unknown>);
@@ -320,8 +328,7 @@ export async function adminUpdateStaffRequest(
   adminNotes?: string
 ): Promise<{ success: boolean; request?: StaffRequest; error?: string }> {
   if (!isSupabaseConfigured) {
-    const req = mockAdminUpdateStaffRequest(id, status, adminNotes);
-    return req ? { success: true, request: req } : { success: false, error: 'রিকোয়েস্ট পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; রিকোয়েস্ট আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -364,14 +371,16 @@ export async function adminUpdateStaffRequest(
 // ---------------------------------------------------------------------------
 
 export async function adminFetchStaffReports(): Promise<StaffReport[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchStaffReports();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; কর্মী প্রোফাইলের রিপোর্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchStaffReports();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('staff_profile_reports')
     .select('*')
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`কর্মী প্রোফাইলের রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => mapReportRow(row as Record<string, unknown>));
 }
 
@@ -380,8 +389,7 @@ export async function adminUpdateStaffReportStatus(
   status: StaffReportStatus
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
-    const updated = mockAdminUpdateStaffReportStatus(id, status);
-    return updated ? { success: true } : { success: false, error: 'রিপোর্ট পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; রিপোর্ট আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };

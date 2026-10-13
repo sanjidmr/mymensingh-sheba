@@ -2,23 +2,22 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
-  Loader2,
-  AlertCircle,
   CheckCircle2,
-  Clock,
   Search,
-  ShieldCheck,
   Home,
   Sparkles,
   GraduationCap,
   Heart,
-  ArrowLeft,
-  MoreHorizontal,
   ChevronDown,
   ChevronUp,
 } from 'lucide-react';
-import { adminFetchAllReports, adminUpdateReportStatus, reportTargetLink, type AdminReportRow, type AdminReportStatus } from '@/lib/admin-service';
+import { adminFetchAllReports, reportTargetLink, type AdminReportRow, type AdminReportStatus } from '@/lib/admin-service';
+import { setReportStatus } from '@/app/admin/actions/reports';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { AdminError, AdminLoading } from '@/components/admin/States';
+import { useToast } from '@/components/admin/ToastProvider';
 
 const TYPE_LABELS: Record<AdminReportRow['type'], { label: string; icon: React.ReactNode }> = {
   listing: { label: 'বিজ্ঞাপন রিপোর্ট', icon: <Home className="w-4 h-4" /> },
@@ -34,6 +33,8 @@ const STATUS_META: Record<AdminReportStatus, { label: string; class: string }> =
 };
 
 export default function AdminReportsPage() {
+  const router = useRouter();
+  const { notify } = useToast();
   const [reports, setReports] = useState<AdminReportRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -49,8 +50,10 @@ export default function AdminReportsPage() {
       .then((data) => {
         if (active) setReports(data);
       })
-      .catch(() => {
-        if (active) setError('রিপোর্ট লোড ব্যর্থ হয়েছে');
+      .catch((err: unknown) => {
+        if (active) {
+          setError(err instanceof Error ? err.message : 'রিপোর্ট লোড ব্যর্থ হয়েছে');
+        }
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -60,10 +63,26 @@ export default function AdminReportsPage() {
 
   const handleStatusChange = async (id: string, type: AdminReportRow['type'], newStatus: AdminReportStatus) => {
     setBusyId(id);
-    const res = await adminUpdateReportStatus(type, id, newStatus);
-    setBusyId(null);
-    if (res.success) {
+    setError('');
+    const table = {
+      listing: 'listing_reports',
+      staff: 'staff_profile_reports',
+      tutor: 'tutor_reports',
+      donor: 'blood_donor_reports',
+    }[type];
+    try {
+      const result = await setReportStatus(table, id, newStatus);
+      if (!result.ok) {
+        setError(result.error);
+        return;
+      }
       setReports((prev) => prev.map((r) => (r.id === id ? { ...r, status: newStatus } : r)));
+      notify('success', result.message ?? 'রিপোর্টের অবস্থা হালনাগাদ হয়েছে।');
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'রিপোর্ট আপডেট ব্যর্থ হয়েছে।');
+    } finally {
+      setBusyId(null);
     }
   };
 
@@ -80,30 +99,23 @@ export default function AdminReportsPage() {
   });
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        
-        <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-          <span className="text-sm">রিপোর্ট লোড হচ্ছে...</span>
-        </div>
-      </div>
-    );
+    return <AdminLoading label="রিপোর্ট লোড হচ্ছে…" />;
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <Link href="/admin" className="mb-2 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-800">
-              <ArrowLeft className="w-3.5 h-3.5" /> অ্যাডমিন ড্যাশবোর্ড
-            </Link>
-            <h1 className="text-2xl font-bold text-slate-900">মডারেশন রিপোর্ট হাব</h1>
-            <p className="text-xs text-slate-500 mt-1">সকল রিপোর্ট (বিজ্ঞাপন, কর্মী, টিউটর, রক্তদাতা) এক জায়গায়</p>
-          </div>
-        </div>
+    <div>
+      <PageHeader
+        title="মডারেশন রিপোর্ট হাব"
+        description="সকল রিপোর্ট (বিজ্ঞাপন, কর্মী, টিউটর, রক্তদাতা) এক জায়গায়"
+        count={`মোট ${filtered.length} টি রিপোর্ট`}
+      />
+      {error && (
+        <AdminError
+          title={reports.length === 0 ? 'রিপোর্ট লোড করা যায়নি' : 'রিপোর্ট আপডেট করা যায়নি'}
+          message={error}
+          className="mb-4"
+        />
+      )}
 
         <div className="flex flex-col sm:flex-row gap-3 mb-6">
           <div className="relative flex-1 max-w-xs">
@@ -140,24 +152,13 @@ export default function AdminReportsPage() {
           </div>
         </div>
 
-        {reports.length === 0 ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-10 text-center text-sm text-slate-400">
-            কোনো রিপোর্ট নেই।
+        {filtered.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-mist-200 bg-white p-10 text-center text-sm text-ink-500">
+            {reports.length === 0 ? 'কোনো রিপোর্ট নেই।' : 'এই ফিল্টারে কোনো রিপোর্ট পাওয়া যায়নি।'}
           </div>
         ) : (
           <div className="space-y-3">
-            {reports
-              .filter((r) => {
-                if (typeFilter !== 'all' && r.type !== typeFilter) return false;
-                if (statusFilter !== 'all' && r.status !== statusFilter) return false;
-                if (search) {
-                  const q = search.toLowerCase();
-                  if (!r.reason.toLowerCase().includes(q) && !(r.title?.toLowerCase().includes(q)) && !r.id.includes(q)) {
-                    return false;
-                  }
-                }
-                return true;
-              })
+            {filtered
               .map((r) => {
                 const typeMeta = TYPE_LABELS[r.type];
                 const statusMeta = STATUS_META[r.status as AdminReportStatus];
@@ -211,7 +212,7 @@ export default function AdminReportsPage() {
                             <button
                               key={s}
                               type="button"
-                              disabled={r.status === s}
+                              disabled={r.status === s || busyId === r.id}
                               onClick={() => handleStatusChange(r.id, r.type, s)}
                               className={`px-3 py-1.5 rounded-lg text-[10px] font-bold ${STATUS_META[s].class} disabled:opacity-50`}
                             >
@@ -232,7 +233,6 @@ export default function AdminReportsPage() {
               })}
           </div>
         )}
-      </main>
     </div>
   );
 }

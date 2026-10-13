@@ -59,32 +59,18 @@ export function getToletFeeDescription(): string {
 }
 
 export async function loadToletFeeRules(): Promise<void> {
-  if (!isSupabaseConfigured) return;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; সংরক্ষিত প্ল্যাটফর্ম ফি লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('platform_settings')
     .select('value')
     .eq('key', FEE_SETTINGS_KEY)
     .maybeSingle();
-  if (!error && data?.value && typeof data.value === 'object') {
+  if (error) throw new Error(`প্ল্যাটফর্ম ফি লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (data?.value && typeof data.value === 'object') {
     setToletFeeRules(data.value as Partial<ToletFeeRules>);
   }
-}
-
-export async function saveToletFeeRules(
-  rules: ToletFeeRules
-): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) {
-    setToletFeeRules(rules);
-    return { success: true };
-  }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { error } = await client
-    .from('platform_settings')
-    .upsert({ key: FEE_SETTINGS_KEY, value: rules }, { onConflict: 'key' });
-  if (error) return { success: false, error: error.message };
-  setToletFeeRules(rules);
-  return { success: true };
 }

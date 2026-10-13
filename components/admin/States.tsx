@@ -21,9 +21,9 @@ export function AdminLoading({
   rows?: number;
 }) {
   return (
-    <div className={cn('rounded-xl border border-mist-200 bg-white p-4', className)}>
+    <div className={cn('rounded-admin-card border border-admin-border bg-white p-4 shadow-admin-card', className)}>
       <div className="mb-4 flex items-center gap-2 text-sm text-ink-500">
-        <Loader2 className="h-4 w-4 animate-spin text-brand-700" aria-hidden="true" />
+        <Loader2 className="h-4 w-4 animate-spin text-admin-navy" aria-hidden="true" />
         <span role="status">{label}</span>
       </div>
       <div className="space-y-2" aria-hidden="true">
@@ -57,11 +57,11 @@ export function AdminEmpty({
   return (
     <div
       className={cn(
-        'flex flex-col items-center justify-center rounded-xl border border-dashed border-mist-200 bg-white px-5 py-10 text-center',
+        'flex flex-col items-center justify-center rounded-admin-card border border-dashed border-admin-border bg-white px-5 py-10 text-center',
         className
       )}
     >
-      <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-mist-100 text-ink-300">
+      <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-lg bg-admin-page text-admin-muted">
         {icon ?? <Inbox className="h-5 w-5" aria-hidden="true" />}
       </span>
       <p className="text-sm font-semibold text-ink-800">{title}</p>
@@ -90,16 +90,16 @@ export function AdminError({
     <div
       role="alert"
       className={cn(
-        'rounded-xl border border-rose-200 bg-rose-50 p-4',
+        'rounded-admin-card border border-status-danger/20 bg-status-danger-bg p-4',
         className
       )}
     >
       <div className="flex items-start gap-2.5">
-        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+        <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-status-danger" aria-hidden="true" />
         <div className="min-w-0">
-          <p className="text-sm font-semibold text-rose-900">{title}</p>
+          <p className="text-sm font-semibold text-status-danger">{title}</p>
           {message && (
-            <p className="mt-1 text-xs leading-relaxed text-rose-800 break-words">
+            <p className="mt-1 break-words text-xs leading-relaxed text-status-danger">
               {message}
             </p>
           )}
@@ -119,7 +119,7 @@ export function RetryLink({ label = 'আবার চেষ্টা করু�
     <a
       href=""
       className={cn(
-        'inline-flex h-9 items-center gap-1.5 rounded-lg border border-rose-300 bg-white px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50',
+        'inline-flex h-9 items-center gap-1.5 rounded-md border border-status-danger/30 bg-white px-3 text-xs font-semibold text-status-danger hover:bg-status-danger-bg',
         className
       )}
     >
@@ -142,14 +142,14 @@ export function AdminNotice({
   className?: string;
 }) {
   const tones = {
-    info: 'border-sky-200 bg-sky-50 text-sky-900',
-    warning: 'border-accent-300 bg-accent-100 text-accent-700',
-    danger: 'border-rose-200 bg-rose-50 text-rose-900',
-    success: 'border-brand-200 bg-brand-50 text-brand-800',
+    info: 'border-status-info/20 bg-status-info-bg text-status-info',
+    warning: 'border-status-warning/20 bg-status-warning-bg text-status-warning',
+    danger: 'border-status-danger/20 bg-status-danger-bg text-status-danger',
+    success: 'border-status-success/20 bg-status-success-bg text-status-success',
   } as const;
 
   return (
-    <div className={cn('rounded-xl border p-3 text-xs leading-relaxed', tones[tone], className)}>
+    <div className={cn('rounded-lg border p-3 text-xs leading-relaxed', tones[tone], className)}>
       {title && <p className="font-bold">{title}</p>}
       <div className={cn(title && 'mt-1')}>{children}</div>
     </div>

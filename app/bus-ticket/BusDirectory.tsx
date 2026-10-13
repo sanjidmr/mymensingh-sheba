@@ -77,9 +77,8 @@ export default function BusDirectory() {
         priceLabel={fare || undefined}
         priceSuffix={fare ? 'ভাড়া' : undefined}
         areaLabel={areaNames(listing.areaIds)}
-        chips={tagLabels(listing.tags)}
+        chips={[...tagLabels(listing.tags), 'যাচাইয়ের তথ্য নেই']}
         badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
-        isVerified
         actionLabel="বিস্তারিত"
       />
     );

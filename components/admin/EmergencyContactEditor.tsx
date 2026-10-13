@@ -151,9 +151,9 @@ export default function EmergencyContactEditor({
                 <input maxLength={300} value={form.addressBn} onChange={(event) => update('addressBn', event.target.value)} className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm" />
               </label>
               <label className="grid gap-1 text-xs font-semibold text-ink-700 sm:col-span-2">
-                যাচাইকৃত নম্বরের উৎস
+                তথ্য যাচাইয়ের উৎস / নোট
                 <textarea required maxLength={500} rows={3} value={form.sourceNote} onChange={(event) => update('sourceNote', event.target.value)} className="rounded-lg border border-brand-100 px-3 py-2 text-sm" />
-                <span className="font-normal text-ink-500">যেমন: প্রতিষ্ঠানের অফিসিয়াল ওয়েবসাইট বা সরাসরি নিশ্চিতকরণ। নতুন নম্বর প্রথমে বন্ধ থাকবে; যাচাই শেষে চালু করুন।</span>
+                <span className="font-normal text-ink-500">তথ্যসূত্র বা যাচাইয়ের নোট লিখুন। নতুন নম্বর প্রথমে বন্ধ থাকবে; তথ্য পর্যালোচনা করে চালু করুন।</span>
               </label>
               <div className="flex justify-end gap-2 pt-2 sm:col-span-2">
                 <Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>বাতিল</Button>

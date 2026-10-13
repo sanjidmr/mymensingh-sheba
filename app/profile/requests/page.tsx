@@ -50,9 +50,9 @@ const STATUS_CONFIGS = {
   reviewing: { label: 'পর্যালোচনাধীন', badgeClass: 'bg-violet-50 text-violet-900 border-violet-200', icon: UserCheck },
   contacted: { label: 'যোগাযোগ করা হয়েছে', badgeClass: 'bg-amber-50 text-amber-900 border-amber-200', icon: Phone },
   in_progress: { label: 'কাজ চলছে', badgeClass: 'bg-indigo-50 text-indigo-900 border-indigo-200', icon: Clock },
-  completed: { label: 'সম্পন্ন', badgeClass: 'bg-emerald-50 text-emerald-900 border-emerald-200', icon: CheckCircle2 },
-  cancelled: { label: 'বাতিল', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200', icon: X },
-  rejected: { label: 'প্রত্যাখ্যাত', badgeClass: 'bg-rose-50 text-rose-900 border-rose-200', icon: AlertCircle },
+  completed: { label: 'সম্পন্ন', badgeClass: 'bg-brand-50 text-brand-800 border-brand-200', icon: CheckCircle2 },
+  cancelled: { label: 'বাতিল', badgeClass: 'bg-brand-100 text-ink-700 border-brand-100', icon: X },
+  rejected: { label: 'প্রত্যাখ্যাত', badgeClass: 'bg-rose-50 text-rose-500 border-rose-200', icon: AlertCircle },
   submitted: { label: 'জমা দেওয়া হয়েছে', badgeClass: 'bg-amber-50 text-amber-900 border-amber-200', icon: Clock },
   assigned: { label: 'কর্মী নির্ধারিত হয়েছে', badgeClass: 'bg-sky-50 text-sky-900 border-sky-200', icon: CheckCircle2 },
 };
@@ -176,31 +176,31 @@ export default function RequestsPage() {
       <Navbar />
 
       <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 sm:py-12">
-        <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
-          <Link href="/profile" className="hover:text-emerald-800 flex items-center gap-1">
+        <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
+          <Link href="/profile" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>প্রোফাইলে ফিরে যান</span>
           </Link>
           <span>/</span>
-          <span className="text-slate-800 font-semibold">আমার রিকোয়েস্টসমূহ</span>
+          <span className="text-ink-800 font-semibold">আমার রিকোয়েস্টসমূহ</span>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">আমার রিকোয়েস্টসমূহ</h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+            <h1 className="text-2xl font-bold text-ink-900">আমার রিকোয়েস্টসমূহ</h1>
+            <p className="text-xs sm:text-sm text-ink-500 mt-0.5">
               বাসা দেখার অনুরোধসহ সব সেবার বর্তমান অবস্থা এক জায়গায়
             </p>
           </div>
           {requestError && (
-            <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800">
+            <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-500">
               {requestError}
             </p>
           )}
 
           <Link
             href="/services"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold  shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>নতুন রিকোয়েস্ট করুন</span>
@@ -208,20 +208,20 @@ export default function RequestsPage() {
         </div>
 
         {loadingTolet || loadingBlood ? (
-          <div className="py-16 flex flex-col items-center gap-2 text-slate-500 text-sm">
-            <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
+          <div className="py-16 flex flex-col items-center gap-2 text-ink-400 text-sm">
+            <Loader2 className="w-5 h-5 animate-spin text-brand-600" />
             <span>রিকোয়েস্ট লোড হচ্ছে...</span>
           </div>
         ) : allEmpty ? (
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-            <FileText className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-base font-bold text-slate-900">এখনও কোনো রিকোয়েস্ট নেই</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-5">
+          <div className="bg-white rounded-2xl border border-brand-100 p-12 text-center">
+            <FileText className="w-12 h-12 text-brand-200 mx-auto mb-3" />
+            <h3 className="text-base font-bold text-ink-900">এখনও কোনো রিকোয়েস্ট নেই</h3>
+            <p className="text-xs text-ink-400 mt-1 max-w-sm mx-auto mb-5">
               বাসা দেখার অনুরোধ, রক্তদান (জরুরি), কাজের বুয়া, ইলেক্ট্রিশিয়ান জাতীয় সেবা রিকোয়েস্ট করলে তা এখানে দেখা যাবে।
             </p>
             <Link
               href="/tolet"
-              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-xs font-semibold"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-700 text-white text-xs font-semibold"
             >
               <Search className="w-4 h-4" />
               <span>বাসা খুঁজুন</span>
@@ -232,22 +232,22 @@ export default function RequestsPage() {
             {/* TO-LET REQUESTS */}
             {sortedTolet.length > 0 && (
               <>
-                <h2 className="text-sm font-bold text-slate-900 pt-2">বাসা দেখার অনুরোধ</h2>
+                <h2 className="text-sm font-bold text-ink-900 pt-2">বাসা দেখার অনুরোধ</h2>
                 {sortedTolet.map((req) => {
                   const area = req.areaId ? getAreaById(req.areaId) : undefined;
                   return (
-                    <div key={req.id} className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-2xs hover:border-slate-300 transition-all">
+                    <div key={req.id} className="bg-white rounded-2xl border border-brand-100 p-5 sm:p-6  hover:border-brand-200 transition-all">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                         <div className="min-w-0">
-                          <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider inline-flex items-center gap-1">
+                          <span className="text-[11px] font-semibold text-brand-700 uppercase tracking-wider inline-flex items-center gap-1">
                             <Home className="w-3.5 h-3.5" /> To-Let অনুরোধ
                           </span>
-                          <h3 className="text-base font-bold text-slate-900 mt-0.5 line-clamp-1">
+                          <h3 className="text-base font-bold text-ink-900 mt-0.5 line-clamp-1">
                             {req.listingTitle || 'বাসা দেখার অনুরোধ'}
                           </h3>
                           <Link
                             href={`/tolet/${req.listingId}`}
-                            className="text-xs text-emerald-800 font-semibold hover:underline"
+                            className="text-xs text-brand-700 font-semibold hover:underline"
                           >
                             বিজ্ঞাপনটি দেখুন
                           </Link>
@@ -255,36 +255,36 @@ export default function RequestsPage() {
                         <RequestStatusBadge status={req.status} />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink-500 mt-3 pt-3 border-t border-brand-100">
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                          <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
                           <span>{area?.nameBn || req.areaId || 'এলাকা নির্ধারিত নয়'}</span>
                         </div>
                         {req.preferredTime && (
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                            <Calendar className="w-4 h-4 text-ink-400 shrink-0" />
                             <span>পছন্দের সময়: {req.preferredTime}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                          <Clock className="w-4 h-4 text-ink-400 shrink-0" />
                           <span>জমার তারিখ: {new Date(req.createdAt).toLocaleDateString('bn-BD')}</span>
                         </div>
                       </div>
 
                       {req.message && (
-                        <div className="mt-3 p-3 bg-slate-50 rounded-xl text-xs text-slate-700">
+                        <div className="mt-3 p-3 bg-mist-50 rounded-xl text-xs text-ink-700">
                           <strong>নোট:</strong> {req.message}
                         </div>
                       )}
 
                       {req.status === 'submitted' && (
-                        <div className="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                        <div className="mt-4 pt-3 border-t border-brand-100 flex justify-end">
                           <button
                             type="button"
                             disabled={cancellingId === req.id}
                             onClick={() => handleCancelTolet(req.id)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand-200 text-ink-500 text-xs font-semibold hover:bg-mist-50 disabled:opacity-50"
                           >
                             {cancellingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
                             অনুরোধ বাতিল করুন
@@ -300,24 +300,24 @@ export default function RequestsPage() {
             {/* BLOOD DONATION REQUESTS */}
             {bloodRequests.length > 0 && (
               <>
-                <h2 className="text-sm font-bold text-slate-900 pt-3">রক্তদান অনুরোধ</h2>
+                <h2 className="text-sm font-bold text-ink-900 pt-3">রক্তদান অনুরোধ</h2>
                 {bloodRequests.map((req) => {
                   const meta = BLOOD_REQUEST_STATUS_META[req.status];
                   const hospitalArea = req.hospitalAreaId ? getAreaById(req.hospitalAreaId) : undefined;
                   const canCancel = req.status === 'pending_review' || (req.status === 'approved' && !req.contactReleasedAt);
                   return (
-                    <div key={req.id} className="bg-white rounded-2xl border border-rose-200/70 p-5 sm:p-6 shadow-2xs hover:border-rose-300 transition-all">
+                    <div key={req.id} className="bg-white rounded-2xl border border-rose-200/70 p-5 sm:p-6  hover:border-rose-300 transition-all">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                         <div className="min-w-0">
-                          <span className="text-[11px] font-semibold text-rose-700 uppercase tracking-wider inline-flex items-center gap-1">
+                          <span className="text-[11px] font-semibold text-rose-500 uppercase tracking-wider inline-flex items-center gap-1">
                             <Heart className="w-3.5 h-3.5" /> জরুরি রক্তদান
                           </span>
                           <div className="flex items-center gap-2 flex-wrap mt-1">
-                            <h3 className="text-base font-bold text-slate-900">{req.patientName}</h3>
-                            <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-100 text-rose-800 font-black text-xs">
+                            <h3 className="text-base font-bold text-ink-900">{req.patientName}</h3>
+                            <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-100 text-rose-500 font-black text-xs">
                               {req.bloodGroup}
                             </span>
-                            <span className="text-xs text-slate-500">{req.units} ইউনিট</span>
+                            <span className="text-xs text-ink-400">{req.units} ইউনিট</span>
                           </div>
                         </div>
                         <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${meta.badge}`}>
@@ -326,47 +326,47 @@ export default function RequestsPage() {
                         </span>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 mt-3 pt-3 border-t border-rose-100">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink-500 mt-3 pt-3 border-t border-rose-100">
                         <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                          <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
                           <span>
-                            <span className="block text-[10px] text-slate-400">হাসপাতাল</span>
+                            <span className="block text-[10px] text-ink-400">হাসপাতাল</span>
                             {req.hospitalName} {hospitalArea ? `(${hospitalArea.nameBn})` : ''}
                           </span>
                         </div>
                         {req.requiredDateTime && (
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                            <Calendar className="w-4 h-4 text-ink-400 shrink-0" />
                             <span>প্রয়োজন: {req.requiredDateTime}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                          <Phone className="w-4 h-4 text-ink-400 shrink-0" />
                           <span>যোগাযোগ: {req.phone}</span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                          <Clock className="w-4 h-4 text-ink-400 shrink-0" />
                           <span>জমার তারিখ: {new Date(req.createdAt).toLocaleDateString('bn-BD')}</span>
                         </div>
                       </div>
 
                       {req.contactReleasedAt && req.donorName && (
-                        <div className="mt-3 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
+                        <div className="mt-3 p-3 rounded-xl bg-brand-50 border border-brand-200 text-xs text-brand-800">
                           <div className="flex items-center gap-1.5 font-bold">
                             <Eye className="w-3.5 h-3.5" />
                             রক্তদাতা: {req.donorName} ({req.donorBloodGroup})
                           </div>
-                          <p className="text-[11px] text-emerald-800 mt-1">
+                          <p className="text-[11px] text-brand-700 mt-1">
                             অ্যাডমিন রক্তদাতার নম্বরটি প্রকাশ করেছেন ({new Date(req.contactReleasedAt).toLocaleDateString('bn-BD')} থেকে)। নম্বরটি সরাসরি অ্যাডমিনের সাথে যোগাযোগের মাধ্যমে সংগ্রহ করুন এবং অন্যদের সাথে শেয়ার করবেন না।
                           </p>
-                          <p className="text-[11px] text-emerald-800 mt-1">
+                          <p className="text-[11px] text-brand-700 mt-1">
                             রক্তদান সম্পূর্ণ স্বেচ্ছাসেবী — কোনো অর্থহীন লেনদেনে যাবেন না।
                           </p>
                         </div>
                       )}
 
                       {req.status === 'rejected' && req.rejectionReason && (
-                        <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
+                        <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-500">
                           <AlertCircle className="w-3.5 h-3.5 inline" /> প্রত্যাখ্যানের কারণ: {req.rejectionReason}
                         </div>
                       )}
@@ -377,7 +377,7 @@ export default function RequestsPage() {
                             type="button"
                             disabled={cancellingBloodId === req.id}
                             onClick={() => handleCancelBlood(req.id)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-300 text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50"
+                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand-200 text-ink-500 text-xs font-semibold hover:bg-mist-50 disabled:opacity-50"
                           >
                             {cancellingBloodId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
                             অনুরোধ বাতিল করুন
@@ -387,7 +387,7 @@ export default function RequestsPage() {
                     </div>
                   );
                 })}
-                <p className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-1">
+                <p className="flex items-center gap-1.5 text-[11px] text-ink-400 pt-1">
                   <Lock className="w-3 h-3" />
                   প্রেসক্রিপশন ও রক্তদাতার নম্বর শুধুমাত্র যাচাইয়ের পরে অ্যাডমিনের নিয়ন্ত্রণে প্রকাশ হয়।
                 </p>
@@ -397,7 +397,7 @@ export default function RequestsPage() {
             {/* GENERIC SERVICE REQUESTS */}
             {requests.length > 0 && (
               <>
-                <h2 className="text-sm font-bold text-slate-900 pt-3">সার্ভিস রিকোয়েস্ট</h2>
+                <h2 className="text-sm font-bold text-ink-900 pt-3">সার্ভিস রিকোয়েস্ট</h2>
                 {requests.map((req) => {
                   const currentStatus = cancelledServiceIds.has(req.id) ? 'cancelled' : req.status;
                   const statusConf = STATUS_CONFIGS[currentStatus] || STATUS_CONFIGS.submitted;
@@ -406,17 +406,17 @@ export default function RequestsPage() {
                   const canCancel = currentStatus === 'new' || currentStatus === 'submitted';
 
                   return (
-                    <div key={req.id} className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-2xs hover:border-slate-300 transition-all">
+                    <div key={req.id} className="bg-white rounded-2xl border border-brand-100 p-5 sm:p-6  hover:border-brand-200 transition-all">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                         <div>
-                          <span className="text-[11px] font-semibold text-emerald-800 uppercase tracking-wider">
+                          <span className="text-[11px] font-semibold text-brand-700 uppercase tracking-wider">
                             আইডি: #{req.id}
                           </span>
-                          <h3 className="text-base font-bold text-slate-900 mt-0.5">{req.serviceTitleBn}</h3>
+                          <h3 className="text-base font-bold text-ink-900 mt-0.5">{req.serviceTitleBn}</h3>
                           {req.profileTitleBn && (
                             <Link
                               href={`/${req.serviceSlug}/${req.profileId}`}
-                              className="inline-flex items-center gap-1 mt-1 text-xs text-emerald-800 font-semibold hover:underline"
+                              className="inline-flex items-center gap-1 mt-1 text-xs text-brand-700 font-semibold hover:underline"
                             >
                               <Briefcase className="w-3.5 h-3.5" />
                               প্রোফাইল: {req.profileTitleBn}
@@ -429,28 +429,28 @@ export default function RequestsPage() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink-500 mt-3 pt-3 border-t border-brand-100">
                         {req.serviceSlug === 'home-moving' ? (
                           <>
                             <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                              <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>
-                                <span className="block text-[10px] text-slate-400">থেকে</span>
+                                <span className="block text-[10px] text-ink-400">থেকে</span>
                                 {getAreaById(req.pickupAreaId)?.nameBn || req.pickupAreaId},
                                 {' '}{req.pickupAddress}
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Home className="w-4 h-4 text-slate-400 shrink-0" />
+                              <Home className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>
-                                <span className="block text-[10px] text-slate-400">যাবেন</span>
+                                <span className="block text-[10px] text-ink-400">যাবেন</span>
                                 {getAreaById(req.destinationAreaId)?.nameBn || req.destinationAreaId},
                                 {' '}{req.destinationAddress}
                               </span>
                             </div>
                             {req.movingItems && req.movingItems.length > 0 && (
                               <div className="flex items-center gap-2 sm:col-span-2">
-                                <Package className="w-4 h-4 text-slate-400 shrink-0" />
+                                <Package className="w-4 h-4 text-ink-400 shrink-0" />
                                 <span>
                                   মালামাল:{' '}
                                   {req.movingItems
@@ -461,7 +461,7 @@ export default function RequestsPage() {
                             )}
                             {req.parkingInfo && (
                               <div className="flex items-center gap-2">
-                                <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                                <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
                                 <span>পার্কিং: {req.parkingInfo}</span>
                               </div>
                             )}
@@ -469,7 +469,7 @@ export default function RequestsPage() {
 ) : req.serviceSlug === 'home-tutor' ? (
                           <>
                             <div className="flex items-center gap-2">
-                              <GraduationCap className="w-4 h-4 text-slate-400 shrink-0" />
+                              <GraduationCap className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>
                                 বিষয়:{' '}
                                 {TUTOR_SUBJECTS.find((s) => s.id === req.serviceType)?.labelBn ||
@@ -478,27 +478,27 @@ export default function RequestsPage() {
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                              <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>{area?.nameBn || req.areaId}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                              <Phone className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>যোগাযোগ: {req.contactName} ({req.contactPhone})</span>
                             </div>
                           </>
                         ) : (
                           <>
                             <div className="flex items-center gap-2">
-                              <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                              <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>{area?.nameBn || req.areaId}, {req.addressLine}</span>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                              <Phone className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>যোগাযোগ: {req.contactName} ({req.contactPhone})</span>
                             </div>
                             {req.serviceType && (
                               <div className="flex items-center gap-2">
-                                <User className="w-4 h-4 text-slate-400 shrink-0" />
+                                <User className="w-4 h-4 text-ink-400 shrink-0" />
                                 <span>কার্য ধরন: {req.serviceType}</span>
                               </div>
                             )}
@@ -506,32 +506,32 @@ export default function RequestsPage() {
                         )}
                         {req.preferredDate && (
                           <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-slate-400 shrink-0" />
+                            <Calendar className="w-4 h-4 text-ink-400 shrink-0" />
                             <span>প্রত্যাশিত তারিখ: {req.preferredDate}</span>
                           </div>
                         )}
                         {req.preferredTime && (
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                            <Clock className="w-4 h-4 text-ink-400 shrink-0" />
                             <span>পছন্দের সময়: {req.preferredTime}</span>
                           </div>
                         )}
                         <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                          <Clock className="w-4 h-4 text-ink-400 shrink-0" />
                           <span>জমার তারিখ: {new Date(req.createdAt).toLocaleDateString('bn-BD')}</span>
                         </div>
                       </div>
 
                       {req.details && (
-                        <div className="mt-3 p-3 bg-slate-50 rounded-xl text-xs text-slate-700">
+                        <div className="mt-3 p-3 bg-mist-50 rounded-xl text-xs text-ink-700">
                           <strong>বিবরণ:</strong> {req.details}
                         </div>
                       )}
 
-                      <div className="mt-4 pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+                      <div className="mt-4 pt-3 border-t border-brand-100 flex items-center justify-between text-xs">
                         <button
                           type="button"
-                          className="text-emerald-800 font-semibold hover:underline"
+                          className="text-brand-700 font-semibold hover:underline"
                           onClick={() => setSupportRequested(req.id)}
                         >
                           সহায়তা চান
@@ -541,7 +541,7 @@ export default function RequestsPage() {
                             type="button"
                             disabled={cancellingServiceId === req.id}
                             onClick={() => void handleCancelServiceRequest(req.id)}
-                            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-slate-300 px-3 text-slate-600 font-semibold hover:bg-slate-50 disabled:opacity-50"
+                            className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-brand-200 px-3 text-ink-500 font-semibold hover:bg-mist-50 disabled:opacity-50"
                           >
                             {cancellingServiceId === req.id && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                             অনুরোধ বাতিল

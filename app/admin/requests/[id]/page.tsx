@@ -31,6 +31,7 @@ import { getAreaById } from '@/lib/locations';
 import type { ServiceRequestStatus } from '@/lib/supabase/types';
 import { HOME_MOVING_STATUS_INFO } from '@/lib/home-moving-types';
 import { TUTOR_SUBJECTS } from '@/lib/filter-definitions';
+import { AdminError, AdminLoading } from '@/components/admin/States';
 
 const ALL_STATUSES: ServiceRequestStatus[] = [
   'new',
@@ -71,6 +72,7 @@ export default function AdminRequestDetailPage({
   const [saving, setSaving] = useState(false);
   const [saveMsg, setSaveMsg] = useState('');
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [photoUrls, setPhotoUrls] = useState<string[]>([]);
 
   useEffect(() => {
@@ -91,7 +93,12 @@ export default function AdminRequestDetailPage({
       }
       if (active) setLoading(false);
     }
-    load();
+    load().catch((err: unknown) => {
+      if (active) {
+        setLoadError(err instanceof Error ? err.message : 'রিকোয়েস্ট লোড ব্যর্থ হয়েছে।');
+        setLoading(false);
+      }
+    });
     return () => {
       active = false;
     };
@@ -105,34 +112,40 @@ export default function AdminRequestDetailPage({
     setSaving(true);
     setSaveMsg('');
     setError('');
-    let ok = false;
-    if (isHomeMoving) {
-      const res = await adminUpdateHomeMovingRequest(req.id, { status, adminNotes, quotation });
-      ok = res.success;
-    } else if (isTutor) {
-      const res = await adminUpdateManagedRequest(req.id, 'home-tutor', status, adminNotes);
-      ok = res.success;
-    } else {
-      const res = await adminUpdateStaffRequest(req.id, status, adminNotes);
-      ok = res.success;
-    }
-    setSaving(false);
-    if (ok) {
-      setReq((prev) => (prev ? { ...prev, status, adminNotes, quotation } : prev));
-      setSaveMsg('সংরক্ষণ সফল হয়েছে।');
-      setTimeout(() => setSaveMsg(''), 2500);
-    } else {
-      setError('সংরক্ষণ ব্যর্থ হয়েছে। দয়া করে আবার চেষ্টা করুন।');
+    try {
+      let result: { success: boolean; error?: string };
+      if (isHomeMoving) {
+        result = await adminUpdateHomeMovingRequest(req.id, { status, adminNotes, quotation });
+      } else if (isTutor) {
+        result = await adminUpdateManagedRequest(req.id, 'home-tutor', status, adminNotes);
+      } else {
+        result = await adminUpdateStaffRequest(req.id, status, adminNotes);
+      }
+      if (result.success) {
+        setReq((prev) => (prev ? { ...prev, status, adminNotes, quotation } : prev));
+        setSaveMsg('সংরক্ষণ সফল হয়েছে।');
+        setTimeout(() => setSaveMsg(''), 2500);
+      } else {
+        setError(result.error || 'সংরক্ষণ ব্যর্থ হয়েছে। দয়া করে আবার চেষ্টা করুন।');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'সংরক্ষণ ব্যর্থ হয়েছে। দয়া করে আবার চেষ্টা করুন।');
+    } finally {
+      setSaving(false);
     }
   };
 
   if (loading) {
+    return <AdminLoading label="রিকোয়েস্ট লোড হচ্ছে..." />;
+  }
+
+  if (loadError) {
     return (
-      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="flex flex-col items-center gap-2 text-slate-500 text-sm">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-          <span>রিকোয়েস্ট লোড হচ্ছে...</span>
-        </div>
+      <div>
+        <AdminError title="রিকোয়েস্ট লোড করা যায়নি" message={loadError} className="mb-4" />
+        <Link href="/admin/requests" className="text-sm font-semibold text-brand-700 hover:underline">
+          রিকোয়েস্ট তালিকায় ফিরুন
+        </Link>
       </div>
     );
   }

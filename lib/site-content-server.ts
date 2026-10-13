@@ -1,6 +1,15 @@
 import type { SiteContentOverrides } from './site-content';
 
-const OVERRIDE_KEYS = new Set(['homepage_sections', 'launch_services', 'site_contact']);
+const OVERRIDE_KEYS = new Set([
+  'homepage_sections',
+  'launch_services',
+  'site_contact',
+  'announcement',
+  'about_content',
+  'faq_content',
+  'footer_content',
+  'seo',
+]);
 
 export async function getSiteContentOverrides(): Promise<SiteContentOverrides> {
   const { createServerSideClient } = await import('@/lib/supabase/server');
@@ -52,8 +61,72 @@ export async function getSiteContentOverrides(): Promise<SiteContentOverrides> {
           socials: obj.socials?.map((s) => ({
             icon: s.icon === 'messenger' ? 'messenger' : 'facebook',
             labelBn: s.labelBn,
-            href: s.href ?? null,
+            href: s.href && /^https:\/\/\S+$/i.test(s.href) ? s.href : null,
           })) ?? [],
+        };
+        break;
+      }
+      case 'announcement': {
+        const obj = value as Record<string, unknown>;
+        overrides.announcement = {
+          enabled: obj.enabled === true,
+          title: typeof obj.title === 'string' ? obj.title : '',
+          body: typeof obj.body === 'string' ? obj.body : '',
+          href: typeof obj.href === 'string' &&
+            obj.href.startsWith('/') &&
+            !obj.href.startsWith('//') &&
+            !obj.href.includes('\\') ? obj.href : null,
+          linkLabel: typeof obj.linkLabel === 'string' ? obj.linkLabel : null,
+        };
+        break;
+      }
+      case 'about_content': {
+        const obj = value as Record<string, unknown>;
+        overrides.about_content = {
+          heading: typeof obj.heading === 'string' ? obj.heading : '',
+          intro: typeof obj.intro === 'string' ? obj.intro : '',
+        };
+        break;
+      }
+      case 'faq_content': {
+        overrides.faq_content = Array.isArray(value)
+          ? value.filter((item): item is { question: string; answer: string } => (
+              Boolean(item) &&
+              typeof item === 'object' &&
+              typeof (item as Record<string, unknown>).question === 'string' &&
+              typeof (item as Record<string, unknown>).answer === 'string'
+            ))
+          : [];
+        break;
+      }
+      case 'footer_content': {
+        const obj = value as Record<string, unknown>;
+        const validLinks = (items: unknown) => Array.isArray(items)
+          ? items.filter((item): item is { label: string; href: string } => (
+              Boolean(item) &&
+              typeof item === 'object' &&
+              typeof (item as Record<string, unknown>).label === 'string' &&
+              typeof (item as Record<string, unknown>).href === 'string' &&
+              (item as Record<string, string>).href.startsWith('/') &&
+              !(item as Record<string, string>).href.startsWith('//') &&
+              !(item as Record<string, string>).href.includes('\\')
+            ))
+          : [];
+        overrides.footer_content = {
+          description: typeof obj.description === 'string' ? obj.description : '',
+          companyLinks: validLinks(obj.companyLinks),
+          supportLinks: validLinks(obj.supportLinks),
+        };
+        break;
+      }
+      case 'seo': {
+        const obj = value as Record<string, unknown>;
+        overrides.seo = {
+          title: typeof obj.title === 'string' ? obj.title : '',
+          description: typeof obj.description === 'string' ? obj.description : '',
+          ogImage: typeof obj.ogImage === 'string' &&
+            (obj.ogImage.startsWith('/') && !obj.ogImage.startsWith('//') ||
+              /^https:\/\/\S+$/i.test(obj.ogImage)) ? obj.ogImage : null,
         };
         break;
       }

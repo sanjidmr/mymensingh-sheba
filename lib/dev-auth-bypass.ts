@@ -17,20 +17,21 @@ import type { UserProfile } from './supabase/types';
  *        - `app/profile/page.tsx`        (login-required screen)
  *
  * ── SAFETY ────────────────────────────────────────────────────────────────
- *   • `DEV_AUTH_BYPASS` is hard-gated on `NODE_ENV !== 'production'`, so a
- *     production build (`next build`) can never activate it.
- *   • Set `NEXT_PUBLIC_DEV_AUTH_BYPASS=0` in `.env.local` to switch it off in
- *     development as well, without touching any code.
+ *   • `DEV_AUTH_BYPASS` is hard-gated on `NODE_ENV === 'development'` and is
+ *     disabled on Vercel, so production builds and hosted previews cannot use it.
+ *   • The bypass is off by default. Set the private `DEV_AUTH_BYPASS=1` in
+ *     `.env.local` only for isolated local UI development.
  *   • It never changes Supabase Auth, RLS, sign-in, sign-up or reset-password.
  *   • The service-role key is only read in `lib/admin/dev-service-role.ts`,
  *     which is imported exclusively by server code and is never sent to the
  *     browser.
  */
 
-/** `true` only in development (and only when not explicitly disabled). */
+/** `true` only during isolated local development (never for hosted builds). */
 export const DEV_AUTH_BYPASS: boolean =
-  process.env.NODE_ENV !== 'production' &&
-  process.env.NEXT_PUBLIC_DEV_AUTH_BYPASS !== '0';
+  process.env.NODE_ENV === 'development' &&
+  process.env.VERCEL !== '1' &&
+  process.env.DEV_AUTH_BYPASS === '1';
 
 /** Placeholder admin identity, used when no real admin row can be found. */
 export const DEV_ADMIN_SESSION = {

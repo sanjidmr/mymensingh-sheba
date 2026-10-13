@@ -3,19 +3,19 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Settings, CheckCircle2, Save, Search, Loader2, ShieldCheck } from 'lucide-react';
-import {
-  getToletFeeRules,
-  loadToletFeeRules,
-  saveToletFeeRules,
-} from '@/lib/tolet-fees';
+import { useSearchParams } from 'next/navigation';
+import { Settings, CheckCircle2, Save, Search, ShieldCheck, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { getToletFeeRules, loadToletFeeRules, setToletFeeRules } from '@/lib/tolet-fees';
+import { saveToletFeeRules } from '@/app/admin/actions/settings';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { AdminError, AdminLoading } from '@/components/admin/States';
 import type { ToletFeeRules } from '@/lib/tolet-fees';
-import { adminFetchListings } from '@/lib/tolet-service';
+import { adminFetchListingsPage } from '@/lib/tolet-service';
 import type { ToletListing, ToletListingStatus } from '@/lib/tolet-types';
 import { TOLET_LISTING_STATUS_INFO, TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletAnalyticsTable } from '@/components/tolet/admin/ToletAnalytics';
-import { getAreaById } from '@/lib/locations';
+import { getAllMCCAreas, getAreaById } from '@/lib/locations';
 
 const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color: string; active: string }> = [
   { key: 'all', label: 'সব', color: 'bg-slate-200 text-slate-700', active: 'bg-slate-800 text-white' },
@@ -29,89 +29,145 @@ const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color
 ];
 
 export default function AdminToletPage() {
+  const searchParams = useSearchParams();
   const [feeRules, setFeeRules] = useState<ToletFeeRules>(getToletFeeRules());
   const [feeSaved, setFeeSaved] = useState(false);
   const [feeError, setFeeError] = useState('');
+  const [feeLoading, setFeeLoading] = useState(true);
 
   const [listings, setListings] = useState<ToletListing[]>([]);
+  const [resultCount, setResultCount] = useState(0);
+  const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<ToletListingStatus | 'all'>('pending_review');
+  const [listError, setListError] = useState('');
+  const [savingFee, setSavingFee] = useState(false);
+  const [tab, setTab] = useState<ToletListingStatus | 'all'>(() => {
+    const requestedStatus = searchParams.get('status');
+    return STATUS_TABS.find((option) => option.key === requestedStatus)?.key ?? 'pending_review';
+  });
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [propertyType, setPropertyType] = useState('');
+  const [areaId, setAreaId] = useState('');
+  const [fromDate, setFromDate] = useState('');
+  const [toDate, setToDate] = useState('');
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
 
   useEffect(() => {
-    (async () => {
-      await loadToletFeeRules();
-      setFeeRules(getToletFeeRules());
-    })();
-  }, []);
+    const timer = window.setTimeout(() => {
+      setDebouncedSearch(search.trim());
+      setPage(1);
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [search]);
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      const data = await adminFetchListings();
-      if (!active) return;
-      setListings(data);
-      setLoading(false);
-    })().catch(() => {
-      if (!active) return;
-      setLoading(false);
-    });
+    loadToletFeeRules()
+      .then(() => {
+        if (active) setFeeRules(getToletFeeRules());
+      })
+      .catch((err: unknown) => {
+        if (active) setFeeError(err instanceof Error ? err.message : 'প্ল্যাটফর্ম ফি লোড ব্যর্থ হয়েছে।');
+      })
+      .finally(() => {
+        if (active) setFeeLoading(false);
+      });
     return () => {
       active = false;
     };
   }, []);
 
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      setLoading(true);
+      setListError('');
+      const data = await adminFetchListingsPage({
+        page,
+        pageSize,
+        status: tab,
+        search: debouncedSearch,
+        propertyType,
+        areaId,
+        from: fromDate,
+        to: toDate,
+      });
+      if (!active) return;
+      if (data.error) {
+        setListError(data.error);
+        setListings([]);
+        setResultCount(0);
+      } else {
+        setListings(data.rows);
+        setResultCount(data.total);
+        setStatusCounts(data.counts);
+      }
+      setLoading(false);
+    })().catch((err: unknown) => {
+      if (!active) return;
+      setListError(err instanceof Error ? err.message : 'বাসা ভাড়ার তালিকা লোড ব্যর্থ হয়েছে।');
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [tab, debouncedSearch, propertyType, areaId, fromDate, toDate, page]);
+
   const handleSaveFee = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeeError('');
-    const result = await saveToletFeeRules(feeRules);
-    if (result.success) {
-      setFeeSaved(true);
-      setTimeout(() => setFeeSaved(false), 3000);
-    } else {
-      setFeeError(result.error || 'সংরক্ষণ ব্যর্থ হয়েছে।');
+    setSavingFee(true);
+    try {
+      const result = await saveToletFeeRules(feeRules);
+      if (result.ok) {
+        setToletFeeRules(feeRules);
+        setFeeSaved(true);
+        setTimeout(() => setFeeSaved(false), 3000);
+      } else {
+        setFeeError(result.error || 'সংরক্ষণ ব্যর্থ হয়েছে।');
+      }
+    } catch (err) {
+      setFeeError(err instanceof Error ? err.message : 'সংরক্ষণ ব্যর্থ হয়েছে।');
+    } finally {
+      setSavingFee(false);
     }
   };
 
-  const visible = listings.filter((l) => {
-    if (tab !== 'all' && l.status !== tab) return false;
-    const q = search.trim().toLowerCase();
-    if (!q) return true;
-    return (
-      l.title.toLowerCase().includes(q) ||
-      (l.ownerName || '').toLowerCase().includes(q) ||
-      l.areaId.toLowerCase().includes(q)
-    );
-  });
+  const totalPages = Math.max(1, Math.ceil(resultCount / pageSize));
+  const clearListingFilters = () => {
+    setSearch('');
+    setDebouncedSearch('');
+    setPropertyType('');
+    setAreaId('');
+    setFromDate('');
+    setToDate('');
+    setPage(1);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-mist-50">
+    <div>
       
-      <main className="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8 sm:py-12">
-        <div className="flex items-center gap-1.5 text-xs sm:text-sm text-slate-500 mb-6">
-          <Link href="/" className="hover:text-emerald-800">হোম</Link>
-          <span>/</span>
-          <Link href="/admin" className="hover:text-emerald-800">অ্যাডমিন</Link>
-          <span>/</span>
-          <span className="font-medium text-slate-800">To-Let ম্যানেজমেন্ট</span>
-        </div>
-
-        <div className="bg-white rounded-2xl border border-slate-200/80 p-6 sm:p-8 mb-8 shadow-2xs">
-          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-semibold mb-3">
+      <PageHeader
+        title="To-Let ও প্ল্যাটফর্ম ফি ম্যানেজমেন্ট"
+        description="বিজ্ঞাপন অনুমোদন, মালিকদের প্রপার্টি যাচাই ও প্ল্যাটফর্ম সার্ভিস ফি স্ল্যাব কনফিগারেশন।"
+        count={`মোট ${resultCount.toLocaleString('bn-BD')} টি ফলাফল · সব বিজ্ঞাপন ${Number(statusCounts.all ?? 0).toLocaleString('bn-BD')} টি`}
+        actions={<>
+          <Link href="/admin/tolet/new" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-admin-navy px-3.5 text-xs font-semibold text-white hover:bg-admin-navy/90">
+            <Plus className="h-4 w-4" aria-hidden="true" /> নতুন বিজ্ঞাপন
+          </Link>
+          <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-semibold">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-700" />
             <span>অ্যাডমিন কন্ট্রোল</span>
           </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-            To-Let ও প্ল্যাটফর্ম ফি ম্যানেজমেন্ট
-          </h1>
-          <p className="mt-2 text-sm text-slate-600 max-w-3xl">
-            বিজ্ঞাপন অনুমোদন, মালিকদের প্রপার্টি যাচাই ও প্ল্যাটফর্ম সার্ভিস ফি স্ল্যাব কনফিগারেশন।
-          </p>
-        </div>
+        </>}
+      />
+      {listError && <AdminError title="বাসা ভাড়ার তালিকায় সমস্যা" message={listError} className="mb-4" />}
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
           {/* Fee config */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="min-w-0 space-y-6 lg:col-span-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-6 lg:sticky lg:top-6">
               <div className="flex items-center gap-2 text-emerald-800 text-sm font-bold mb-2">
                 <Settings className="w-4 h-4" />
@@ -133,7 +189,11 @@ export default function AdminToletPage() {
                 </div>
               )}
 
-              <form onSubmit={handleSaveFee} className="space-y-4">
+              {feeLoading ? (
+                <AdminLoading label="প্ল্যাটফর্ম ফি লোড হচ্ছে..." rows={2} />
+              ) : feeError ? (
+                <AdminError title="প্ল্যাটফর্ম ফি লোড করা যায়নি" message={feeError} />
+              ) : <form onSubmit={handleSaveFee} className="space-y-4">
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1">মেস / হোস্টেল / সিট ফি (৳)</label>
                   <input
@@ -176,17 +236,18 @@ export default function AdminToletPage() {
                 </div>
                 <button
                   type="submit"
+                  disabled={savingFee}
                   className="w-full py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs flex items-center justify-center gap-1.5"
                 >
                   <Save className="w-3.5 h-3.5" />
-                  <span>কনফিগারেশন সেভ করুন</span>
+                  <span>{savingFee ? 'সংরক্ষণ হচ্ছে...' : 'কনফিগারেশন সেভ করুন'}</span>
                 </button>
-              </form>
+              </form>}
             </div>
           </div>
 
           {/* Listings moderation */}
-          <div className="lg:col-span-8 space-y-4">
+          <div className="min-w-0 space-y-4 lg:col-span-8">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="text-base font-bold text-slate-900">বিজ্ঞাপন মডারেশন ও অনুমোদন</h3>
               <div className="relative">
@@ -200,36 +261,70 @@ export default function AdminToletPage() {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                ['all', 'মোট বিজ্ঞাপন', statusCounts.all ?? 0],
+                ['pending_review', 'পর্যালোচনায়', statusCounts.pending_review ?? 0],
+                ['approved', 'প্রকাশিত', statusCounts.approved ?? 0],
+                ['rejected', 'প্রত্যাখ্যাত', statusCounts.rejected ?? 0],
+                ['unavailable', 'অনুপলব্ধ', statusCounts.unavailable ?? 0],
+                ['archived', 'আর্কাইভ', statusCounts.archived ?? 0],
+              ].map(([key, label, count]) => (
+                <button key={key} type="button" onClick={() => { setTab(key as ToletListingStatus | 'all'); setPage(1); }}
+                  className={`rounded-xl border px-3 py-2 text-left ${tab === key ? 'border-admin-navy bg-admin-page' : 'border-slate-200 bg-white'}`}>
+                  <span className="block text-[11px] text-slate-500">{label}</span>
+                  <span className="block text-lg font-bold text-slate-900">{Number(count).toLocaleString('bn-BD')}</span>
+                </button>
+              ))}
+            </div>
+
             <div className="flex gap-1.5 overflow-x-auto pb-1">
               {STATUS_TABS.map((t) => (
                 <button
                   key={t.key}
                   type="button"
-                  onClick={() => setTab(t.key)}
+                  onClick={() => { setTab(t.key); setPage(1); }}
                   className={`px-3 py-1.5 rounded-lg text-[11px] font-semibold shrink-0 whitespace-nowrap transition-colors ${
                     tab === t.key ? t.active : t.color
                   }`}
                 >
                   {t.label}
-                  {t.key !== 'all' && (
-                    <span className="ml-1 opacity-70">({listings.filter((l) => l.status === t.key).length})</span>
-                  )}
+                  <span className="ml-1 opacity-70">({t.key === 'all' ? (statusCounts.all ?? 0) : (statusCounts[t.key] ?? 0)})</span>
                 </button>
               ))}
             </div>
 
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <select aria-label="প্রপার্টির ধরন" value={propertyType} onChange={(event) => { setPropertyType(event.target.value); setPage(1); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs">
+                <option value="">সব ধরনের বাসা</option>
+                {Object.entries(TOLET_PROPERTY_TYPE_INFO).map(([value, item]) => <option key={value} value={value}>{item.labelBn}</option>)}
+              </select>
+              <select aria-label="এলাকা" value={areaId} onChange={(event) => { setAreaId(event.target.value); setPage(1); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs">
+                <option value="">সব এলাকা</option>
+                {getAllMCCAreas({ activeOnly: false }).map((area) => <option key={area.id} value={area.id}>{area.nameBn}</option>)}
+              </select>
+              <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-500">
+                <span className="shrink-0">তারিখ থেকে</span>
+                <input type="date" value={fromDate} max={toDate || undefined} onChange={(event) => { setFromDate(event.target.value); setPage(1); }} className="min-w-0 flex-1 bg-transparent text-slate-800" />
+              </label>
+              <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-500">
+                <span className="shrink-0">তারিখ পর্যন্ত</span>
+                <input type="date" value={toDate} min={fromDate || undefined} onChange={(event) => { setToDate(event.target.value); setPage(1); }} className="min-w-0 flex-1 bg-transparent text-slate-800" />
+              </label>
+            </div>
+            {(propertyType || areaId || fromDate || toDate || search) && (
+              <button type="button" onClick={clearListingFilters} className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50">ফিল্টার মুছুন</button>
+            )}
+
             {loading ? (
-              <div className="py-16 flex flex-col items-center gap-2 text-slate-500 text-sm">
-                <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-                <span>লোড হচ্ছে...</span>
-              </div>
-            ) : visible.length === 0 ? (
+              <AdminLoading label="বিজ্ঞাপন লোড হচ্ছে..." />
+            ) : listError ? null : listings.length === 0 ? (
               <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-10 text-center text-xs text-slate-500">
                 এই বিভাগে কোনো বিজ্ঞাপন নেই।
               </div>
             ) : (
               <div className="space-y-3">
-                {visible.map((item) => {
+                {listings.map((item) => {
                   const typeInfo = TOLET_PROPERTY_TYPE_INFO[item.propertyType];
                   const area = getAreaById(item.areaId);
                   const cover = item.photos[0];
@@ -284,17 +379,26 @@ export default function AdminToletPage() {
                 })}
               </div>
             )}
+
+            {!loading && !listError && resultCount > 0 && (
+              <nav aria-label="বিজ্ঞাপন পেজ" className="flex flex-col gap-2 rounded-xl border border-slate-200 bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
+                <p className="text-xs text-slate-500">{((page - 1) * pageSize + 1).toLocaleString('bn-BD')}–{Math.min(page * pageSize, resultCount).toLocaleString('bn-BD')} / {resultCount.toLocaleString('bn-BD')} বিজ্ঞাপন</p>
+                <div className="flex gap-2">
+                  <button type="button" disabled={page <= 1} onClick={() => setPage((current) => Math.max(1, current - 1))} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold disabled:opacity-40"><ChevronLeft className="h-4 w-4" />আগের</button>
+                  <span className="flex min-h-10 items-center px-2 text-xs text-slate-600">পৃষ্ঠা {page.toLocaleString('bn-BD')} / {totalPages.toLocaleString('bn-BD')}</span>
+                  <button type="button" disabled={page >= totalPages} onClick={() => setPage((current) => Math.min(totalPages, current + 1))} className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 px-3 text-xs font-semibold disabled:opacity-40">পরের<ChevronRight className="h-4 w-4" /></button>
+                </div>
+              </nav>
+            )}
           </div>
 
           {/* Property-wise engagement, across every listing rather than one row
               of the moderation list. Rendered last so a moderator reads the
               queue first and the numbers second. */}
-          <div className="mt-8">
+          <div className="mt-2 min-w-0 lg:col-span-12">
             <ToletAnalyticsTable limit={25} />
           </div>
         </div>
-      </main>
-      
     </div>
   );
 }

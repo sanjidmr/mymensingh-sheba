@@ -21,6 +21,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'blocked')),
     is_verified BOOLEAN DEFAULT FALSE,
     emergency_contact TEXT,
+    notification_preferences JSONB NOT NULL DEFAULT
+      '{"post_updates":true,"request_updates":true,"support_replies":true}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
     updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
 );
@@ -28,6 +30,21 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Idempotent upgrade for existing databases (add status + bio columns)
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'active';
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS notification_preferences JSONB NOT NULL DEFAULT
+    '{"post_updates":true,"request_updates":true,"support_replies":true}'::jsonb;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint
+        WHERE conname = 'profiles_notification_preferences_object_check'
+          AND conrelid = 'public.profiles'::regclass
+    ) THEN
+        ALTER TABLE public.profiles
+            ADD CONSTRAINT profiles_notification_preferences_object_check
+            CHECK (jsonb_typeof(notification_preferences) = 'object') NOT VALID;
+    END IF;
+END
+$$;
 -- Registration hardening: without a value here, any signup-time trigger that
 -- inserts a profile row omitting the column would abort auth signup with a
 -- NOT NULL violation ("Database error saving new user"). See
@@ -1306,6 +1323,134 @@ WITH CHECK (
   ))
 );
 
+CREATE OR REPLACE FUNCTION public.tolet_listings_owner_guard()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+BEGIN
+    IF auth.uid() IS NULL OR public.is_admin() THEN
+        RETURN NEW;
+    END IF;
+    IF TG_OP = 'INSERT' THEN
+        IF NEW.status IS NULL OR NEW.status NOT IN ('draft', 'pending_review', 'unavailable') THEN
+            NEW.status := 'pending_review';
+        END IF;
+        NEW.is_verified := FALSE;
+        NEW.rejection_reason := NULL;
+        NEW.published_at := NULL;
+    ELSE
+        NEW.owner_id := OLD.owner_id;
+        NEW.is_verified := OLD.is_verified;
+        NEW.published_at := OLD.published_at;
+        IF NEW.status IS DISTINCT FROM OLD.status
+           AND NEW.status NOT IN ('draft', 'pending_review', 'archived', 'unavailable') THEN
+            RAISE EXCEPTION 'Only an admin can move a listing to status %', NEW.status
+                USING ERRCODE = '42501';
+        END IF;
+        IF OLD.status = 'archived' AND NEW.status = 'pending_review' THEN
+            NEW.rejection_reason := NULL;
+        ELSE
+            NEW.rejection_reason := OLD.rejection_reason;
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_tolet_listings_owner_guard ON public.tolet_listings;
+CREATE TRIGGER trg_tolet_listings_owner_guard
+BEFORE INSERT OR UPDATE ON public.tolet_listings
+FOR EACH ROW EXECUTE FUNCTION public.tolet_listings_owner_guard();
+
+CREATE OR REPLACE FUNCTION public.fn_set_my_tolet_visibility(
+    p_listing_id UUID,
+    p_action TEXT
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    listing public.tolet_listings%ROWTYPE;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'sign-in required';
+    END IF;
+    IF p_action NOT IN ('archive', 'restore') THEN
+        RAISE EXCEPTION 'invalid lifecycle action';
+    END IF;
+    SELECT * INTO listing
+    FROM public.tolet_listings
+    WHERE id = p_listing_id AND owner_id = auth.uid()
+    FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'listing not found';
+    END IF;
+
+    IF p_action = 'archive' THEN
+        IF listing.status IN ('archived', 'suspended') THEN
+            RAISE EXCEPTION 'listing cannot be removed from display in its current status';
+        END IF;
+        UPDATE public.tolet_listings SET status = 'archived'
+        WHERE id = p_listing_id AND owner_id = auth.uid();
+        RETURN 'archived';
+    END IF;
+
+    IF listing.status <> 'archived' THEN
+        RAISE EXCEPTION 'only an archived listing can be restored';
+    END IF;
+    IF length(btrim(listing.title)) < 8
+       OR listing.property_type NOT IN ('flat', 'room', 'sublet', 'family', 'bachelor', 'mess', 'hostel', 'seat')
+       OR NULLIF(btrim(listing.area_id), '') IS NULL
+       OR length(btrim(COALESCE(listing.specific_address, ''))) < 5
+       OR listing.rent_price NOT BETWEEN 100 AND 500000
+       OR (listing.property_type IN ('mess', 'hostel', 'seat') AND COALESCE(listing.total_rooms, 0) < 1)
+       OR (listing.property_type NOT IN ('mess', 'hostel', 'seat') AND listing.bedrooms < 1)
+       OR listing.bathrooms < 0
+       OR listing.balconies < 0
+       OR length(btrim(COALESCE(listing.description, ''))) < 20 THEN
+        RAISE EXCEPTION 'listing details are incomplete; edit and save the listing before restoring';
+    END IF;
+
+    UPDATE public.tolet_listings SET status = 'pending_review'
+    WHERE id = p_listing_id AND owner_id = auth.uid();
+    RETURN 'pending_review';
+END;
+$$;
+REVOKE ALL ON FUNCTION public.fn_set_my_tolet_visibility(UUID, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_set_my_tolet_visibility(UUID, TEXT) TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.fn_delete_my_tolet_listing(p_listing_id UUID)
+RETURNS TEXT[]
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    listing_photos TEXT[];
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'sign-in required';
+    END IF;
+    SELECT photos INTO listing_photos
+    FROM public.tolet_listings
+    WHERE id = p_listing_id AND owner_id = auth.uid()
+    FOR UPDATE;
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'listing not found';
+    END IF;
+    DELETE FROM public.tolet_listing_events WHERE listing_id = p_listing_id::TEXT;
+    DELETE FROM public.tolet_listings
+    WHERE id = p_listing_id AND owner_id = auth.uid();
+    RETURN COALESCE(listing_photos, ARRAY[]::TEXT[]);
+END;
+$$;
+REVOKE ALL ON FUNCTION public.fn_delete_my_tolet_listing(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_delete_my_tolet_listing(UUID) TO authenticated;
+
 DROP POLICY IF EXISTS "Admins manage tolet listings" ON public.tolet_listings;
 CREATE POLICY "Admins manage tolet listings"
 ON public.tolet_listings FOR ALL
@@ -1513,6 +1658,50 @@ CREATE POLICY "Admins delete notifications"
 ON public.notifications FOR DELETE
 TO authenticated
 USING (public.is_admin());
+
+CREATE OR REPLACE FUNCTION public.apply_customer_notification_preferences()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    preferences JSONB;
+    preference_key TEXT;
+BEGIN
+    IF NEW.target_role <> 'customer' OR NEW.user_id IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    preference_key := CASE
+        WHEN NEW.related_type IN ('community_post', 'tolet_listing', 'tutor_profile', 'blood_donor_profile')
+            THEN 'post_updates'
+        WHEN NEW.related_type IN ('service_request', 'tolet_request', 'blood_request')
+            THEN 'request_updates'
+        WHEN NEW.related_type = 'contact_message'
+            THEN 'support_replies'
+        ELSE NULL
+    END;
+    IF preference_key IS NULL THEN
+        RETURN NEW;
+    END IF;
+
+    SELECT p.notification_preferences INTO preferences
+    FROM public.profiles AS p
+    WHERE p.id = NEW.user_id;
+
+    IF preferences ->> preference_key = 'false' THEN
+        RETURN NULL;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.apply_customer_notification_preferences() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS trg_apply_customer_notification_preferences ON public.notifications;
+CREATE TRIGGER trg_apply_customer_notification_preferences
+BEFORE INSERT ON public.notifications
+FOR EACH ROW EXECUTE FUNCTION public.apply_customer_notification_preferences();
 
 -- --- NOTIFICATION TRIGGERS (server-enforced, not client-spammable) ---
 -- A new service request notifies the customer + the admin hub.
@@ -1811,6 +2000,7 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
     deadline DATE,
     -- Buy-sell-only field.
     condition_label TEXT,
+    marketplace_status TEXT,
     -- Marketplace contact. `author_phone` / `whatsapp_number` are deliberately
     -- NOT part of the public column list used by the service layer: they are
     -- read back only through the `fetch_market_contact` RPC below, which
@@ -1832,7 +2022,11 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
     is_featured BOOLEAN DEFAULT FALSE,
     published_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
-    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL
+    updated_at TIMESTAMPTZ DEFAULT TIMEZONE('utc'::text, NOW()) NOT NULL,
+    CONSTRAINT community_posts_marketplace_status_check CHECK (
+        (kind = 'buy_sell' AND marketplace_status IN ('available', 'sold', 'closed'))
+        OR (kind <> 'buy_sell' AND marketplace_status IS NULL)
+    )
 );
 
 CREATE INDEX IF NOT EXISTS idx_community_posts_kind_status
@@ -1928,7 +2122,15 @@ DROP POLICY IF EXISTS "Approved community posts are public" ON public.community_
 CREATE POLICY "Approved community posts are public"
 ON public.community_posts FOR SELECT
 TO anon, authenticated
-USING (status = 'approved');
+USING (
+    status = 'approved'
+    AND (kind <> 'buy_sell' OR marketplace_status = 'available')
+    AND (
+        kind <> 'job'
+        OR deadline IS NULL
+        OR deadline >= (TIMEZONE('Asia/Dhaka', NOW()))::DATE
+    )
+);
 
 -- Authors can see their own posts regardless of moderation state.
 DROP POLICY IF EXISTS "Authors read own posts" ON public.community_posts;
@@ -1989,6 +2191,12 @@ SET search_path = ''
 AS $$
 BEGIN
     IF auth.uid() IS NULL OR public.is_admin() THEN
+        IF TG_OP = 'INSERT' THEN
+            NEW.marketplace_status := CASE
+                WHEN NEW.kind = 'buy_sell' THEN COALESCE(NEW.marketplace_status, 'available')
+                ELSE NULL
+            END;
+        END IF;
         RETURN NEW;
     END IF;
 
@@ -1998,7 +2206,19 @@ BEGIN
         NEW.is_featured := FALSE;
         NEW.published_at := NULL;
         NEW.rejection_reason := NULL;
+        NEW.marketplace_status := CASE WHEN NEW.kind = 'buy_sell' THEN 'available' ELSE NULL END;
     ELSE
+        IF OLD.kind = 'buy_sell'
+           AND OLD.status = 'approved'
+           AND NEW.status = OLD.status
+           AND NEW.author_id = OLD.author_id
+           AND NEW.kind = OLD.kind
+           AND NEW.marketplace_status IN ('available', 'sold', 'closed')
+           AND (to_jsonb(NEW) - 'marketplace_status' - 'updated_at')
+               = (to_jsonb(OLD) - 'marketplace_status' - 'updated_at') THEN
+            RETURN NEW;
+        END IF;
+
         NEW.author_id := OLD.author_id;
         -- An author edit always re-enters moderation (matches RLS WITH CHECK),
         -- but only moderators decide feature/publish/rejection state.
@@ -2006,6 +2226,7 @@ BEGIN
         NEW.is_featured := OLD.is_featured;
         NEW.published_at := OLD.published_at;
         NEW.rejection_reason := OLD.rejection_reason;
+        NEW.marketplace_status := OLD.marketplace_status;
     END IF;
     RETURN NEW;
 END;
@@ -2043,12 +2264,49 @@ AS $$
     WHERE p.slug = p_slug
       AND p.kind = 'buy_sell'
       AND p.status = 'approved'
+      AND p.marketplace_status = 'available'
     LIMIT 1;
 $$;
 
+CREATE OR REPLACE FUNCTION public.fn_set_my_marketplace_status(
+    p_id UUID,
+    p_status TEXT
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    updated_status TEXT;
+BEGIN
+    IF auth.uid() IS NULL THEN
+        RAISE EXCEPTION 'sign-in required';
+    END IF;
+    IF p_status NOT IN ('available', 'sold', 'closed') THEN
+        RAISE EXCEPTION 'invalid marketplace status';
+    END IF;
+
+    UPDATE public.community_posts
+    SET marketplace_status = p_status,
+        updated_at = TIMEZONE('utc'::text, NOW())
+    WHERE id = p_id
+      AND author_id = auth.uid()
+      AND kind = 'buy_sell'
+      AND status = 'approved'
+    RETURNING marketplace_status INTO updated_status;
+
+    IF updated_status IS NULL THEN
+        RAISE EXCEPTION 'marketplace post not found or not approved';
+    END IF;
+    RETURN updated_status;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.fn_set_my_marketplace_status(UUID, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_set_my_marketplace_status(UUID, TEXT) TO authenticated;
+
 COMMENT ON FUNCTION public.fetch_market_contact(TEXT) IS
-    'Seller phone / WhatsApp for an approved buy_sell post. Returns nothing for '
-    'news or job posts, and nothing for a post still in moderation.';
+    'Seller contact for an approved and available buy_sell post only.';
 
 REVOKE ALL ON FUNCTION public.fetch_market_contact(TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.fetch_market_contact(TEXT) TO anon, authenticated;
@@ -2443,3 +2701,270 @@ DROP TRIGGER IF EXISTS trg_notif_vehicle_request ON public.vehicle_requests;
 CREATE TRIGGER trg_notif_vehicle_request
 AFTER INSERT ON public.vehicle_requests
 FOR EACH ROW EXECUTE FUNCTION public.notif_vehicle_request_inserted();
+
+-- Private customer support conversations and tracked complaint attachments.
+CREATE TABLE IF NOT EXISTS public.contact_message_replies (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    message_id UUID NOT NULL REFERENCES public.contact_messages(id) ON DELETE CASCADE,
+    sender_id UUID NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+    sender_role TEXT NOT NULL CHECK (sender_role IN ('customer', 'admin')),
+    body TEXT NOT NULL CHECK (length(trim(body)) BETWEEN 1 AND 1500),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT TIMEZONE('utc'::text, NOW())
+);
+
+CREATE INDEX IF NOT EXISTS idx_contact_message_replies_thread
+    ON public.contact_message_replies (message_id, created_at);
+ALTER TABLE public.contact_message_replies ENABLE ROW LEVEL SECURITY;
+GRANT SELECT, INSERT ON public.contact_message_replies TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.can_access_contact_conversation(target_message_id UUID)
+RETURNS BOOLEAN
+LANGUAGE SQL
+STABLE
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+    SELECT public.is_admin()
+        OR EXISTS (
+            SELECT 1 FROM public.contact_messages AS message
+            WHERE message.id = target_message_id AND message.user_id = auth.uid()
+        )
+$$;
+REVOKE ALL ON FUNCTION public.can_access_contact_conversation(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.can_access_contact_conversation(UUID) TO authenticated;
+
+DROP POLICY IF EXISTS "Conversation participants read replies" ON public.contact_message_replies;
+CREATE POLICY "Conversation participants read replies"
+ON public.contact_message_replies FOR SELECT TO authenticated
+USING (public.can_access_contact_conversation(message_id));
+
+DROP POLICY IF EXISTS "Conversation participants add replies" ON public.contact_message_replies;
+CREATE POLICY "Conversation participants add replies"
+ON public.contact_message_replies FOR INSERT TO authenticated
+WITH CHECK (
+    sender_id = auth.uid()
+    AND (
+        (sender_role = 'admin' AND public.is_admin())
+        OR (
+            sender_role = 'customer'
+            AND NOT public.is_admin()
+            AND public.can_access_contact_conversation(message_id)
+        )
+    )
+);
+
+ALTER TABLE public.contact_messages
+    ADD COLUMN IF NOT EXISTS complaint_category TEXT,
+    ADD COLUMN IF NOT EXISTS complaint_subject TEXT,
+    ADD COLUMN IF NOT EXISTS attachment_path TEXT;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contact_messages_complaint_category_check' AND conrelid = 'public.contact_messages'::regclass) THEN
+        ALTER TABLE public.contact_messages ADD CONSTRAINT contact_messages_complaint_category_check
+            CHECK (complaint_category IS NULL OR complaint_category IN ('account', 'posts', 'service', 'safety', 'payment', 'other')) NOT VALID;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contact_messages_complaint_subject_check' AND conrelid = 'public.contact_messages'::regclass) THEN
+        ALTER TABLE public.contact_messages ADD CONSTRAINT contact_messages_complaint_subject_check
+            CHECK (complaint_subject IS NULL OR length(trim(complaint_subject)) BETWEEN 3 AND 120) NOT VALID;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'contact_messages_attachment_path_check' AND conrelid = 'public.contact_messages'::regclass) THEN
+        ALTER TABLE public.contact_messages ADD CONSTRAINT contact_messages_attachment_path_check
+            CHECK (attachment_path IS NULL OR (user_id IS NOT NULL AND length(attachment_path) <= 500)) NOT VALID;
+    END IF;
+END;
+$$;
+
+INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+VALUES ('support-attachments', 'support-attachments', FALSE, 5242880, ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+ON CONFLICT (id) DO UPDATE SET
+    public = FALSE,
+    file_size_limit = 5242880,
+    allowed_mime_types = ARRAY['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+
+DROP POLICY IF EXISTS "Support attachment owner and admins read" ON storage.objects;
+CREATE POLICY "Support attachment owner and admins read" ON storage.objects FOR SELECT TO authenticated
+USING (bucket_id = 'support-attachments' AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin()));
+DROP POLICY IF EXISTS "Customers upload own support attachments" ON storage.objects;
+CREATE POLICY "Customers upload own support attachments" ON storage.objects FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'support-attachments' AND (storage.foldername(name))[1] = auth.uid()::text);
+DROP POLICY IF EXISTS "Customers delete own support attachments" ON storage.objects;
+CREATE POLICY "Customers delete own support attachments" ON storage.objects FOR DELETE TO authenticated
+USING (bucket_id = 'support-attachments' AND ((storage.foldername(name))[1] = auth.uid()::text OR public.is_admin()));
+
+DROP POLICY IF EXISTS "Guests can send contact messages" ON public.contact_messages;
+CREATE POLICY "Guests can send contact messages"
+ON public.contact_messages FOR INSERT TO anon, authenticated
+WITH CHECK (
+    name IS NOT NULL AND length(trim(name)) >= 3
+    AND phone IS NOT NULL AND length(trim(phone)) >= 10
+    AND message IS NOT NULL AND length(trim(message)) BETWEEN 12 AND 1500
+    AND (
+        (auth.uid() IS NULL AND user_id IS NULL AND attachment_path IS NULL)
+        OR (
+            auth.uid() IS NOT NULL
+            AND (user_id IS NULL OR user_id = auth.uid())
+            AND (
+                user_id IS NULL OR subject <> 'complaint'
+                OR (
+                    complaint_category IN ('account', 'posts', 'service', 'safety', 'payment', 'other')
+                    AND complaint_subject IS NOT NULL
+                    AND length(trim(complaint_subject)) BETWEEN 3 AND 120
+                )
+            )
+            AND (
+                attachment_path IS NULL
+                OR (user_id = auth.uid() AND subject = 'complaint' AND attachment_path LIKE auth.uid()::text || '/%')
+            )
+        )
+    )
+);
+
+DROP FUNCTION IF EXISTS public.fn_my_contact_conversations();
+CREATE FUNCTION public.fn_my_contact_conversations()
+RETURNS TABLE (
+    id UUID, subject TEXT, message TEXT, status TEXT, created_at TIMESTAMPTZ,
+    complaint_category TEXT, complaint_subject TEXT, attachment_path TEXT
+)
+LANGUAGE SQL STABLE SECURITY DEFINER SET search_path = ''
+AS $$
+    SELECT m.id, m.subject, m.message, m.status, m.created_at,
+           m.complaint_category, m.complaint_subject, m.attachment_path
+    FROM public.contact_messages AS m
+    WHERE m.user_id = auth.uid()
+    ORDER BY m.created_at DESC
+$$;
+REVOKE ALL ON FUNCTION public.fn_my_contact_conversations() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.fn_my_contact_conversations() TO authenticated;
+
+CREATE OR REPLACE FUNCTION public.notify_contact_message_reply()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    message_owner UUID;
+    message_subject TEXT;
+BEGIN
+    SELECT user_id, subject INTO message_owner, message_subject
+    FROM public.contact_messages WHERE id = NEW.message_id;
+    IF NEW.sender_role = 'admin' AND message_owner IS NOT NULL THEN
+        INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+        VALUES (message_owner, 'customer', 'সাপোর্ট টিমের উত্তর',
+            'আপনার "' || message_subject || '" বার্তার উত্তর এসেছে।',
+            'info', 'contact_message', NEW.message_id::text);
+    ELSIF NEW.sender_role = 'customer' THEN
+        INSERT INTO public.notifications (target_role, title, body, type, related_type, related_id)
+        VALUES ('admin', 'সাপোর্ট বার্তার উত্তর', 'একজন গ্রাহক কথোপকথনে নতুন উত্তর দিয়েছেন।',
+            'info', 'contact_message', NEW.message_id::text);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.notify_contact_message_reply() FROM PUBLIC;
+DROP TRIGGER IF EXISTS trg_notify_contact_message_reply ON public.contact_message_replies;
+CREATE TRIGGER trg_notify_contact_message_reply AFTER INSERT ON public.contact_message_replies
+FOR EACH ROW EXECUTE FUNCTION public.notify_contact_message_reply();
+
+CREATE OR REPLACE FUNCTION public.notif_tolet_listing_status_changed()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
+    IF NEW.status = 'approved' THEN
+        INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+        VALUES (NEW.owner_id, 'customer', 'আপনার বাসাভাড়ার পোস্ট অনুমোদিত হয়েছে',
+            '“' || NEW.title || '” এখন সবার জন্য দেখা যাচ্ছে।',
+            'success', 'tolet_listing', NEW.id::text);
+    ELSIF NEW.status = 'rejected' THEN
+        INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+        VALUES (NEW.owner_id, 'customer', 'বাসাভাড়ার পোস্টে সংশোধন প্রয়োজন',
+            CASE WHEN NULLIF(BTRIM(NEW.rejection_reason), '') IS NOT NULL
+                THEN '“' || NEW.title || '” পোস্টে সংশোধন প্রয়োজন। কারণ: ' || BTRIM(NEW.rejection_reason)
+                ELSE '“' || NEW.title || '” পোস্টে সংশোধন করে আবার জমা দিন।' END,
+            'warning', 'tolet_listing', NEW.id::text);
+    ELSIF NEW.status = 'suspended' THEN
+        INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+        VALUES (NEW.owner_id, 'customer', 'বাসাভাড়ার পোস্টের অবস্থা পরিবর্তিত হয়েছে',
+            '“' || NEW.title || '” আপাতত স্থগিত রাখা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।',
+            'warning', 'tolet_listing', NEW.id::text);
+    END IF;
+    RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.notif_tolet_listing_status_changed() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS trg_notif_tolet_listing_status ON public.tolet_listings;
+CREATE TRIGGER trg_notif_tolet_listing_status AFTER UPDATE OF status ON public.tolet_listings
+FOR EACH ROW EXECUTE FUNCTION public.notif_tolet_listing_status_changed();
+
+CREATE OR REPLACE FUNCTION public.notif_contact_conversation_status_changed()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+BEGIN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status OR NEW.user_id IS NULL THEN RETURN NEW; END IF;
+    IF NEW.status = 'closed' THEN
+        INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+        VALUES (
+            NEW.user_id, 'customer',
+            CASE WHEN NEW.subject = 'complaint' THEN 'আপনার অভিযোগের আপডেট' ELSE 'সাপোর্ট বার্তার আপডেট' END,
+            CASE WHEN NEW.subject = 'complaint'
+                THEN '“' || COALESCE(NEW.complaint_subject, 'আপনার অভিযোগ') || '” সমাধান করে বন্ধ করা হয়েছে।'
+                ELSE 'আপনার সাপোর্ট কথোপকথন বন্ধ করা হয়েছে।' END,
+            'info', 'contact_message', NEW.id::text
+        );
+    END IF;
+    RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.notif_contact_conversation_status_changed() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS trg_notif_contact_conversation_status ON public.contact_messages;
+CREATE TRIGGER trg_notif_contact_conversation_status AFTER UPDATE OF status ON public.contact_messages
+FOR EACH ROW EXECUTE FUNCTION public.notif_contact_conversation_status_changed();
+
+CREATE OR REPLACE FUNCTION public.notif_customer_profile_status_changed()
+RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = ''
+AS $$
+DECLARE
+    profile_label TEXT;
+    related_kind TEXT;
+    status_title TEXT;
+    status_body TEXT;
+    status_type TEXT;
+BEGIN
+    IF NEW.status IS NOT DISTINCT FROM OLD.status THEN RETURN NEW; END IF;
+    IF TG_TABLE_NAME = 'home_tutor_profiles' THEN
+        profile_label := 'গৃহশিক্ষক প্রোফাইল';
+        related_kind := 'tutor_profile';
+    ELSE
+        profile_label := 'রক্তদাতা প্রোফাইল';
+        related_kind := 'blood_donor_profile';
+    END IF;
+
+    IF NEW.status = 'approved' THEN
+        status_title := profile_label || ' অনুমোদিত হয়েছে';
+        status_body := 'আপনার ' || profile_label || ' এখন প্রকাশিত হয়েছে।';
+        status_type := 'success';
+    ELSIF NEW.status = 'rejected' THEN
+        status_title := profile_label || ' সংশোধন প্রয়োজন';
+        status_body := CASE WHEN NULLIF(BTRIM(NEW.rejection_reason), '') IS NOT NULL
+            THEN 'আপনার ' || profile_label || ' সংশোধন করুন। কারণ: ' || BTRIM(NEW.rejection_reason)
+            ELSE 'আপনার ' || profile_label || ' সংশোধন করে আবার জমা দিন।' END;
+        status_type := 'warning';
+    ELSIF NEW.status = 'suspended' THEN
+        status_title := profile_label || ' সাময়িকভাবে স্থগিত';
+        status_body := 'আপনার ' || profile_label || ' সাময়িকভাবে স্থগিত রাখা হয়েছে। বিস্তারিত জানতে সাপোর্টে যোগাযোগ করুন।';
+        status_type := 'warning';
+    ELSE
+        RETURN NEW;
+    END IF;
+
+    INSERT INTO public.notifications (user_id, target_role, title, body, type, related_type, related_id)
+    VALUES (NEW.user_id, 'customer', status_title, status_body, status_type, related_kind, NEW.id::text);
+    RETURN NEW;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.notif_customer_profile_status_changed() FROM PUBLIC, anon, authenticated;
+DROP TRIGGER IF EXISTS trg_notif_tutor_profile_status ON public.home_tutor_profiles;
+CREATE TRIGGER trg_notif_tutor_profile_status AFTER UPDATE OF status ON public.home_tutor_profiles
+FOR EACH ROW EXECUTE FUNCTION public.notif_customer_profile_status_changed();
+DROP TRIGGER IF EXISTS trg_notif_blood_donor_profile_status ON public.blood_donor_profiles;
+CREATE TRIGGER trg_notif_blood_donor_profile_status AFTER UPDATE OF status ON public.blood_donor_profiles
+FOR EACH ROW EXECUTE FUNCTION public.notif_customer_profile_status_changed();

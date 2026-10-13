@@ -34,6 +34,7 @@ import {
 } from '@/lib/blood-donor-types';
 import { getAreaById } from '@/lib/locations';
 import type { BloodContactRelease, BloodRequest, BloodRequestStatus, BloodDonorProfile } from '@/lib/supabase/types';
+import { AdminError, AdminLoading } from '@/components/admin/States';
 
 function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
   const [req, setReq] = useState<BloodRequest | null>(null);
@@ -63,8 +64,12 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
       if (r.donorProfileId) {
         adminFetchDonorProfileById(r.donorProfileId).then((d) => {
           if (active) setDonor(d);
-        }).catch(() => undefined);
+        }).catch((err: unknown) => {
+          if (active) setError(err instanceof Error ? err.message : 'রক্তদাতার তথ্য লোড ব্যর্থ হয়েছে।');
+        });
       }
+    }).catch((err: unknown) => {
+      if (active) setError(err instanceof Error ? err.message : 'রক্তের অনুরোধ লোড ব্যর্থ হয়েছে।');
     }).finally(() => {
       if (active) setLoading(false);
     });
@@ -88,30 +93,40 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
     if (!req) return;
     setBusy(true);
     setError('');
-    const res = await adminUpdateBloodRequest(req.id, {
-      status,
-      adminNotes: opts?.adminNotes !== undefined ? opts.adminNotes : adminNotes,
-      rejectionReason: opts?.rejectionReason,
-    });
-    setBusy(false);
-    if (res.success) {
-      if (res.request) setReq(res.request);
-      if (opts?.rejectionReason) setRejectionReason(opts.rejectionReason);
-    } else {
-      setError(res.error || 'আপডেট ব্যর্থ হয়েছে');
+    try {
+      const res = await adminUpdateBloodRequest(req.id, {
+        status,
+        adminNotes: opts?.adminNotes !== undefined ? opts.adminNotes : adminNotes,
+        rejectionReason: opts?.rejectionReason,
+      });
+      if (res.success) {
+        if (res.request) setReq(res.request);
+        if (opts?.rejectionReason) setRejectionReason(opts.rejectionReason);
+      } else {
+        setError(res.error || 'আপডেট ব্যর্থ হয়েছে');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'আপডেট ব্যর্থ হয়েছে');
+    } finally {
+      setBusy(false);
     }
   };
 
   const saveNotes = async () => {
     if (!req) return;
     setBusy(true);
-    const res = await adminUpdateBloodRequest(req.id, { adminNotes });
-    setBusy(false);
-    if (res.success && res.request) {
-      setReq(res.request);
-      setError('');
-    } else {
-      setError('নোট সংরক্ষণ ব্যর্থ হয়েছে');
+    try {
+      const res = await adminUpdateBloodRequest(req.id, { adminNotes });
+      if (res.success && res.request) {
+        setReq(res.request);
+        setError('');
+      } else {
+        setError(res.error || 'নোট সংরক্ষণ ব্যর্থ হয়েছে');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'নোট সংরক্ষণ ব্যর্থ হয়েছে');
+    } finally {
+      setBusy(false);
     }
   };
 
@@ -121,39 +136,42 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
       return;
     }
     setPresLoading(true);
-    const url = await getPrescriptionViewUrl(req.prescriptionUrl);
-    setPresLoading(false);
-    setPresUrl(url);
-    setPresOpen(true);
+    try {
+      const url = await getPrescriptionViewUrl(req.prescriptionUrl);
+      if (!url) {
+        setError('প্রেসক্রিপশনের নিরাপদ লিংক তৈরি করা যায়নি।');
+        return;
+      }
+      setPresUrl(url);
+      setPresOpen(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'প্রেসক্রিপশন লোড ব্যর্থ হয়েছে।');
+    } finally {
+      setPresLoading(false);
+    }
   };
 
   const releaseContact = async () => {
     if (!req) return;
     setBusy(true);
     setError('');
-    const res = await adminReleaseDonorContact(req.id);
-    setBusy(false);
-    if (res.success && res.phone) {
-      setReleasedPhone(res.phone);
-      await Promise.all([
-        adminFetchContactReleases(req.id).then(setReleases).catch(() => undefined),
-        adminFetchBloodRequestById(req.id).then((r) => r && setReq(r)).catch(() => undefined),
-      ]);
-    } else {
-      setError(res.error || 'নম্বর প্রকাশ ব্যর্থ হয়েছে');
+    try {
+      const res = await adminReleaseDonorContact(req.id);
+      if (res.success && res.phone) {
+        setReleasedPhone(res.phone);
+        await reload();
+      } else {
+        setError(res.error || 'নম্বর প্রকাশ ব্যর্থ হয়েছে');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'নম্বর প্রকাশ ব্যর্থ হয়েছে');
+    } finally {
+      setBusy(false);
     }
   };
 
   if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        
-        <div className="flex items-center justify-center gap-3 py-32 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-rose-700" />
-          <span className="text-sm">অনুরোধ লোড হচ্ছে...</span>
-        </div>
-      </div>
-    );
+    return <AdminLoading label="রক্তের অনুরোধ লোড হচ্ছে..." />;
   }
 
   if (!req) {
@@ -162,7 +180,11 @@ function AdminBloodRequestDetail({ requestId }: { requestId: string }) {
         
         <div className="max-w-lg mx-auto px-4 py-24 text-center">
           <Droplets className="w-10 h-10 text-slate-300 mx-auto mb-4" />
-          <h1 className="text-base font-bold text-slate-900">অনুরোধটি পাওয়া যায়নি</h1>
+          {error ? (
+            <AdminError title="রক্তের অনুরোধ লোড করা যায়নি" message={error} className="my-4 text-left" />
+          ) : (
+            <h1 className="text-base font-bold text-slate-900">অনুরোধটি পাওয়া যায়নি</h1>
+          )}
           <Link href="/admin/blood" className="mt-5 inline-flex items-center gap-1.5 text-xs text-rose-700 font-semibold">
             <ArrowLeft className="w-3.5 h-3.5" /> রক্ত মডারেশনে ফিরে যান
           </Link>

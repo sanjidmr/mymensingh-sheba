@@ -21,6 +21,8 @@ import {
   mockFetchMyListings,
   mockCreateListing,
   mockUpdateListingOwned,
+  mockSetOwnListingVisibility,
+  mockDeleteOwnListing,
   mockAdminFetchListings,
   mockAdminFetchListingById,
   mockAdminUpdateListing,
@@ -251,16 +253,25 @@ export async function fetchSimilarListings(
     .map(({ candidate }) => candidate);
 }
 
-export async function fetchMyListings(ownerId: string): Promise<ToletListing[]> {
-  if (!isSupabaseConfigured) return mockFetchMyListings(ownerId);
+export async function fetchMyListings(ownerId: string, strict = false): Promise<ToletListing[]> {
+  if (!isSupabaseConfigured) {
+    if (strict) throw new Error('ডেটাবেস সংযোগ নেই। Supabase কনফিগারেশন যাচাই করুন।');
+    return mockFetchMyListings(ownerId);
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) {
+    if (strict) throw new Error('Supabase সংযুক্ত নয়।');
+    return [];
+  }
   const { data, error } = await client
     .from('tolet_listings')
     .select('*')
     .eq('owner_id', ownerId)
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) {
+    if (strict) throw new Error(`আপনার বাসাভাড়ার পোস্ট লোড করা যায়নি: ${error.message}`);
+    return [];
+  }
   return (data || []).map((row) => mapListingRow(row as RawListingRow));
 }
 
@@ -345,19 +356,140 @@ export async function archiveOwnListing(
   ownerId: string
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
-    const updated = mockAdminUpdateListing(listingId, { status: 'archived' });
+    const updated = mockSetOwnListingVisibility(listingId, ownerId, 'archive');
     if (!updated) return { success: false, error: 'বিজ্ঞাপন পাওয়া যায়নি' };
     return { success: true };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { error } = await client
-    .from('tolet_listings')
-    .update({ status: 'archived' })
-    .eq('id', listingId)
-    .eq('owner_id', ownerId);
+  const { data, error } = await client.rpc('fn_set_my_tolet_visibility', {
+    p_listing_id: listingId,
+    p_action: 'archive',
+  });
   if (error) return { success: false, error: error.message };
+  if (data !== 'archived') return { success: false, error: 'বিজ্ঞাপনটি আর্কাইভ করা নিশ্চিত হয়নি।' };
   return { success: true };
+}
+
+export async function restoreOwnListing(
+  listingId: string,
+  ownerId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) {
+    const updated = mockSetOwnListingVisibility(listingId, ownerId, 'restore');
+    if (!updated) {
+      return {
+        success: false,
+        error: 'বিজ্ঞাপনটি যাচাইয়ের জন্য প্রস্তুত নয়। তথ্য সম্পাদনা করে আবার চেষ্টা করুন।',
+      };
+    }
+    return { success: true };
+  }
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
+  const { data, error } = await client.rpc('fn_set_my_tolet_visibility', {
+    p_listing_id: listingId,
+    p_action: 'restore',
+  });
+  if (error) return { success: false, error: error.message };
+  if (data !== 'pending_review') {
+    return { success: false, error: 'বিজ্ঞাপনটি পুনরায় পাঠানো নিশ্চিত হয়নি।' };
+  }
+  return { success: true };
+}
+
+function ownedListingStoragePath(photo: string, ownerId: string): string | null {
+  const marker = '/storage/v1/object/public/listings/';
+  let path = photo;
+  const markerIndex = photo.indexOf(marker);
+  if (markerIndex >= 0) path = photo.slice(markerIndex + marker.length);
+  try {
+    path = decodeURIComponent(path);
+  } catch {
+    return null;
+  }
+  const parts = path.split('/');
+  if (parts[0] !== ownerId || parts.some((part) => !part || part === '.' || part === '..')) {
+    return null;
+  }
+  return path;
+}
+
+export async function permanentlyDeleteOwnListing(
+  listingId: string,
+  ownerId: string
+): Promise<{ success: boolean; error?: string; warning?: string }> {
+  if (!isSupabaseConfigured) {
+    return mockDeleteOwnListing(listingId, ownerId)
+      ? { success: true }
+      : { success: false, error: 'বিজ্ঞাপনটি পাওয়া যায়নি অথবা এটি আপনার নয়।' };
+  }
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
+
+  const { data, error } = await client.rpc('fn_delete_my_tolet_listing', {
+    p_listing_id: listingId,
+  });
+  if (error) return { success: false, error: error.message };
+  if (!Array.isArray(data)) {
+    return { success: false, error: 'বিজ্ঞাপনটি মুছে ফেলা নিশ্চিত করা যায়নি।' };
+  }
+
+  const photos = (data as unknown[]).filter((photo): photo is string => typeof photo === 'string');
+  const candidatePaths = [...new Set(
+    photos.flatMap((photo) =>
+      typeof photo === 'string'
+        ? [ownedListingStoragePath(photo, ownerId)].filter((path): path is string => Boolean(path))
+        : []
+    )
+  )];
+  if (candidatePaths.length === 0) {
+    return photos.length > 0
+      ? { success: true, warning: 'বিজ্ঞাপন মুছে গেছে, তবে মালিকের নিরাপদ স্টোরেজ পাথ হিসেবে যাচাই করা যায়নি বলে ছবিগুলো রাখা হয়েছে।' }
+      : { success: true };
+  }
+
+  const { data: remaining, error: referenceError } = await client
+    .from('tolet_listings')
+    .select('photos')
+    .eq('owner_id', ownerId);
+  if (referenceError) {
+    return {
+      success: true,
+      warning: 'বিজ্ঞাপন মুছে গেছে, তবে অন্য বিজ্ঞাপনে ব্যবহৃত হতে পারে বলে ছবিগুলোর স্টোরেজ পরিষ্কার করা যায়নি।',
+    };
+  }
+  const stillUsed = new Set(
+    (remaining ?? []).flatMap((row) =>
+      Array.isArray(row.photos) ? row.photos.filter((photo): photo is string => typeof photo === 'string') : []
+    )
+  );
+  const unusedPaths = candidatePaths.filter((path) => {
+    const matchingPhoto = photos.find(
+      (photo) => typeof photo === 'string' && ownedListingStoragePath(photo, ownerId) === path
+    );
+    return typeof matchingPhoto === 'string' && !stillUsed.has(matchingPhoto);
+  });
+  if (unusedPaths.length === 0) {
+    return {
+      success: true,
+      warning: 'বিজ্ঞাপন মুছে গেছে, তবে অন্য বিজ্ঞাপনে ব্যবহৃত হতে পারে বলে ছবিগুলো নিরাপদে রাখা হয়েছে।',
+    };
+  }
+
+  const { error: storageError } = await client.storage.from('listings').remove(unusedPaths);
+  if (storageError) {
+    return {
+      success: true,
+      warning: `বিজ্ঞাপন মুছে গেছে, তবে কিছু ছবি স্টোরেজ থেকে সরানো যায়নি: ${storageError.message}`,
+    };
+  }
+  return unusedPaths.length < candidatePaths.length
+    ? {
+        success: true,
+        warning: 'বিজ্ঞাপন ও অব্যবহৃত ছবি মুছে গেছে; অন্য বিজ্ঞাপনে ব্যবহৃত ছবিগুলো রাখা হয়েছে।',
+      }
+    : { success: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -365,26 +497,114 @@ export async function archiveOwnListing(
 // ---------------------------------------------------------------------------
 
 export async function adminFetchListings(statusFilter?: string | null): Promise<ToletListing[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchListings(statusFilter);
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; বাসা ভাড়ার তালিকা লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const q = client.from('tolet_listings').select('*');
   if (statusFilter && statusFilter !== 'all') q.eq('status', statusFilter);
   const { data, error } = await q.order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`বাসা ভাড়ার তালিকা লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => mapListingRow(row as RawListingRow));
 }
 
-export async function adminFetchListingById(listingId: string): Promise<ToletListing | null> {
-  if (!isSupabaseConfigured) return mockAdminFetchListingById(listingId);
+export interface AdminToletListParams {
+  page: number;
+  pageSize: number;
+  status?: string;
+  search?: string;
+  propertyType?: string;
+  areaId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface AdminToletListPage {
+  rows: ToletListing[];
+  total: number;
+  counts: Record<string, number>;
+  error?: string;
+}
+
+export async function adminFetchListingsPage(
+  params: AdminToletListParams
+): Promise<AdminToletListPage> {
+  if (!isSupabaseConfigured) {
+    return { rows: [], total: 0, counts: {}, error: 'Supabase সংযুক্ত নেই; বাসা ভাড়ার তালিকা লোড করা যায়নি।' };
+  }
   const client = createClient();
-  if (!client) return null;
+  if (!client) return { rows: [], total: 0, counts: {}, error: 'Supabase ক্লায়েন্ট তৈরি করা যায়নি।' };
+
+  let query = client
+    .from('tolet_listings')
+    .select('*, owner:owner_id(full_name,is_verified)', { count: 'exact' })
+    .order('created_at', { ascending: false })
+    .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
+  const term = params.search?.trim().replace(/[%_,().*\\"]/g, ' ').replace(/[\[\]]/g, ' ');
+  if (term) {
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term)) {
+      query = query.eq('id', term);
+    } else {
+      const filters = [`title.ilike.%${term}%`, `area_id.ilike.%${term}%`, `owner.full_name.ilike.%${term}%`];
+      query = query.or(filters.join(','));
+    }
+  }
+  if (params.status && params.status !== 'all') query = query.eq('status', params.status);
+  if (params.propertyType) query = query.eq('property_type', params.propertyType);
+  if (params.areaId) query = query.eq('area_id', params.areaId);
+  if (params.from) query = query.gte('created_at', new Date(`${params.from}T00:00:00+06:00`).toISOString());
+  if (params.to) {
+    const end = new Date(`${params.to}T00:00:00+06:00`);
+    end.setUTCDate(end.getUTCDate() + 1);
+    query = query.lt('created_at', end.toISOString());
+  }
+
+  const statuses = [
+    'draft',
+    'pending_review',
+    'approved',
+    'rejected',
+    'unavailable',
+    'suspended',
+    'archived',
+  ];
+  const [result, ...statusResults] = await Promise.all([
+    query,
+    ...statuses.map((status) =>
+      client.from('tolet_listings').select('id', { count: 'exact', head: true }).eq('status', status)
+    ),
+  ]);
+  if (result.error) {
+    return { rows: [], total: 0, counts: {}, error: `বাসা ভাড়ার তালিকা লোড ব্যর্থ হয়েছে: ${result.error.message}` };
+  }
+  const failedCount = statusResults.find((entry) => entry.error);
+  if (failedCount?.error) {
+    return { rows: [], total: 0, counts: {}, error: `স্ট্যাটাস গণনা ব্যর্থ হয়েছে: ${failedCount.error.message}` };
+  }
+  return {
+    rows: (result.data || []).map((row) => mapListingRow(row as RawListingRow)),
+    total: result.count ?? 0,
+    counts: {
+      all: statusResults.reduce((sum, result) => sum + (result.count ?? 0), 0),
+      ...Object.fromEntries(statuses.map((status, index) => [status, statusResults[index].count ?? 0])),
+    },
+  };
+}
+
+export async function adminFetchListingById(listingId: string): Promise<ToletListing | null> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; বিজ্ঞাপনের তথ্য লোড করা যায়নি।');
+  }
+  const client = createClient();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('tolet_listings')
     .select('*, owner:owner_id(id, phone, full_name, is_verified)')
     .eq('id', listingId)
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`বিজ্ঞাপনের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   return mapListingRow(data as RawListingRow);
 }
 
@@ -393,9 +613,7 @@ export async function adminUpdateListing(
   patch: Partial<ToletListing>
 ): Promise<{ success: boolean; listing?: ToletListing; error?: string }> {
   if (!isSupabaseConfigured) {
-    const listing = mockAdminUpdateListing(listingId, patch);
-    if (!listing) return { success: false, error: 'বিজ্ঞাপন পাওয়া যায়নি' };
-    return { success: true, listing };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; বাসা ভাড়ার বিজ্ঞাপন আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -509,15 +727,17 @@ export async function fetchToletRequestsAsOwner(ownerId: string): Promise<ToletR
 export async function fetchRequestsForListing(
   listingId: string
 ): Promise<ToletRequest[]> {
-  if (!isSupabaseConfigured) return mockFetchRequestsForListing(listingId);
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; বিজ্ঞাপনের অনুরোধগুলো লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('tolet_requests')
     .select('*, listing:listing_id(title)')
     .eq('listing_id', listingId)
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`বিজ্ঞাপনের অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) =>
     mapRequestRow(row as Record<string, unknown>, ((row as Record<string, unknown>).listing as { title?: string } | null)?.title || '')
   );
@@ -571,14 +791,16 @@ export async function createListingReport(input: {
 }
 
 export async function adminFetchReports(): Promise<ListingReport[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchReports();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; বাসা ভাড়ার রিপোর্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('listing_reports')
     .select('*, reporter:reporter_id(full_name)')
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`বাসা ভাড়ার রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => {
     const base = mapReportRow(row as Record<string, unknown>);
     base.reporterName =
@@ -592,9 +814,7 @@ export async function adminUpdateReportStatus(
   newStatus: ListingReportStatus
 ): Promise<{ success: boolean; error?: string }> {
   if (!isSupabaseConfigured) {
-    const updated = mockAdminUpdateReportStatus(reportId, newStatus);
-    if (!updated) return { success: false, error: 'রিপোর্ট পাওয়া যায়নি' };
-    return { success: true };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; রিপোর্ট আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
@@ -609,15 +829,17 @@ export async function adminUpdateReportStatus(
 export async function getReportsForListing(
   listingId: string
 ): Promise<ListingReport[]> {
-  if (!isSupabaseConfigured) return mockGetReportsForListing(listingId);
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; বিজ্ঞাপনের রিপোর্টগুলো লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('listing_reports')
     .select('*, reporter:reporter_id(full_name)')
     .eq('listing_id', listingId)
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`বিজ্ঞাপনের রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => {
     const base = mapReportRow(row as Record<string, unknown>);
     base.reporterName =

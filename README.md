@@ -28,6 +28,12 @@
    SUPABASE_SERVICE_ROLE_KEY=""
    ```
 
+   `/admin` uses a signed-in Supabase admin account by default. The
+   local-only development auth bypass is disabled by default. For isolated
+   local UI work only, `DEV_AUTH_BYPASS=1` in `.env.local` skips normal login;
+   it is disabled on hosted Vercel environments and is never an authorization
+   substitute. Never point it at production or shared customer data.
+
 3. Run the dev server:
 
    ```

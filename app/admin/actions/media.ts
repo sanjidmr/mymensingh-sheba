@@ -17,8 +17,9 @@ import {
  * top of a storage bucket that already does the job.
  *
  * Deletion removes the storage object, not just a row: there is no row. The
- * library reads `storage.objects` directly, so a delete that only cleared a
- * database record would leave the file downloadable by anyone with the URL.
+ * library reads object metadata through an admin-only, paginated RPC because
+ * Supabase's internal `storage` schema is not exposed through PostgREST.
+ * Deletion still uses the Storage API so the stored object itself is removed.
  */
 
 export async function uploadMedia(

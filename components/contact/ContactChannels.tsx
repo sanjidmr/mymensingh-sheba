@@ -8,6 +8,7 @@ import {
   ArrowUpRight,
 } from 'lucide-react';
 import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
+import type { mergeSiteContact } from '@/lib/site-content';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 
 type ChannelState = 'ready' | 'pending';
@@ -37,9 +38,13 @@ interface Channel {
  * "not published yet" state whose action still works — it sends the visitor to
  * the message form — instead of a dead `tel:` link or an invented number.
  */
-export default function ContactChannels() {
-  const messenger = SITE_CONTACT.socials.find((s) => s.icon === 'messenger');
-  const facebook = SITE_CONTACT.socials.find((s) => s.icon === 'facebook');
+export default function ContactChannels({
+  contact,
+}: {
+  contact: ReturnType<typeof mergeSiteContact>;
+}) {
+  const messenger = contact.socials.find((s) => s.icon === 'messenger');
+  const facebook = contact.socials.find((s) => s.icon === 'facebook');
 
   const channels: Channel[] = [
     {
@@ -47,10 +52,10 @@ export default function ContactChannels() {
       icon: Phone,
       title: 'ফোন করুন',
       description: 'জরুরি প্রয়োজনে সরাসরি কথা বলতে চাইলে।',
-      state: SITE_CONTACT.phone ? 'ready' : 'pending',
-      detail: SITE_CONTACT.phone ?? SITE_CONTACT.phonePendingBn,
-      actionLabel: SITE_CONTACT.phone ? 'কল করুন' : 'বার্তা লিখুন',
-      href: SITE_CONTACT.phone ? `tel:${SITE_CONTACT.phone}` : undefined,
+      state: contact.phone ? 'ready' : 'pending',
+      detail: contact.phone ?? SITE_CONTACT.phonePendingBn,
+      actionLabel: contact.phone ? 'কল করুন' : 'বার্তা লিখুন',
+      href: contact.phone ? `tel:${contact.phone}` : undefined,
       fallbackHref: `#${CONTACT_FORM_ANCHOR}`,
     },
     {
@@ -72,17 +77,17 @@ export default function ContactChannels() {
       title: 'ইমেইল করুন',
       description: 'বিস্তারিত লিখে বা সংযুক্তি দিয়ে পাঠাতে সুবিধা।',
       state: 'ready',
-      detail: SITE_CONTACT.email,
+      detail: contact.email,
       actionLabel: 'ইমেইল খুলুন',
-      href: `mailto:${SITE_CONTACT.email}`,
+      href: `mailto:${contact.email}`,
     },
     {
       id: 'location',
       icon: MapPin,
       title: 'আমাদের অবস্থান',
       description: 'যেখান থেকে আমরা কাজ করি।',
-      state: SITE_CONTACT.officeAddress ? 'ready' : 'pending',
-      detail: SITE_CONTACT.officeAddress ?? SITE_CONTACT.officeAddressPendingBn,
+      state: contact.officeAddress ? 'ready' : 'pending',
+      detail: contact.officeAddress ?? SITE_CONTACT.officeAddressPendingBn,
       actionLabel: 'ম্যাপে দেখুন',
       href: SITE_CONTACT.serviceAreaMapUrl,
     },

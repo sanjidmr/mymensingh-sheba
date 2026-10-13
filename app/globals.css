@@ -73,6 +73,36 @@
   --color-emerald-800: #0a3227;
   --color-emerald-900: #07271f;
   --color-emerald-950: #051f18;
+
+  /* Admin-console palette: deliberately separate from the customer brand. */
+  --color-admin-navy: #14243b;
+  --color-admin-navy-dark: #0d1b30;
+  --color-admin-navy-soft: #203653;
+  --color-admin-page: #f4f6f8;
+  --color-admin-border: #e1e6ed;
+  --color-admin-text: #17263c;
+  --color-admin-muted: #64748b;
+  --color-admin-accent: #c49a45;
+  --color-status-success: #16805d;
+  --color-status-success-bg: #eaf6f0;
+  --color-status-warning: #9a6500;
+  --color-status-warning-bg: #fff5dc;
+  --color-status-danger: #b42335;
+  --color-status-danger-bg: #fff0f1;
+  --color-status-info: #2364a0;
+  --color-status-info-bg: #edf5ff;
+  --color-status-pending: #8a5a00;
+  --color-status-pending-bg: #fff5dc;
+  --color-status-approved: #16734f;
+  --color-status-approved-bg: #e9f6ef;
+  --color-status-rejected: #aa2b37;
+  --color-status-rejected-bg: #fff0f1;
+  --color-status-disabled: #64748b;
+  --color-status-disabled-bg: #eef1f4;
+  --radius-admin-card: 0.5rem;
+  --radius-admin-control: 0.375rem;
+  --shadow-admin-card: 0 1px 2px rgb(15 23 42 / 0.05);
+  --shadow-admin-popover: 0 12px 32px rgb(15 23 42 / 0.16);
 }
 
 @layer base {
@@ -102,11 +132,101 @@
     body {
       padding-bottom: calc(var(--mms-bottom-nav-h) + env(safe-area-inset-bottom));
     }
+
+    body:has([data-admin-shell]) {
+      padding-bottom: 0;
+    }
+
+    body:has([data-dashboard-shell]) {
+      padding-bottom: 0;
+    }
   }
 
   ::selection {
     background-color: var(--color-accent-200);
     color: var(--color-brand-800);
+  }
+
+  [data-admin-shell] {
+    --admin-sidebar-expanded: 264px;
+    --admin-sidebar-collapsed: 76px;
+    --admin-sidebar-width: var(--admin-sidebar-expanded);
+    min-height: 100vh;
+    overflow-x: clip;
+    background: var(--color-admin-page);
+    color: var(--color-admin-text);
+    font-family: var(--font-sans);
+    text-wrap: pretty;
+  }
+
+  [data-admin-shell][data-sidebar-collapsed='true'] {
+    --admin-sidebar-width: var(--admin-sidebar-collapsed);
+  }
+
+  [data-admin-shell] :where(button, input, select, textarea, summary, a) {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  [data-admin-shell] button[data-button-variant] {
+    border-radius: var(--radius-admin-control);
+  }
+
+  [data-admin-shell] input:not([type='checkbox']):not([type='radio']),
+  [data-admin-shell] select,
+  [data-admin-shell] textarea {
+    border-radius: var(--radius-admin-control);
+  }
+
+  [data-admin-shell] :where(input, select, textarea) {
+    min-width: 0;
+  }
+
+  [data-admin-shell] button[data-button-variant='primary'] {
+    background-color: var(--color-admin-navy);
+    color: white;
+    box-shadow: none;
+  }
+
+  [data-admin-shell] button[data-button-variant='primary']:hover {
+    background-color: var(--color-admin-navy-dark);
+  }
+
+  [data-admin-shell] button[data-button-variant='important'] {
+    color: var(--color-admin-navy-dark);
+  }
+
+  [data-admin-shell] button[data-button-variant='secondary'] {
+    border-color: var(--color-admin-border);
+    background-color: var(--color-admin-page);
+    color: var(--color-admin-navy);
+  }
+
+  [data-admin-shell] button[data-button-variant='secondary']:hover,
+  [data-admin-shell] button[data-button-variant='outline']:hover,
+  [data-admin-shell] button[data-button-variant='icon']:hover {
+    background-color: #edf1f5;
+  }
+
+  [data-admin-shell] button[data-button-variant='outline'],
+  [data-admin-shell] button[data-button-variant='icon'] {
+    border-color: var(--color-admin-border);
+    color: var(--color-admin-navy);
+  }
+
+  [data-admin-shell] button[data-button-variant='ghost'] {
+    color: var(--color-admin-navy);
+  }
+
+  [data-admin-shell] button[data-button-variant='ghost']:hover {
+    background-color: var(--color-admin-page);
+  }
+
+  [data-admin-shell] button[data-button-variant='success'] {
+    background-color: var(--color-status-success);
+  }
+
+  [data-admin-shell] button[data-button-variant='success']:hover {
+    background-color: #12694d;
   }
 }
 

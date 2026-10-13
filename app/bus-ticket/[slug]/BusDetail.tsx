@@ -41,9 +41,12 @@ export default function BusDetail({ slug }: { slug: string }) {
   if (!listing) return <CatalogDetailMissing ui={ui} />;
 
   const facts: DetailFact[] = [
-    ...(listing.originBn ? [{ label: 'যাত্রার সূচি', value: listing.originBn }] : []),
+    ...(listing.originBn ? [{ label: 'যাত্রার শুরু', value: listing.originBn }] : []),
     ...(listing.destinationBn
       ? [{ label: 'গন্তব্য', value: listing.destinationBn }]
+      : []),
+    ...(listing.availableTimeBn
+      ? [{ label: 'সরবরাহকৃত সময়সূচি', value: listing.availableTimeBn }]
       : []),
     ...(listing.fareMin != null
       ? [
@@ -52,9 +55,6 @@ export default function BusDetail({ slug }: { slug: string }) {
             value: `${bnTakaRange(listing.fareMin, listing.fareMax) ?? bnTaka(listing.fareMin)} টাকা`,
           },
         ]
-      : []),
-    ...(listing.seatCount != null
-      ? [{ label: 'সিট সংখ্যা', value: String(listing.seatCount) }]
       : []),
   ];
 

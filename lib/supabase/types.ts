@@ -80,6 +80,11 @@ export interface UserProfile {
   emergencyContact?: string;
   /** Short self-description shown on the customer dashboard profile. */
   bio?: string;
+  notificationPreferences?: {
+    postUpdates: boolean;
+    requestUpdates: boolean;
+    supportReplies: boolean;
+  };
   createdAt: string;
   updatedAt: string;
 }
@@ -318,6 +323,7 @@ export interface SavedListingItem {
   id: string;
   userId: string;
   itemType: 'tolet' | 'tutor' | 'service' | 'market';
+  itemId?: string;
   title: string;
   areaName: string;
   priceOrRate?: string;

@@ -106,10 +106,17 @@ export function AdminSearch({
  * "Clear all filters" — visible only when a filter is actually applied, so it
  * never appears as a dead control on an unfiltered screen.
  */
-export function ClearFilters({ searchParams }: { searchParams: URLSearchParams }) {
+export function ClearFilters({
+  searchParams,
+}: {
+  searchParams: Record<string, string | string[] | undefined>;
+}) {
   const router = useRouter();
-  const FILTER_KEYS = ['q', 'status', 'kind', 'category', 'service', 'area', 'from', 'to', 'sort'];
-  const hasFilter = FILTER_KEYS.some((k) => searchParams.get(k));
+  const FILTER_KEYS = ['q', 'id', 'status', 'kind', 'category', 'jobType', 'service', 'area', 'from', 'to', 'sort'];
+  const hasFilter = FILTER_KEYS.some((key) => {
+    const value = searchParams[key];
+    return Array.isArray(value) ? value.some(Boolean) : Boolean(value);
+  });
   if (!hasFilter) return null;
 
   return (

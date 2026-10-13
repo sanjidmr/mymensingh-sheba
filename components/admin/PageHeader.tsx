@@ -23,28 +23,28 @@ export function PageHeader({
   breadcrumb?: { href: string; label: string };
 }) {
   return (
-    <div className="mb-5">
+    <header className="mb-6 sm:mb-7">
       {breadcrumb && (
         <a
           href={breadcrumb.href}
-          className="mb-2 inline-block text-xs font-semibold text-brand-700 hover:underline"
+          className="mb-2 inline-flex min-h-8 items-center text-xs font-semibold text-admin-muted hover:text-admin-navy hover:underline"
         >
           ← {breadcrumb.label}
         </a>
       )}
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+      <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
-          <h1 className="text-xl font-bold leading-tight text-ink-900 sm:text-2xl">{title}</h1>
+          <h1 className="break-words text-xl font-bold leading-tight tracking-tight text-admin-text sm:text-2xl">{title}</h1>
           {description && (
-            <p className="mt-1 max-w-2xl text-sm leading-relaxed text-ink-500">{description}</p>
+            <p className="mt-1 max-w-2xl break-words text-sm leading-relaxed text-admin-muted">{description}</p>
           )}
           {count !== undefined && (
-            <p className="mt-1.5 text-xs font-medium text-ink-400">{count}</p>
+            <p className="mt-1.5 text-xs font-medium text-admin-muted">{count}</p>
           )}
         </div>
-        {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
+        {actions && <div className="flex w-full shrink-0 flex-wrap items-center gap-2 sm:w-auto">{actions}</div>}
       </div>
-    </div>
+    </header>
   );
 }
 
@@ -66,14 +66,14 @@ export function Panel({
 }) {
   return (
     <section
-      className={cn('rounded-xl border border-mist-200 bg-white', className)}
+      className={cn('rounded-admin-card border border-admin-border bg-white shadow-admin-card', className)}
     >
       {(title || actions) && (
-        <div className="flex flex-col gap-2 border-b border-mist-100 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 border-b border-admin-border px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="min-w-0">
-            {title && <h2 className="text-sm font-bold text-ink-900">{title}</h2>}
+            {title && <h2 className="text-sm font-bold text-admin-text">{title}</h2>}
             {description && (
-              <p className="mt-0.5 text-xs leading-relaxed text-ink-500">{description}</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-admin-muted">{description}</p>
             )}
           </div>
           {actions && <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div>}
@@ -96,8 +96,8 @@ export function DetailField({
 }) {
   return (
     <div className={cn('min-w-0', wide && 'sm:col-span-2')}>
-      <dt className="text-[11px] font-bold uppercase tracking-wide text-ink-400">{label}</dt>
-      <dd className="mt-0.5 break-words text-sm text-ink-800">{children}</dd>
+      <dt className="text-[11px] font-bold uppercase tracking-wide text-admin-muted">{label}</dt>
+      <dd className="mt-0.5 break-words text-sm text-admin-text">{children}</dd>
     </div>
   );
 }

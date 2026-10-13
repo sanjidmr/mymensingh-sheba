@@ -1,181 +1,106 @@
-'use client';
+import { fetchAdminNotifications, fetchAdminUnreadNotificationCount, parseListParams } from '@/lib/admin/queries';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { AdminError, AdminEmpty } from '@/components/admin/States';
+import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
+import { FilterNav } from '@/components/admin/FilterNav';
+import { TablePager } from '@/components/admin/TablePager';
+import AdminNotificationList from '@/components/admin/AdminNotificationList';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import {
-  Loader2,
-  Bell,
-  CheckCircle2,
-  Info,
-  AlertTriangle,
-  ShieldAlert,
-  MoveRight,
-  ArrowLeft,
-  MoreHorizontal,
-  MailOpen,
-  Trash2,
-} from 'lucide-react';
-import { adminFetchNotifications, adminMarkNotificationsRead } from '@/lib/admin-service';
-import type { NotificationItem } from '@/lib/supabase/types';
+export const dynamic = 'force-dynamic';
 
-export default function AdminNotificationsPage() {
-  const router = useRouter();
-  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState('');
+const CATEGORIES = [
+  { value: 'service_request', label: 'সেবা অনুরোধ' },
+  { value: 'blood_request', label: 'রক্তের অনুরোধ' },
+  { value: 'vehicle_request', label: 'যানবাহন অনুরোধ' },
+  { value: 'contact_message', label: 'গ্রাহক সহায়তা' },
+  { value: 'community_post', label: 'কমিউনিটি পোস্ট' },
+  { value: 'community_post_report', label: 'পোস্ট রিপোর্ট' },
+  { value: 'listing_reports', label: 'লিস্টিং রিপোর্ট' },
+  { value: 'staff_profile_reports', label: 'কর্মী রিপোর্ট' },
+  { value: 'tutor_reports', label: 'টিউটর রিপোর্ট' },
+  { value: 'blood_donor_reports', label: 'রক্তদাতা রিপোর্ট' },
+];
 
-  useEffect(() => {
-    let active = true;
-    adminFetchNotifications()
-      .then((data) => {
-        if (active) setNotifications(data);
-      })
-      .catch((err: unknown) => {
-        if (active) {
-          setError(err instanceof Error ? err.message : 'নোটিফিকেশন লোড ব্যর্থ হয়েছে');
-        }
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => { active = false; };
-  }, []);
-
-  const handleMarkAllRead = async () => {
-    setBusy(true);
-    setError('');
-    try {
-      const res = await adminMarkNotificationsRead();
-      if (!res.success) {
-        setError(res.error || 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
-        return;
-      }
-      setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
-      router.refresh();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'নোটিফিকেশন আপডেট ব্যর্থ হয়েছে।');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const unreadCount = notifications.filter((n) => !n.isRead).length;
-
-  const getIcon = (type: string) => {
-    switch (type) {
-      case 'success':
-        return <CheckCircle2 className="w-5 h-5 text-emerald-700 shrink-0" />;
-      case 'warning':
-        return <AlertTriangle className="w-5 h-5 text-amber-700 shrink-0" />;
-      case 'danger':
-        return <ShieldAlert className="w-5 h-5 text-rose-700 shrink-0" />;
-      default:
-        return <Info className="w-5 h-5 text-sky-700 shrink-0" />;
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-slate-50">
-        
-        <div className="flex items-center justify-center gap-3 py-16 text-slate-500">
-          <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-          <span className="text-sm">নোটিফিকেশন লোড হচ্ছে...</span>
-        </div>
-      </div>
-    );
+export default async function AdminNotificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolved = await searchParams;
+  const params = parseListParams(resolved, { pageSize: 20 });
+  const result = await fetchAdminNotifications(params);
+  let unreadCount: number | null = null;
+  let unreadError: string | undefined;
+  try {
+    unreadCount = await fetchAdminUnreadNotificationCount();
+  } catch (error) {
+    unreadError = error instanceof Error ? error.message : 'অপঠিত নোটিফিকেশন গণনা করা যায়নি।';
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <Link href="/admin" className="mb-2 inline-flex items-center gap-1.5 text-xs text-slate-500 hover:text-emerald-800">
-              <ArrowLeft className="w-3.5 h-3.5" /> অ্যাডমিন ড্যাশবোর্ড
-            </Link>
-            <h1 className="text-2xl font-bold text-slate-900">অ্যাডমিন নোটিফিকেশন হাব</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              নতুন রিকোয়েস্ট, রিপোর্ট, ভেরিফিকেশন রিকোয়েস্টের সারসংক্ষেপ
-            </p>
-          </div>
-          {unreadCount > 0 && (
-            <button
-              type="button"
-              onClick={handleMarkAllRead}
-              disabled={busy}
-              className="px-3 py-2 rounded-xl border border-emerald-200 bg-emerald-50 text-emerald-800 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50 shrink-0"
-            >
-              সব পঠিত চিহ্নিত
-            </button>
+    <>
+      <PageHeader
+        title="অ্যাডমিন নোটিফিকেশন"
+        description="ডাটাবেজে সংরক্ষিত প্রকৃত জমা, সাপোর্ট বার্তা ও মডারেশন আপডেট।"
+        count={result.unavailable ? undefined : `${result.total}টি নোটিফিকেশন · ${unreadCount ?? '—'}টি অপঠিত`}
+      />
+
+      {result.unavailable ? (
+        <AdminError
+          title="নোটিফিকেশন লোড করা যায়নি"
+          message={result.error ?? 'অ্যাডমিন অনুমতি বা ডেটাবেজ সংযোগ যাচাই করুন।'}
+        />
+      ) : (
+        <>
+          {unreadError && (
+            <AdminError title="অপঠিত সংখ্যা লোড করা যায়নি" message={unreadError} className="mb-4" />
           )}
-        </div>
-
-        {error && (
-          <p role="alert" className="mb-3 rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
-            {error}
-          </p>
-        )}
-
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm divide-y divide-slate-100 overflow-hidden">
-          {notifications.length === 0 ? (
-            <div className="p-8 text-center">
-              <Bell className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-xs text-slate-500">কোনো অ্যাডমিন নোটিফিকেশন নেই</p>
-              <p className="text-[11px] text-slate-400 mt-1">নতুন রিকোয়েস্ট, রিপোর্ট বা ভেরিফিকেশনের সময় এখানে দেখাবে।</p>
+          <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <AdminSearch placeholder="শিরোনাম বা বার্তা খুঁজুন…" />
+            <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+              <FilterNav
+                id="notification-read"
+                label="পড়ার অবস্থা"
+                value={String(params.status ?? '')}
+                placeholder="সব"
+                options={[
+                  { value: 'unread', label: 'অপঠিত' },
+                  { value: 'read', label: 'পঠিত' },
+                ]}
+                param="status"
+                searchParams={resolved}
+              />
+              <FilterNav
+                id="notification-category"
+                label="ধরন"
+                value={String(params.category ?? '')}
+                placeholder="সব ধরন"
+                options={CATEGORIES}
+                param="category"
+                searchParams={resolved}
+              />
+              <ClearFilters searchParams={resolved} />
             </div>
+          </div>
+
+          {result.total === 0 ? (
+            <AdminEmpty
+              title="কোনো নোটিফিকেশন নেই"
+              description="নতুন বাস্তব জমা, সাপোর্ট বার্তা বা মডারেশন ঘটনা হলে এখানে দেখা যাবে।"
+            />
           ) : (
-            notifications.map((notif) => (
-              <div
-                key={notif.id}
-                className={`p-4 sm:p-5 flex items-start gap-3.5 transition-colors ${
-                  notif.isRead ? 'bg-white' : 'bg-emerald-50/30'
-                }`}
-              >
-                <div className="mt-0.5">{getIcon(notif.type)}</div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <h4 className="text-sm font-bold text-slate-900 truncate">
-                      {notif.title}
-                    </h4>
-                    <span className="text-[11px] text-slate-400 shrink-0">
-                      {new Date(notif.createdAt).toLocaleDateString('bn-BD', {
-                        day: 'numeric',
-                        month: 'short',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-xs text-slate-600 leading-relaxed">{notif.body}</p>
-                  <div className="flex items-center gap-2 mt-2 text-[11px] text-slate-500">
-                    <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
-                      {notif.targetRole === 'admin' ? 'অ্যাডমিন হাব' : 'ব্যক্তিগত'}
-                    </span>
-                    {notif.relatedType && (
-                      <span className="px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 font-medium">
-                        {notif.relatedType}
-                      </span>
-                    )}
-                    {notif.linkHref && (
-                      <Link
-                        href={notif.linkHref}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 hover:underline"
-                      >
-                        বিস্তারিত দেখুন
-                        <MoveRight className="w-3 h-3" />
-                      </Link>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))
+            <>
+              <AdminNotificationList rows={result.rows} unreadCount={unreadCount ?? 0} />
+              <TablePager
+                page={result.page}
+                pageSize={result.pageSize}
+                total={result.total}
+                searchParams={resolved}
+              />
+            </>
           )}
-        </div>
-      </main>
-    </div>
+        </>
+      )}
+    </>
   );
 }

@@ -15,8 +15,13 @@ interface MessageRow {
   subject: string;
   message: string;
   status: string;
+  admin_notes: string | null;
   user_id: string | null;
   created_at: string;
+  complaint_category: string | null;
+  complaint_subject: string | null;
+  attachment_path: string | null;
+  attachment_url?: string;
 }
 
 interface ReplyRow {
@@ -45,7 +50,7 @@ export default async function AdminMessageDetailPage({
 
   const { data: message, error } = await admin.client
     .from('contact_messages')
-    .select('id, name, phone, email, subject, message, status, user_id, created_at')
+    .select('id, name, phone, email, subject, message, status, admin_notes, user_id, created_at, complaint_category, complaint_subject, attachment_path')
     .eq('id', id)
     .maybeSingle();
   if (error) {
@@ -79,11 +84,27 @@ export default async function AdminMessageDetailPage({
     );
   }
 
+  let attachmentUrl: string | undefined;
+  if (message.attachment_path) {
+    const { data: attachment, error: attachmentError } = await admin.client.storage
+      .from('support-attachments')
+      .createSignedUrl(message.attachment_path, 3600);
+    if (attachmentError) {
+      return (
+        <>
+          <PageHeader title="সাপোর্ট কথোপকথন" />
+          <AdminError title="অভিযোগের সংযুক্তি খোলা যায়নি" message={attachmentError.message} />
+        </>
+      );
+    }
+    attachmentUrl = attachment.signedUrl;
+  }
+
   return (
     <>
       <PageHeader
         title="সাপোর্ট কথোপকথন"
-        description={`${message.name} · ${message.phone} · ${message.subject}`}
+        description={`${message.name} · ${message.phone} · ${message.complaint_subject || message.subject}`}
         breadcrumb={{ href: '/admin/messages', label: 'সব বার্তা' }}
       />
       <div className="mb-4">
@@ -92,7 +113,7 @@ export default async function AdminMessageDetailPage({
         </Link>
       </div>
       <AdminConversation
-        message={message as MessageRow}
+        message={{ ...(message as MessageRow), attachment_url: attachmentUrl }}
         replies={(replies ?? []) as ReplyRow[]}
       />
     </>

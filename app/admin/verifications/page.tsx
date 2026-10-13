@@ -1,369 +1,158 @@
-'use client';
-
-import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import {
-  Search,
-  ShieldCheck,
-  Lock,
-  CheckCircle2,
-  XCircle,
-  PauseCircle,
-  RotateCcw,
-  Loader2,
-  ChevronDown,
-  ChevronUp,
-  GraduationCap,
-  Phone,
-  Camera,
-} from 'lucide-react';
-import { adminFetchTutorProfiles, adminUpdateTutorProfile } from '@/lib/home-tutor-service';
-import { TutorAvatar } from '@/components/home-tutor/TutorCard';
-import type { HomeTutorProfile, TutorProfileStatus } from '@/lib/supabase/types';
-import {
-  TUTOR_STATUS_META,
-  TUTOR_TEACHING_MODE_LABELS,
-  TUTOR_AVAILABILITY_LABELS,
-  formatTutorFee,
-} from '@/lib/home-tutor-types';
+import { redirect } from 'next/navigation';
+import { ArrowUpRight, GraduationCap, Inbox } from 'lucide-react';
+import { PageHeader } from '@/components/admin/PageHeader';
+import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
+import { TablePager } from '@/components/admin/TablePager';
+import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
+import { FilterNav } from '@/components/admin/FilterNav';
+import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
+import { AdminEmpty, AdminError } from '@/components/admin/States';
+import { StatusPill } from '@/components/admin/StatCard';
+import { fetchTutorProfiles, parseListParams, type AdminTutorListRow } from '@/lib/admin/queries';
+import { formatDateTime } from '@/lib/admin/format';
 import { getAreaById } from '@/lib/locations';
-import { resolveTutorPhotoUrl } from '@/lib/home-tutor-service';
+import type { TutorProfileStatus } from '@/lib/supabase/types';
 
-const TABS: { id: 'all' | TutorProfileStatus; labelBn: string }[] = [
-  { id: 'all', labelBn: 'সব' },
-  { id: 'pending_approval', labelBn: 'পর্যালোচনায়' },
-  { id: 'approved', labelBn: 'প্রকাশিত' },
-  { id: 'rejected', labelBn: 'প্রত্যাখ্যাত' },
-  { id: 'suspended', labelBn: 'নিষিদ্ধ' },
-  { id: 'paused', labelBn: 'বিরতি' },
+export const dynamic = 'force-dynamic';
+
+const TUTOR_STATUSES: Array<{ value: TutorProfileStatus; label: string; tone: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = [
+  { value: 'draft', label: 'খসড়া', tone: 'neutral' },
+  { value: 'pending_approval', label: 'পর্যালোচনায়', tone: 'warning' },
+  { value: 'approved', label: 'প্রকাশিত', tone: 'success' },
+  { value: 'rejected', label: 'প্রত্যাখ্যাত', tone: 'danger' },
+  { value: 'paused', label: 'বিরতি', tone: 'info' },
+  { value: 'suspended', label: 'স্থগিত', tone: 'danger' },
 ];
 
-export default function AdminTutorVerificationsPage() {
-  const [profiles, setProfiles] = useState<HomeTutorProfile[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<'all' | TutorProfileStatus>('all');
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
-  const [error, setError] = useState('');
+function Status({ value }: { value: string }) {
+  const status = TUTOR_STATUSES.find((item) => item.value === value);
+  return <StatusPill label={status?.label ?? value} tone={status?.tone ?? 'neutral'} />;
+}
 
-  useEffect(() => {
-    let active = true;
-    adminFetchTutorProfiles()
-      .then((data) => {
-        if (active) setProfiles(data);
-      })
-      .catch(() => {
-        if (active) setError('তথ্য লোড করা যায়নি');
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
+const columns: AdminColumn<AdminTutorListRow>[] = [
+  {
+    key: 'name',
+    header: 'শিক্ষক প্রোফাইল',
+    mobilePrimary: true,
+    render: (row) => (
+      <span className="block min-w-0">
+        <span className="block break-words font-semibold">{row.full_name}</span>
+        <span className="mt-0.5 block break-all font-mono text-[10px] text-admin-muted">{row.id}</span>
+        <span className="mt-0.5 block text-xs text-admin-muted">{row.qualification} · {row.institution}</span>
+      </span>
+    ),
+  },
+  {
+    key: 'subjects',
+    header: 'বিষয় / শ্রেণি',
+    hideOnMobile: true,
+    render: (row) => `${row.preferred_subjects?.join(' · ') || '—'} / ${row.preferred_classes?.join(' · ') || '—'}`,
+  },
+  {
+    key: 'areas',
+    header: 'এলাকা',
+    hideOnMobile: true,
+    render: (row) => row.preferred_areas?.map((id) => getAreaById(id)?.nameBn || id).join(' · ') || '—',
+  },
+  {
+    key: 'salary',
+    header: 'প্রত্যাশিত বেতন',
+    render: (row) => row.expected_salary_min || row.expected_salary_max
+      ? `৳${Number(row.expected_salary_min ?? 0).toLocaleString('bn-BD')}–${Number(row.expected_salary_max ?? 0).toLocaleString('bn-BD')}`
+      : '—',
+  },
+  { key: 'status', header: 'অবস্থা', render: (row) => <Status value={row.status} /> },
+  {
+    key: 'created',
+    header: 'জমার সময়',
+    hideOnMobile: true,
+    render: (row) => <span className="text-xs text-admin-muted">{formatDateTime(row.created_at)}</span>,
+  },
+];
 
-  const patch = async (id: string, p: Parameters<typeof adminUpdateTutorProfile>[1], reload = false) => {
-    setBusyId(id);
-    setError('');
-    const res = await adminUpdateTutorProfile(id, p);
-    setBusyId(null);
-    if (res.success && res.profile) {
-      setProfiles((prev) => prev.map((x) => (x.id === id ? res.profile! : x)));
-    } else if (res.success && reload) {
-      const data = await adminFetchTutorProfiles();
-      setProfiles(data);
-    } else {
-      setError(res.error || 'আপডেট ব্যর্থ হয়েছে');
-    }
-  };
-
-  const handleReject = async (p: HomeTutorProfile) => {
-    const reason = window.prompt(
-      `প্রত্যাখ্যান / পরিবর্তনের কারণ লিখুন (তিনি দেখতে পাবেন):\n${p.fullName}`
-    );
-    if (reason == null) return;
-    if (!reason.trim()) {
-      setError('প্রত্যাখ্যানের কারণ লিখতে হবে।');
-      return;
-    }
-    await patch(p.id, { status: 'rejected', rejectionReason: reason.trim() });
-  };
-
-  const filtered = profiles.filter((p) => {
-    if (tab !== 'all' && p.status !== tab) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      if (
-        !p.fullName.toLowerCase().includes(q) &&
-        !p.institution.toLowerCase().includes(q) &&
-        !p.id.includes(q)
-      ) {
-        return false;
-      }
-    }
-    return true;
-  });
+export default async function AdminTutorVerificationsPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const resolved = await searchParams;
+  const params = parseListParams(resolved, { pageSize: 20 });
+  const focus = Array.isArray(resolved.focus) ? resolved.focus[0] : resolved.focus;
+  if (focus && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(focus)) {
+    redirect(`/admin/verifications/${focus}`);
+  }
+  const result = await fetchTutorProfiles(params);
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">গৃহশিক্ষক ভেরিফিকেশন</h1>
-            <p className="text-xs text-slate-500 mt-1">
-              টিউটর প্রোফাইল যাচাই ও প্রকাশ। ব্যক্তিগত নম্বর শুধুমাত্র এখানে দেখানো হয়।
-            </p>
+    <>
+      <PageHeader
+        title="গৃহশিক্ষক ব্যবস্থাপনা"
+        description="টিউটর প্রোফাইল, শিক্ষাগত তথ্য ও প্রকাশনার অবস্থা পর্যালোচনা করুন। ব্যক্তিগত যোগাযোগের তথ্য শুধু অনুমোদিত বিস্তারিত পৃষ্ঠায় দেখানো হয়।"
+        count={`মোট ${result.total.toLocaleString('bn-BD')} টি প্রোফাইল`}
+        actions={
+          <>
+            <Link href="/admin/tutor-requests" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-admin-border bg-white px-3 text-xs font-semibold text-admin-text hover:bg-admin-page">
+              <Inbox className="h-4 w-4" aria-hidden="true" /> টিউটর অনুরোধ
+            </Link>
+            <Link href="/home-tutor" className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-admin-navy px-3 text-xs font-semibold text-white hover:bg-admin-navy/90">
+              <GraduationCap className="h-4 w-4" aria-hidden="true" /> পাবলিক ডিরেক্টরি
+            </Link>
+          </>
+        }
+      />
+      {result.unavailable ? (
+        <AdminError title="টিউটর প্রোফাইল লোড করা যায়নি" message={result.error} />
+      ) : (
+        <>
+          <section aria-label="টিউটর প্রোফাইলের অবস্থা" className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
+            <Link href="/admin/verifications" className="rounded-admin-card border border-admin-border bg-white p-3 hover:border-admin-navy/30">
+              <span className="block text-xs text-admin-muted">সব প্রোফাইল</span><span className="mt-1 block text-lg font-bold text-admin-text">{result.counts.all.toLocaleString('bn-BD')}</span>
+            </Link>
+            {TUTOR_STATUSES.map((status) => (
+              <Link key={status.value} href={`/admin/verifications?status=${status.value}`} className="rounded-admin-card border border-admin-border bg-white p-3 hover:border-admin-navy/30">
+                <span className="block text-xs text-admin-muted">{status.label}</span><span className="mt-1 block text-lg font-bold text-admin-text">{(result.counts.byStatus[status.value] ?? 0).toLocaleString('bn-BD')}</span>
+              </Link>
+            ))}
+          </section>
+
+          <div className="mb-3 flex flex-col gap-2 sm:flex-row">
+            <AdminSearch placeholder="নাম, প্রোফাইল ID, প্রতিষ্ঠান খুঁজুন…" className="sm:max-w-md" />
+            <FilterNav
+              id="tutor-status"
+              label="প্রোফাইলের অবস্থা"
+              value={String(params.status ?? '')}
+              placeholder="সব অবস্থা"
+              options={TUTOR_STATUSES.map(({ value, label }) => ({ value, label }))}
+              param="status"
+              searchParams={resolved}
+            />
+            <FilterNav
+              id="tutor-sort"
+              label="সাজান"
+              value={String(params.sort ?? '')}
+              placeholder="নতুন আগে"
+              options={[{ value: 'newest', label: 'নতুন আগে' }, { value: 'oldest', label: 'পুরনো আগে' }]}
+              param="sort"
+              searchParams={resolved}
+            />
           </div>
-          <Link
-            href="/home-tutor"
-            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 hover:bg-slate-100 shrink-0"
-          >
-            <GraduationCap className="w-4 h-4" />
-            পাবলিক ডিরেক্টরি
-          </Link>
-        </div>
-
-        {/* Status filter tabs */}
-        <div className="flex items-center gap-2 flex-wrap mb-4">
-          {TABS.map((t) => {
-            const count =
-              t.id === 'all'
-                ? profiles.length
-                : profiles.filter((p) => p.status === t.id).length;
-            const active = tab === t.id;
-            return (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`min-h-[36px] px-3.5 py-1.5 rounded-xl text-xs font-bold border transition-colors ${
-                  active
-                    ? 'bg-slate-900 text-white border-slate-900'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-100'
-                }`}
-              >
-                {t.labelBn}
-                <span className={`ml-1.5 text-[10px] ${active ? 'text-emerald-300' : 'text-slate-400'}`}>
-                  ({count})
-                </span>
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="relative mb-4 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="নাম / প্রতিষ্ঠান খুঁজুন..."
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
+          <div className="mb-4 flex flex-wrap items-end gap-2">
+            <DateRangeFilter />
+            <ClearFilters searchParams={resolved} />
+          </div>
+          <AdminTable
+            columns={columns}
+            rows={result.rows}
+            getKey={(row) => row.id}
+            getHref={(row) => `/admin/verifications/${row.id}`}
+            caption="গৃহশিক্ষক প্রোফাইল"
+            empty={<AdminEmpty title="কোনো টিউটর প্রোফাইল নেই" description="এই সার্চ বা ফিল্টারে কোনো রেকর্ড মেলেনি।" icon={<GraduationCap className="h-5 w-5" />} />}
           />
-        </div>
-
-        {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
-            {error}
-          </div>
-        )}
-
-        {loading ? (
-          <div className="py-16 text-center text-slate-500 text-sm flex flex-col items-center gap-2">
-            <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
-            প্রোফাইল লোড হচ্ছে...
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="py-16 text-center text-slate-500 text-sm bg-white rounded-2xl border border-slate-200">
-            এই ফিল্টারে কোনো প্রোফাইল নেই।
-          </div>
-        ) : (
-          <div className="space-y-4">
-            {filtered.map((p) => {
-              const meta = TUTOR_STATUS_META[p.status];
-              const expanded = expandedId === p.id;
-              const photo = resolveTutorPhotoUrl(p.profilePhotoUrl);
-              const areas = p.preferredAreas
-                .map((id) => getAreaById(id)?.nameBn)
-                .filter((n): n is string => Boolean(n));
-              return (
-                <div key={p.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-                  {/* Header row */}
-                  <div className="p-4 sm:p-5 flex items-start gap-4">
-                    <TutorAvatar tutor={p} className="w-12 h-12 text-lg" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="font-bold text-slate-900 text-sm">{p.fullName}</h3>
-                        {p.isVerified && (
-                          <ShieldCheck className="w-4 h-4 text-emerald-600" aria-label="ভেরিফায়েড" />
-                        )}
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${meta.badge}`}>
-                          {meta.labelBn}
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-600 mt-0.5 line-clamp-1">
-                        {p.qualification} · {p.institution}
-                      </p>
-                      <p className="text-[11px] text-slate-500 mt-1 flex items-center gap-1">
-                        <Phone className="w-3 h-3" />
-                        <Lock className="w-3 h-3" />
-                        {p.privatePhone || '—'}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(expanded ? null : p.id)}
-                      className="p-2 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 shrink-0"
-                      aria-label={expanded ? 'বন্ধ করুন' : 'বিস্তারিত'}
-                    >
-                      {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-                    </button>
-                  </div>
-
-                  {expanded && (
-                    <div className="px-4 sm:px-5 pb-5 border-t border-slate-100 pt-4">
-                      {/* Info grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                        <div>
-                          <span className="block text-[10px] text-slate-400">বিষয়সমূহ</span>
-                          <span className="block text-slate-800 font-medium mt-0.5">
-                            {p.preferredSubjects.join(' · ') || '—'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="block text-[10px] text-slate-400">শ্রেণি</span>
-                          <span className="block text-slate-800 font-medium mt-0.5">
-                            {p.preferredClasses.join(' · ') || '—'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="block text-[10px] text-slate-400">পছন্দের এলাকা</span>
-                          <span className="block text-slate-800 font-medium mt-0.5">
-                            {areas.join(' · ') || '—'}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="block text-[10px] text-slate-400">বেতন</span>
-                          <span className="block text-slate-800 font-medium mt-0.5">
-                            {formatTutorFee(p.expectedSalaryMin, p.expectedSalaryMax)}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="block text-[10px] text-slate-400">মাধ্যম / প্রাপ্যতা</span>
-                          <span className="block text-slate-800 font-medium mt-0.5">
-                            {TUTOR_TEACHING_MODE_LABELS[p.teachingMode]} ·{' '}
-                            {TUTOR_AVAILABILITY_LABELS[p.availability].labelBn}
-                          </span>
-                        </div>
-                        <div>
-                          <span className="block text-[10px] text-slate-400">অভিজ্ঞতা / রেটিং</span>
-                          <span className="block text-slate-800 font-medium mt-0.5">
-                            {p.experienceYears} বছর ·{' '}
-                            {Number(p.ratingCount ?? 0) > 0
-                              ? `${Number(p.ratingAvg ?? 0).toFixed(1)}★ (${p.ratingCount ?? 0})`
-                              : 'কোনো রিভিউ নেই'}
-                          </span>
-                        </div>
-                      </div>
-
-                      {/* Rejection reason */}
-                      {p.status === 'rejected' && p.rejectionReason && (
-                        <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
-                          <strong>প্রত্যাখ্যানের কারণ:</strong> {p.rejectionReason}
-                        </div>
-                      )}
-                      {p.adminNotes && (
-                        <div className="mt-3 p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-700">
-                          <strong>অ্যাডমিন নোট:</strong> {p.adminNotes}
-                        </div>
-                      )}
-
-                      {/* Actions */}
-                      <div className="mt-4 flex flex-wrap items-center gap-2">
-                        {p.status !== 'approved' && (
-                          <button
-                            type="button"
-                            disabled={busyId === p.id}
-                            onClick={() => patch(p.id, { status: 'approved', isVerified: true })}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-bold disabled:opacity-50"
-                          >
-                            {busyId === p.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <CheckCircle2 className="w-3.5 h-3.5" />
-                            )}
-                            Approve / প্রকাশ
-                          </button>
-                        )}
-                        {p.status === 'approved' && (
-                          <button
-                            type="button"
-                            disabled={busyId === p.id}
-                            onClick={() =>
-                              patch(p.id, { status: 'suspended' }, true)
-                            }
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-red-700 hover:bg-red-800 text-white text-xs font-bold disabled:opacity-50"
-                          >
-                            {busyId === p.id ? (
-                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                            ) : (
-                              <PauseCircle className="w-3.5 h-3.5" />
-                            )}
-                            Suspend / নিষিদ্ধ
-                          </button>
-                        )}
-                        <button
-                          type="button"
-                          disabled={busyId === p.id}
-                          onClick={() => handleReject(p)}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-rose-200 bg-white text-rose-700 text-xs font-bold hover:bg-rose-50 disabled:opacity-50"
-                        >
-                          <XCircle className="w-3.5 h-3.5" />
-                          Reject / পরিবর্তন চান
-                        </button>
-                        <button
-                          type="button"
-                          disabled={busyId === p.id}
-                          onClick={() => patch(p.id, { isVerified: !p.isVerified })}
-                          className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border text-xs font-bold disabled:opacity-50 ${
-                            p.isVerified
-                              ? 'border-emerald-200 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
-                              : 'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-                          }`}
-                        >
-                          <ShieldCheck className="w-3.5 h-3.5" />
-                          {p.isVerified ? 'ভেরিফায়েড ✅' : 'ভেরিফায়ড চিহ্নিত করুন'}
-                        </button>
-                        {['suspended', 'paused'].includes(p.status) && (
-                          <button
-                            type="button"
-                            disabled={busyId === p.id}
-                            onClick={() => patch(p.id, { status: 'approved' }, true)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50 disabled:opacity-50"
-                          >
-                            <RotateCcw className="w-3.5 h-3.5" />
-                            পুনরায় সক্রিয়
-                          </button>
-                        )}
-                        <Link
-                          href={`/home-tutor/${p.id}`}
-                          className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-slate-200 bg-white text-slate-700 text-xs font-bold hover:bg-slate-50"
-                        >
-                          <GraduationCap className="w-3.5 h-3.5" />
-                          প্রোফাইল
-                        </Link>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </main>
-    </div>
+          <TablePager page={result.page} pageSize={result.pageSize} total={result.total} searchParams={resolved} />
+          <p className="mt-3 flex items-center gap-1 text-[11px] text-admin-muted"><ArrowUpRight className="h-3 w-3" /> কোনো প্রোফাইলের সারিতে চাপ দিয়ে ব্যক্তিগত ও পূর্ণ বিবরণ খুলুন।</p>
+        </>
+      )}
+    </>
   );
 }

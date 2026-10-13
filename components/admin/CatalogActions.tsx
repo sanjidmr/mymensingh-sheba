@@ -26,6 +26,7 @@ export default function CatalogActions({ row }: { row: any }) {
   const router = useRouter();
   const { notify } = useToast();
   const [deleting, setDeleting] = useState(false);
+  const [confirmingActive, setConfirmingActive] = useState(false);
   const [busy, setBusy] = useState(false);
   const [sortOrder, setSortOrder] = useState(String(row.sort_order ?? 0));
 
@@ -44,6 +45,9 @@ export default function CatalogActions({ row }: { row: any }) {
         notify('error', 'ব্যর্থ হয়েছে', result.error);
       }
       return result;
+    } catch (error) {
+      notify('error', 'কাজটি সম্পন্ন হয়নি', error instanceof Error ? error.message : 'আবার চেষ্টা করুন।');
+      return { ok: false, error: 'কাজটি সম্পন্ন হয়নি।' };
     } finally {
       setBusy(false);
     }
@@ -53,8 +57,13 @@ export default function CatalogActions({ row }: { row: any }) {
     if (isListing) {
       void run(() => setServiceListingActive(id, !isActive));
     } else {
-      void run(() => setEmergencyContactActive(id, !isActive));
+      setConfirmingActive(true);
     }
+  };
+
+  const confirmActiveChange = async () => {
+    const result = await run(() => setEmergencyContactActive(id, !isActive));
+    if (result.ok) setConfirmingActive(false);
   };
 
   const toggleFeatured = () => {
@@ -64,12 +73,10 @@ export default function CatalogActions({ row }: { row: any }) {
   };
 
   const confirmDelete = async () => {
-    if (isListing) {
-      await run(() => deleteServiceListing(id));
-    } else {
-      await run(() => deleteEmergencyContact(id));
-    }
-    if (!deleting) setDeleting(false);
+    const result = isListing
+      ? await run(() => deleteServiceListing(id))
+      : await run(() => deleteEmergencyContact(id));
+    if (result.ok) setDeleting(false);
   };
 
   return (
@@ -129,6 +136,18 @@ export default function CatalogActions({ row }: { row: any }) {
         </button>
       </div>
 
+      <ConfirmDialog
+        open={confirmingActive}
+        title={isActive ? 'জরুরি যোগাযোগটি বন্ধ করবেন?' : 'জরুরি যোগাযোগটি চালু করবেন?'}
+        description={isActive
+          ? 'এটি পাবলিক জরুরি ডিরেক্টরি থেকে সরানো হবে।'
+          : 'এটি পাবলিক ডিরেক্টরিতে প্রকাশিত হবে। চালু করার আগে নম্বর ও তথ্যসূত্র যাচাই করুন।'}
+        confirmLabel={isActive ? 'হ্যাঁ, বন্ধ করুন' : 'হ্যাঁ, চালু করুন'}
+        tone={isActive ? 'danger' : 'primary'}
+        isLoading={busy}
+        onConfirm={() => void confirmActiveChange()}
+        onCancel={() => setConfirmingActive(false)}
+      />
       <ConfirmDialog
         open={deleting}
         title={isListing ? 'তালিকাটি মুছে ফেলবেন?' : 'নম্বরটি মুছে ফেলবেন?'}

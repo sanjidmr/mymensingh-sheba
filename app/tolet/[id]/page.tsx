@@ -91,6 +91,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
   const [load, setLoad] = useState<ListingLoad | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
   const [guestFavorite, setGuestFavorite] = useState(false);
+  const [favoriteError, setFavoriteError] = useState('');
   const [requestAnchor, setRequestAnchor] = useState<HTMLElement | null>(null);
 
   // ---- Load the listing, then the related ones -----------------------------
@@ -155,6 +156,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
   const handleToggleFavorite = useCallback(async () => {
     if (!listing) return;
     const next = !isFavorite;
+    setFavoriteError('');
 
     if (!user) {
       // Guests can keep a local shortlist for the session; it simply is not
@@ -163,15 +165,20 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
     } else {
       const area = getAreaById(listing.areaId);
       try {
-        await toggleSaveItem({
+        const result = await toggleSaveItem({
           itemType: 'tolet',
           title: listing.title,
           areaName: area?.nameBn ?? listing.areaId,
           priceOrRate: `৳${listing.rentPrice.toLocaleString('en-IN')}`,
           linkHref: `/tolet/${listing.id}`,
         });
-      } catch {
-        // Saving is best-effort; never let it break the page.
+        if (!result.success) {
+          setFavoriteError(result.error || 'পছন্দের তালিকায় পরিবর্তন করা যায়নি।');
+          return;
+        }
+      } catch (error) {
+        setFavoriteError(error instanceof Error ? error.message : 'পছন্দের তালিকায় পরিবর্তন করা যায়নি।');
+        return;
       }
     }
 
@@ -220,6 +227,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
               isFavorite={isFavorite}
               onToggleFavorite={handleToggleFavorite}
             />
+            {favoriteError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12px] font-semibold text-rose-800">{favoriteError}</p>}
 
             <PropertyFactGrid listing={listing} />
 

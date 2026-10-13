@@ -288,7 +288,7 @@ export const EMERGENCY_CATEGORY: HomepageCategory = {
       id: 'doctor',
       name: 'ডাক্তার',
       en: 'Health',
-      text: '২৪/৭ ডাক্তারের স্বাস্থ্য পরামর্শ।',
+      text: 'চিকিৎসা সহায়তা ও পরামর্শের জন্য।',
       href: '/doctors',
       image: '/doctor.jpg',
       cta: 'কল করুন',

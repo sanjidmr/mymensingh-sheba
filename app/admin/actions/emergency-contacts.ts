@@ -44,7 +44,7 @@ export async function saveEmergencyContact(
       return { ok: false, error: 'সঠিক ফোন নম্বর লিখুন।' };
     }
     if (!sourceNote || sourceNote.length > 500) {
-      return { ok: false, error: 'যাচাইকৃত নম্বরের উৎস উল্লেখ করুন (সর্বোচ্চ ৫০০ অক্ষর)।' };
+      return { ok: false, error: 'যোগাযোগের তথ্য যাচাইয়ের উৎস উল্লেখ করুন (সর্বোচ্চ ৫০০ অক্ষর)।' };
     }
     if (
       organizationBn.length > 160 ||
@@ -76,6 +76,7 @@ export async function saveEmergencyContact(
     if (!write.data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
     revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctors');
     revalidatePath('/doctor');
     revalidatePath('/police');

@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import {
   LayoutDashboard,
+  BarChart3,
   Globe,
   Images,
   Wrench,
@@ -19,6 +20,10 @@ import {
   Activity,
   ImageIcon,
   Settings,
+  Building2,
+  GraduationCap,
+  Droplet,
+  Siren,
 } from 'lucide-react';
 
 /**
@@ -58,142 +63,177 @@ export interface AdminNavGroup {
 
 export const ADMIN_NAV: AdminNavGroup[] = [
   {
-    title: 'সারসংক্ষেপ',
+    title: 'Overview',
     items: [
       {
         href: '/admin',
         label: 'ড্যাশবোর্ড',
         icon: LayoutDashboard,
-        description: 'পুরো ওয়েবসাইটের লাইভ পরিসংখ্যান ও সাম্প্রতিক কার্যক্রম',
+        description: 'লাইভ পরিসংখ্যান ও সাম্প্রতিক কার্যক্রম',
       },
     ],
   },
   {
-    title: 'ওয়েবসাইট',
+    title: 'Marketplace Management',
     items: [
       {
-        href: '/admin/website',
-        label: 'ওয়েবসাইট ম্যানেজমেন্ট',
-        icon: Globe,
-        description: 'হোমপেজ সেকশন, সেবা কার্ড, ক্যাটাগরি ও সাইট সেটিংস',
+        href: '/admin/posts',
+        label: 'পোস্ট ও অনুমোদন',
+        icon: FileText,
+        badgeKey: 'posts',
+        description: 'খবর, চাকরি ও কেনাবেচার পোস্ট পর্যালোচনা',
       },
       {
-        href: '/admin/hero',
-        label: 'হিরো ম্যানেজমেন্ট',
-        icon: Images,
-        description: 'ব্যানার ছবি আপলোড, রিঅ্যারেঞ্জ, সাজানো ও বন্ধ/চালু',
+        href: '/admin/tolet',
+        label: 'বাসা ভাড়া',
+        icon: Home,
+        description: 'বাসা ভাড়ার তালিকা ও প্রকাশনা',
       },
       {
         href: '/admin/services',
-        label: 'সেবা ম্যানেজমেন্ট',
+        label: 'কর্মী ও সেবা',
         icon: Wrench,
-        description: 'কর্মী প্রোফাইল, সেবা চালু/বন্ধ ও বিজ্ঞাপন',
+        description: 'কর্মী প্রোফাইল ও সেবার তালিকা',
       },
       {
-        href: '/admin/posts',
-        label: 'সার্ভিস পোস্ট',
-        icon: FileText,
-        badgeKey: 'posts',
-        description: 'খবর, চাকরি ও কেনাবেচা পোস্ট — অনুমোদন ও ফিচার',
+        href: '/admin/blood',
+        label: 'রক্তের অনুরোধ',
+        icon: Heart,
+        badgeKey: 'bloodRequests',
+        description: 'জরুরি রক্তের অনুরোধ পর্যালোচনা',
+      },
+      {
+        href: '/admin/blood/donors',
+        label: 'রক্তদাতা প্রোফাইল',
+        icon: Droplet,
+        description: 'প্রোফাইল, উপলভ্যতা ও মডারেশন',
+      },
+      {
+        href: '/admin/emergency-contacts',
+        label: 'জরুরি সেবা ডিরেক্টরি',
+        icon: Siren,
+        description: 'চিকিৎসক, পুলিশ, অ্যাম্বুলেন্স ও ফায়ার সার্ভিস',
       },
       {
         href: '/admin/catalog',
-        label: 'ক্যাটালগ ও ইমার্জেন্সি',
+        label: 'ডিরেক্টরি ও ক্যাটালগ',
         icon: LayoutGrid,
-        description: 'কোচিং, WiFi, বাস ও জরুরি নম্বর তালিকা',
+        description: 'কোচিং, WiFi, বাস ও যানবাহন',
       },
     ],
   },
   {
-    title: 'অপারেশন',
+    title: 'Communication & Trust',
     items: [
       {
-        href: '/admin/requests',
-        label: 'রিকোয়েস্ট',
-        icon: ClipboardList,
-        badgeKey: 'requests',
-        description: 'সব সেবা রিকোয়েস্ট এক জায়গায়',
-      },
-      {
-        href: '/admin/tolet-requests',
-        label: 'বাসা ভাড়া অনুসন্ধান',
-        icon: Home,
-        description: 'বাসা ভাড়ার বিজ্ঞাপনে আসা ইনকোয়ারি',
-      },
-      {
-        href: '/admin/vehicle-requests',
-        label: 'গাড়ি রিকোয়েস্ট',
-        icon: Car,
-        description: 'গাড়ি, অটো ও সিএনজি ভাড়ার অনুরোধ',
-      },
-      {
         href: '/admin/messages',
-        label: 'মেসেজ',
+        label: 'যোগাযোগ বার্তা',
         icon: MessageSquare,
         badgeKey: 'messages',
-        description: 'যোগাযোগ ফর্মের সব বার্তা',
+        description: 'যোগাযোগ ফর্মে পাঠানো বার্তা',
       },
       {
         href: '/admin/reports',
-        label: 'রিপোর্ট',
+        label: 'অভিযোগ ও রিপোর্ট',
         icon: Flag,
         badgeKey: 'reports',
-        description: 'অভিযোগ রিভিউ ও সমাধান',
-      },
-    ],
-  },
-  {
-    title: 'মানুষ ও যাচাই',
-    items: [
-      {
-        href: '/admin/users',
-        label: 'ইউজার',
-        icon: Users,
-        description: 'অ্যাকাউন্ট, স্ট্যাটাস ও ভূমিকা',
+        description: 'অভিযোগ পর্যালোচনা ও সমাধান',
       },
       {
         href: '/admin/verifications',
         label: 'ভেরিফিকেশন',
         icon: ShieldCheck,
         badgeKey: 'verifications',
-        description: 'গৃহশিক্ষক ও বাসা মালিক প্রোফাইল যাচাই',
-      },
-      {
-        href: '/admin/blood',
-        label: 'রক্ত সেবা',
-        icon: Heart,
-        badgeKey: 'bloodRequests',
-        description: 'রক্তদাতা তালিকা ও জরুরি রক্ত রিকোয়েস্ট',
+        description: 'শিক্ষক ও বাসা মালিকের প্রোফাইল যাচাই',
       },
       {
         href: '/admin/reviews',
         label: 'রিভিউ',
         icon: Star,
-        description: 'গৃহশিক্ষক রিভিউ প্রকাশ/অপ্রকাশ',
+        description: 'গৃহশিক্ষক রিভিউ পর্যালোচনা',
       },
-    ],
-  },
-  {
-    title: 'সিস্টেম',
-    items: [
       {
         href: '/admin/notifications',
         label: 'নোটিফিকেশন',
         icon: Bell,
         badgeKey: 'notifications',
-        description: 'সিস্টেমের সব গুরুত্বপূর্ণ আপডেট',
+        description: 'অ্যাডমিনের গুরুত্বপূর্ণ আপডেট',
+      },
+    ],
+  },
+  {
+    title: 'Website Management',
+    items: [
+      {
+        href: '/admin/website',
+        label: 'ওয়েবসাইট CMS',
+        icon: Globe,
+        description: 'হোমপেজ সেকশন ও ওয়েবসাইট কনটেন্ট',
+      },
+      {
+        href: '/admin/hero',
+        label: 'হিরো ও ব্যানার',
+        icon: Images,
+        description: 'হোমপেজ ব্যানার ও প্রদর্শন',
+      },
+      {
+        href: '/admin/media',
+        label: 'মিডিয়া লাইব্রেরি',
+        icon: ImageIcon,
+        description: 'আপলোড করা ছবি ও ফাইল',
+      },
+    ],
+  },
+  {
+    title: 'Business & Analytics',
+    items: [
+      {
+        href: '/admin/requests',
+        label: 'সেবা অনুরোধ',
+        icon: ClipboardList,
+        badgeKey: 'requests',
+        description: 'সেবা গ্রহণের অনুরোধ পরিচালনা',
+      },
+      {
+        href: '/admin/tutor-requests',
+        label: 'টিউটর আবেদন',
+        icon: GraduationCap,
+        description: 'নির্দিষ্ট গৃহশিক্ষকের জন্য পাঠানো আবেদন পর্যালোচনা',
+      },
+      {
+        href: '/admin/tolet-requests',
+        label: 'বাসা ভাড়ার অনুসন্ধান',
+        icon: Building2,
+        description: 'বাসা ভাড়ার বিজ্ঞাপনে আসা অনুসন্ধান',
+      },
+      {
+        href: '/admin/vehicle-requests',
+        label: 'যানবাহন অনুরোধ',
+        icon: Car,
+        description: 'গাড়ি, অটো ও সিএনজি ভাড়ার অনুরোধ',
+      },
+      {
+        href: '/admin/analytics',
+        label: 'অ্যানালিটিক্স',
+        icon: BarChart3,
+        description: 'বাস্তব ডেটাভিত্তিক প্ল্যাটফর্ম পরিসংখ্যান',
+      },
+    ],
+  },
+  {
+    title: 'System & Settings',
+    items: [
+      {
+        href: '/admin/users',
+        label: 'ব্যবহারকারী ও ভূমিকা',
+        icon: Users,
+        description: 'অ্যাকাউন্ট, স্ট্যাটাস ও ভূমিকা',
       },
       {
         href: '/admin/activity',
         label: 'অডিট লগ',
         icon: Activity,
         description: 'অ্যাডমিনদের পরিবর্তনের ইতিহাস',
-      },
-      {
-        href: '/admin/media',
-        label: 'মিডিয়া',
-        icon: ImageIcon,
-        description: 'আপলোড করা ছবি ও ফাইল',
       },
       {
         href: '/admin/settings',

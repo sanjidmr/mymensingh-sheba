@@ -16,7 +16,8 @@ import {
   DollarSign,
   Phone,
 } from 'lucide-react';
-import { adminCreateStaffProfile, adminUpdateStaffProfile, uploadStaffProfilePhoto, resolveStaffImageUrl } from '@/lib/staff-service';
+import { uploadStaffProfilePhoto, resolveStaffImageUrl } from '@/lib/staff-service';
+import { saveStaffProfile } from '@/app/admin/actions/staff';
 import type { StaffProfile, StaffProfileInput, StaffServiceKey } from '@/lib/staff-types';
 import { STAFF_SERVICE_UI, STAFF_WORK_MODE_LABELS, formatSalaryBn } from '@/lib/staff-types';
 import {
@@ -170,21 +171,18 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
     setError('');
     setSuccess('');
     const input = buildInput();
-    let result: { success: boolean; profile?: StaffProfile; error?: string };
-    if (mode === 'create') {
-      result = await adminCreateStaffProfile(input);
-    } else if (initialProfile) {
-      result = await adminUpdateStaffProfile(initialProfile.id, input);
-    } else {
-      result = { success: false, error: 'প্রোফাইল পাওয়া যায়নি' };
-    }
+    const result = mode === 'create'
+      ? await saveStaffProfile(input)
+      : initialProfile
+        ? await saveStaffProfile(input, initialProfile.id)
+        : { ok: false as const, error: 'প্রোফাইল পাওয়া যায়নি' };
     setSaving(false);
-    if (!result.success || !result.profile) {
-      setError(result.error || 'সংরক্ষণ ব্যর্থ হয়েছে');
+    if (!result.ok || !result.id) {
+      setError(result.ok ? 'সংরক্ষণ সম্পন্ন হয়েছে, তবে প্রোফাইল আইডি পাওয়া যায়নি।' : result.error);
       return;
     }
     setSuccess('প্রোফাইল সফলভাবে সংরক্ষণ হয়েছে');
-    setTimeout(() => router.replace(`/admin/services/${result.profile!.id}`), 900);
+    setTimeout(() => router.replace(`/admin/services/${result.id}`), 900);
   };
 
   const inputCls =

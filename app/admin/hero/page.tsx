@@ -6,7 +6,7 @@ import HeroManager from '@/components/admin/hero/HeroManager';
 export const dynamic = 'force-dynamic';
 
 export default async function AdminHeroPage() {
-  const { rows, unavailable } = await fetchHeroSlides();
+  const { rows, unavailable, error } = await fetchHeroSlides();
 
   return (
     <>
@@ -17,8 +17,8 @@ export default async function AdminHeroPage() {
 
       {unavailable ? (
         <AdminError
-          title="ডেটাবেজ সংযুক্ত নেই"
-          message="হিরো স্লাইড টেবিলটি পাওয়া যায়নি। মাইগ্রেশন চালান।"
+          title={error ? 'হিরো স্লাইড লোড করা যায়নি' : 'ডেটাবেজ সংযুক্ত নেই'}
+          message={error ?? 'হিরো স্লাইড টেবিলটি পাওয়া যায়নি। মাইগ্রেশন চালান।'}
         />
       ) : (
         <HeroManager initialSlides={rows} />

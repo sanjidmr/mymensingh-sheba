@@ -1,51 +1,53 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   Bell,
   Bookmark,
   ClipboardList,
+  CircleAlert,
   FileText,
   LayoutDashboard,
   LifeBuoy,
+  LogOut,
   Mail,
   PlusCircle,
+  Settings,
   UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
-/**
- * Shell for the customer dashboard: auth gate + Navbar + a four-tab strip +
- * Footer, so every dashboard page renders inside one consistent frame instead
- * of repeating the chrome (the way `/profile/*` pages each carry their own).
- *
- * The tab strip is a grid, never a horizontal scroller — four short labels fit
- * a 360px phone without forcing the page sideways, which is the mobile-first
- * rule this dashboard has to keep.
- */
-const TABS = [
-  { href: '/dashboard', label: 'ড্যাশবোর্ড', icon: LayoutDashboard, exact: true },
-  { href: '/dashboard/posts', label: 'আমার পোস্ট', icon: FileText, exact: false },
-  { href: '/dashboard/new', label: 'নতুন পোস্ট', icon: PlusCircle, exact: false },
+const MOBILE_LINKS = [
+  { href: '/dashboard', label: 'হোম', icon: LayoutDashboard, exact: true },
+  { href: '/dashboard/posts', label: 'পোস্ট', icon: FileText, exact: false },
+  { href: '/dashboard/new', label: 'নতুন', icon: PlusCircle, exact: false },
+  { href: '/profile/saved', label: 'সংরক্ষিত', icon: Bookmark, exact: false },
   { href: '/dashboard/profile', label: 'প্রোফাইল', icon: UserRound, exact: false },
 ] as const;
 
-const SIDE_LINKS = [
-  { href: '/profile/requests', label: 'আমার রিকোয়েস্ট', icon: ClipboardList },
-  { href: '/profile/saved', label: 'পছন্দের তালিকা', icon: Bookmark },
-  { href: '/dashboard/messages', label: 'সাপোর্ট বার্তা', icon: Mail },
+const ACCOUNT_LINKS = [
+  { href: '/dashboard', label: 'ওভারভিউ', icon: LayoutDashboard },
+  { href: '/dashboard/posts', label: 'আমার পোস্ট', icon: FileText },
+  { href: '/dashboard/new', label: 'নতুন পোস্ট', icon: PlusCircle },
+  { href: '/profile/saved', label: 'সংরক্ষিত পোস্ট', icon: Bookmark },
   { href: '/dashboard/notifications', label: 'নোটিফিকেশন', icon: Bell },
+  { href: '/dashboard/messages', label: 'বার্তা', icon: Mail },
+  { href: '/dashboard/messages?subject=complaint#complaint-form', label: 'অভিযোগ', icon: CircleAlert },
+  { href: '/profile/requests', label: 'আমার রিকোয়েস্ট', icon: ClipboardList },
+  { href: '/dashboard/profile', label: 'প্রোফাইল সেটিংস', icon: Settings },
   { href: '/help', label: 'সাহায্য কেন্দ্র', icon: LifeBuoy },
 ] as const;
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { user, isLoading } = useAuth();
+  const { user, isLoading, logout, notifications } = useAuth();
+  const [logoutError, setLogoutError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !user) {
@@ -61,103 +63,111 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     );
   }
 
-  const isActive = (tab: (typeof TABS)[number]) =>
-    tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
+  const handleLogout = async () => {
+    if (loggingOut || !window.confirm('আপনি কি লগআউট করতে চান?')) return;
+    setLoggingOut(true);
+    setLogoutError('');
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'লগআউট করা যায়নি।');
+      setLoggingOut(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-mist-50">
+    <div data-dashboard-shell className="min-h-screen overflow-x-clip bg-[#faf9f6]">
       <Navbar />
 
-      {/* Sticky tab bar, parked right under the sticky Navbar (h-16 / 4.5rem). */}
+      <main className="mx-auto flex w-full max-w-7xl gap-6 px-3 py-4 pb-24 sm:px-5 sm:py-6 sm:pb-24 lg:px-7 lg:pb-8">
+        <aside className="hidden w-60 shrink-0 lg:block">
+          <nav aria-label="অ্যাকাউন্ট মেনু" className="sticky top-24 border-r border-brand-100 pr-4">
+            <p className="px-3 pb-3 pt-2 text-[11px] font-extrabold tracking-wide text-ink-400">
+              আপনার অ্যাকাউন্ট
+            </p>
+            <div className="space-y-1">
+              {ACCOUNT_LINKS.map((item) => {
+                const Icon = item.icon;
+                const route = item.href.split('?')[0];
+                const active = route === '/dashboard'
+                  ? pathname === route
+                  : pathname === route || pathname.startsWith(`${route}/`);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex min-h-11 items-center gap-3 border-l-2 px-3 text-[13px] font-semibold transition-colors ${
+                      active
+                        ? 'border-brand-700 bg-brand-50/70 text-brand-800'
+                        : 'border-transparent text-ink-600 hover:bg-white'
+                    }`}
+                  >
+                    <Icon className="h-[17px] w-[17px] shrink-0" />
+                    {item.label}
+                  </Link>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => void handleLogout()}
+              disabled={loggingOut}
+              className="mt-4 flex min-h-11 w-full items-center gap-3 border-t border-brand-100 px-3 pt-3 text-left text-[13px] font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60"
+            >
+              <LogOut className="h-[17px] w-[17px] shrink-0" />
+              {loggingOut ? 'লগআউট হচ্ছে…' : 'লগআউট'}
+            </button>
+            {logoutError && <p role="alert" className="px-3 pt-2 text-xs text-rose-700">{logoutError}</p>}
+          </nav>
+        </aside>
+        <div className="min-w-0 flex-1 lg:max-w-5xl">
+          <div className="mb-2 flex justify-end">
+            <Link
+              href="/dashboard/notifications"
+              aria-label={`নোটিফিকেশন${notifications.some((notification) => !notification.isRead) ? `, ${notifications.filter((notification) => !notification.isRead).length}টি অপঠিত` : ''}`}
+              className="relative flex h-10 w-10 items-center justify-center border border-brand-100 bg-white text-ink-700 hover:bg-brand-50"
+            >
+              <Bell className="h-5 w-5" />
+              {notifications.some((notification) => !notification.isRead) && (
+                <span className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white">
+                  {notifications.filter((notification) => !notification.isRead).length > 9
+                    ? '9+'
+                    : notifications.filter((notification) => !notification.isRead).length}
+                </span>
+              )}
+            </Link>
+          </div>
+          {children}
+        </div>
+      </main>
+
+      <Footer />
       <nav
-        className="sticky top-16 sm:top-[4.5rem] z-40 border-b border-brand-100 bg-white/95 backdrop-blur-md"
-        aria-label="ড্যাশবোর্ড মেনু"
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-brand-100 bg-white/95 pb-[env(safe-area-inset-bottom)] shadow-[0_-4px_16px_rgba(40,48,35,0.06)] backdrop-blur lg:hidden"
+        aria-label="প্রধান নেভিগেশন"
       >
-        <div className="mx-auto grid w-full max-w-5xl grid-cols-4 px-2 sm:px-4">
-          {TABS.map((tab) => {
-            const active = isActive(tab);
+        <div className="mx-auto grid max-w-lg grid-cols-5">
+          {MOBILE_LINKS.map((tab) => {
+            const active = tab.exact ? pathname === tab.href : pathname.startsWith(tab.href);
             const Icon = tab.icon;
             return (
               <Link
                 key={tab.href}
                 href={tab.href}
                 aria-current={active ? 'page' : undefined}
-                className={`flex min-h-[52px] flex-col items-center justify-center gap-0.5 border-b-2 px-1 py-2 transition-colors ${
-                  active
-                    ? 'border-brand-700 text-brand-700'
-                    : 'border-transparent text-ink-400 hover:text-ink-700'
+                className={`flex min-h-[60px] min-w-0 flex-col items-center justify-center gap-1 px-1 py-2 ${
+                  active ? 'text-brand-800' : 'text-ink-400'
                 }`}
               >
-                <Icon className={`h-[18px] w-[18px] ${active ? 'text-brand-700' : ''}`} />
-                <span
-                  className={`text-[10.5px] leading-tight ${active ? 'font-extrabold' : 'font-semibold'}`}
-                >
-                  {tab.label}
-                </span>
+                <Icon className={`h-[19px] w-[19px] ${active ? 'stroke-[2.4]' : ''}`} aria-hidden="true" />
+                <span className="max-w-full truncate text-[10px] font-bold leading-none">{tab.label}</span>
               </Link>
             );
           })}
         </div>
-        <details className="group border-t border-brand-100/70 px-3 py-1.5 lg:hidden">
-          <summary className="flex min-h-9 cursor-pointer list-none items-center justify-between text-[11px] font-bold text-ink-600 [&::-webkit-details-marker]:hidden">
-            <span>আরও অ্যাকাউন্ট অপশন</span>
-            <span aria-hidden="true" className="transition-transform group-open:rotate-180">⌄</span>
-          </summary>
-          <div className="grid grid-cols-2 gap-1 pb-2 pt-1 sm:grid-cols-3">
-            {SIDE_LINKS.map((item) => {
-              const Icon = item.icon;
-              const active = pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`flex min-h-10 items-center gap-2 rounded-lg px-2 text-[11px] font-bold ${
-                    active ? 'bg-brand-50 text-brand-800' : 'text-ink-600 hover:bg-mist-50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  <span className="truncate">{item.label}</span>
-                </Link>
-              );
-            })}
-          </div>
-        </details>
       </nav>
-
-      <main className="mx-auto flex w-full max-w-7xl flex-1 gap-5 px-3 py-4 sm:px-4 sm:py-6 lg:px-6">
-        <aside className="hidden w-56 shrink-0 lg:block">
-          <nav aria-label="অ্যাকাউন্ট মেনু" className="sticky top-36 space-y-1 rounded-2xl border border-brand-100 bg-white p-2">
-            <p className="px-3 pb-2 pt-1 text-[11px] font-extrabold uppercase tracking-wide text-ink-400">
-              আপনার অ্যাকাউন্ট
-            </p>
-            {[...TABS, ...SIDE_LINKS].map((item) => {
-              const Icon = item.icon;
-              const active = item.href === '/dashboard'
-                ? pathname === item.href
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  aria-current={active ? 'page' : undefined}
-                  className={`flex min-h-10 items-center gap-2.5 rounded-xl px-3 text-[12px] font-bold transition-colors ${
-                    active ? 'bg-brand-50 text-brand-800' : 'text-ink-600 hover:bg-mist-50'
-                  }`}
-                >
-                  <Icon className="h-4 w-4 shrink-0" />
-                  {item.label}
-                </Link>
-              );
-            })}
-          </nav>
-        </aside>
-        <div className="min-w-0 flex-1 lg:max-w-5xl">
-          {children}
-        </div>
-      </main>
-
-      <Footer />
     </div>
   );
 }

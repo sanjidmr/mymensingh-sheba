@@ -4,12 +4,12 @@ import { cn } from '@/lib/utils';
 import type { StatusTone } from '@/lib/admin/format';
 
 const TONE_PILL: Record<StatusTone, string> = {
-  success: 'bg-brand-50 text-brand-800 border-brand-200',
-  warning: 'bg-accent-100 text-accent-700 border-accent-300',
-  danger: 'bg-rose-50 text-rose-700 border-rose-200',
-  info: 'bg-sky-50 text-sky-800 border-sky-200',
-  neutral: 'bg-mist-100 text-ink-600 border-mist-200',
-  accent: 'bg-brand-700 text-white border-brand-700',
+  success: 'bg-status-approved-bg text-status-approved border-status-success/20',
+  warning: 'bg-status-pending-bg text-status-pending border-status-warning/20',
+  danger: 'bg-status-rejected-bg text-status-rejected border-status-danger/20',
+  info: 'bg-status-info-bg text-status-info border-status-info/20',
+  neutral: 'bg-status-disabled-bg text-status-disabled border-admin-border',
+  accent: 'bg-admin-navy text-white border-admin-navy',
 };
 
 /**
@@ -89,7 +89,7 @@ export function StatCard({
     neutral: 'text-ink-900',
     attention: 'text-accent-600',
     alert: 'text-rose-600',
-    good: 'text-brand-700',
+    good: 'text-status-success',
   }[tone];
 
   const body = (
@@ -108,13 +108,13 @@ export function StatCard({
   );
 
   const className =
-    'block rounded-xl border border-mist-200 bg-white p-4 transition-colors';
+    'block rounded-admin-card border border-admin-border bg-white p-4 shadow-admin-card transition-colors';
 
   if (href) {
     return (
       <Link
         href={href}
-        className={cn(className, 'hover:border-brand-300 hover:bg-brand-50/40')}
+        className={cn(className, 'hover:border-admin-navy/30 hover:bg-admin-page')}
       >
         {body}
         <span className="sr-only">— খুলুন</span>

@@ -120,31 +120,36 @@ export function toServiceRequestPayload(input: HomeMovingRequestInput): {
 // ---------------------------------------------------------------------------
 
 export async function adminFetchHomeMovingRequests(): Promise<HomeMovingRequest[]> {
-  if (!isSupabaseConfigured) return mockAdminFetchHomeMovingRequests();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; বাসা পাল্টানোর রিকোয়েস্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchHomeMovingRequests();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('service_requests')
     .select('*')
     .eq('service_slug', 'home-moving')
     .order('created_at', { ascending: false });
-  if (error) return [];
+  if (error) throw new Error(`বাসা পাল্টানোর রিকোয়েস্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || []).map((row) => mapHomeMovingRow(row as Record<string, unknown>));
 }
 
 export async function adminFetchHomeMovingRequestById(
   id: string
 ): Promise<HomeMovingRequest | null> {
-  if (!isSupabaseConfigured) return mockAdminFetchHomeMovingRequestById(id) || null;
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রিকোয়েস্টের তথ্য লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return mockAdminFetchHomeMovingRequestById(id) || null;
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('service_requests')
     .select('*')
     .eq('id', id)
     .eq('service_slug', 'home-moving')
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`রিকোয়েস্টের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) return null;
   return mapHomeMovingRow(data as Record<string, unknown>);
 }
 
@@ -153,8 +158,7 @@ export async function adminUpdateHomeMovingRequest(
   patch: { status?: ServiceRequestStatus; adminNotes?: string; quotation?: string }
 ): Promise<{ success: boolean; request?: HomeMovingRequest; error?: string }> {
   if (!isSupabaseConfigured) {
-    const req = mockAdminUpdateHomeMovingRequest(id, patch);
-    return req ? { success: true, request: req } : { success: false, error: 'রিকোয়েস্ট পাওয়া যায়নি' };
+    return { success: false, error: 'Supabase সংযুক্ত নেই; রিকোয়েস্ট আপডেট করা যায়নি।' };
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };

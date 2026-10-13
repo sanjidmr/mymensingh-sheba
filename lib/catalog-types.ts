@@ -100,6 +100,7 @@ export const VEHICLE_KINDS: VehicleKind[] = ['গাড়ি', 'অটো', 'CN
 
 export type PostKind = 'news' | 'job' | 'buy_sell';
 export type PostStatus = 'pending' | 'approved' | 'rejected';
+export type MarketplaceStatus = 'available' | 'sold' | 'closed';
 
 export interface CommunityPost {
   id: string;
@@ -138,6 +139,7 @@ export interface CommunityPost {
   deadline?: string;
   conditionLabel?: string;
   status: PostStatus;
+  marketplaceStatus?: MarketplaceStatus;
   /**
    * Why a moderator rejected this post. Set only by an admin (the service
    * layer strips it from every author write and a DB trigger refuses to let

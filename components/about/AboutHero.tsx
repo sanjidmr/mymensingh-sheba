@@ -15,7 +15,13 @@ const HERO_POINTS = [
  * heading and two clear next steps. Motion is limited to a short staggered
  * rise (the shared `mms-fade-up` utility, which respects reduced motion).
  */
-export default function AboutHero() {
+export default function AboutHero({
+  heading = 'ময়মনসিংহের মানুষের জন্য, ময়মনসিংহেই তৈরি',
+  intro = 'বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, গৃহশিক্ষক কিংবা জরুরি রক্তদাতা — দৈনন্দিন জীবনের প্রয়োজনীয় প্রতিটি কাজের জন্য আলাদা আলাদা জায়গায় ছুঁতে হয়। Mymensingh Sheba তৈরি হয়েছে ঠিক এই সমস্যাটি সমাধান করার জন্য।',
+}: {
+  heading?: string;
+  intro?: string;
+}) {
   return (
     <section
       aria-labelledby="about-hero-heading"
@@ -53,17 +59,14 @@ export default function AboutHero() {
           className="mms-fade-up mx-auto mt-4 max-w-3xl text-[1.7rem] font-extrabold leading-[1.28] tracking-tight text-white sm:mx-0 sm:text-4xl lg:text-[2.75rem]"
           style={{ animationDelay: '80ms' }}
         >
-          ময়মনসিংহের মানুষের জন্য,
-          <span className="mt-1.5 block text-accent-300">ময়মনসিংহেই তৈরি</span>
+          {heading}
         </h1>
 
         <p
           className="mms-fade-up mx-auto mt-4 max-w-2xl text-[15px] leading-relaxed text-brand-100/85 sm:mx-0 sm:text-base"
           style={{ animationDelay: '160ms' }}
         >
-          বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, গৃহশিক্ষক কিংবা জরুরি রক্তদাতা — দৈনন্দিন
-          জীবনের প্রয়োজনীয় প্রতিটি কাজের জন্য আলাদা আলাদা জায়গায় ছুঁতে হয়।
-          Mymensingh Sheba তৈরি হয়েছে ঠিক এই সমস্যাটি সমাধান করার জন্য।
+          {intro}
         </p>
 
         <div

@@ -17,6 +17,7 @@ const BUCKETS = [
   { value: 'staff', label: 'কর্মী ছবি' },
   { value: 'avatars', label: 'প্রোফাইল ছবি' },
   { value: 'documents', label: 'ডকুমেন্ট (ব্যক্তিগত)' },
+  { value: 'support-attachments', label: 'সাপোর্ট সংযুক্তি (ব্যক্তিগত)' },
 ];
 
 function formatSize(bytes: number): string {
@@ -101,7 +102,10 @@ export default async function AdminMediaPage({
     return (
       <>
         <PageHeader title="মিডিয়া" description="আপলোড করা ছবি ও ফাইলের লাইব্রেরি।" />
-        <AdminError title="ডেটাবেজ সংযুক্ত নেই" />
+        <AdminError
+          title={result.error ? 'মিডিয়া লাইব্রেরি লোড করা যায়নি' : 'ডেটাবেজ সংযুক্ত নেই'}
+          message={result.error}
+        />
       </>
     );
   }
@@ -126,7 +130,7 @@ export default async function AdminMediaPage({
             param="category"
             searchParams={resolvedSearchParams}
           />
-          <ClearFilters searchParams={new URLSearchParams()} />
+          <ClearFilters searchParams={resolvedSearchParams} />
         </div>
       </div>
 

@@ -52,14 +52,6 @@ function mockDashboardStats(): AdminDashboardStats {
   };
 }
 
-function mockUsers(): AdminUserRow[] {
-  return [];
-}
-
-function mockReports(): AdminReportRow[] {
-  return [];
-}
-
 // ---------------------------------------------------------------------------
 // Dashboard statistics (real counts from existing admin facades)
 // ---------------------------------------------------------------------------
@@ -127,14 +119,19 @@ export async function fetchAdminDashboardStats(): Promise<AdminDashboardStats> {
 // ---------------------------------------------------------------------------
 
 export async function adminFetchUsers(): Promise<AdminUserRow[]> {
-  if (!isSupabaseConfigured) return mockUsers();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; ইউজার তালিকা লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   try {
     const profilesRes = await client.from('profiles').select('*').order('created_at', { ascending: false });
+    if (profilesRes.error) throw new Error(profilesRes.error.message);
     const toletRes = await client.from('tolet_profiles').select('id, user_id, status, owner_name');
     const tutorsRes = await client.from('home_tutor_profiles').select('id, user_id, status, full_name');
     const donorsRes = await client.from('blood_donor_profiles').select('id, user_id, status, full_name');
+    const relatedError = [toletRes, tutorsRes, donorsRes].find((result) => result.error)?.error;
+    if (relatedError) throw new Error(relatedError.message);
     
     const profiles = profilesRes.data || [];
     const tolet = toletRes.data || [];
@@ -148,8 +145,8 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
       const base = toCamelObject(p as Record<string, unknown>) as unknown as UserProfile;
       return {
         id: base.id,
-        fullName: base.fullName,
-        phone: base.phone,
+        fullName: base.fullName || '—',
+        phone: base.phone || '—',
         email: base.email,
         role: base.role,
         status: base.status,
@@ -160,8 +157,10 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
         donorStatus: td?.status ?? null,
       };
     });
-  } catch {
-    return [];
+  } catch (err) {
+    throw new Error(
+      `ইউজার তালিকা লোড ব্যর্থ হয়েছে: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`
+    );
   }
 }
 
@@ -169,7 +168,7 @@ export async function adminUpdateUserStatus(
   userId: string,
   status: UserProfile['status']
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true };
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযুক্ত নেই' };
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   try {
@@ -186,9 +185,11 @@ export async function adminUpdateUserStatus(
 // ---------------------------------------------------------------------------
 
 export async function adminFetchAllReports(): Promise<AdminReportRow[]> {
-  if (!isSupabaseConfigured) return mockReports();
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; রিপোর্ট লোড করা যায়নি।');
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   try {
     const [listing, staff, tutor, donor] = await Promise.all([
       client.from('listing_reports').select('*').order('created_at', { ascending: false }),
@@ -196,6 +197,8 @@ export async function adminFetchAllReports(): Promise<AdminReportRow[]> {
       client.from('tutor_reports').select('*').order('created_at', { ascending: false }),
       client.from('blood_donor_reports').select('*').order('created_at', { ascending: false }),
     ]);
+    const queryError = [listing, staff, tutor, donor].find((result) => result.error)?.error;
+    if (queryError) throw new Error(queryError.message);
     const rows: AdminReportRow[] = [];
     for (const r of listing.data || []) {
       const c = toCamelObject(r as Record<string, unknown>) as unknown as ListingReport;
@@ -214,8 +217,10 @@ export async function adminFetchAllReports(): Promise<AdminReportRow[]> {
       rows.push({ id: c.id, type: 'donor', status: c.status, title: c.reason, reason: c.reason, createdAt: c.createdAt, relatedId: c.donorProfileId });
     }
     return rows.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-  } catch {
-    return [];
+  } catch (err) {
+    throw new Error(
+      `রিপোর্ট লোড ব্যর্থ হয়েছে: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`
+    );
   }
 }
 
@@ -224,7 +229,7 @@ export async function adminUpdateReportStatus(
   id: string,
   status: AdminReportStatus
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true };
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযুক্ত নেই' };
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   const table = ({
@@ -247,14 +252,15 @@ export async function adminUpdateReportStatus(
 // ---------------------------------------------------------------------------
 
 export async function adminFetchTutorReviews(): Promise<(TutorReview & { tutorName?: string })[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) throw new Error('Supabase সংযুক্ত নেই; রিভিউ লোড করা যায়নি।');
   const client = createClient();
-  if (!client) return [];
-  const { data } = await client
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
+  const { data, error } = await client
     .from('tutor_reviews')
     .select('*')
     .order('created_at', { ascending: false });
-  if (!data) return [];
+  if (error) throw new Error(`রিভিউ লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data) throw new Error('রিভিউ ডেটা পাওয়া যায়নি।');
   return data.map((row) => toCamelObject(row as Record<string, unknown>) as unknown as TutorReview);
 }
 
@@ -262,7 +268,7 @@ export async function adminUpdateTutorReview(
   id: string,
   patch: { isPublished?: boolean }
 ): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true };
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযুক্ত নেই' };
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   try {
@@ -281,41 +287,15 @@ export async function adminUpdateTutorReview(
 // ---------------------------------------------------------------------------
 
 export async function fetchPlatformSettings(): Promise<PlatformSettings> {
-  if (!isSupabaseConfigured) {
-    return {
-      toletFeeRules: { ...DEFAULT_TOLET_FEE_RULES },
-      serviceAvailability: {
-        tolet: true,
-        'home-tutor': true,
-        'home-moving': true,
-        kajerBua: true,
-        electrician: true,
-        plumber: true,
-      },
-      notificationSettings: {
-        notifyOnRequestSubmitted: true,
-        notifyOnStatusChange: true,
-        notifyAdminOnNewRequest: true,
-        notifyCustomerOnStatusChange: true,
-      },
-    };
-  }
+  if (!isSupabaseConfigured) throw new Error('Supabase সংযুক্ত নেই; প্ল্যাটফর্ম সেটিংস লোড করা যায়নি।');
   const client = createClient();
-  if (!client) return {
-    toletFeeRules: { ...DEFAULT_TOLET_FEE_RULES },
-    serviceAvailability: {},
-    notificationSettings: {
-      notifyOnRequestSubmitted: true,
-      notifyOnStatusChange: true,
-      notifyAdminOnNewRequest: true,
-      notifyCustomerOnStatusChange: true,
-    },
-  };
-  const { data } = await client.from('platform_settings').select('key, value').in('key', [
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
+  const { data, error } = await client.from('platform_settings').select('key, value').in('key', [
     'tolet_fee_rules',
     'service_availability',
     'notification_settings',
   ]);
+  if (error) throw new Error(`প্ল্যাটফর্ম সেটিংস লোড ব্যর্থ হয়েছে: ${error.message}`);
   const parse = (key: string, fallback: unknown) => {
     const row = (data || []).find((r) => (r as Record<string, unknown>).key === key);
     if (!row) return fallback;
@@ -344,7 +324,7 @@ export async function savePlatformSettings(patch: {
   serviceAvailability?: Record<string, boolean>;
   notificationSettings?: PlatformSettings['notificationSettings'];
 }): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return { success: true };
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযুক্ত নেই' };
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   try {

@@ -31,10 +31,10 @@ export default function AdminEditToletListingPage({ params }: AdminEditToletList
       if (!data) setError('বিজ্ঞাপন পাওয়া যায়নি।');
       setListing(data);
       setLoading(false);
-    })().catch(() => {
+    })().catch((err: unknown) => {
       if (!active) return;
       setLoading(false);
-      setError('তথ্য লোড করতে সমস্যা হয়েছে।');
+      setError(err instanceof Error ? err.message : 'তথ্য লোড করতে সমস্যা হয়েছে।');
     });
     return () => {
       active = false;

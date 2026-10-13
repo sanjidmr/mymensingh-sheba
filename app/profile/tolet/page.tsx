@@ -10,6 +10,8 @@ import {
   Pencil,
   Eye,
   Archive,
+  RotateCcw,
+  Trash2,
   ArrowLeft,
   CheckCircle2,
   Loader2,
@@ -26,6 +28,8 @@ import {
   fetchMyListings,
   fetchToletRequestsAsOwner,
   archiveOwnListing,
+  restoreOwnListing,
+  permanentlyDeleteOwnListing,
   updateToletRequestStatus,
 } from '@/lib/tolet-service';
 import type { ToletListing, ToletRequest, ToletRequestStatus } from '@/lib/tolet-types';
@@ -51,7 +55,7 @@ export default function MyToletListingsPage() {
     let active = true;
     (async () => {
       const [mine, inbox] = await Promise.all([
-        fetchMyListings(user.id),
+        fetchMyListings(user.id, true),
         fetchToletRequestsAsOwner(user.id),
       ]);
       if (!active) return;
@@ -69,6 +73,7 @@ export default function MyToletListingsPage() {
   }, [user]);
 
   const handleArchive = async (listing: ToletListing) => {
+    if (!window.confirm('এই বিজ্ঞাপনটি ডিসপ্লে থেকে সরাবেন? তথ্য আপনার অ্যাকাউন্টে থাকবে, পরে ফিরিয়ে আনতে পারবেন।')) return;
     setBusyId(listing.id);
     setError('');
     const result = await archiveOwnListing(listing.id, user!.id);
@@ -79,6 +84,44 @@ export default function MyToletListingsPage() {
       );
     } else {
       setError(result.error || 'আর্কাইভ করতে ব্যর্থ হয়েছে।');
+    }
+  };
+
+  const handleRestore = async (listing: ToletListing) => {
+    setBusyId(listing.id);
+    setError('');
+    const result = await restoreOwnListing(listing.id, user!.id);
+    setBusyId(null);
+    if (result.success) {
+      setListings((prev) =>
+        prev.map((item) =>
+          item.id === listing.id
+            ? { ...item, status: 'pending_review', rejectionReason: undefined }
+            : item
+        )
+      );
+      setNotice('restored');
+    } else {
+      setError(result.error || 'বিজ্ঞাপনটি পুনরুদ্ধার করা যায়নি।');
+    }
+  };
+
+  const handlePermanentDelete = async (listing: ToletListing) => {
+    const linkedRequests = requests.filter((request) => request.listingId === listing.id).length;
+    const relatedDataNotice = linkedRequests
+      ? `\n\nএর সঙ্গে যুক্ত ${linkedRequests}টি ভাড়াটিয়ার অনুরোধ ও সংশ্লিষ্ট রিপোর্টও মুছে যাবে।`
+      : '\n\nএর সঙ্গে যুক্ত ভাড়াটিয়ার অনুরোধ ও রিপোর্টও মুছে যাবে।';
+    if (!window.confirm(`“${listing.title}” স্থায়ীভাবে ডিলিট করবেন?\n\nএই কাজ ফেরানো যাবে না। বিজ্ঞাপন ও অব্যবহৃত ছবি মুছে যাবে; অন্য বিজ্ঞাপনে ব্যবহৃত ছবি রাখা হবে।${relatedDataNotice}`)) return;
+    setBusyId(listing.id);
+    setError('');
+    const result = await permanentlyDeleteOwnListing(listing.id, user!.id);
+    setBusyId(null);
+    if (result.success) {
+      setListings((prev) => prev.filter((item) => item.id !== listing.id));
+      setRequests((prev) => prev.filter((request) => request.listingId !== listing.id));
+      setNotice(result.warning || 'বিজ্ঞাপন, এর সংযুক্ত অনুরোধ এবং ছবি স্থায়ীভাবে মুছে ফেলা হয়েছে।');
+    } else {
+      setError(result.error || 'বিজ্ঞাপন স্থায়ীভাবে ডিলিট করা যায়নি।');
     }
   };
 
@@ -95,30 +138,94 @@ export default function MyToletListingsPage() {
     () => requests.filter((r) => r.status === 'submitted' || r.status === 'contacted'),
     [requests]
   );
+  const displayedListings = listings.filter((listing) => listing.status !== 'archived');
+  const archivedListings = listings.filter((listing) => listing.status === 'archived');
+
+  const renderListingCard = (listing: ToletListing, archived = false) => {
+    const area = getAreaById(listing.areaId);
+    const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
+    const cover = listing.photos[0];
+    return (
+      <div key={listing.id} className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-white p-4 sm:flex-row sm:p-5">
+        <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-xl bg-brand-100 sm:h-28 sm:w-36">
+          {cover ? (
+            <Image src={cover} alt={listing.title} fill sizes="144px" className="object-cover" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs font-semibold text-brand-700">ছবি নেই</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="mb-1 flex flex-wrap items-center gap-2">
+            <span className="rounded-md bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-ink-700">{typeInfo?.labelBn}</span>
+            <ListingStatusBadge status={listing.status} />
+          </div>
+          <h3 className="line-clamp-2 break-words text-sm font-bold text-ink-900 sm:text-base">{listing.title}</h3>
+          <p className="mt-0.5 text-xs text-ink-400">
+            {area?.nameBn || listing.areaId} · ৳{listing.rentPrice.toLocaleString('bn-BD')}/মাস
+          </p>
+          <p className="mt-0.5 text-[11px] text-ink-400">
+            পোস্ট: {new Date(listing.createdAt).toLocaleDateString('bn-BD')}
+            {listing.publishedAt ? ` · প্রকাশ: ${new Date(listing.publishedAt).toLocaleDateString('bn-BD')}` : ''}
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {!archived ? (
+              <>
+                <Link href={`/tolet/${listing.id}`} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-ink-700 hover:bg-mist-50">
+                  <Eye className="h-3.5 w-3.5" /> দেখুন
+                </Link>
+                <Link href={`/profile/tolet/${listing.id}/edit`} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800 hover:bg-brand-100">
+                  <Pencil className="h-3.5 w-3.5" /> সম্পাদনা
+                </Link>
+              </>
+            ) : (
+              <Link href={`/profile/tolet/${listing.id}/edit`} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800 hover:bg-brand-100">
+                <Pencil className="h-3.5 w-3.5" /> তথ্য সম্পাদনা
+              </Link>
+            )}
+            {archived ? (
+              <button type="button" disabled={busyId === listing.id} onClick={() => void handleRestore(listing)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-semibold text-brand-800 hover:bg-brand-100 disabled:opacity-50">
+                {busyId === listing.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
+                পুনরুদ্ধার
+              </button>
+            ) : listing.status !== 'suspended' && (
+              <button type="button" disabled={busyId === listing.id} onClick={() => void handleArchive(listing)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-brand-100 px-3 py-2 text-xs font-semibold text-ink-600 hover:bg-mist-50 disabled:opacity-50">
+                {busyId === listing.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
+                ডিসপ্লে থেকে সরান
+              </button>
+            )}
+            <button type="button" disabled={busyId === listing.id} onClick={() => void handlePermanentDelete(listing)} className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:opacity-50">
+              {busyId === listing.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              স্থায়ীভাবে ডিলিট করুন
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 py-8 sm:py-12">
-        <div className="mb-4 flex items-center gap-2 text-xs text-slate-500">
-          <Link href="/profile" className="hover:text-emerald-800 flex items-center gap-1">
+        <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
+          <Link href="/profile" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>প্রোফাইলে ফিরে যান</span>
           </Link>
           <span>/</span>
-          <span className="text-slate-800 font-semibold">মাই প্রপার্টিজ</span>
+          <span className="text-ink-800 font-semibold">মাই প্রপার্টিজ</span>
         </div>
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">মাই প্রপার্টিজ</h1>
-            <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
+            <h1 className="text-2xl font-bold text-ink-900">মাই প্রপার্টিজ</h1>
+            <p className="text-xs sm:text-sm text-ink-500 mt-0.5">
               আপনার পোস্ট করা বাসা ভাড়ার বিজ্ঞাপন ও ভাড়াটিয়ার অনুরোধ
             </p>
           </div>
           <Link
             href="/profile/tolet/new"
-            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-xs shrink-0"
+            className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold  shrink-0"
           >
             <Plus className="w-4 h-4" />
             <span>নতুন বিজ্ঞাপন</span>
@@ -126,38 +233,40 @@ export default function MyToletListingsPage() {
         </div>
 
         {notice && (
-          <div className="mb-5 p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4 text-emerald-700 shrink-0" />
+          <div className="mb-5 p-3.5 rounded-xl bg-brand-50 border border-brand-200 text-brand-800 text-xs flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-brand-600 shrink-0" />
             {notice === 'created'
               ? 'আপনার বিজ্ঞাপন জমা হয়েছে। প্রকাশের আগে এটি যাচাইয়ের অপেক্ষায় থাকবে।'
-              : 'বিজ্ঞাপনের পরিবর্তন সংরক্ষণ করা হয়েছে।'}
+              : notice === 'updated'
+                ? 'বিজ্ঞাপনের পরিবর্তন সংরক্ষণ করা হয়েছে।'
+                : notice}
           </div>
         )}
         {error && (
-          <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs flex items-center gap-2">
+          <div className="mb-5 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-500 text-xs flex items-center gap-2">
             <AlertTriangle className="w-4 h-4 shrink-0" />
             {error}
           </div>
         )}
 
         {loading ? (
-          <div className="py-16 flex flex-col items-center gap-2 text-slate-500 text-sm">
-            <Loader2 className="w-5 h-5 animate-spin text-emerald-700" />
+          <div className="py-16 flex flex-col items-center gap-2 text-ink-400 text-sm">
+            <Loader2 className="w-5 h-5 animate-spin text-brand-600" />
             <span>লোড হচ্ছে...</span>
           </div>
         ) : (
           <>
             {/* LISTINGS */}
-            {listings.length === 0 ? (
-              <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-                <Home className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-                <h3 className="text-base font-bold text-slate-900">এখনও কোনো বিজ্ঞাপন নেই</h3>
-                <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto mb-5">
-                  আপনার ফ্ল্যাট, মেস বা সিট ভাড়া দিতে চাইলে প্রথম বিজ্ঞাপনটি পোস্ট করুন।
+            {displayedListings.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-brand-100 p-12 text-center">
+                <Home className="mx-auto mb-3 h-12 w-12 text-brand-200" />
+                <h3 className="text-base font-bold text-ink-900">{archivedListings.length ? 'ডিসপ্লেতে কোনো বিজ্ঞাপন নেই' : 'এখনও কোনো বিজ্ঞাপন নেই'}</h3>
+                <p className="text-xs text-ink-400 mt-1 max-w-sm mx-auto mb-5">
+                  {archivedListings.length ? 'সরানো বিজ্ঞাপনগুলো নিচের “সরানো পোস্ট” অংশে পাবেন।' : 'আপনার ফ্ল্যাট, মেস বা সিট ভাড়া দিতে চাইলে প্রথম বিজ্ঞাপনটি পোস্ট করুন।'}
                 </p>
                 <Link
                   href="/profile/tolet/new"
-                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-800 text-white text-xs font-semibold"
+                  className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-700 text-white text-xs font-semibold"
                 >
                   <Plus className="w-4 h-4" />
                   <span>বিজ্ঞাপন পোস্ট করুন</span>
@@ -165,82 +274,31 @@ export default function MyToletListingsPage() {
               </div>
             ) : (
               <div className="space-y-3">
-                {listings.map((listing) => {
-                  const area = getAreaById(listing.areaId);
-                  const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
-                  const cover = listing.photos[0];
-                  return (
-                    <div key={listing.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row gap-4">
-                      <div className="relative w-full sm:w-36 h-40 sm:h-28 rounded-xl overflow-hidden bg-slate-100 shrink-0">
-                        {cover ? (
-                          <Image src={cover} alt={listing.title} fill sizes="144px" className="object-cover" referrerPolicy="no-referrer" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-emerald-800 text-xs font-semibold">ছবি নেই</div>
-                        )}
-                      </div>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
-                          <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
-                            {typeInfo?.labelBn}
-                          </span>
-                          <ListingStatusBadge status={listing.status} />
-                        </div>
-                        <h3 className="font-bold text-slate-900 text-sm sm:text-base line-clamp-1">{listing.title}</h3>
-                        <p className="text-xs text-slate-500 mt-0.5">
-                          {area?.nameBn || listing.areaId} • ৳{listing.rentPrice.toLocaleString('bn-BD')}/মাস
-                        </p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">
-                          পোস্ট: {new Date(listing.createdAt).toLocaleDateString('bn-BD')}
-                          {listing.publishedAt ? ` • প্রকাশ: ${new Date(listing.publishedAt).toLocaleDateString('bn-BD')}` : ''}
-                        </p>
-
-                        <div className="flex flex-wrap items-center gap-2 mt-3">
-                          <Link
-                            href={`/tolet/${listing.id}`}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold hover:bg-slate-50"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            দেখা যাবে
-                          </Link>
-                          <Link
-                            href={`/profile/tolet/${listing.id}/edit`}
-                            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold hover:bg-emerald-100"
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                            সম্পাদনা
-                          </Link>
-                          {listing.status !== 'archived' && (
-                            <button
-                              type="button"
-                              disabled={busyId === listing.id}
-                              onClick={() => handleArchive(listing)}
-                              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white border border-slate-200 text-slate-500 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50"
-                            >
-                              {busyId === listing.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
-                              আর্কাইভ
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {displayedListings.map((listing) => renderListingCard(listing))}
               </div>
+            )}
+            {archivedListings.length > 0 && (
+              <section className="mt-8" aria-labelledby="archived-tolet-heading">
+                <div className="mb-3 border-b border-brand-100 pb-3">
+                  <h2 id="archived-tolet-heading" className="text-base font-bold text-ink-900">সরানো পোস্ট</h2>
+                  <p className="mt-1 text-xs text-ink-500">এগুলো পাবলিক ডিসপ্লে থেকে সরানো হয়েছে। পুনরুদ্ধার করলে অ্যাডমিন অনুমোদনের অপেক্ষায় যাবে।</p>
+                </div>
+                <div className="space-y-3">{archivedListings.map((listing) => renderListingCard(listing, true))}</div>
+              </section>
             )}
 
             {/* REQUEST INBOX (owner authorized view) */}
             <div className="mt-10">
-              <h2 className="text-base font-bold text-slate-900 mb-1 flex items-center gap-2">
-                <Inbox className="w-4 h-4 text-emerald-700" />
+              <h2 className="text-base font-bold text-ink-900 mb-1 flex items-center gap-2">
+                <Inbox className="w-4 h-4 text-brand-600" />
                 ভাড়াটিয়ার অনুরোধ
               </h2>
-              <p className="text-xs text-slate-500 mb-4">
+              <p className="text-xs text-ink-400 mb-4">
                 বাসা দেখতে ইচ্ছুকদের অনুরোধগুলো এখানে পাবেন। যোগাযোগের পর অবস্থা আপডেট করুন।
               </p>
 
               {requests.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-dashed border-slate-300 p-8 text-center text-xs text-slate-500">
+                <div className="bg-white rounded-2xl border border-dashed border-brand-200 p-8 text-center text-xs text-ink-400">
                   এখনও কোনো অনুরোধ আসেনি। বিজ্ঞাপন প্রকাশিত হলে অনুরোধগুলো এখানে দেখা যাবে।
                 </div>
               ) : (
@@ -248,47 +306,47 @@ export default function MyToletListingsPage() {
                   {requests.map((req) => {
                     const area = req.areaId ? getAreaById(req.areaId) : undefined;
                     return (
-                      <div key={req.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5">
+                      <div key={req.id} className="bg-white rounded-2xl border border-brand-100 p-4 sm:p-5">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                           <div className="min-w-0">
                             <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-slate-900">{req.customerName}</span>
+                              <span className="text-xs font-bold text-ink-900">{req.customerName}</span>
                             </div>
-                            <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{req.listingTitle}</p>
+                            <p className="text-[11px] text-ink-400 mt-0.5 line-clamp-1">{req.listingTitle}</p>
                           </div>
                           <RequestStatusBadge status={req.status} />
                         </div>
 
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-slate-600 pt-3 border-t border-slate-100">
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink-500 pt-3 border-t border-brand-100">
                           <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-slate-400 shrink-0" />
+                            <Phone className="w-4 h-4 text-ink-400 shrink-0" />
                             <span>{req.customerPhone}</span>
                           </div>
                           <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-slate-400 shrink-0" />
+                            <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
                             <span>{area?.nameBn || req.areaId || 'এলাকা নেই'}</span>
                           </div>
                           {req.preferredTime && (
                             <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                              <Clock className="w-4 h-4 text-ink-400 shrink-0" />
                               <span>{req.preferredTime}</span>
                             </div>
                           )}
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-slate-400 shrink-0" />
+                            <Clock className="w-4 h-4 text-ink-400 shrink-0" />
                             <span>{new Date(req.createdAt).toLocaleString('bn-BD', { dateStyle: 'short', timeStyle: 'short' } as Intl.DateTimeFormatOptions)}</span>
                           </div>
                         </div>
 
                         {req.message && (
-                          <div className="mt-3 p-3 bg-slate-50 rounded-xl text-xs text-slate-700 flex items-start gap-2">
-                            <MessageSquareText className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
+                          <div className="mt-3 p-3 bg-mist-50 rounded-xl text-xs text-ink-700 flex items-start gap-2">
+                            <MessageSquareText className="w-4 h-4 text-ink-400 shrink-0 mt-0.5" />
                             {req.message}
                           </div>
                         )}
 
                         {req.status !== 'completed' && req.status !== 'cancelled' && (
-                          <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap gap-2">
+                          <div className="mt-4 pt-3 border-t border-brand-100 flex flex-wrap gap-2">
                             {req.status === 'submitted' && (
                               <button
                                 type="button"
@@ -303,7 +361,7 @@ export default function MyToletListingsPage() {
                               type="button"
                               disabled={busyId === req.id}
                               onClick={() => handleRequestStatus(req.id, 'completed')}
-                              className="px-3.5 py-2 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs font-semibold hover:bg-emerald-100 disabled:opacity-50"
+                              className="px-3.5 py-2 rounded-xl bg-brand-50 border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-100 disabled:opacity-50"
                             >
                               সম্পন্ন
                             </button>
@@ -311,7 +369,7 @@ export default function MyToletListingsPage() {
                               type="button"
                               disabled={busyId === req.id}
                               onClick={() => handleRequestStatus(req.id, 'cancelled')}
-                              className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 disabled:opacity-50"
+                              className="px-3.5 py-2 rounded-xl bg-white border border-brand-100 text-ink-500 text-xs font-semibold hover:bg-mist-50 disabled:opacity-50"
                             >
                               বাতিল
                             </button>
@@ -324,7 +382,7 @@ export default function MyToletListingsPage() {
               )}
 
               {activeRequests.length === 0 && requests.length > 0 && (
-                <p className="mt-3 text-center text-[11px] text-slate-400">
+                <p className="mt-3 text-center text-[11px] text-ink-400">
                   সব অনুরোধ প্রক্রিয়া করা হয়েছে।
                 </p>
               )}

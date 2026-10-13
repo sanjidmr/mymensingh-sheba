@@ -1,6 +1,6 @@
 import { MessageCircleQuestion, Clock, ShieldCheck } from 'lucide-react';
 import { DARK_FOCUS } from '@/components/about/AboutSectionBits';
-import { SITE_CONTACT } from '@/lib/site-contact';
+import type { mergeSiteContact } from '@/lib/site-content';
 
 /**
  * ContactHero — the opening of the page.
@@ -10,7 +10,11 @@ import { SITE_CONTACT } from '@/lib/site-contact';
  * staggered `mms-fade-up` rise is the site's existing entrance utility, so it
  * already respects reduced-motion.
  */
-export default function ContactHero() {
+export default function ContactHero({
+  contact,
+}: {
+  contact: ReturnType<typeof mergeSiteContact>;
+}) {
   return (
     <section
       aria-labelledby="contact-hero-heading"
@@ -56,11 +60,11 @@ export default function ContactHero() {
         >
           <li className="flex items-center gap-2 text-xs font-medium text-brand-200/90 sm:text-[13px]">
             <Clock className="h-3.5 w-3.5 shrink-0 text-accent-400" aria-hidden="true" />
-            {SITE_CONTACT.hoursBn}
+            {contact.hoursBn}
           </li>
           <li className="flex items-center gap-2 text-xs font-medium text-brand-200/90 sm:text-[13px]">
             <ShieldCheck className="h-3.5 w-3.5 shrink-0 text-accent-400" aria-hidden="true" />
-            {SITE_CONTACT.serviceAreaBn}
+            {contact.serviceAreaBn}
           </li>
           <li className="flex items-center gap-2 text-xs font-medium text-brand-200/90 sm:text-[13px]">
             <MessageCircleQuestion className="h-3.5 w-3.5 shrink-0 text-accent-400" aria-hidden="true" />

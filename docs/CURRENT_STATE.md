@@ -56,8 +56,14 @@ Package manager: **npm** (Node >= 20). `bun.lock` was removed.
   `resetPasswordForEmail`, `signOut`, and `refreshUserData` pulls all profile
   extensions. Sessions are restored on mount (`getSession` +
   `onAuthStateChange`).
-- **Admin role is only achievable via DB** (`profiles.role='admin'`). The admin
-  console is hidden behind a client-side guard using `isAdmin`.
+- **Admin role is only achievable via DB** (`profiles.role='admin'`). The
+  `/admin` layout calls the server-side `requireAdmin()` guard before rendering
+  admin pages; RLS policies and `public.is_admin()` remain the data boundary.
+- **Development-only exception:** `DEV_AUTH_BYPASS` is opt-in through the
+  private `DEV_AUTH_BYPASS=1` variable only in local `next dev`; it is
+  disabled in production and hosted Vercel environments. When enabled it can
+  render a stand-in admin and use a server-only service-role client. Use only
+  with isolated local data, never shared or production customer data.
 - Service-profile activation **never self-approves**: DB status is forced to
   `pending_approval` (DB trigger also blocks non-admin `approved`/`suspended`).
 
@@ -78,7 +84,7 @@ Package manager: **npm** (Node >= 20). `bun.lock` was removed.
 | `/login`, `/register`, `/forgot-password` | Real auth flows (honest errors when unconfigured) |
 | `/profile` + subroutes | Gated by login; tabular dashboard; setup/edit flows force `pending_approval` |
 | `/profile/requests`, `/profile/saved`, `/profile/notifications` | Read from DB via context; `/profile/requests` renders staff + home-moving + home-tutor + tolet + blood-donation requests |
-| `/admin/*` | Gated to `isAdmin`; `/admin/tolet*`, `/admin/services*`, `/admin/requests` (+ `[id]`), `/admin/verifications`, `/admin/blood` (+ `[id]`) real workflows; `/admin/home-moving` redirects to `/admin/requests`; `/admin/kajer-bua` + `/admin/electrician` are legacy placeholders |
+| `/admin/*` | Server-gated by `requireAdmin()`; implemented routes cover dashboard, posts, To-Let, staff services, catalog, requests, blood, messages, reports, reviews, verification, users, website, hero/media, notifications, activity, and settings; legacy `/admin/home-moving`, `/admin/kajer-bua`, `/admin/electrician`, and `/admin/locations` routes redirect to their maintained screens |
 | `/design-system` | **Dev-only** (404 in production via `NODE_ENV` check) |
 | `/about`, `/help`, `/safety`, `/contact` | Static content |
 
@@ -358,7 +364,46 @@ All admin routes now have real, data-driven implementations:
 | `/admin/reviews` | **New** — Tutor review moderation (search, published/unpublished filter, publish/unpublish toggle) |
 | `/admin/notifications` | **New** — Admin notification hub (real-time unread count, mark-all-read, links to related admin pages) |
 | `/admin/settings` | **New** — Platform settings: To-Let fee rules (source of truth: `platform_settings` key `tolet_fee_rules`), service availability toggles, notification settings — all persisted to `platform_settings` table |
-| `/admin/locations` | MCC wards/areas management (search, filter, ward view, active/inactive toggle) |
+| `/admin/locations` | Legacy alias that redirects to `/admin/website`; no standalone location-management screen |
+
+### 11.1.1 Admin design foundation (2026-10-12)
+- The shared `/admin` shell now uses a dedicated deep-navy/off-white palette
+  and Bengali typography inherited from the root layout. Its grouped navigation
+  links only to implemented routes; it collapses on desktop and becomes a
+  drawer on small screens. Existing list tables already switch to readable
+  mobile cards.
+- Page headers, panels, summary cards, status tones, alerts, empty/loading/error
+  states, and primary button variants use shared admin tokens. Customer-facing
+  pages keep their existing brand palette.
+- The topbar uses the current admin identity and database-backed unread
+  notification count. Global search is visibly disabled until integrated;
+  quick actions only target existing service, banner, and CMS screens.
+- Navigation intentionally does not invent standalone routes for analytics
+  (live metrics remain on `/admin`), admin permissions, customer-support
+  conversations (the messages route is for contact-form submissions), or
+  separate service modules for jobs/news/buy-sell, tutors, bus, WiFi, coaching,
+  and emergency contacts. Existing posts, verification, blood, and catalog
+  screens cover the implemented parts; add separate links only when those
+  routes ship.
+
+### 11.1.2 Community post management (2026-10-12)
+- `/admin/posts` searches and paginates the real `community_posts` rows through
+  the admin-only `fn_admin_posts()` RPC. Search covers title, slug, submitter
+  name/contact and UUID; filters cover kind, database status, category/job type,
+  and Dhaka-local submission dates. Exact database counts are retained.
+- `/admin/posts/[id]` shows category-specific content and fields, images,
+  owner/submission metadata, and buyer contact information only for
+  `buy_sell`. `/new` and `/[id]/edit` use kind-aware validation and the existing
+  `posts` Storage bucket. Edits never change `author_id`, `kind`, or status.
+- Supported community-post states are only `pending`, `approved`, and
+  `rejected`; rejecting requires a reason. Needs-edit and archive states are
+  not represented in the current check constraint. Status-change notifications
+  come from the existing database trigger, not a second application insert.
+- To-Let, tutor, and donor profiles remain in their existing admin screens;
+  `/admin/posts` links to those pages rather than duplicating their distinct
+  moderation workflows. The schema keeps only current post state/rejection
+  reason, not a per-moderation audit history. Deleting a post follows the
+  existing bookmark cascade; Storage objects are not automatically removed.
 
 ### 11.2 Notification System
 - **Reusable, simple** (`lib/notification-service.ts`): `notifyCustomer()` (personal) and `notifyAdminHub()` (admin hub) — fire-and-forget, never blocks primary operation.
@@ -394,7 +439,9 @@ All admin routes now have real, data-driven implementations:
 - **Admin-only columns**: `profiles_admin_only_fields` trigger blocks non-admin changes to `role`, `is_verified`, `status`
 - **Prescription/document privacy**: `documents` bucket has no anon SELECT policy; prescriptions opened only via signed URLs (`getPrescriptionViewUrl`)
 - **Audit trails**: `blood_contact_releases` (phone-less), report moderation status changes, notification inserts — all server-enforced
-- **No service-role key in client code**: all operations use anon key + RLS; admin actions gated by `is_admin()` in RLS
+- **No service-role key in client code**: production admin operations use the
+  session client + RLS (`public.is_admin()`); the opt-in, non-production
+  development bypass is server-only and can use a service-role client.
 
 ### 11.7 Privacy Compliance
 - **Private phones never public**: `PUBLIC_*` column lists exclude `private_phone`; admin facades expose only in admin responses
@@ -454,8 +501,10 @@ and staff-services systems use their in-memory mock stores in that mode.
   Search/filter against the DB for all implemented services (staff,
   home-moving, home-tutor, tolet, blood-donor) now works through the
   mock/real facades.
-- `middleware.ts` is pass-through (no session refresh on edge); acceptable for
-  the preview, revisit when real traffic appears.
+- `middleware.ts` refreshes Supabase auth cookies; admin authorization remains
+  in the server layout and RLS. The opt-in development auth bypass described
+  above is the main known admin-auth risk to keep disabled outside isolated
+  local work.
 - In-progress staff services render as submitted requests only; the actual
   work-completion/feedback loop is a future step.
 - Design-system page is dev-only by design.

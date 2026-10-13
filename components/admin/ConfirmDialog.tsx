@@ -82,7 +82,7 @@ export function ConfirmDialog({
         className="absolute inset-0 h-full w-full bg-ink-900/50"
       />
 
-      <div className="relative w-full max-w-md rounded-2xl border border-mist-200 bg-white shadow-2xl">
+      <div className="relative w-full max-w-md rounded-admin-card border border-admin-border bg-white shadow-admin-popover">
         <div className="flex items-start gap-3 px-5 pt-5">
           <span
             className={cn(
