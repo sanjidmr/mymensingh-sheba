@@ -7,7 +7,7 @@ import {
   createDevServiceRoleClient,
   resolveDevAdminIdentity,
 } from '@/lib/admin/dev-service-role';
-import type { StaffProfile } from '@/lib/staff-types';
+import { STAFF_SERVICE_KEYS, type StaffProfile, type StaffServiceKey } from '@/lib/staff-types';
 import { VEHICLE_KINDS, type VehicleKind } from '@/lib/catalog-types';
 import { HOME_SERVICE_SLUGS, SERVICE_REQUEST_STATUSES } from './service-request-constants';
 
@@ -1740,7 +1740,7 @@ export async function fetchServiceRequestAttachmentUrls(paths: string[]): Promis
 export async function fetchAssignableStaff(serviceSlug: string): Promise<AdminStaffListRow[]> {
   const admin = await getAdminDataClient();
   if (!admin) throw new Error('অ্যাডমিন অনুমতি যাচাই করা যায়নি।');
-  if (!['kajer-bua', 'electrician', 'plumber'].includes(serviceSlug)) return [];
+  if (!STAFF_SERVICE_KEYS.includes(serviceSlug as StaffServiceKey)) return [];
   const { data, error } = await admin.client
     .from('staff_profiles')
     .select('id, service_slug, name_bn, title_bn, image_url, areas, work_types, experience_years, availability, is_verified, is_active, created_at, updated_at')
@@ -1758,7 +1758,7 @@ export async function fetchStaffAssignmentFilterOptions(): Promise<Array<{ id: s
   const { data, error } = await admin.client
     .from('staff_profiles')
     .select('id, name_bn, service_slug')
-    .in('service_slug', ['kajer-bua', 'electrician', 'plumber'])
+    .in('service_slug', STAFF_SERVICE_KEYS)
     .order('name_bn', { ascending: true });
   if (error) throw new Error(`কর্মী তালিকা লোড ব্যর্থ হয়েছে: ${error.message}`);
   return data ?? [];
@@ -1797,7 +1797,7 @@ export async function fetchAdminStaffPage(params: ListParams): Promise<AdminStaf
     .select('id, service_slug, name_bn, title_bn, image_url, areas, work_types, experience_years, availability, is_verified, is_active, created_at, updated_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
-  if (params.service && ['kajer-bua', 'electrician', 'plumber'].includes(params.service)) {
+  if (params.service && STAFF_SERVICE_KEYS.includes(params.service as StaffServiceKey)) {
     query = query.eq('service_slug', params.service);
   }
   if (params.status === 'active') query = query.eq('is_active', true);

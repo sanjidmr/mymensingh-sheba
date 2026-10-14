@@ -38,6 +38,7 @@ import {
   type ServiceRequestLocationInput,
 } from '@/lib/service-request-service';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { trackFormSubmit } from '@/lib/site-analytics';
 
 /* -------------------------------------------------------------------------- */
 /* Shared control chrome                                                      */
@@ -419,6 +420,13 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
     }
 
     setReference(result.reference ?? null);
+    // The database confirmed the row; only now is this a real submission.
+    trackFormSubmit({
+      ctaType: 'service_request',
+      category: config.slug,
+      contentId: result.requestId ?? null,
+      routeKind: 'service',
+    });
     setStatus('success');
   };
 

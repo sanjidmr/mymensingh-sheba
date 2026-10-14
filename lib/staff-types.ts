@@ -8,9 +8,9 @@
  */
 import type { ServiceRequestStatus } from '@/lib/supabase/types';
 
-export type StaffServiceKey = 'kajer-bua' | 'electrician' | 'plumber';
+export type StaffServiceKey = 'kajer-bua' | 'electrician' | 'plumber' | 'ac-fridge';
 
-export const STAFF_SERVICE_KEYS: StaffServiceKey[] = ['kajer-bua', 'electrician', 'plumber'];
+export const STAFF_SERVICE_KEYS: StaffServiceKey[] = ['kajer-bua', 'electrician', 'plumber', 'ac-fridge'];
 
 export type StaffAvailability = 'available' | 'limited' | 'busy';
 
@@ -152,7 +152,7 @@ export interface StaffServiceUiConfig {
   heroTitle: string;
   heroSubtitle: string;
   categoryBadge: string;
-  accent: 'emerald' | 'amber' | 'cyan';
+  accent: 'emerald' | 'amber' | 'cyan' | 'sky';
   workTypeLabel: string; // label in list filters
   usesSalary: boolean; // kajer-bua only
   usesEmergency: boolean; // electrician / plumber
@@ -208,5 +208,21 @@ export const STAFF_SERVICE_UI: Record<StaffServiceKey, StaffServiceUiConfig> = {
     usesEmergency: true,
     hasPhotoOnRequest: true,
     supportsSearchPlaceholder: 'যেমন: পাইপ লিক, মোটর পাম্প...',
+  },
+  'ac-fridge': {
+    key: 'ac-fridge',
+    route: '/ac-fridge',
+    nameBn: 'এসি ও ফ্রিজ মেরামত',
+    nameEn: 'AC & Fridge Repair',
+    heroTitle: 'এসি ও ফ্রিজ মেরামত সেবা',
+    heroSubtitle:
+      'এসি সার্ভিসিং, গ্যাস চার্জ, পানি লিক ও ফ্রিজ মেরামতে অভিজ্ঞ অ্যাডমিন-যাচাইকৃত টেকনিশিয়ান। জরুরি অন-কল সাপোর্ট সহ।',
+    categoryBadge: 'অ্যাডমিন পরিচালিত • মেরামত',
+    accent: 'sky',
+    workTypeLabel: 'কাজের ধরন / সমস্যা',
+    usesSalary: false,
+    usesEmergency: true,
+    hasPhotoOnRequest: true,
+    supportsSearchPlaceholder: 'যেমন: এসি সার্ভিসিং, ফ্রিজ গ্যাস চার্জ...',
   },
 };

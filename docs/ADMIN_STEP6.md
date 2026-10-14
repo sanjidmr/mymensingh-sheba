@@ -41,8 +41,11 @@
 
 ## Schema and audit limitations
 
-- The worker schema has no category for `basha-paltano` or `ac-fridge`; those
-  requests support status/notes but cannot be assigned a mismatched worker.
+- The worker schema now has an `ac-fridge` category (এসি ও ফ্রিজ মেরামত) —
+  added by `supabase/migrations/20261014100000_staff_ac_fridge_category.sql`, so
+  those requests can be assigned an `ac-fridge` worker. `basha-paltano` still has
+  no worker category; those requests support status/notes but cannot be assigned
+  a mismatched worker.
 - The service-request audit trigger records status changes, but its field
   allowlist omits `profile_id` and `admin_notes`. There is no reliable previous
   assignment history or internal-note audit. No migration was applied.

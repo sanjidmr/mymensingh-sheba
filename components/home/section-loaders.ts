@@ -17,11 +17,16 @@ export function makeLoadStaffCards(slug: StaffServiceKey): () => Promise<HomePre
 
 export const loadElectricianCards = makeLoadStaffCards('electrician');
 export const loadPlumberCards = makeLoadStaffCards('plumber');
+export const loadAcFridgeCards = makeLoadStaffCards('ac-fridge');
 export const loadMaidCards = makeLoadStaffCards('kajer-bua');
 
-/** Electrician + Plumber শো-কেস মিশ্রণ — হোমে এক কার্ড হিসেবে দেখানো হয়। */
+/** Electrician + Plumber + এসি/ফ্রিজ শো-কেস মিশ্রণ — হোমে এক কার্ড হিসেবে দেখানো হয়। */
 export const loadRepairCards = (): Promise<HomePreviewCard[]> =>
-  Promise.all([loadElectricianCards(), loadPlumberCards()]).then(([e, p]) => [...e, ...p]);
+  Promise.all([loadElectricianCards(), loadPlumberCards(), loadAcFridgeCards()]).then(([e, p, a]) => [
+    ...e,
+    ...p,
+    ...a,
+  ]);
 
 export const loadTutorCards = (): Promise<HomePreviewCard[]> =>
   fetchPublishedTutors().then((tutors) => tutors.map(tutorToPreviewCard));

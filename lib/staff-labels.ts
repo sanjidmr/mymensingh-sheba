@@ -5,6 +5,7 @@ import {
   KAJER_BUA_WORK_TYPES,
   ELECTRICIAN_SERVICE_TYPES,
   PLUMBING_SERVICE_TYPES,
+  AC_FRIDGE_SERVICE_TYPES,
 } from '@/lib/filter-definitions';
 import type { StaffServiceKey } from '@/lib/staff-types';
 
@@ -18,6 +19,7 @@ export const STAFF_WORK_TYPE_LABELS: Record<StaffServiceKey, Record<string, stri
   'kajer-bua': buildMap(KAJER_BUA_WORK_TYPES),
   electrician: buildMap(ELECTRICIAN_SERVICE_TYPES),
   plumber: buildMap(PLUMBING_SERVICE_TYPES),
+  'ac-fridge': buildMap(AC_FRIDGE_SERVICE_TYPES),
 };
 
 export function staffWorkTypeLabels(slug: StaffServiceKey, ids: string[]): string[] {
@@ -68,5 +70,15 @@ export const STAFF_ACCENT_CLASSES: Record<
     text: 'text-cyan-800',
     ring: 'focus:ring-cyan-600',
     boarder: 'border-cyan-200',
+  },
+  sky: {
+    gradient: 'from-sky-500 via-sky-600 to-sky-700',
+    softBg: 'bg-sky-50',
+    chip: 'bg-sky-50 text-sky-900 border-sky-200',
+    btn: 'bg-sky-700',
+    btnHover: 'hover:bg-sky-800',
+    text: 'text-sky-800',
+    ring: 'focus:ring-sky-600',
+    boarder: 'border-sky-200',
   },
 };

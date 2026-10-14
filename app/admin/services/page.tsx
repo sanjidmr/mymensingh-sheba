@@ -94,7 +94,7 @@ export default async function AdminServicesPage({
     <>
       <PageHeader
         title="কর্মী ব্যবস্থাপনা"
-        description="কাজের বুয়া, ইলেকট্রিশিয়ান ও প্লাম্বার প্রোফাইল পরিচালনা করুন। ফোন নম্বর শুধু অনুমোদিত কর্মী-সম্পাদনা পেজে দেখা যায়।"
+        description="কাজের বুয়া, ইলেকট্রিশিয়ান, প্লাম্বার ও এসি/ফ্রিজ মেরামত প্রোফাইল পরিচালনা করুন। ফোন নম্বর শুধু অনুমোদিত কর্মী-সম্পাদনা পেজে দেখা যায়।"
         count={`ফিল্টার করা ${result.total} টি প্রোফাইল`}
         actions={
           <Link href="/admin/services/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white hover:bg-admin-navy/90">

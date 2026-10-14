@@ -33,6 +33,7 @@ import LocationSelectInput from '@/components/LocationSelectInput';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { TUTOR_CLASSES, TUTOR_SUBJECTS, TUTOR_TEACHING_MODES } from '@/lib/filter-definitions';
 import { formatTutorFee } from '@/lib/home-tutor-types';
+import { trackFormSubmit } from '@/lib/site-analytics';
 
 const TIME_SLOTS = [
   'সকাল (৯টা – ১২টা)',
@@ -72,6 +73,7 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [error, setError] = useState('');
 
   if (!user) {
     return (
@@ -119,7 +121,7 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
     const classLabel = TUTOR_CLASSES.find((c) => c.id === classLevel)?.labelBn || classLevel;
     const subjectLabel = TUTOR_SUBJECTS.find((s) => s.id === subject)?.labelBn || subject;
     const modeLabel = TUTOR_TEACHING_MODES.find((m) => m.id === mode)?.labelBn || mode;
-    await createServiceRequest({
+    const result = await createServiceRequest({
       serviceSlug: 'home-tutor',
       areaId,
       addressLine: '',
@@ -140,6 +142,18 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
         .join('\n'),
     });
     setLoading(false);
+    if (!result.success) {
+      setError(result.error ?? 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      return;
+    }
+    setError('');
+    // Only now is the request really on file.
+    trackFormSubmit({
+      ctaType: 'tutor_request',
+      category: 'home-tutor',
+      contentId: tutor.id,
+      routeKind: 'directory',
+    });
     setSuccess(true);
   };
 
@@ -303,6 +317,13 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
           <p className="flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 p-3 text-[11.5px] leading-relaxed text-amber-800">
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
             <span>রিকোয়েস্ট পাঠাতে আগে এলাকা নির্বাচন করুন।</span>
+          </p>
+        )}
+
+        {error && (
+          <p className="flex items-start gap-2 rounded-xl border border-red-200 bg-red-50 p-3 text-[11.5px] leading-relaxed text-red-700">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>{error}</span>
           </p>
         )}
 

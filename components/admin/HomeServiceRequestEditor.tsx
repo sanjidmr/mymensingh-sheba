@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Loader2, Save } from 'lucide-react';
 import type { AdminRequestRow, AdminStaffListRow } from '@/lib/admin/queries';
 import { SERVICE_REQUEST_STATUSES } from '@/lib/admin/service-request-constants';
+import { STAFF_SERVICE_KEYS, type StaffServiceKey } from '@/lib/staff-types';
 import { updateHomeServiceRequest } from '@/app/admin/actions/requests';
 
 const STATUS_LABELS: Record<string, string> = {
@@ -35,7 +36,7 @@ export default function HomeServiceRequestEditor({
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
 
-  const supportedAssignment = ['kajer-bua', 'electrician', 'plumber'].includes(request.service_slug);
+  const supportedAssignment = STAFF_SERVICE_KEYS.includes(request.service_slug as StaffServiceKey);
   const workerOptions = useMemo(() => {
     if (!request.area_id) return workers;
     return workers.filter((worker) => worker.areas.includes(request.area_id));

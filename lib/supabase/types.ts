@@ -349,7 +349,7 @@ export interface NotificationItem {
 // Staff (admin-managed services)
 export interface StaffProfile {
   id: string;
-  serviceSlug: 'kajer-bua' | 'electrician' | 'plumber';
+  serviceSlug: 'kajer-bua' | 'electrician' | 'plumber' | 'ac-fridge';
   nameBn: string;
   titleBn: string;
   imageUrl?: string;

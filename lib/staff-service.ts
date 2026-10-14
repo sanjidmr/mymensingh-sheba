@@ -19,6 +19,7 @@ import type {
   StaffReport,
   StaffReportStatus,
 } from './staff-types';
+import { STAFF_SERVICE_KEYS } from './staff-types';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
 import {
   mockFetchPublicStaffProfiles,
@@ -300,7 +301,7 @@ export async function adminFetchStaffRequests(
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw new Error(`সার্ভিস রিকোয়েস্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || [])
-    .filter((r) => r.service_slug === 'kajer-bua' || r.service_slug === 'electrician' || r.service_slug === 'plumber')
+    .filter((r) => STAFF_SERVICE_KEYS.includes(r.service_slug as StaffServiceKey))
     .map((row) => mapRequestRow(row as Record<string, unknown>));
 }
 
@@ -318,7 +319,7 @@ export async function adminFetchStaffRequestById(id: string): Promise<StaffReque
   if (error) throw new Error(`রিকোয়েস্টের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
   if (!data) return null;
   const slug = data.service_slug as string;
-  if (slug !== 'kajer-bua' && slug !== 'electrician' && slug !== 'plumber') return null;
+  if (!STAFF_SERVICE_KEYS.includes(slug as StaffServiceKey)) return null;
   return mapRequestRow(data as Record<string, unknown>);
 }
 

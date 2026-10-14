@@ -11,6 +11,7 @@ import {
 } from '@/lib/admin/queries';
 import { formatDateTime, lookupStatus } from '@/lib/admin/format';
 import { getAreaById } from '@/lib/locations';
+import { STAFF_SERVICE_KEYS, type StaffServiceKey } from '@/lib/staff-types';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +47,7 @@ export default async function AdminHomeServiceRequestOperationsPage({
   }
   if (!request) notFound();
 
-  const supportedAssignment = ['kajer-bua', 'electrician', 'plumber'].includes(request.service_slug);
+  const supportedAssignment = STAFF_SERVICE_KEYS.includes(request.service_slug as StaffServiceKey);
   let workers: AdminStaffListRow[] = [];
   let workerError = '';
   if (supportedAssignment) {

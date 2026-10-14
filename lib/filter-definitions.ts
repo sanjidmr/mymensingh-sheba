@@ -173,6 +173,23 @@ export const PLUMBING_SERVICE_TYPES = [
 ];
 
 // =========================================================================
+// 4b. এসি ও ফ্রিজ মেরামত FILTER DEFINITIONS
+// =========================================================================
+// The ids mirror `AC_FRIDGE.serviceTypes` in `lib/service-request-pages.ts` so a
+// requested job and a worker's declared skill use the same vocabulary.
+export const AC_FRIDGE_SERVICE_TYPES = [
+  { id: 'all', labelBn: 'সকল ধরনের কাজ' },
+  { id: 'ac_servicing', labelBn: 'এসি সার্ভিসিং' },
+  { id: 'ac_gas_charge', labelBn: 'এসি-তে গ্যাস চার্জ' },
+  { id: 'ac_not_cooling', labelBn: 'এসি ঠান্ডা করছে না' },
+  { id: 'ac_water_leak', labelBn: 'এসি থেকে পানি পড়ছে' },
+  { id: 'ac_installation', labelBn: 'নতুন এসি স্থাপন' },
+  { id: 'fridge_repair', labelBn: 'ফ্রিজ মেরামত' },
+  { id: 'fridge_gas_charge', labelBn: 'ফ্রিজে গ্যাস চার্জ' },
+  { id: 'deep_clean', labelBn: 'ফ্রিজ ও এসি ভেতরে পরিষ্কার' },
+];
+
+// =========================================================================
 // SHARED FILTER OPTIONS FOR STAFF SERVICES (কাজের বুয়া / Electrician / Plumber)
 // =========================================================================
 

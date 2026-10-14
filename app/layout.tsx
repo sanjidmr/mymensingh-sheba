@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { Noto_Sans_Bengali } from 'next/font/google';
 import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
+import PageViewTracker from '@/components/analytics/PageViewTracker';
 import MobileBottomNav from '@/components/home/MobileBottomNav';
 import { getSiteContentOverrides } from '@/lib/site-content-server';
 
@@ -57,6 +58,7 @@ export default function RootLayout({
   return (
     <html lang="bn" className={`${notoBengali.variable} scroll-smooth`}>
       <body className="min-h-screen bg-mist-50 text-ink-900 antialiased font-sans selection:bg-accent-200 selection:text-brand-800">
+        <PageViewTracker />
         <ClientProviders>
           {children}
           <MobileBottomNav />

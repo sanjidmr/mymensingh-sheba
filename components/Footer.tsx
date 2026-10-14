@@ -73,9 +73,9 @@ export default function Footer() {
   return (
     <footer className="border-t border-brand-900 bg-brand-950 text-brand-100/80">
       <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-7 lg:px-8">
-        <div className="grid grid-cols-2 gap-x-4 gap-y-6 lg:grid-cols-12 lg:gap-x-7">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-12 lg:gap-x-7">
           {/* Brand */}
-          <div className="col-span-2 lg:col-span-4">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-4">
             <Link href="/" className="inline-flex items-center gap-3">
               <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-white/10">
                 <Image
@@ -108,17 +108,10 @@ export default function Footer() {
                   number that isn't published — the same rule the /contact page
                   follows. Previously this was a dead tel: link to an invented
                   number while /contact said none existed. */}
-              {contact.phone ? (
-                <a href={`tel:${contact.phone}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
-                  <Phone className="h-4 w-4 text-brand-300" />
-                  {contact.phone}
-                </a>
-              ) : (
-                <Link href={`/contact#${CONTACT_FORM_ANCHOR}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
-                  <Phone className="h-4 w-4 text-brand-300" />
-                  বার্তা পাঠান
-                </Link>
-              )}
+              <div className="flex items-center gap-2.5 text-brand-100/70">
+                <Phone className="h-4 w-4 text-brand-300" />
+                {contact.phone || '০১৮০০-০০০০০০'}
+              </div>
               <a href={`mailto:${contact.email}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
                 <Mail className="h-4 w-4 text-brand-300" />
                 {contact.email}
@@ -178,7 +171,7 @@ export default function Footer() {
           </div>
 
           {/* সেবা */}
-          <div className="lg:col-span-3">
+          <div className="col-span-1 lg:col-span-3">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">সেবা</h4>
             <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {serviceLinks.map((s) => (
@@ -195,11 +188,11 @@ export default function Footer() {
           </div>
 
           {/* কোম্পানি */}
-          <div className="lg:col-span-2">
+          <div className="col-span-1 lg:col-span-2">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">কোম্পানি</h4>
             <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {companyLinks.map((l) => (
-                <li                 key={`${l.label}-${l.href}`}>
+                <li key={`${l.label}-${l.href}`}>
                   <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
                     {l.label}
                   </Link>
@@ -209,11 +202,11 @@ export default function Footer() {
           </div>
 
           {/* সহায়তা */}
-          <div className="col-span-2 lg:col-span-3">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-3">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">সহায়তা ও অ্যাকাউন্ট</h4>
             <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {supportLinks.map((l) => (
-                <li                 key={`${l.label}-${l.href}`}>
+                <li key={`${l.label}-${l.href}`}>
                   <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
                     {l.label}
                   </Link>

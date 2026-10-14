@@ -18,6 +18,7 @@ import React from 'react';
 import { Send } from 'lucide-react';
 import type { HomeTutorProfile } from '@/lib/supabase/types';
 import { TUTOR_AVAILABILITY_LABELS } from '@/lib/home-tutor-types';
+import { trackCtaClick } from '@/lib/site-analytics';
 
 /**
  * A phone floating bar with one job: scroll to the request form.
@@ -43,7 +44,18 @@ export function TutorCtaBar({ tutor }: { tutor: HomeTutorProfile }) {
           href="#tutor-request"
           aria-disabled={!open}
           onClick={(e) => {
-            if (!open) e.preventDefault();
+            if (!open) {
+              e.preventDefault();
+              return;
+            }
+            // A press is recorded, not a confirmed request: this only scrolls to
+            // the form. The confirmed count comes from the form's success branch.
+            trackCtaClick({
+              ctaType: 'tutor_contact',
+              category: 'home-tutor',
+              contentId: tutor.id,
+              routeKind: 'directory',
+            });
           }}
           className={`inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl px-4 text-[13.5px] font-extrabold shadow-[0_4px_16px_rgba(7,39,31,0.14)] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 ${
             open

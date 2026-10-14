@@ -19,7 +19,6 @@ import {
 } from '@/lib/tolet-tracking';
 import type { ToletListingStats } from '@/lib/tolet-types';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
-import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { cn } from '@/lib/utils';
 
 /**
@@ -251,16 +250,6 @@ export function ToletAnalyticsTable({ limit = 25 }: { limit?: number }) {
         // "nobody is interested" when the truth is "nothing is being recorded".
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-5 text-center">
           <p className="text-xs font-semibold text-slate-700">এখনো কোনো ইভেন্ট রেকর্ড হয়নি।</p>
-          <p className="mx-auto mt-1.5 max-w-lg text-[11px] leading-relaxed text-slate-500">
-            {isSupabaseConfigured
-              ? 'সুপাবেস কনফিগার করা আছে, তবে ইভেন্ট টেবিল/ফাংশন এখনো ডিপ্লয় হয়নি। ইভেন্ট সংরক্ষণের জন্য migration চালাতে হবে:'
-              : 'সুপাবেস কনফিগার করা নেই, তাই শুধু প্রিভিউ মোডের সাময়িক স্টোরে ইভেন্ট জমা হয়।'}
-            {isSupabaseConfigured && (
-              <code className="mt-1.5 block text-[10.5px] text-slate-600">
-                supabase/migrations/20261004000000_tolet_analytics.sql
-              </code>
-            )}
-          </p>
         </div>
       ) : (
         <div className="-mx-1 overflow-x-auto px-1">

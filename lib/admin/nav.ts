@@ -24,6 +24,7 @@ import {
   GraduationCap,
   Droplet,
   Siren,
+  MousePointerClick,
 } from 'lucide-react';
 
 /**
@@ -217,6 +218,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         label: 'অ্যানালিটিক্স',
         icon: BarChart3,
         description: 'বাস্তব ডেটাভিত্তিক প্ল্যাটফর্ম পরিসংখ্যান',
+      },
+      {
+        href: '/admin/analytics/website',
+        label: 'ওয়েবসাইট অ্যানালিটিক্স',
+        icon: MousePointerClick,
+        description: 'পেজ ভিউ, ভিজিটর, ট্রাফিক সোর্স ও CTA ক্লিক',
       },
     ],
   },

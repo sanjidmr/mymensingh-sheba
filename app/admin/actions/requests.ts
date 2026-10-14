@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
 import { HOME_SERVICE_SLUGS, SERVICE_REQUEST_STATUSES } from '@/lib/admin/service-request-constants';
-import type { StaffServiceKey } from '@/lib/staff-types';
+import { STAFF_SERVICE_KEYS, type StaffServiceKey } from '@/lib/staff-types';
 
 /**
  * Request queues: service requests, to-let enquiries and vehicle requests.
@@ -97,7 +97,7 @@ export async function updateHomeServiceRequest(input: {
         return { ok: false, error: 'কর্মী আইডি সঠিক নয়।' };
       }
       const workerService = existing.service_slug as StaffServiceKey;
-      if (!['kajer-bua', 'electrician', 'plumber'].includes(workerService)) {
+      if (!STAFF_SERVICE_KEYS.includes(workerService)) {
         return { ok: false, error: 'এই সেবার জন্য কর্মী ক্যাটাগরি এখনো পরিচালিত হয় না।' };
       }
       const { data, error } = await client

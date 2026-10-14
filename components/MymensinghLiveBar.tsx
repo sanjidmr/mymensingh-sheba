@@ -269,13 +269,10 @@ export default function MymensinghLiveBar() {
       হটলাইন: {SITE_CONTACT.phone}
     </a>
   ) : (
-    <Link
-      href={`/contact#${CONTACT_FORM_ANCHOR}`}
-      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300 transition-colors hover:bg-accent-400/20 hover:text-accent-200"
-    >
+    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
       <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-      বার্তা পাঠান
-    </Link>
+      {SITE_CONTACT.phone ? `হটলাইন: ${SITE_CONTACT.phone}` : '০১৮০০-০০০০০০'}
+    </span>
   );
 
   return (
@@ -299,7 +296,6 @@ export default function MymensinghLiveBar() {
 
             {/* Hotline */}
             {hotline}
-
             {/* Weather — current temperature only */}
             {weather.value && (
               <>
@@ -396,8 +392,6 @@ export default function MymensinghLiveBar() {
             >
               নামাজের সময়
             </button>
-            {divider}
-
             {hotline}
           </div>
         </div>

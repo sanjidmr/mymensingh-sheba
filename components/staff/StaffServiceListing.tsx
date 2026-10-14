@@ -9,6 +9,7 @@ import { STAFF_ACCENT_CLASSES } from '@/lib/staff-labels';
 import {
   STAFF_EXPERIENCE_OPTIONS,
   KAJER_BUA_SALARY_PRESETS,
+  type ServiceType,
 } from '@/lib/filter-definitions';
 import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
 import EmptyFilterResults from '@/components/filters/EmptyFilterResults';
@@ -128,7 +129,7 @@ export default function StaffServiceListing({ serviceSlug }: { serviceSlug: Staf
           </div>
 
           <ServiceFilterBar
-            serviceType={serviceSlug}
+            serviceType={serviceSlug as ServiceType}
             filterValues={filters}
             onFilterChange={setFilters}
             onResetFilters={handleReset}

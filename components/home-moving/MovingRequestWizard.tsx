@@ -30,6 +30,7 @@ import {
   HOME_MOVING_TIME_SLOTS,
 } from '@/lib/home-moving-types';
 import type { HomeMovingItem } from '@/lib/home-moving-types';
+import { trackFormSubmit } from '@/lib/site-analytics';
 
 const STEP_LABELS = [
   'কোথা থেকে',
@@ -179,7 +180,7 @@ export default function MovingRequestWizard() {
     if (!user) return;
     setError('');
     setSubmitting(true);
-    await createServiceRequest({
+    const result = await createServiceRequest({
       serviceSlug: 'home-moving',
       contactName: contactName.trim(),
       contactPhone: contactPhone.replace(/[^\d]/g, ''),
@@ -200,6 +201,12 @@ export default function MovingRequestWizard() {
       addressLine: pickupAddress.trim(),
     });
     setSubmitting(false);
+    if (!result.success) {
+      setError(result.error ?? 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      return;
+    }
+    // Confirmed by the database, so the count is honest.
+    trackFormSubmit({ ctaType: 'home_moving_request', category: 'home-moving' });
     setRequestSent(true);
   };
 

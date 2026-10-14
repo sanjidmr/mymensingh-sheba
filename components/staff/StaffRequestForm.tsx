@@ -10,6 +10,7 @@ import type { StaffProfile, StaffServiceUiConfig } from '@/lib/staff-types';
 import { STAFF_ACCENT_CLASSES } from '@/lib/staff-labels';
 import { uploadRequestAttachment } from '@/lib/staff-service';
 import { getAllMCCAreas } from '@/lib/locations';
+import { trackFormSubmit } from '@/lib/site-analytics';
 
 const WORK_TYPE_OPTIONS: Record<string, Array<{ id: string; labelBn: string }>> = {
   'kajer-bua': KAJER_BUA_WORK_TYPES.filter((o) => o.id !== 'all'),
@@ -59,7 +60,7 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
     if (!user) return;
     setRequestError('');
     setSubmitting(true);
-    await createServiceRequest({
+    const result = await createServiceRequest({
       serviceSlug: profile.serviceSlug,
       profileId: profile.id,
       profileTitleBn: profile.titleBn,
@@ -74,6 +75,17 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
       attachmentUrl: serviceUi.hasPhotoOnRequest ? attachmentUrl || undefined : undefined,
     });
     setSubmitting(false);
+    if (!result.success) {
+      setRequestError(result.error ?? 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      return;
+    }
+    // The row is on file; count it as a confirmed submission.
+    trackFormSubmit({
+      ctaType: 'staff_request',
+      category: profile.serviceSlug,
+      contentId: profile.id,
+      routeKind: 'directory',
+    });
     setRequestSent(true);
   };
 

@@ -1,6 +1,6 @@
-import { ArrowDown, Check, PhoneCall } from 'lucide-react';
-import { DARK_FOCUS } from '@/components/about/AboutSectionBits';
+import { Check } from 'lucide-react';
 import type { ServiceRequestPageConfig } from '@/lib/service-request-pages';
+import ServiceHeroCta from '@/components/service-request/ServiceHeroCta';
 
 export interface ServiceRequestHeroProps {
   config: ServiceRequestPageConfig;
@@ -94,23 +94,7 @@ export default function ServiceRequestHero({ config }: ServiceRequestHeroProps) 
               ))}
             </ul>
 
-            <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-              <a
-                href={`#${REQUEST_FORM_ANCHOR}`}
-                className={`inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-6 text-[15px] font-extrabold text-brand-950 transition-colors hover:bg-accent-300 sm:w-auto ${DARK_FOCUS}`}
-              >
-                <PhoneCall className="h-[18px] w-[18px]" aria-hidden="true" />
-                সেবা নিন
-              </a>
-
-              <a
-                href={`#${REQUEST_FORM_ANCHOR}`}
-                className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 text-[13px] font-bold text-brand-200 transition-colors hover:text-white ${DARK_FOCUS} rounded-lg px-2`}
-              >
-                নিচে ফর্ম পূরণ করুন
-                <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-              </a>
-            </div>
+            <ServiceHeroCta anchorId={REQUEST_FORM_ANCHOR} category={config.slug} />
           </div>
         </div>
       </div>

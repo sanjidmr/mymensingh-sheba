@@ -43,6 +43,7 @@ import {
   User,
 } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { trackCtaClick } from '@/lib/site-analytics';
 import type { CommunityPost } from '@/lib/catalog-types';
 
 type Contact = {
@@ -88,6 +89,19 @@ export function SellerCard({
   // leave it blank.
   const whatsappNumber = whatsapp ?? phone;
   const sellerName = contact?.authorName || post.authorName;
+
+  /**
+   * Records a press on one of the seller-contact buttons. `contentId` is the
+   * post slug, so the dashboard can rank individual buy & sell listings.
+   */
+  const trackContact = (ctaType: 'call' | 'whatsapp' | 'contact_request') => {
+    trackCtaClick({
+      ctaType,
+      category: 'buy_sell',
+      contentId: post.slug,
+      routeKind: 'post',
+    });
+  };
 
   async function copyNumber() {
     if (!phone) return;
@@ -139,6 +153,7 @@ export function SellerCard({
         <>
           <a
             href={telHref(phone)}
+            onClick={() => trackContact('call')}
             className={`mt-3 flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-[14px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
           >
             <Phone className="h-4 w-4" aria-hidden="true" />
@@ -151,6 +166,7 @@ export function SellerCard({
                 href={waHref(whatsappNumber)}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={() => trackContact('whatsapp')}
                 className={`inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-xl border border-brand-200 bg-white px-3 text-[12.5px] font-bold text-brand-700 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
               >
                 <MessageCircle className="h-4 w-4" aria-hidden="true" />
@@ -193,7 +209,10 @@ export function SellerCard({
           </p>
           <button
             type="button"
-            onClick={onRequestContact}
+            onClick={() => {
+              trackContact('contact_request');
+              onRequestContact();
+            }}
             className={`mt-2 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-4 text-[13px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
           >
             যোগাযোগের অনুরোধ পাঠান

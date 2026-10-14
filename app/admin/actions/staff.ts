@@ -5,7 +5,7 @@ import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
 import { requireAdminAction } from '@/lib/admin/actions';
 import type { StaffProfileInput, StaffServiceKey } from '@/lib/staff-types';
 
-const STAFF_SERVICES: StaffServiceKey[] = ['kajer-bua', 'electrician', 'plumber'];
+const STAFF_SERVICES: StaffServiceKey[] = ['kajer-bua', 'electrician', 'plumber', 'ac-fridge'];
 const STAFF_AVAILABILITY = ['available', 'limited', 'busy'] as const;
 
 function isUuid(value: string): boolean {

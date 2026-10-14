@@ -40,6 +40,7 @@ import {
   Users,
 } from 'lucide-react';
 import { createVehicleRequest } from '@/lib/catalog-service';
+import { trackFormSubmit } from '@/lib/site-analytics';
 import type { ServiceListing, VehicleKind } from '@/lib/catalog-types';
 import { VEHICLE_KINDS, toBn } from '@/lib/catalog-types';
 import { getAllMCCAreas } from '@/lib/locations';
@@ -136,6 +137,13 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
     });
 
     if (result.success) {
+      // The row exists in the database; this is a confirmed submission.
+      trackFormSubmit({
+        ctaType: 'vehicle_request',
+        category: kind,
+        contentId: listing.id,
+        routeKind: 'service',
+      });
       setStatus('sent');
       setMessage('আপনার অনুরোধ পাঠানো হয়েছে। অ্যাডমিন শীঘ্রই যোগাযোগ করবেন।');
     } else {

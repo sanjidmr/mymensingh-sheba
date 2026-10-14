@@ -101,7 +101,7 @@ interface AuthContextType {
   toggleSaveItem: (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => Promise<{ success: boolean; error?: string }>;
   createServiceRequest: (
     request: Omit<ServiceRequestItem, 'id' | 'customerId' | 'createdAt' | 'status' | 'serviceTitleBn'>
-  ) => Promise<void>;
+  ) => Promise<{ success: boolean; error?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -910,8 +910,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ServiceRequestItem,
       'id' | 'customerId' | 'createdAt' | 'status' | 'serviceTitleBn'
     >
-  ) => {
-    if (!user) return;
+  ): Promise<{ success: boolean; error?: string }> => {
+    if (!user) {
+      return { success: false, error: 'অনুরোধ পাঠাতে লগইন করতে হবে।' };
+    }
     const newReq: ServiceRequestItem = {
       ...requestData,
       id: `req-${Date.now()}`,
@@ -922,11 +924,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         requestData.serviceSlug,
       createdAt: new Date().toISOString(),
     };
-    setRequests((prev) => [newReq, ...prev]);
+
+    // Write first, then reflect it. A request that failed to persist must not
+    // appear in the customer's list as if it had been filed — and callers rely
+    // on this result to know whether the submission was really recorded.
     if (isSupabaseConfigured) {
       const client = createClient();
       if (client) {
-        await client.from('service_requests').insert({
+        const { error } = await client.from('service_requests').insert({
           customer_id: user.id,
           service_slug: requestData.serviceSlug,
           status: 'new',
@@ -953,8 +958,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           moving_items: requestData.movingItems ? JSON.stringify(requestData.movingItems) : '[]',
           photo_urls: requestData.photoUrls ? JSON.stringify(requestData.photoUrls) : '[]',
         });
+        if (error) {
+          return { success: false, error: `অনুরোধ সংরক্ষণ করা যায়নি: ${error.message}` };
+        }
       }
     }
+
+    setRequests((prev) => [newReq, ...prev]);
+    return { success: true };
   };
 
   return (
