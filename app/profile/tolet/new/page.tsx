@@ -67,6 +67,17 @@ export default function NewToletListingPage() {
           </p>
         </div>
 
+        <div className="mb-5 rounded-xl border border-brand-100 bg-white px-4 py-3 text-xs text-ink-600">
+          <p className="font-semibold text-ink-800">মালিকের পরিচিতি</p>
+          <p className="mt-1">
+            {user.fullName} <span className="mx-1 text-ink-300">•</span> {user.phone}
+          </p>
+          <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
+            এই প্রোফাইলের নাম ও ফোন বিজ্ঞাপনের মালিক হিসেবে সংযুক্ত থাকবে। ফোন নম্বর ওয়েবসাইটে লেখা হিসেবে
+            দেখানো হবে না; অনুমোদিত বিজ্ঞাপনের “কল করুন” বোতাম থেকে সরাসরি ডায়াল করা যাবে।
+          </p>
+        </div>
+
         <ToletWizardForm
           mode="owner"
           ownerId={user.id}

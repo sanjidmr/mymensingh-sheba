@@ -170,6 +170,34 @@ export interface ToletListingStats {
   lastActivityAt: string | null;
 }
 
+export interface ToletAnalyticsListing extends ToletListingStats {
+  title: string;
+  ownerName: string | null;
+  areaId: string | null;
+  specificAddress: string | null;
+  status: ToletListingStatus | null;
+}
+
+export interface ToletAnalyticsTrend {
+  date: string;
+  views: number;
+  callClicks: number;
+  whatsappClicks: number;
+}
+
+export interface ToletAnalyticsReport {
+  from: string;
+  to: string;
+  period: 'day' | 'week' | 'month';
+  totals: {
+    views: number;
+    callClicks: number;
+    whatsappClicks: number;
+  };
+  listings: ToletAnalyticsListing[];
+  trends: ToletAnalyticsTrend[];
+}
+
 export const TOLET_EVENT_TYPE_INFO: Record<ToletEventType, { labelBn: string }> = {
   view: { labelBn: 'বিজ্ঞাপন দেখা হয়েছে' },
   call_click: { labelBn: 'কল বাটন চাপা হয়েছে' },

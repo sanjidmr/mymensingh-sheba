@@ -137,9 +137,6 @@
       padding-bottom: 0;
     }
 
-    body:has([data-dashboard-shell]) {
-      padding-bottom: 0;
-    }
   }
 
   ::selection {

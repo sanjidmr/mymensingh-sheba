@@ -13,6 +13,7 @@ import {
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { LAUNCH_SERVICES } from './services-data';
 import { MCC_AREAS } from './locations';
+import type { AppRole } from './auth-routes';
 
 const NOT_CONFIGURED_MESSAGE =
   'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।';
@@ -43,7 +44,7 @@ function notificationLink(n: {
   if (!id) return undefined;
   if (n.targetRole === 'admin') {
     if (n.relatedType === 'service_request') return `/admin/requests/${id}`;
-    if (n.relatedType === 'blood_request') return `/admin/blood/${id}`;
+    if (n.relatedType === 'blood_request') return '/admin/blood/donors';
     if (n.relatedType === 'contact_message') return `/admin/messages/${id}`;
     return '/admin/reports';
   }
@@ -67,12 +68,13 @@ interface AuthContextType {
   savedListingsError: string;
   notifications: NotificationItem[];
   notificationsError: string;
+  notificationsLoading: boolean;
   isLoading: boolean;
   isAdmin: boolean;
   isConfiguredWithSupabase: boolean;
-  login: (phoneOrEmail: string, pass: string) => Promise<{ success: boolean; error?: string }>;
+  login: (phoneOrEmail: string, pass: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
-  verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
+  verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
   register: (data: {
     fullName: string;
     phone: string;
@@ -117,6 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [savedListingsError, setSavedListingsError] = useState('');
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsError, setNotificationsError] = useState('');
+  const [notificationsLoading, setNotificationsLoading] = useState(true);
   // Keep the server render and the browser's first render identical. Whether
   // Supabase is configured is resolved after hydration in the effect below.
   const [isLoading, setIsLoading] = useState(true);
@@ -132,13 +135,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setSavedListingsLoading(false);
     setNotifications([]);
     setNotificationsError('');
+    setNotificationsLoading(false);
   }, []);
 
   const refreshUserData = useCallback(
     async (
       client: NonNullable<ReturnType<typeof createClient>>,
       userId: string
-    ): Promise<{ ok: boolean; blocked?: boolean }> => {
+    ): Promise<{ ok: boolean; blocked?: boolean; role?: AppRole }> => {
       const { data: profileData } = await client.from('profiles').select('*').eq('id', userId).single();
       if (!profileData) {
         clearSessionState();
@@ -157,6 +161,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         clearSessionState();
         return { ok: false, blocked: true };
       }
+      // The verified role lives in the trusted `profiles` row, never in user
+      // metadata or the email address. Everything downstream (routing, guards)
+      // branches on this value.
+      const role: AppRole = profile.role === 'admin' ? 'admin' : 'customer';
       setUser({ ...profile, status: profile.status || 'active' });
 
       const { data: toletRow } = await client.rpc('fn_my_tolet_profile').maybeSingle();
@@ -230,6 +238,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSavedListingsLoading(false);
 
       // Notifications: personal ones plus (for admins) the admin hub rows.
+      setNotificationsLoading(true);
       const isAdminUser = profile.role === 'admin';
       const { data: personalNotifs, error: personalNotifError } = await client
         .from('notifications')
@@ -250,7 +259,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setNotificationsError(
           `নোটিফিকেশন লোড করা যায়নি: ${personalNotifError?.message ?? adminNotifError?.message}`
         );
-        return { ok: false };
+        setNotificationsLoading(false);
+        // The profile itself loaded fine — a transient notifications failure must
+        // not sign the user out or make the caller forget their verified role.
+        return { ok: true, role };
       }
       setNotificationsError('');
       const merged: NotificationItem[] = [...personalNotifs, ...adminNotifs]
@@ -262,7 +274,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
         .slice(0, 50);
       setNotifications(merged);
-      return { ok: true };
+      setNotificationsLoading(false);
+      return { ok: true, role };
     },
     [clearSessionState]
   );
@@ -322,7 +335,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
-        return { success: true };
+        return { success: true, role: res?.role ?? 'customer' };
       }
       return { success: false, error: 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।' };
     } catch (err: unknown) {
@@ -377,7 +390,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
-        return { success: true };
+        return { success: true, role: res?.role ?? 'customer' };
       }
       return { success: false, error: 'যাচাইকরণ সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।' };
     } finally {
@@ -981,6 +994,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         savedListingsError,
         notifications,
         notificationsError,
+        notificationsLoading,
         isLoading,
         isAdmin: user?.role === 'admin',
         isConfiguredWithSupabase: isSupabaseConfigured,

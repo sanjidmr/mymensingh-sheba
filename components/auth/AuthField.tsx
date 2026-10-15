@@ -81,6 +81,7 @@ export default function AuthField({
         )}
 
         <input
+          suppressHydrationWarning
           id={id}
           type={isPassword ? (revealed ? 'text' : 'password') : type}
           value={value}
@@ -103,6 +104,7 @@ export default function AuthField({
 
         {isPassword && (
           <button
+            suppressHydrationWarning
             type="button"
             onClick={() => setRevealed((prev) => !prev)}
             aria-label={revealed ? 'পাসওয়ার্ড লুকান' : 'পাসওয়ার্ড দেখান'}
@@ -157,6 +159,7 @@ export function AuthSubmit({
 
   return (
     <button
+      suppressHydrationWarning
       type="submit"
       disabled={isLoading}
       aria-busy={isLoading}

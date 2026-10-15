@@ -161,7 +161,7 @@ function DonorDashboard({ donor }: { donor: BloodDonorProfile }) {
             <div className="mt-4 p-3.5 rounded-xl bg-rose-50/70 border border-rose-200/60 text-[11px] text-ink-900 flex items-start gap-2">
               <Lock className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
               <span>
-                আপনার মোবাইল নম্বর সম্পূর্ণ গোপন রাখা হয়েছে। প্রেসক্রিপশন যাচাইয়ের পর অ্যাডমিন নিয়ন্ত্রিতভাবে যোগাযোগ স্থাপন করবেন।
+                আপনার মোবাইল নম্বর কোথাও লেখা হিসেবে প্রকাশ করা হয় না। অনুমোদিত হলে রক্তদাতা ডিরেক্টরির কার্ড থেকে রোগী বা স্বজন সরাসরি আপনাকে কল করতে পারেন।
               </span>
             </div>
 

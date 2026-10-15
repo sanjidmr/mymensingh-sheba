@@ -8,12 +8,10 @@ import {
   AlertTriangle,
   ShieldCheck,
   Pencil,
-  Eye,
   Phone,
   MapPin,
   Briefcase,
   BadgeCheck,
-  CheckCircle2,
   Zap,
   DollarSign,
   Clock,
@@ -173,16 +171,6 @@ export default function AdminStaffProfileDetailPage({ params }: AdminStaffProfil
                 <Pencil className="w-3.5 h-3.5" />
                 <span>সম্পাদনা</span>
               </Link>
-              {profile.isActive && (
-                <Link
-                  href={`${ui?.route}/${profile.id}`}
-                  target="_blank"
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-100"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                  <span>পাবলিক ভিউ</span>
-                </Link>
-              )}
             </div>
           </div>
 
@@ -224,13 +212,17 @@ export default function AdminStaffProfileDetailPage({ params }: AdminStaffProfil
           <div className="lg:col-span-7 space-y-4">
             <div className="bg-white rounded-2xl border border-slate-200 p-5">
               <h3 className="text-sm font-bold text-slate-900 mb-3">কাজের ধরন / দক্ষতা</h3>
-              <div className="flex flex-wrap gap-1.5">
-                {labels.map((l) => (
-                  <span key={l} className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-100 text-emerald-900 text-[11px] font-medium">
-                    {l}
-                  </span>
-                ))}
-              </div>
+              {labels.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5">
+                  {labels.map((l) => (
+                    <span key={l} className="px-2.5 py-1 rounded-md bg-emerald-50 border border-emerald-100 text-emerald-900 text-[11px] font-medium">
+                      {l}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-slate-500">কোনো নির্দিষ্ট দক্ষতা আলাদা করে লেখা হয়নি; সার্ভিস ক্যাটাগরি অনুযায়ী নির্ধারণ করা হয়।</p>
+              )}
               {(profile.workMode || profile.timeSlot) && (
                 <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                   {profile.workMode && (

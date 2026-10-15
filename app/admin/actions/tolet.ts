@@ -18,6 +18,7 @@ export async function moderateToletListing(input: {
   id: string;
   status: ToletListingStatus;
   reason?: string;
+  decision?: 'reject' | 'request_edits';
 }): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     if (!/^[0-9a-f-]{36}$/i.test(input.id) || !TOLET_STATUSES.includes(input.status)) {
@@ -57,8 +58,12 @@ export async function moderateToletListing(input: {
       {
         user_id: listing.owner_id,
         target_role: 'customer',
-        title: `বিজ্ঞাপনের অবস্থা: ${label}`,
-        body: input.status === 'rejected' ? input.reason!.trim() : 'আপনার বিজ্ঞাপনের পর্যালোচনা সম্পন্ন হয়েছে।',
+        title: input.status === 'rejected'
+          ? input.decision === 'request_edits' ? 'বিজ্ঞাপনে সংশোধন প্রয়োজন' : 'বিজ্ঞাপন প্রত্যাখ্যান করা হয়েছে'
+          : `বিজ্ঞাপনের অবস্থা: ${label}`,
+        body: input.status === 'rejected'
+          ? input.reason!.trim()
+          : 'আপনার বিজ্ঞাপনের পর্যালোচনা সম্পন্ন হয়েছে।',
         type: input.status === 'approved' ? 'success' : 'warning',
         related_type: 'tolet_listing',
         related_id: input.id,
@@ -75,6 +80,7 @@ export async function moderateToletListing(input: {
     ]);
 
     revalidatePath('/admin/tolet');
+    revalidatePath('/profile/tolet');
     revalidatePath(`/admin/tolet/${input.id}`);
     revalidatePath(`/tolet/${input.id}`);
     revalidatePath('/admin');

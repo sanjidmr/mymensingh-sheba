@@ -2175,22 +2175,31 @@ GRANT EXECUTE ON FUNCTION public.fetch_market_contact(TEXT) TO anon, authenticat
 -- ============================================================
 
 -- --- Column-level REVOKEs (anon key can no longer select PII) ---
+-- Block raw table reads for the public key; public-approved rows must go through
+-- the narrow SECURITY DEFINER RPCs that project only the allowed columns. The
+-- authenticated role still keeps its owner/admin access via RLS policies.
+REVOKE SELECT ON TABLE public.tolet_profiles FROM anon;
 REVOKE SELECT (phone, emergency_phone, nid_number, nid_doc_url, holding_number, address_line)
 ON public.tolet_profiles FROM anon, authenticated;
 
+REVOKE SELECT ON TABLE public.home_tutor_profiles FROM anon;
 REVOKE SELECT (private_phone, nid_number, admin_notes)
 ON public.home_tutor_profiles FROM anon, authenticated;
 REVOKE SELECT (rejection_reason) ON public.home_tutor_profiles FROM anon;
 
+REVOKE SELECT ON TABLE public.blood_donor_profiles FROM anon;
 REVOKE SELECT (private_phone, admin_notes)
 ON public.blood_donor_profiles FROM anon, authenticated;
 REVOKE SELECT (rejection_reason) ON public.blood_donor_profiles FROM anon;
 
+REVOKE SELECT ON TABLE public.staff_profiles FROM anon;
 REVOKE SELECT (phone_private) ON public.staff_profiles FROM anon, authenticated;
 
+REVOKE SELECT ON TABLE public.community_posts FROM anon;
 REVOKE SELECT (author_phone, whatsapp_number, rejection_reason)
 ON public.community_posts FROM anon, authenticated;
 
+REVOKE SELECT ON TABLE public.service_listings FROM anon;
 REVOKE SELECT (contact_phone_private) ON public.service_listings FROM anon, authenticated;
 
 -- --- Owner self-read RPCs (full caller-owned rows incl. PII) ---

@@ -9,11 +9,15 @@ import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
 import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
+import { isSafeInternalPath, resolveAuthRedirect } from '@/lib/auth-routes';
 
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectPath = searchParams.get('redirect') || '/profile';
+  // Accept either `next=` (used by the server admin guard and other guards) or
+  // the legacy `redirect=` parameter. Only a safe internal path is ever honoured.
+  const rawTarget = searchParams.get('next') ?? searchParams.get('redirect');
+  const requestedTarget = isSafeInternalPath(rawTarget) ? rawTarget : null;
   const { login, user, isLoading: authLoading } = useAuth();
 
   const [identifier, setIdentifier] = useState('');
@@ -22,10 +26,27 @@ function LoginForm() {
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // An authenticated visitor has no business on this page.
+  // An authenticated visitor has no business on this page. The destination is
+  // derived from their *verified* role, so an admin goes straight to the admin
+  // panel and is never bounced into the customer profile.
   useEffect(() => {
-    if (user) router.replace(redirectPath);
-  }, [user, redirectPath, router]);
+    if (!authLoading && user) {
+      router.replace(resolveAuthRedirect(user.role, requestedTarget));
+    }
+  }, [authLoading, user, requestedTarget, router]);
+
+  // While the stored session is still being restored we must not render the
+  // signed-out form: that flashes a login screen to a returning admin and risks
+  // treating them as a customer before their role is known.
+  if (authLoading) {
+    return (
+      <main className="flex-1 bg-mist-50 px-4 py-8 sm:px-6">
+        <div className="mx-auto w-full max-w-md rounded-2xl border border-brand-100 bg-white px-5 py-12 shadow-sm">
+          <p className="text-sm text-ink-500">লোড হচ্ছে…</p>
+        </div>
+      </main>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +63,7 @@ function LoginForm() {
     if (Object.keys(errors).length > 0) return;
 
     setLoading(true);
-    let res: { success: boolean; error?: string };
+    let res: { success: boolean; error?: string; role?: 'admin' | 'customer' };
     try {
       res = await login(identifier.trim(), password);
     } catch {
@@ -51,7 +72,9 @@ function LoginForm() {
     setLoading(false);
 
     if (res.success) {
-      router.replace(redirectPath);
+      // Route on the role returned by the verified profile — not on a default
+      // path. This is what sends an admin directly to /admin.
+      router.replace(resolveAuthRedirect(res.role, requestedTarget));
       return;
     }
 

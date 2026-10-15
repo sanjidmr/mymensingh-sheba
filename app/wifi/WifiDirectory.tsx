@@ -78,6 +78,8 @@ export default function WifiDirectory() {
         description={listing.summaryBn}
         badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
         actionLabel="বিস্তারিত"
+        ratingAvg={listing.ratingAvg}
+        ratingCount={listing.ratingCount}
       />
     );
   }, []);

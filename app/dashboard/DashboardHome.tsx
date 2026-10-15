@@ -11,6 +11,7 @@ import type { ServiceRequestStatus } from '@/lib/supabase/types';
 import { mergeRows } from '@/lib/dashboard';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import NotificationBell from '@/components/account/NotificationBell';
 import { getAreaById } from '@/lib/locations';
 
 const REQUEST_STATUS_LABEL: Record<ServiceRequestStatus, string> = {
@@ -131,10 +132,7 @@ export default function DashboardHome() {
             </p>
             <p className="mt-1.5 text-[12px] leading-relaxed text-ink-500">আপনার পোস্ট ও সেবার আপডেট এক জায়গায় দেখুন।</p>
           </div>
-          <Link href="/dashboard/notifications" aria-label="নোটিফিকেশন" className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-brand-100 bg-mist-50 text-ink-600 hover:bg-brand-50 ${LIGHT_FOCUS}`}>
-            <Bell className="h-5 w-5" />
-            {unread.length > 0 && (<span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-600 px-1 text-[9px] font-black text-white">{unread.length > 9 ? '9+' : unread.length}</span>)}
-          </Link>
+          <NotificationBell />
         </div>
         <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <Link href="/dashboard/profile" className={`inline-flex min-h-10 w-fit items-center rounded-lg border border-brand-200 px-3.5 text-[12px] font-bold text-brand-800 hover:bg-brand-50 ${LIGHT_FOCUS}`}>
@@ -222,7 +220,7 @@ export default function DashboardHome() {
           <Quick href="/profile/saved" icon={Bookmark} label="সেভ করা" hint="পছন্দের তালিকা" v={savedListings.length} />
           <Quick href="/profile/requests" icon={ClipboardList} label="আমার রিকোয়েস্ট" hint="সেবার আবেদন" v={requests.length} />
           <Quick href="/dashboard/messages" icon={Mail} label="সাপোর্ট বার্তা" hint={unreadMessages ? 'নতুন উত্তর এসেছে' : 'সাপোর্টের সাথে কথা বলুন'} v={unreadMessages} />
-          <Quick href="/dashboard/messages?subject=complaint" icon={CircleAlert} label="অভিযোগ" hint="সাপোর্টে অভিযোগ জানান" />
+          <Quick href="/dashboard/complaints" icon={CircleAlert} label="অভিযোগ" hint="সাপোর্টে অভিযোগ জানান" />
           <Quick href="/dashboard/notifications" icon={Bell} label="নোটিফিকেশন" hint={unread.length > 0 ? 'নতুন বার্তা আছে' : 'সব পড়া হয়েছে'} v={unread.length} />
           <Quick href="/dashboard/profile" icon={UserRound} label="আমার প্রোফাইল" hint={svcCount > 0 ? 'টি সার্ভিস প্রোফাইল' : 'তথ্য হালনাগাদ করুন'} v={svcCount > 0 ? svcCount : undefined} />
         </div>

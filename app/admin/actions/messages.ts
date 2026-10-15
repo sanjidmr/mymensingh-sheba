@@ -119,6 +119,7 @@ export async function replyToCustomerMessage(
     revalidatePath('/admin/messages');
     revalidatePath(`/admin/messages/${messageId}`);
     revalidatePath('/dashboard/messages');
+    revalidatePath('/dashboard/complaints');
     return { ok: true, message: 'উত্তরটি সংরক্ষিত হয়েছে এবং লগইন করা গ্রাহকের ড্যাশবোর্ডে দেখানো হবে।' };
   });
 }

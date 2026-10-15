@@ -58,6 +58,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
     patch: Partial<ToletListing>;
     label: string;
     reason?: string;
+    reviewAction?: 'reject' | 'request_edits';
   } | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
@@ -103,7 +104,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
   const applyPatch = async (
     patch: Partial<ToletListing>,
     label: string,
-    opts?: { rejectReason?: string }
+    opts?: { rejectReason?: string; reviewAction?: 'reject' | 'request_edits' }
   ) => {
     if (!listing) return;
     setBusy(label);
@@ -115,6 +116,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
           id: listing.id,
           status: patch.status,
           reason: opts?.rejectReason,
+          decision: opts?.reviewAction,
         });
         if (!result.ok) {
           setError(result.error);
@@ -148,9 +150,10 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
   const confirmPatch = (
     patch: Partial<ToletListing>,
     label: string,
-    reason?: string
+    reason?: string,
+    reviewAction?: 'reject' | 'request_edits'
   ) => {
-    setPendingAction({ patch, label, reason });
+    setPendingAction({ patch, label, reason, reviewAction });
     setConfirmOpen(true);
   };
 
@@ -280,7 +283,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
 
           {listing.rejectionReason && (
             <div className="mt-4 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-              <span className="font-bold">প্রত্যাখানের কারণ:</span> {listing.rejectionReason}
+              <span className="font-bold">মালিকের জন্য নোট:</span> {listing.rejectionReason}
             </div>
           )}
 
@@ -364,14 +367,31 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
                   onClick={() =>
                     confirmPatch(
                       { status: 'rejected', rejectionReason: rejectReason.trim() },
+                      'request_edits',
+                      rejectReason.trim(),
+                      'request_edits'
+                    )
+                  }
+                  className="px-3.5 py-2 rounded-xl bg-amber-700 text-white text-xs font-semibold disabled:opacity-50"
+                >
+                  {busy === 'request_edits' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> : null}
+                  সংশোধন চেয়ে ফেরত দিন
+                </button>
+                <button
+                  type="button"
+                  disabled={busy !== '' || rejectReason.trim().length < 5}
+                  onClick={() =>
+                    confirmPatch(
+                      { status: 'rejected', rejectionReason: rejectReason.trim() },
                       'reject',
-                      rejectReason.trim()
+                      rejectReason.trim(),
+                      'reject'
                     )
                   }
                   className="px-3.5 py-2 rounded-xl bg-rose-700 text-white text-xs font-semibold disabled:opacity-50"
                 >
                   {busy === 'reject' ? <Loader2 className="w-3.5 h-3.5 animate-spin inline mr-1" /> : null}
-                  নিশ্চিত করুন
+                  প্রত্যাখ্যান করুন
                 </button>
                 <button
                   type="button"
@@ -555,16 +575,25 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
       </main>
       <ConfirmDialog
         open={confirmOpen}
-        title={pendingAction?.label === 'approve' ? 'বিজ্ঞাপন অনুমোদন করবেন?' : pendingAction?.label === 'reject' ? 'সংশোধনের কারণসহ ফেরত পাঠাবেন?' : 'বিজ্ঞাপনের অবস্থা পরিবর্তন করবেন?'}
-        description={pendingAction?.label === 'reject'
-          ? `মালিককে এই কারণটি পাঠানো হবে: ${pendingAction.reason}`
+        title={pendingAction?.label === 'approve'
+          ? 'বিজ্ঞাপন অনুমোদন করবেন?'
+          : pendingAction?.label === 'request_edits'
+            ? 'মালিকের কাছে সংশোধন চাইবেন?'
+            : pendingAction?.label === 'reject'
+              ? 'বিজ্ঞাপন প্রত্যাখ্যান করবেন?'
+              : 'বিজ্ঞাপনের অবস্থা পরিবর্তন করবেন?'}
+        description={pendingAction?.reviewAction
+          ? `মালিককে এই নোটটি পাঠানো হবে: ${pendingAction.reason}`
           : `বিজ্ঞাপন “${pendingAction?.patch.status ? TOLET_LISTING_STATUS_INFO[pendingAction.patch.status].labelBn : ''}” অবস্থায় যাবে।`}
         confirmLabel={pendingAction?.label === 'approve' ? 'অনুমোদন ও প্রকাশ' : 'নিশ্চিত করুন'}
         tone={pendingAction?.label === 'approve' ? 'primary' : 'danger'}
         isLoading={busy !== ''}
         onConfirm={() => {
           if (pendingAction) {
-            void applyPatch(pendingAction.patch, pendingAction.label, { rejectReason: pendingAction.reason });
+            void applyPatch(pendingAction.patch, pendingAction.label, {
+              rejectReason: pendingAction.reason,
+              reviewAction: pendingAction.reviewAction,
+            });
           }
         }}
         onCancel={() => { setConfirmOpen(false); setPendingAction(null); }}

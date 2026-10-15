@@ -21,6 +21,8 @@ function validate(category: ServiceCategory, input: ServiceListingInput): string
   if ((input.subtitleBn?.length ?? 0) > 240 || (input.summaryBn?.length ?? 0) > 800 || (input.descriptionBn?.length ?? 0) > 10_000) {
     return 'সংক্ষিপ্ত পরিচয় বা বিবরণের দৈর্ঘ্য অনুমোদিত সীমা ছাড়িয়েছে।';
   }
+  if ((input.operatorBn?.length ?? 0) > 160) return 'অপারেটরের নাম সর্বোচ্চ ১৬০ অক্ষরের মধ্যে লিখুন।';
+  if ((input.addressBn?.length ?? 0) > 400) return 'ঠিকানা সর্বোচ্চ ৪০০ অক্ষরের মধ্যে লিখুন।';
   if (!input.isActive && input.isFeatured) return 'নিষ্ক্রিয় তালিকাকে ফিচার করা যাবে না।';
   if (!Array.isArray(input.areaIds) || input.areaIds.length > 100 || input.areaIds.some((id) => typeof id !== 'string' || id.length > 100)) return 'এলাকার তালিকা সঠিক নয়।';
   if (!Array.isArray(input.tags) || input.tags.length > 60 || input.tags.some((tag) => typeof tag !== 'string' || !tag.trim() || tag.length > 120)) return 'সেবা/প্যাকেজ/সুবিধার তালিকা সঠিক নয়।';
@@ -38,6 +40,13 @@ function validate(category: ServiceCategory, input: ServiceListingInput): string
   if (input.category === 'bus' && (!input.originBn?.trim() || !input.destinationBn?.trim())) return 'বাসের শুরুর স্থান ও গন্তব্য দিতে হবে।';
   if (input.category === 'vehicle' && input.seatCount == null) return 'যানবাহনের আসন সংখ্যা দিতে হবে।';
   if (input.category === 'vehicle' && input.tags.filter((tag) => VEHICLE_KINDS.includes(tag as VehicleKind)).length !== 1) return 'যানের ধরন থেকে ঠিক একটি সঠিক ধরন বাছুন।';
+  if (input.category === 'vehicle' && input.ratePerKm != null && (!Number.isFinite(input.ratePerKm) || input.ratePerKm <= 0 || input.ratePerKm > 1_000_000 || Math.round(input.ratePerKm * 100) !== input.ratePerKm * 100)) return 'প্রতি কিলোমিটারের ভাড়া ০-এর বেশি, সর্বোচ্চ ১০,০০,০০০ এবং সর্বোচ্চ ২ দশমিক ঘর পর্যন্ত হতে হবে।';
+  if (input.category === 'vehicle' && input.minimumFare != null && (!isOptionalAmount(input.minimumFare) || input.ratePerKm == null)) return 'সর্বনিম্ন ভাড়া পূর্ণসংখ্যা হতে হবে এবং প্রতি-কিলোমিটার ভাড়া সেট থাকতে হবে।';
+  if (input.category === 'vehicle' && input.additionalFee != null && (!Number.isFinite(input.additionalFee) || input.additionalFee < 0 || input.additionalFee > 100_000_000 || Math.round(input.additionalFee * 100) !== input.additionalFee * 100)) return 'অতিরিক্ত চার্জ ০ থেকে ১০ কোটি এবং সর্বোচ্চ ২ দশমিক ঘর পর্যন্ত হতে হবে।';
+  if (input.category === 'vehicle' && (input.additionalFee ?? 0) > 0 && !input.additionalFeeNoteBn?.trim()) return 'অতিরিক্ত চার্জ যোগ করলে তার কারণও লিখুন।';
+  if (input.category === 'vehicle' && (input.additionalFeeNoteBn?.length ?? 0) > 160) return 'অতিরিক্ত চার্জের কারণ সর্বোচ্চ ১৬০ অক্ষরের মধ্যে লিখুন।';
+  if (input.category === 'vehicle' && [...(input.availableFacilities ?? []), ...(input.unavailableFacilities ?? [])].some((item) => !item.trim() || item.length > 100)) return 'সুবিধার প্রতিটি তথ্য ১ থেকে ১০০ অক্ষরের মধ্যে লিখুন।';
+  if (input.category === 'vehicle' && ((input.availableFacilities?.length ?? 0) > 30 || (input.unavailableFacilities?.length ?? 0) > 30)) return 'প্রতিটি সুবিধার তালিকায় সর্বোচ্চ ৩০টি তথ্য দিন।';
   if (input.contactPhonePrivate && !/^[+0-9][0-9\s().-]{5,22}$/.test(input.contactPhonePrivate.trim())) return 'যোগাযোগ নম্বরের ফরম্যাট সঠিক নয়।';
   const urls = [input.imageUrl, input.logoUrl, ...(input.photos ?? [])].filter(Boolean) as string[];
   if (urls.some((url) => url.length > 2000 || !(url.startsWith('/') || /^https:\/\//i.test(url)))) return 'ছবির লিংক অবশ্যই সাইটের path অথবা HTTPS URL হতে হবে।';
@@ -80,6 +89,8 @@ function databaseInput(input: ServiceListingInput) {
     fare_max: input.fareMax ?? null,
     origin_bn: input.originBn?.trim() || null,
     destination_bn: input.destinationBn?.trim() || null,
+    operator_bn: input.category === 'bus' ? input.operatorBn?.trim() || null : null,
+    address_bn: input.category === 'coaching' || input.category === 'wifi' ? input.addressBn?.trim() || null : null,
     seat_count: input.seatCount ?? null,
     photos: input.photos ?? [],
     model_name_bn: input.modelNameBn?.trim() || null,
@@ -88,6 +99,12 @@ function databaseInput(input: ServiceListingInput) {
     driver_included: input.driverIncluded ?? null,
     available_time_bn: input.availableTimeBn?.trim() || null,
     price_note_bn: input.priceNoteBn?.trim() || null,
+    rate_per_km: input.category === 'vehicle' ? input.ratePerKm ?? null : null,
+    minimum_fare: input.category === 'vehicle' ? input.minimumFare ?? null : null,
+    additional_fee: input.category === 'vehicle' ? input.additionalFee ?? null : null,
+    additional_fee_note_bn: input.category === 'vehicle' ? input.additionalFeeNoteBn?.trim() || null : null,
+    available_facilities: input.category === 'vehicle' ? input.availableFacilities ?? [] : [],
+    unavailable_facilities: input.category === 'vehicle' ? input.unavailableFacilities ?? [] : [],
     contact_phone_private: input.contactPhonePrivate?.trim() || null,
     is_active: input.isActive,
     is_featured: input.isFeatured,

@@ -42,11 +42,19 @@ import {
 import { createVehicleRequest } from '@/lib/catalog-service';
 import { trackFormSubmit } from '@/lib/site-analytics';
 import type { ServiceListing, VehicleKind } from '@/lib/catalog-types';
-import { VEHICLE_KINDS, toBn } from '@/lib/catalog-types';
+import { bnTakaDecimal, toBn } from '@/lib/catalog-types';
 import { getAllMCCAreas } from '@/lib/locations';
 import { normalizeBdPhone } from '@/lib/contact-types';
 
 type Status = 'idle' | 'sending' | 'sent' | 'error';
+const BANGLA_DIGITS: Record<string, string> = {
+  '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+  '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9',
+};
+
+function latinDigits(value: string): string {
+  return value.replace(/[০-৯]/g, (digit) => BANGLA_DIGITS[digit] ?? digit);
+}
 
 /** Hire terms people actually say. Free text is allowed below these chips. */
 const TRIP_DURATIONS = [
@@ -81,36 +89,45 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
   const [passengers, setPassengers] = useState('');
-  const [kind, setKind] = useState<VehicleKind>(initialKind);
+  const kind = initialKind;
   const [duration, setDuration] = useState('');
   const [budget, setBudget] = useState('');
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
   const [fieldError, setFieldError] = useState<Record<string, string>>({});
+  const [distanceMode, setDistanceMode] = useState<'road_route' | 'manual_estimate'>('road_route');
+  const [routeEstimate, setRouteEstimate] = useState<{
+    distanceKm: number;
+    pickupResolved: string;
+    destinationResolved: string;
+    provider: string;
+  } | null>(null);
+  const [routeConfirmed, setRouteConfirmed] = useState(false);
+  const [manualDistance, setManualDistance] = useState('');
+  const [routeBusy, setRouteBusy] = useState(false);
+  const [routeError, setRouteError] = useState('');
 
   const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
-
-  /** Exact ward-name match → the area id, so the admin area filter still works. */
-  function resolvePlace(text: string): string | undefined {
-    const trimmed = text.trim();
-    if (!trimmed) return undefined;
-    return areas.find((a) => a.nameBn === trimmed)?.id ?? trimmed;
-  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
 
-    // Client-side gate for the two fields where a typo silently costs a
-    // customer a trip: a phone number with 9 digits, and a budget typed in
-    // Bangla numerals with no way to parse it.
+    // Keep the same phone and distance bounds as the server before submitting.
     const errors: Record<string, string> = {};
-    const normalised = normalizeBdPhone(phone);
+    const normalised = normalizeBdPhone(latinDigits(phone));
     if (!/^01[3-9]\d{8}$/.test(normalised)) {
       errors.phone = 'সঠিক মোবাইল নম্বর দিন — যেমন ০১৭১২৩৪৫৬৭৮';
     }
     if (pickup.trim() && destination.trim() && pickup.trim() === destination.trim()) {
       errors.destination = 'গন্তব্য আর শুরুর এলাকা একই হয়ে গেছে';
+    }
+    const distance = distanceMode === 'road_route' ? routeEstimate?.distanceKm : Number(manualDistance);
+    if (!distance || distance < 0.1 || distance > 3000) {
+      errors.distance = 'সড়কপথ হিসাব করুন অথবা ০.১–৩০০০ কিমির একটি ম্যানুয়াল দূরত্ব দিন।';
+    }
+    if (distanceMode === 'road_route' && !routeConfirmed) {
+      errors.distance = 'দেখানো পিকআপ ও গন্তব্যের মিল নিশ্চিত করুন।';
     }
     setFieldError(errors);
     if (Object.keys(errors).length > 0) return;
@@ -118,7 +135,9 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
     setStatus('sending');
     setMessage('');
 
-    const budgetNumber = budget ? Number(budget.replace(/[^\d]/g, '')) : undefined;
+    const budgetDigits = latinDigits(budget).replace(/[^\d]/g, '');
+    const budgetNumber = budgetDigits ? Number(budgetDigits) : undefined;
+    const passengerDigits = latinDigits(passengers).replace(/[^\d]/g, '');
 
     const result = await createVehicleRequest({
       vehicleListingId: listing.id,
@@ -126,14 +145,16 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
       vehicleName: listing.titleBn,
       contactName: name.trim(),
       contactPhone: normalised,
-      pickupAreaId: resolvePlace(pickup),
-      destinationAreaId: resolvePlace(destination),
+      pickupAreaId: pickup.trim(),
+      destinationAreaId: destination.trim(),
       travelDate: date || undefined,
       travelTime: time.trim() || undefined,
-      passengerCount: passengers ? Number(passengers) : undefined,
+      passengerCount: passengerDigits ? Number(passengerDigits) : undefined,
       tripDuration: duration.trim() || undefined,
       budget: budgetNumber && budgetNumber > 0 ? budgetNumber : undefined,
       notes: notes.trim() || undefined,
+      estimatedDistanceKm: distance!,
+      distanceSource: distanceMode,
     });
 
     if (result.success) {
@@ -151,6 +172,52 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
       setMessage(result.error);
     }
   }
+
+  async function calculateRoute() {
+    setRouteBusy(true);
+    setRouteError('');
+    setRouteEstimate(null);
+    setRouteConfirmed(false);
+    try {
+      const response = await fetch('/api/vehicle-route', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickup, destination }),
+      });
+      const result = await response.json() as {
+        distanceKm?: number;
+        pickupResolved?: string;
+        destinationResolved?: string;
+        provider?: string;
+        error?: string;
+      };
+      if (!response.ok || typeof result.distanceKm !== 'number'
+        || !result.pickupResolved || !result.destinationResolved) {
+        throw new Error(result.error || 'সড়কপথের দূরত্ব পাওয়া যায়নি।');
+      }
+      setRouteEstimate({
+        distanceKm: result.distanceKm,
+        pickupResolved: result.pickupResolved,
+        destinationResolved: result.destinationResolved,
+        provider: result.provider || 'সড়কপথ',
+      });
+      setFieldError((current) => ({ ...current, distance: '' }));
+    } catch (error) {
+      setRouteError(error instanceof Error ? error.message : 'দূরত্ব হিসাব করা যায়নি।');
+    } finally {
+      setRouteBusy(false);
+    }
+  }
+
+  const selectedDistance = distanceMode === 'road_route'
+    ? routeEstimate?.distanceKm
+    : Number(manualDistance);
+  const distanceFare = selectedDistance && listing.ratePerKm
+    ? Math.max(Math.round(selectedDistance * listing.ratePerKm * 100) / 100, listing.minimumFare ?? 0)
+    : null;
+  const estimatedFare = distanceFare == null
+    ? null
+    : distanceFare + (listing.additionalFee ?? 0);
 
   if (status === 'sent') {
     return (
@@ -211,7 +278,7 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
         <Field labelBn="কোথা থেকে যাবেন" required>
           <TextInput
             value={pickup}
-            onChange={setPickup}
+            onChange={(value) => { setPickup(value); setRouteEstimate(null); setRouteConfirmed(false); setRouteError(''); }}
             placeholder="যেমন: ময়মনসিংহ সদর"
             icon={MapPin}
             list="mms-vehicle-areas"
@@ -223,7 +290,7 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
         <Field labelBn="কোথায় যাবেন" required errorBn={fieldError.destination}>
           <TextInput
             value={destination}
-            onChange={setDestination}
+            onChange={(value) => { setDestination(value); setRouteEstimate(null); setRouteConfirmed(false); setRouteError(''); }}
             placeholder="যেমন: ঢাকা বিশ্ববিদ্যালয়"
             icon={MapPin}
             list="mms-vehicle-areas"
@@ -241,6 +308,63 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
           ))}
         </datalist>
 
+        <section className="rounded-xl border border-mist-200 bg-mist-50 p-3.5">
+          <h3 className="text-sm font-extrabold text-ink-900">দূরত্ব ও আনুমানিক ভাড়া</h3>
+          <p className="mt-1 text-xs leading-relaxed text-ink-600">
+            সড়কপথ বের করতে আপনার দেওয়া ঠিকানা OpenStreetMap-এর জিওকোডার ও রাউটিং সেবায় পাঠানো হবে। ফলাফলে দেখানো স্থান দুটি মিলিয়ে নিশ্চিত করুন।
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <button type="button" onClick={() => { setDistanceMode('road_route'); setRouteEstimate(null); setRouteConfirmed(false); }} aria-pressed={distanceMode === 'road_route'} className={`min-h-10 rounded-lg border px-3 text-xs font-semibold ${distanceMode === 'road_route' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-mist-200 bg-white text-ink-600'}`}>
+              সড়কপথ হিসাব
+            </button>
+            <button type="button" onClick={() => { setDistanceMode('manual_estimate'); setRouteConfirmed(false); }} aria-pressed={distanceMode === 'manual_estimate'} className={`min-h-10 rounded-lg border px-3 text-xs font-semibold ${distanceMode === 'manual_estimate' ? 'border-brand-500 bg-brand-50 text-brand-700' : 'border-mist-200 bg-white text-ink-600'}`}>
+              ম্যানুয়াল দূরত্ব
+            </button>
+          </div>
+          {distanceMode === 'road_route' ? (
+            <div className="mt-3">
+              <button type="button" onClick={() => void calculateRoute()} disabled={routeBusy || !pickup.trim() || !destination.trim()} className="inline-flex min-h-10 items-center gap-2 rounded-lg bg-brand-700 px-3 text-xs font-bold text-white disabled:opacity-50">
+                {routeBusy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                {routeBusy ? 'সড়কপথ খোঁজা হচ্ছে…' : 'সড়কপথের দূরত্ব হিসাব করুন'}
+              </button>
+              {routeError && <p role="alert" className="mt-2 text-xs text-rose-700">{routeError} ঠিকানা বদলে আবার চেষ্টা করুন, অথবা ম্যানুয়াল দূরত্ব বাছুন।</p>}
+              {routeEstimate && (
+                <div className="mt-3 rounded-lg bg-white p-3 text-xs leading-relaxed text-ink-700">
+                  <p>{routeEstimate.provider} সড়কপথ: <strong>{toBn(routeEstimate.distanceKm)} কিমি</strong></p>
+                  <p className="mt-1 break-words">শুরু: {routeEstimate.pickupResolved}</p>
+                  <p className="break-words">গন্তব্য: {routeEstimate.destinationResolved}</p>
+                  <label className="mt-2 flex min-h-10 items-center gap-2 font-semibold">
+                    <input type="checkbox" checked={routeConfirmed} onChange={(event) => setRouteConfirmed(event.target.checked)} className="h-4 w-4 accent-brand-700" />
+                    দেখানো স্থান দুটি আমার দেওয়া ঠিকানার সঙ্গে মেলে
+                  </label>
+                </div>
+              )}
+            </div>
+          ) : (
+            <Field labelBn="আপনার দেওয়া আনুমানিক সড়কদূরত্ব (কিমি)" required errorBn={fieldError.distance}>
+              <TextInput value={manualDistance} onChange={setManualDistance} type="number" min="0.1" max="3000" step="0.01" inputMode="decimal" icon={MapPin} placeholder="যেমন: 12.5" />
+              <p className="mt-1 text-xs leading-relaxed text-ink-500">এটি গ্রাহক-প্রদত্ত অনুমান হিসেবে সংরক্ষিত হবে, রুট সেবার যাচাইকৃত দূরত্ব হিসেবে নয়।</p>
+            </Field>
+          )}
+          {distanceMode === 'road_route' && fieldError.distance && <p role="alert" className="mt-2 text-xs text-rose-700">{fieldError.distance}</p>}
+          {selectedDistance && selectedDistance >= 0.1 && selectedDistance <= 3000 && (
+            <div className="mt-3 rounded-lg border border-brand-100 bg-white p-3 text-sm text-ink-800">
+              <p>দূরত্ব: <strong>{toBn(selectedDistance)} কিমি</strong></p>
+              {listing.ratePerKm ? (
+                <>
+                  <p>প্রতি কিমি: <strong>{bnTakaDecimal(listing.ratePerKm)}</strong></p>
+                  {listing.minimumFare != null && <p>সর্বনিম্ন ভাড়া: <strong>{bnTakaDecimal(listing.minimumFare)}</strong></p>}
+                  {listing.additionalFee != null && listing.additionalFee > 0 && <p>অতিরিক্ত চার্জ{listing.additionalFeeNoteBn ? ` (${listing.additionalFeeNoteBn})` : ''}: <strong>{bnTakaDecimal(listing.additionalFee)}</strong></p>}
+                  <p className="mt-1 text-base">আনুমানিক মোট: <strong>{bnTakaDecimal(estimatedFare!)}</strong></p>
+                </>
+              ) : (
+                <p className="mt-1 text-xs leading-relaxed text-accent-700">এই যানবাহনের প্রতি-কিমি ভাড়া প্রশাসক এখনো যোগ করেননি; তাই মোট ভাড়া নির্ভরযোগ্যভাবে হিসাব করা যাচ্ছে না।{listing.additionalFee ? ` অতিরিক্ত চার্জ ${bnTakaDecimal(listing.additionalFee)}${listing.additionalFeeNoteBn ? ` (${listing.additionalFeeNoteBn})` : ''} কোটেশনে যোগ হবে।` : ''} অনুরোধটি কোটেশনের জন্য পাঠানো হবে।</p>
+              )}
+            </div>
+          )}
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-500">এটি প্রাথমিক অনুমান, চূড়ান্ত কোটেশন নয়। প্রকৃত রুট, দূরত্ব ও সম্মত অতিরিক্ত খরচে চূড়ান্ত ভাড়া বদলাতে পারে।</p>
+        </section>
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <Field labelBn="যাওয়ার তারিখ">
             <TextInput
@@ -248,15 +372,17 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
               onChange={setDate}
               type="date"
               icon={CalendarDays}
+              required
             />
           </Field>
           <Field labelBn="যাওয়ার সময়">
             <TextInput
               value={time}
               onChange={setTime}
-              placeholder="যেমন: সকাল ৯টা"
+              type="time"
               icon={Clock}
               maxLength={60}
+              required
             />
           </Field>
         </div>
@@ -284,19 +410,7 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
           </Field>
         </div>
 
-        <Field labelBn="কোন গাড়ি প্রয়োজন" hintBn={`এই তালিকা: ${listing.titleBn}`}>
-          <select
-            value={kind}
-            onChange={(e) => setKind(e.target.value as VehicleKind)}
-            className="min-h-11 w-full appearance-none rounded-xl border border-mist-200 bg-white px-3 text-[16px] text-ink-900 outline-none transition-colors focus:border-brand-500 sm:text-[14px]"
-          >
-            {VEHICLE_KINDS.map((option) => (
-              <option key={option} value={option}>
-                {option}
-              </option>
-            ))}
-          </select>
-        </Field>
+        <p className="rounded-lg bg-mist-50 px-3 py-2 text-xs text-ink-600">নির্বাচিত যানবাহন: <strong>{listing.titleBn}</strong></p>
 
         <Field labelBn="আনুমানিক সময়">
           <div className="flex flex-wrap gap-1.5">

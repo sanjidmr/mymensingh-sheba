@@ -7,6 +7,7 @@ import CatalogDetailView, {
   DetailSkeleton,
   type DetailFact,
 } from '@/components/catalog/CatalogDetailView';
+import CoachingDetailSections from '@/components/catalog/CoachingDetailSections';
 import { fetchServiceListingForContact } from '@/lib/catalog-service';
 import {
   areaNames,
@@ -15,6 +16,7 @@ import {
   COACHING_CATEGORIES,
   COACHING_CLASSES,
   COACHING_SUBJECTS,
+  toBn,
   type ServiceListing,
 } from '@/lib/catalog-types';
 
@@ -66,10 +68,14 @@ export default function CoachingDetail({ slug }: { slug: string }) {
   const fee = bnTakaRange(listing.monthlyFeeMin, listing.monthlyFeeMax);
   const facts: DetailFact[] = [
     ...(fee ? [{ label: 'মাসিক ফি', value: `${fee} টাকা` }] : []),
+    ...(listing.addressBn ? [{ label: 'ঠিকানা', value: listing.addressBn }] : []),
     ...(listing.areaIds.length > 0
       ? [{ label: 'এলাকা', value: areaNames(listing.areaIds) }]
       : []),
     ...taxonomyFacts(listing),
+    ...(listing.ratingCount && listing.ratingCount > 0
+      ? [{ label: 'রেটিং', value: `${toBn((listing.ratingAvg ?? 0).toFixed(1))} / ৫ (${toBn(listing.ratingCount)})` }]
+      : []),
   ];
 
   return (
@@ -77,6 +83,13 @@ export default function CoachingDetail({ slug }: { slug: string }) {
       ui={ui}
       listing={listing}
       facts={facts}
+      body={
+        <CoachingDetailSections
+          listingId={listing.id}
+          ratingAvg={listing.ratingAvg}
+          ratingCount={listing.ratingCount}
+        />
+      }
       action={
         <ContactBlock
           phone={listing.contactPhonePrivate}

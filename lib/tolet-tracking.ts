@@ -19,8 +19,8 @@
  *
  * Storage
  * -------
- * Writes go to `tolet_listing_events` (see `lib/supabase/schema.sql` and
- * `supabase/migrations/`). Two deliberate schema choices:
+ * Writes go through the same-origin event route into `tolet_listing_events`
+ * (see `supabase/migrations/`). Two deliberate schema choices:
  *
  *  1. `listing_id` is TEXT with NO foreign key. Showcase/demo ids are not
  *     UUIDs, and an FK would also silently drop analytics the moment an owner
@@ -33,15 +33,16 @@
  * Reads (admin analytics) go through the `tolet_listing_analytics` RPC, which
  * does the aggregation in Postgres and is gated on `public.is_admin()`.
  *
- * Failure policy: tracking is strictly fire-and-forget. If Supabase is not
- * configured, if the table has not been migrated yet, or if the network fails,
- * the visitor's action still completes and nothing is shown to the user. A
- * dropped analytics row must never cost a house viewing.
+ * Failure policy: event writes are queued with `sendBeacon` and cannot block a
+ * dialer link. The server logs database failures; an analytics failure must
+ * never prevent someone from contacting the owner.
  */
 'use client';
 
 import { isSupabaseConfigured, createClient } from './supabase/client';
 import type {
+  ToletAnalyticsReport,
+  ToletAnalyticsListing,
   ToletEventInput,
   ToletEventType,
   ToletListingStats,
@@ -51,6 +52,7 @@ import { TOLET_PROPERTY_TYPE_INFO } from './tolet-types';
 
 const VISITOR_KEY = 'mms_vid';
 const VIEWED_KEY = 'mms_tolet_seen';
+const viewsSeenInMemory = new Set<string>();
 
 /** Guard so a single render loop can never fire the same event twice. */
 const inFlight = new Set<string>();
@@ -92,11 +94,12 @@ export function getVisitorId(): string {
 // ---------------------------------------------------------------------------
 
 /**
- * Records one event. Never throws, never blocks the UI.
+ * Queues one event before the owning link navigates. The same-origin endpoint
+ * writes it through an idempotent, server-validated Supabase RPC.
  */
-export async function trackToletEvent(
+export function trackToletEvent(
   event: ToletEventInput & { eventType: ToletEventType }
-): Promise<void> {
+): void {
   if (typeof window === 'undefined' || !event.listingId || !event.eventType) return;
 
   const dedupeKey = `${event.listingId}:${event.eventType}:${event.source ?? 'detail_page'}`;
@@ -106,26 +109,47 @@ export async function trackToletEvent(
   try {
     mockRecordEvent(event);
 
-    if (!isSupabaseConfigured) return;
-    const client = createClient();
-    if (!client) return;
+    if (!isSupabaseConfigured || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(event.listingId)) {
+      return;
+    }
 
-    await client.from('tolet_listing_events').insert({
-      listing_id: event.listingId,
-      event_type: event.eventType,
-      event_source: event.source ?? 'detail_page',
-      visitor_id: getVisitorId(),
-      user_id: event.userId ?? null,
-      area_id: event.areaId ?? null,
-      property_type: event.propertyType ?? null,
-      rent_price: event.rentPrice ?? null,
+    const payload = JSON.stringify({
+      eventId: createEventId(),
+      listingId: event.listingId,
+      eventType: event.eventType,
+      source: event.source ?? 'detail_page',
+      visitorId: getVisitorId(),
     });
-  } catch {
-    // Fire-and-forget by design. See the failure policy at the top of the file.
+    const queued = typeof navigator.sendBeacon === 'function' && navigator.sendBeacon(
+      '/api/tolet/events',
+      new Blob([payload], { type: 'application/json' })
+    );
+    if (!queued) {
+      void fetch('/api/tolet/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+      }).catch((error: unknown) => {
+        console.error('To-Let analytics event could not be queued.', error);
+      });
+    }
+  } catch (error) {
+    console.error('To-Let analytics event could not be queued.', error);
   } finally {
-    // Release after a tick so a same-render double-tap cannot double-count.
+    // Ignore only a same-tick double tap; separate legitimate presses count.
     setTimeout(() => inFlight.delete(dedupeKey), 400);
   }
+}
+
+function createEventId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (digit) => {
+    const value = Math.floor(Math.random() * 16);
+    return (digit === 'x' ? value : (value & 0x3) | 0x8).toString(16);
+  });
 }
 
 /**
@@ -141,13 +165,19 @@ export function trackListingView(params: {
   rentPrice?: number;
 }): void {
   if (typeof window === 'undefined') return;
+  const viewKey = `${VIEWED_KEY}:${params.listingId}`;
+  if (viewsSeenInMemory.has(viewKey)) return;
   try {
-    const seen = window.sessionStorage.getItem(`${VIEWED_KEY}:${params.listingId}`);
-    if (seen) return;
-    window.sessionStorage.setItem(`${VIEWED_KEY}:${params.listingId}`, '1');
+    const seen = window.sessionStorage.getItem(viewKey);
+    if (seen) {
+      viewsSeenInMemory.add(viewKey);
+      return;
+    }
+    window.sessionStorage.setItem(viewKey, '1');
   } catch {
-    // Storage unavailable — fall through and record the view rather than lose it.
+    // The in-memory guard still limits this tab to one view if storage is blocked.
   }
+  viewsSeenInMemory.add(viewKey);
   void trackToletEvent({ eventType: 'view', source: 'detail_page', ...params });
 }
 
@@ -221,6 +251,107 @@ export async function adminFetchToletAnalytics(
   });
   if (error || !Array.isArray(data)) return mockFetchAnalytics(limit);
   return (data as RawRollup[]).map(normalizeRollup);
+}
+
+interface RawAnalyticsListing {
+  listingId?: string | null;
+  title?: string | null;
+  ownerName?: string | null;
+  areaId?: string | null;
+  specificAddress?: string | null;
+  status?: ToletAnalyticsListing['status'];
+  views?: number | null;
+  callClicks?: number | null;
+  whatsappClicks?: number | null;
+  favorites?: number | null;
+  shares?: number | null;
+  uniqueVisitors?: number | null;
+  lastActivityAt?: string | null;
+}
+
+interface RawAnalyticsTrend {
+  date?: string | null;
+  views?: number | null;
+  callClicks?: number | null;
+  whatsappClicks?: number | null;
+}
+
+interface RawAnalyticsReport {
+  from?: string;
+  to?: string;
+  period?: ToletAnalyticsReport['period'];
+  totals?: {
+    views?: number | null;
+    callClicks?: number | null;
+    whatsappClicks?: number | null;
+  };
+  listings?: RawAnalyticsListing[];
+  trends?: RawAnalyticsTrend[];
+}
+
+/** Reads listing-level metrics and trends from the admin-only database rollup. */
+export async function adminFetchToletAnalyticsReport(params: {
+  from: string;
+  to: string;
+  period: ToletAnalyticsReport['period'];
+}): Promise<ToletAnalyticsReport> {
+  if (!isSupabaseConfigured) throw new Error('Supabase সংযুক্ত নেই; প্রকৃত পরিসংখ্যান লোড করা যায়নি।');
+  const client = createClient();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি।');
+
+  const { data, error } = await client.rpc('fn_admin_tolet_listing_analytics', {
+    p_from: params.from,
+    p_to: params.to,
+    p_period: params.period,
+  });
+  if (error) throw new Error(`বাসাভাড়ার পরিসংখ্যান লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data || typeof data !== 'object') throw new Error('বাসাভাড়ার পরিসংখ্যানের উত্তর সঠিক নয়।');
+
+  const report = data as RawAnalyticsReport;
+  const listings: ToletAnalyticsListing[] = (report.listings ?? []).flatMap((row) => {
+    if (!row.listingId) return [];
+    const callClicks = Number(row.callClicks ?? 0);
+    const whatsappClicks = Number(row.whatsappClicks ?? 0);
+    return [{
+      listingId: row.listingId,
+      title: row.title || row.listingId,
+      ownerName: row.ownerName ?? null,
+      areaId: row.areaId ?? null,
+      specificAddress: row.specificAddress ?? null,
+      status: row.status ?? null,
+      views: Number(row.views ?? 0),
+      callClicks,
+      whatsappClicks,
+      favorites: Number(row.favorites ?? 0),
+      shares: Number(row.shares ?? 0),
+      contactClicks: callClicks + whatsappClicks,
+      uniqueVisitors: Number(row.uniqueVisitors ?? 0),
+      lastActivityAt: row.lastActivityAt ?? null,
+    }];
+  });
+  const trends = (report.trends ?? []).flatMap((row) =>
+    row.date
+      ? [{
+          date: row.date,
+          views: Number(row.views ?? 0),
+          callClicks: Number(row.callClicks ?? 0),
+          whatsappClicks: Number(row.whatsappClicks ?? 0),
+        }]
+      : []
+  );
+
+  return {
+    from: report.from ?? params.from,
+    to: report.to ?? params.to,
+    period: report.period ?? params.period,
+    totals: {
+      views: Number(report.totals?.views ?? 0),
+      callClicks: Number(report.totals?.callClicks ?? 0),
+      whatsappClicks: Number(report.totals?.whatsappClicks ?? 0),
+    },
+    listings,
+    trends,
+  };
 }
 
 /** Single-property stats — cheap enough for the owner-facing dashboard. */

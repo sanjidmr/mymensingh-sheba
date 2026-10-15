@@ -3,12 +3,14 @@
  * Uses Supabase when configured; otherwise falls back to the in-memory mock store.
  *
  * Privacy contract:
- *  - PUBLIC_DONOR_COLUMNS NEVER includes private_phone.
- *  - Public donor objects are defense-in-depth stripped too; the phone exists
- *    only in admin responses and, after an ADMIN-released contact event, in the
- *    requesting customer's own contact-release record.
- *  - Prescriptions are private 'documents' paths, viewable only via signed URL
- *    (owner / admin at the DB layer; admin console here).
+ *  - The raw `blood_donor_profiles` table keeps `private_phone` REVOKEd from
+ *    `anon`/`authenticated`; no public query selects it directly.
+ *  - The public directory reads approved donors through the SECURITY DEFINER
+ *    function `fn_public_donor_directory`, which returns a `contact_phone`
+ *    ONLY for approved rows so the card can build a `tel:` link. The number is
+ *    never rendered as visible text.
+ *  - Admin reads go through `fn_admin_donor_*`; the admin_notes / rejection_reason
+ *    columns are stripped from every non-admin shape here too.
  */
 'use client';
 
@@ -16,38 +18,17 @@ import { isSupabaseConfigured, createClient } from './supabase/client';
 import { toCamelObject } from './supabase/transform';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
 import type {
-  BloodContactRelease,
   BloodDonorProfile,
   BloodDonorReport,
   BloodDonorStatus,
   BloodGroup,
-  BloodRequest,
-  BloodRequestStatus,
 } from '@/lib/supabase/types';
 import {
   mockCreateBloodDonorReport,
-  mockCreateBloodRequest,
-  mockFetchMyBloodRequests,
   mockFetchPublishedDonors,
-  mockFetchPublishedDonorById,
-  mockCancelBloodRequest,
-  mockAdminFetchBloodRequestById,
-  mockAdminFetchBloodRequests,
-  mockAdminFetchContactReleases,
-  mockAdminFetchDonorProfileById,
-  mockAdminFetchDonorProfiles,
-  mockAdminFetchDonorReports,
-  mockAdminReleaseDonorContact,
-  mockAdminUpdateBloodRequest,
-  mockAdminUpdateDonorProfile,
   mockFetchDonorModuleStats,
-  mockFetchMyContactReleases,
 } from './blood-donor-mock';
 import { DEMO_DONOR_PROFILES, getDemoDonor } from './blood-donor-demo-data';
-
-// PRIVACY: deliberately no private_phone here.
-const PUBLIC_DONOR_COLUMNS =
-  'id, user_id, status, full_name, blood_group, area_id, gender, birth_year, weight_kg, is_available, last_donation_date, donation_count, is_verified, intro, profile_photo_url, published_at, created_at, updated_at';
 
 function mapDonorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {}): BloodDonorProfile {
   const c = toCamelObject(row) as Record<string, unknown>;
@@ -65,6 +46,9 @@ function mapDonorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {
     lastDonationDate: (c.lastDonationDate as string) || undefined,
     donationCount: Number(c.donationCount ?? 0),
     privatePhone: opts.admin ? (c.privatePhone as string) || '' : '__protected__',
+    // Public directory rows carry the dialable number so the card can dial; the
+    // owner/admin shapes keep using privatePhone.
+    contactPhone: (c.contactPhone as string) || undefined,
     isVerified: Boolean(c.isVerified),
     intro: (c.intro as string) || undefined,
     profilePhotoUrl: (c.profilePhotoUrl as string) || undefined,
@@ -73,50 +57,6 @@ function mapDonorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {
     publishedAt: (c.publishedAt as string) || undefined,
     createdAt: (c.createdAt as string) || '',
     updatedAt: (c.updatedAt as string) || '',
-  };
-}
-
-function mapRequestRow(row: Record<string, unknown>): BloodRequest {
-  const c = toCamelObject(row) as Record<string, unknown>;
-  const donor = c.donorProfile as { fullName?: string; bloodGroup?: string } | undefined;
-  return {
-    id: (c.id as string) || '',
-    customerId: (c.customerId as string) || '',
-    donorProfileId: (c.donorProfileId as string) || undefined,
-    donorName: donor?.fullName || (c.donorName as string) || undefined,
-    donorBloodGroup: (donor?.bloodGroup as BloodGroup) || undefined,
-    status: (c.status as BloodRequestStatus) || 'pending_review',
-    patientName: (c.patientName as string) || '',
-    phone: (c.phone as string) || '',
-    bloodGroup: (c.bloodGroup as BloodGroup) || 'O+',
-    units: Number(c.units ?? 1),
-    hospitalName: (c.hospitalName as string) || '',
-    hospitalAreaId: (c.hospitalAreaId as string) || undefined,
-    hospitalLocation: (c.hospitalLocation as string) || '',
-    requiredDateTime: (c.requiredDateTime as string) || undefined,
-    areaId: (c.areaId as string) || '',
-    patientInfo: (c.patientInfo as string) || undefined,
-    prescriptionUrl: (c.prescriptionUrl as string) || '',
-    adminNotes: (c.adminNotes as string) || undefined,
-    rejectionReason: (c.rejectionReason as string) || undefined,
-    contactedDonorName: (c.contactedDonorName as string) || undefined,
-    contactReleasedAt: (c.contactReleasedAt as string) || undefined,
-    createdAt: (c.createdAt as string) || '',
-    updatedAt: (c.updatedAt as string) || undefined,
-  };
-}
-
-function mapReleaseRow(row: Record<string, unknown>): BloodContactRelease {
-  const c = toCamelObject(row) as Record<string, unknown>;
-  const donor = c.donorProfile as { privatePhone?: string } | undefined;
-  return {
-    id: (c.id as string) || '',
-    requestId: (c.requestId as string) || '',
-    donorProfileId: (c.donorProfileId as string) || '',
-    releasedBy: (c.releasedBy as string) || '',
-    releasedToCustomer: (c.releasedToCustomer as string) || '',
-    contactPhone: donor?.privatePhone || (c.contactPhone as string) || undefined,
-    createdAt: (c.createdAt as string) || '',
   };
 }
 
@@ -136,8 +76,14 @@ function mapReportRow(row: Record<string, unknown>): BloodDonorReport {
 }
 
 // ---------------------------------------------------------------------------
-// Public layer (directory + detail — phone NEVER present)
+// Public layer (approved directory — the phone rides along for `tel:` only)
 // ---------------------------------------------------------------------------
+//
+// Rows come from `fn_public_donor_directory`, a SECURITY DEFINER function that
+// returns ONLY `status = 'approved'` donors plus a `contact_phone`. That is the
+// single controlled door to a donor's number: the raw `private_phone` column
+// stays REVOKEd from the public key, so a bulk table select still fails. The UI
+// never prints the number, it only uses it to build the কল করুন `tel:` link.
 
 export interface PublicDonorFilters {
   bloodGroup?: string;
@@ -145,21 +91,10 @@ export interface PublicDonorFilters {
   isAvailableNow?: boolean;
 }
 
-// SHOWCASE FALLBACK — same rule as `lib/tolet-service.ts`.
+// SHOWCASE FALLBACK — only when Supabase is NOT configured at all.
 //
-// A donor card is the entire blood-donor design, and a directory with no cards
-// in it teaches nothing about it. So `lib/blood-donor-demo-data.ts` stands in
-// while the live directory is empty, and the first real donor replaces it
-// wholesale.
-//
-// The showcase has to honour the same filters the database query does, or a
-// reader who taps "O+" would still be shown an A- donor — a filter that
-// silently does nothing is worse than no filter at all.
-//
-// The existing `blood-donor-mock` store is left alone: it also feeds the admin
-// console's verification queue, so replacing it would break moderation.
-
-/** Applies `PublicDonorFilters` to the sample donors, mirroring the query above. */
+// With a real database attached the directory returns real approvals, or an
+// honest empty state; it never mixes sample rows into live data.
 function filterDemoDonors(filters?: PublicDonorFilters): BloodDonorProfile[] {
   return DEMO_DONOR_PROFILES.filter((donor) => {
     if (filters?.bloodGroup && filters.bloodGroup !== 'all') {
@@ -175,159 +110,28 @@ export async function fetchPublishedDonors(filters?: PublicDonorFilters): Promis
   if (!isSupabaseConfigured) return filterDemoDonors(filters);
   const client = createClient();
   if (!client) return [];
-  let query = client.from('blood_donor_profiles').select(PUBLIC_DONOR_COLUMNS).eq('status', 'approved');
-  if (filters?.bloodGroup && filters.bloodGroup !== 'all') {
-    query = query.eq('blood_group', filters.bloodGroup);
-  }
-  if (filters?.areaId) {
-    query = query.eq('area_id', filters.areaId);
-  }
-  if (filters?.isAvailableNow) {
-    query = query.eq('is_available', true);
-  }
-  const { data, error } = await query.order('published_at', { ascending: false });
-  // With Supabase configured the directory returns real approvals only. A query
-  // error or an empty approval list is an honest empty state, never demo rows.
+  const { data, error } = await client.rpc('fn_public_donor_directory', {
+    p_blood_group: filters?.bloodGroup && filters.bloodGroup !== 'all' ? filters.bloodGroup : null,
+    p_area_id: filters?.areaId || null,
+    p_available_only: Boolean(filters?.isAvailableNow),
+  });
+  // A query error or an empty approval list is an honest empty state, never demo rows.
   if (error) return [];
-  return (data || []).map((row) => mapDonorRow(row as Record<string, unknown>));
+  return ((data as Record<string, unknown>[]) || []).map((row) => mapDonorRow(row));
 }
 
 export async function fetchPublishedDonorById(id: string): Promise<BloodDonorProfile | null> {
   if (!isSupabaseConfigured) {
     const demo = getDemoDonor(id);
     if (demo) return demo;
-    return mockFetchPublishedDonorById(id) || null;
+    return mockFetchPublishedDonors().find((donor) => donor.id === id) || null;
   }
   const client = createClient();
   if (!client) return null;
-  const { data, error } = await client
-    .from('blood_donor_profiles')
-    .select(PUBLIC_DONOR_COLUMNS)
-    .eq('id', id)
-    .eq('status', 'approved')
-    .maybeSingle();
-  if (error || !data) return null;
-  return mapDonorRow(data as Record<string, unknown>);
-}
-
-// ---------------------------------------------------------------------------
-// Blood request (customer)
-// ---------------------------------------------------------------------------
-
-export interface CreateBloodRequestInput {
-  donorProfileId: string;
-  patientName: string;
-  phone: string;
-  bloodGroup: BloodGroup;
-  units: number;
-  hospitalName: string;
-  hospitalAreaId?: string;
-  hospitalLocation: string;
-  requiredDateTime?: string;
-  areaId: string;
-  patientInfo?: string;
-  prescriptionUrl: string;
-}
-
-export async function createBloodRequest(
-  input: CreateBloodRequestInput
-): Promise<{ success: boolean; request?: BloodRequest; error?: string }> {
-  if (!input.patientName.trim()) return { success: false, error: 'রোগী / যোগাযোগকারীর নাম লিখুন' };
-  if (!input.phone.trim()) return { success: false, error: 'আপনার ফোন নম্বর লিখুন' };
-  if (!input.hospitalName.trim() || !input.hospitalLocation.trim()) {
-    return { success: false, error: 'হাসপাতাল / ল্যাবের নাম ও অবস্থান লিখুন' };
-  }
-  if (!input.prescriptionUrl.trim()) {
-    return { success: false, error: 'প্রেসক্রিপশন / ডাক্তারের লিখন আপলোড বাধ্যতামূলক' };
-  }
-  if (!isSupabaseConfigured) return mockCreateBloodRequest(input, 'guest');
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { data: user } = await client.auth.getUser();
-  const userId = user?.user?.id;
-  if (!userId) return { success: false, error: 'রক্তের অনুরোধ পাঠাতে লগইন প্রয়োজন' };
-  const { data, error } = await client
-    .from('blood_requests')
-    .insert({
-      customer_id: userId,
-      donor_profile_id: input.donorProfileId,
-      patient_name: input.patientName.trim(),
-      phone: input.phone.trim(),
-      blood_group: input.bloodGroup,
-      units: input.units,
-      hospital_name: input.hospitalName.trim(),
-      hospital_area_id: input.hospitalAreaId || null,
-      hospital_location: input.hospitalLocation.trim(),
-      required_date_time: input.requiredDateTime || null,
-      area_id: input.areaId,
-      patient_info: input.patientInfo?.trim() || null,
-      prescription_url: input.prescriptionUrl,
-    })
-    .select('id, customer_id, donor_profile_id, status, patient_name, phone, blood_group, units, hospital_name, hospital_area_id, hospital_location, required_date_time, area_id, patient_info, prescription_url, admin_notes, rejection_reason, contacted_donor_name, contact_released_at, created_at, updated_at')
-    .single();
-  if (error) return { success: false, error: `অনুরোধ জমা ব্যর্থ: ${error.message}` };
-  return { success: true, request: mapRequestRow(data as Record<string, unknown>) };
-}
-
-export async function fetchMyBloodRequests(customerId: string): Promise<BloodRequest[]> {
-  if (!isSupabaseConfigured) return mockFetchMyBloodRequests(customerId);
-  const client = createClient();
-  if (!client) return mockFetchMyBloodRequests(customerId);
-  const { data, error } = await client
-    .from('blood_requests')
-    .select(
-      '*, donor_profile:blood_donor_profiles(full_name, blood_group), donor_name, donor_blood_group'
-    )
-    .eq('customer_id', customerId)
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return (data || []).map((row) => mapRequestRow(row as Record<string, unknown>));
-}
-
-export async function cancelMyBloodRequest(
-  id: string,
-  customerId: string
-): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) return mockCancelBloodRequest(id, customerId);
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { data, error } = await client
-    .from('blood_requests')
-    .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-    .eq('id', id)
-    .eq('customer_id', customerId)
-    .eq('status', 'pending_review')
-    .select('status')
-    .single();
-  if (error) {
-    // fall back: also allow cancelling an approved request that hasn't been released
-    const { data: ok, error: err2 } = await client
-      .from('blood_requests')
-      .update({ status: 'cancelled', updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .eq('customer_id', customerId)
-      .eq('status', 'approved')
-      .select('status')
-      .single();
-    if (err2 || !ok) return { success: false, error: 'এই অবস্থায় আর বাতিল করা সম্ভব নয়' };
-    return { success: true };
-  }
-  return { success: true };
-}
-
-export async function fetchMyContactReleases(customerId: string): Promise<BloodContactRelease[]> {
-  if (!isSupabaseConfigured) return mockFetchMyContactReleases(customerId);
-  const client = createClient();
-  if (!client) return mockFetchMyContactReleases(customerId);
-  const { data, error } = await client
-    .from('blood_contact_releases')
-    // contact_phone is the snapshot baked onto the audit row at release time —
-    // the customer's own row; never a join back into the donor's private_phone.
-    .select('*, donor_profile:blood_donor_profiles(full_name, blood_group)')
-    .eq('released_to_customer', customerId)
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return (data || []).map((row) => mapReleaseRow(row as Record<string, unknown>));
+  const { data, error } = await client.rpc('fn_public_donor_directory');
+  if (error) return null;
+  const match = ((data as Record<string, unknown>[]) || []).find((row) => row.id === id);
+  return match ? mapDonorRow(match) : null;
 }
 
 // ---------------------------------------------------------------------------
@@ -356,7 +160,7 @@ export async function createBloodDonorReport(input: {
 }
 
 // ---------------------------------------------------------------------------
-// Admin layer (profiles + requests + contact release audit)
+// Admin layer (donor profile review)
 // ---------------------------------------------------------------------------
 
 export async function adminFetchDonorProfiles(): Promise<BloodDonorProfile[]> {
@@ -444,164 +248,6 @@ export async function adminUpdateDonorProfile(
   return { success: true, profile: refreshed ?? undefined };
 }
 
-export async function adminFetchBloodRequests(): Promise<BloodRequest[]> {
-  if (!isSupabaseConfigured) {
-    throw new Error('Supabase সংযুক্ত নেই; রক্তের অনুরোধ লোড করা যায়নি।');
-  }
-  const client = createClient();
-  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
-  const { data, error } = await client
-    .from('blood_requests')
-    .select('*, donor_profile:blood_donor_profiles(full_name, blood_group)')
-    .order('created_at', { ascending: false });
-  if (error) throw new Error(`রক্তের অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => mapRequestRow(row as Record<string, unknown>));
-}
-
-export async function adminFetchBloodRequestById(id: string): Promise<BloodRequest | null> {
-  if (!isSupabaseConfigured) {
-    throw new Error('Supabase সংযুক্ত নেই; রক্তের অনুরোধ লোড করা যায়নি।');
-  }
-  const client = createClient();
-  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
-  const { data, error } = await client
-    .from('blood_requests')
-    .select('*, donor_profile:blood_donor_profiles(full_name, blood_group)')
-    .eq('id', id)
-    .maybeSingle();
-  if (error) throw new Error(`রক্তের অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
-  if (!data) return null;
-  return mapRequestRow(data as Record<string, unknown>);
-}
-
-export async function adminUpdateBloodRequest(
-  id: string,
-  patch: { status?: BloodRequestStatus; adminNotes?: string; rejectionReason?: string }
-): Promise<{ success: boolean; request?: BloodRequest; error?: string }> {
-  if (!isSupabaseConfigured) {
-    return { success: false, error: 'Supabase সংযুক্ত নেই; রক্তের অনুরোধ আপডেট করা যায়নি।' };
-  }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-  if (patch.status) {
-    dbPatch.status = patch.status;
-    if (patch.status !== 'rejected') dbPatch.rejection_reason = null;
-  }
-  if (typeof patch.adminNotes === 'string') dbPatch.admin_notes = patch.adminNotes;
-  if (typeof patch.rejectionReason === 'string') dbPatch.rejection_reason = patch.rejectionReason;
-  const { data, error } = await client
-    .from('blood_requests')
-    .update(dbPatch)
-    .eq('id', id)
-    .select('*, donor_profile:blood_donor_profiles(full_name, blood_group)')
-    .single();
-  if (error) return { success: false, error: `আপডেট ব্যর্থ: ${error.message}` };
-  if (data.customer_id) {
-    notifyCustomer({
-      userId: data.customer_id,
-      title: 'আপনার রক্তের অনুরোধ আপডেট',
-      body: `আপনার অনুরোধের অবস্থা এখন "${data.status}"।`,
-      type: ['approved', 'donor_contacted', 'in_progress'].includes(data.status) ? 'success' : 'info',
-      relatedType: 'blood_request',
-      relatedId: id,
-    });
-  }
-  notifyAdminHub({
-    title: 'রক্তের অনুরোধ আপডেট',
-    body: `অনুরোধ ${id} এর অবস্থা "${data.status}" হয়েছে।`,
-    type: 'info',
-    relatedType: 'blood_request',
-    relatedId: id,
-  });
-  return { success: true, request: mapRequestRow(data as Record<string, unknown>) };
-}
-
-// --- Controlled contact release (audited) ---
-export async function adminReleaseDonorContact(
-  requestId: string
-): Promise<{ success: boolean; phone?: string; donorName?: string; alreadyReleased?: boolean; error?: string }> {
-  if (!isSupabaseConfigured) {
-    return { success: false, error: 'Supabase সংযুক্ত নেই; যোগাযোগের তথ্য প্রকাশ করা যায়নি।' };
-  }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { data: user } = await client.auth.getUser();
-  const adminId = user?.user?.id;
-  if (!adminId) return { success: false, error: 'পরিচয় নিশ্চিত করা যায়নি' };
-
-  const request = await adminFetchBloodRequestById(requestId);
-  if (!request || !request.donorProfileId) return { success: false, error: 'আবেদনটি পাওয়া যায়নি' };
-
-  const [donorRes, existingRes] = await Promise.all([
-    client.from('blood_donor_profiles').select('id, full_name').eq('id', request.donorProfileId).maybeSingle(),
-    client.from('blood_contact_releases').select('id, contact_phone').eq('request_id', requestId).maybeSingle(),
-  ]);
-  if (donorRes.error || !donorRes.data) return { success: false, error: 'রক্তদাতার তথ্য পাওয়া যায়নি' };
-  const donorName = (donorRes.data as { full_name: string }).full_name;
-
-  // private_phone is column-revoked from the anon key; only the admin-gated
-  // fn_admin_donor_phone RPC may read it. The number is then snapshotted onto
-  // the audit row so the requester can read it from their own record.
-  const { data: phoneRows, error: phoneErr } = await client.rpc('fn_admin_donor_phone', {
-    p_donor_id: request.donorProfileId,
-  });
-  const privatePhone = (phoneRows?.[0] as { fn_admin_donor_phone?: string } | undefined)?.fn_admin_donor_phone;
-  if (phoneErr || !privatePhone) return { success: false, error: 'রক্তদাতার ফোন নম্বর পাওয়া যায়নি' };
-
-  if (existingRes.data) {
-    const snapshot = (existingRes.data as { contact_phone: string | null }).contact_phone;
-    return {
-      success: true,
-      phone: snapshot || privatePhone,
-      donorName,
-      alreadyReleased: true,
-    };
-  }
-
-  const { error: insErr } = await client.from('blood_contact_releases').insert({
-    request_id: requestId,
-    donor_profile_id: request.donorProfileId,
-    released_by: adminId,
-    released_to_customer: request.customerId,
-    contact_phone: privatePhone,
-  });
-  if (insErr) return { success: false, error: `মুক্তি রেকর্ড ব্যর্থ: ${insErr.message}` };
-
-  await client
-    .from('blood_requests')
-    .update({
-      contact_released_at: new Date().toISOString(),
-      contacted_donor_name: donorName,
-      updated_at: new Date().toISOString(),
-    })
-    .eq('id', requestId);
-
-  return {
-    success: true,
-    phone: privatePhone,
-    donorName,
-    alreadyReleased: false,
-  };
-}
-
-export async function adminFetchContactReleases(requestId: string): Promise<BloodContactRelease[]> {
-  if (!isSupabaseConfigured) {
-    throw new Error('Supabase সংযুক্ত নেই; যোগাযোগ প্রকাশের ইতিহাস লোড করা যায়নি।');
-  }
-  const client = createClient();
-  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
-  const { data, error } = await client
-    .from('blood_contact_releases')
-    .select(
-      'id, request_id, donor_profile_id, released_by, released_to_customer, created_at, contact_phone, released_by:profiles!blood_contact_releases_released_by_fkey(full_name), donor_profile:blood_donor_profiles(full_name, blood_group)'
-    )
-    .eq('request_id', requestId)
-    .order('created_at', { ascending: false });
-  if (error) throw new Error(`যোগাযোগ প্রকাশের ইতিহাস লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => mapReleaseRow(row as Record<string, unknown>));
-}
-
 export async function adminFetchDonorReports(donorId?: string): Promise<BloodDonorReport[]> {
   if (!isSupabaseConfigured) {
     throw new Error('Supabase সংযুক্ত নেই; রক্তদাতার রিপোর্ট লোড করা যায়নি।');
@@ -630,52 +276,8 @@ export async function adminUpdateDonorReport(
 }
 
 // ---------------------------------------------------------------------------
-// Storage helpers — prescriptions (private) + donor photo (public)
+// Storage helpers — donor photo (public)
 // ---------------------------------------------------------------------------
-
-/** Prescription / medical document: private 'documents' bucket, image OR PDF. */
-export async function uploadBloodPrescription(
-  customerId: string,
-  file: File
-): Promise<{ success: boolean; url?: string; error?: string }> {
-  const isImage = file.type.startsWith('image/');
-  const isPdf = file.type === 'application/pdf';
-  if ((!isImage && !isPdf) || file.size > 5 * 1024 * 1024) {
-    return { success: false, error: 'শুধুমাত্র ছবি বা PDF ফাইল (সর্বোচ্চ ৫MB) আপলোড করা যাবে' };
-  }
-  if (!isSupabaseConfigured) {
-    if (!isImage) return { success: true, url: `__mock__/prescriptions/${Date.now()}.pdf` };
-    const url = await new Promise<string>((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => resolve(String(reader.result));
-      reader.onerror = () => reject(new Error('read failed'));
-      reader.readAsDataURL(file);
-    });
-    return { success: true, url };
-  }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const ext = file.name.split('.').pop()?.toLowerCase() || (isPdf ? 'pdf' : 'jpg');
-  const path = `${customerId}/prescriptions/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
-  const { error } = await client.storage.from('documents').upload(path, file, {
-    contentType: file.type,
-    upsert: false,
-  });
-  if (error) return { success: false, error: `আপলোড ব্যর্থ: ${error.message}` };
-  return { success: true, url: path };
-}
-
-/** Resolves a private prescription path to a temporary signed URL (owner/admin). */
-export async function getPrescriptionViewUrl(url?: string): Promise<string | undefined> {
-  if (!url) return undefined;
-  if (/^(https?:|blob:|data:)/.test(url) || url.startsWith('__mock__')) return url;
-  if (!isSupabaseConfigured) return url;
-  const client = createClient();
-  if (!client) return url;
-  const { data, error } = await client.storage.from('documents').createSignedUrl(url, 3600);
-  if (error || !data?.signedUrl) return undefined;
-  return data.signedUrl;
-}
 
 /** Donor profile photo → public avatars bucket. */
 export async function uploadDonorProfilePhoto(

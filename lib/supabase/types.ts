@@ -204,8 +204,16 @@ export interface BloodDonorProfile {
   isAvailable: boolean;
   lastDonationDate?: string;
   donationCount: number;
-  // Private phone - strictly protected by admin verification
+  // Private phone - never printed as text. Public directory rows receive the
+  // value ONLY to build a `tel:` link (see fn_public_donor_directory); the raw
+  // `blood_donor_profiles.private_phone` column stays REVOKEd from anon.
   privatePhone: string;
+  /**
+   * Dialable number for APPROVED donors, returned by the public directory RPC so
+   * the কল করুন action can open the device dialer. Absent on the owner/admin
+   * shapes, which use {@link privatePhone}.
+   */
+  contactPhone?: string;
   isVerified: boolean;
   intro?: string;
   profilePhotoUrl?: string;

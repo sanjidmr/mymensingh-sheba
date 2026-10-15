@@ -20,6 +20,7 @@ import DirectoryShell from '@/components/directory/DirectoryShell';
 import DirectorySearchBar from '@/components/directory/DirectorySearchBar';
 import DirectoryResults from '@/components/directory/DirectoryResults';
 import { useDirectoryController } from '@/lib/use-directory-controller';
+import type { DirectoryController } from '@/lib/use-directory-controller';
 import type { MatchableRecord } from '@/lib/directory-filters';
 import type { FilterGroup } from '@/lib/directory-filters';
 import type { SearchableFields } from '@/lib/directory-search';
@@ -46,6 +47,12 @@ export interface CatalogDirectoryProps {
   /** Header action, e.g. an admin "add" link. */
   action?: React.ReactNode;
   /**
+   * Extra controls rendered between the search bar and the results, wired to
+   * the live controller. Used by the bus page for its destination picker, which
+   * needs to read and write the same filter state the filter sheet uses.
+   */
+  renderTools?: (controller: DirectoryController<ServiceListing>) => React.ReactNode;
+  /**
    * Optional notice between the header and the search bar.
    *
    * Used by the categories that can fall back to demo rows, to say so. It lives
@@ -65,6 +72,7 @@ export default function CatalogDirectory({
   sorters,
   renderCard,
   action,
+  renderTools,
   banner,
 }: CatalogDirectoryProps) {
   const searchable = useCallback(
@@ -77,6 +85,12 @@ export default function CatalogDirectory({
       // `math`. Both are included: slug for typed English, label for Bangla.
       tags: [...item.tags, ...tagLabels(item.tags)],
       description: item.descriptionBn ?? item.summaryBn ?? '',
+      // Operator, street address and route text are free text an admin typed, so
+      // "শ্যামলী" finds a bus by its company and "চরপাড়া" finds a centre by its
+      // address, without either being turned into a filter chip.
+      address: [item.operatorBn ?? '', item.addressBn ?? '', item.originBn ?? '', item.destinationBn ?? '']
+        .filter(Boolean)
+        .join(' '),
       numbers: [
         item.monthlyFeeMax,
         item.monthlyFeeMin,
@@ -119,6 +133,7 @@ export default function CatalogDirectory({
         // hard-coded route list.
         origin: item.originBn,
         destination: item.destinationBn,
+        operator: item.operatorBn,
       },
     }),
     []
@@ -156,6 +171,8 @@ export default function CatalogDirectory({
         currentSort={controller.sort}
         onSortChange={controller.setSort}
       />
+
+      {renderTools ? <div className="mt-2.5">{renderTools(controller)}</div> : null}
 
       <div className="mt-2.5">
         <DirectoryResults

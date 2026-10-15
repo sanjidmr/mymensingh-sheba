@@ -5,6 +5,8 @@ import { Mail, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 
+export type SupportMode = 'messages' | 'complaints';
+
 interface Conversation {
   id: string;
   subject: string;
@@ -56,15 +58,23 @@ const STATUS_LABEL: Record<string, string> = {
   closed: 'বন্ধ',
 };
 
-export default function CustomerMessages({
-  initialSubject = 'general',
-}: {
-  initialSubject?: string;
-}) {
+/**
+ * Customer support surface.
+ *
+ * Backed by the existing `contact_messages` / `contact_message_replies` tables
+ * and the `fn_my_contact_conversations` RPC — the same data the admin inbox
+ * already manages. `mode` decides whether the page is the plain message thread
+ * with the support team (`messages`) or the dedicated complaint tracker
+ * (`complaints`); both write to the same table using `subject = 'complaint'`
+ * to tell a complaint apart from a normal message.
+ */
+export default function SupportCenter({ mode }: { mode: SupportMode }) {
   const { user } = useAuth();
+  const isComplaints = mode === 'complaints';
+
   const [items, setItems] = useState<Conversation[]>([]);
   const [replies, setReplies] = useState<Reply[]>([]);
-  const [subject, setSubject] = useState(initialSubject === 'complaint' ? 'general' : initialSubject);
+  const [subject, setSubject] = useState('general');
   const [message, setMessage] = useState('');
   const [complaintCategory, setComplaintCategory] = useState('posts');
   const [complaintSubject, setComplaintSubject] = useState('');
@@ -80,7 +90,7 @@ export default function CustomerMessages({
   const fetchConversations = useCallback(async () => {
     if (!user) return { conversations: [] as Conversation[], replies: [] as Reply[] };
     if (!isSupabaseConfigured) {
-      throw new Error('সাপোর্ট বার্তা ব্যবহারের জন্য ডেটাবেজ সংযুক্ত করতে হবে।');
+      throw new Error('সাপোর্ট ব্যবহারের জন্য ডেটাবেজ সংযুক্ত করতে হবে।');
     }
     const client = createClient();
     if (!client) {
@@ -88,7 +98,7 @@ export default function CustomerMessages({
     }
     const { data, error: queryError } = await client.rpc('fn_my_contact_conversations');
     if (queryError) {
-      throw new Error(`বার্তা লোড করা যায়নি: ${queryError.message}`);
+      throw new Error(`লোড করা যায়নি: ${queryError.message}`);
     }
     const conversations = (data ?? []) as Conversation[];
     if (conversations.length) {
@@ -103,7 +113,7 @@ export default function CustomerMessages({
         const { data: signed, error: signedError } = await client.storage
           .from('support-attachments')
           .createSignedUrl(item.attachment_path, 3600);
-        if (signedError) throw new Error(`অভিযোগের সংযুক্তি খোলা যায়নি: ${signedError.message}`);
+        if (signedError) throw new Error(`সংযুক্তি খোলা যায়নি: ${signedError.message}`);
         return { ...item, attachment_url: signed.signedUrl };
       }));
       return { conversations: withAttachments, replies: (replyData ?? []) as Reply[] };
@@ -117,8 +127,8 @@ export default function CustomerMessages({
       setItems(data.conversations);
       setReplies(data.replies);
       setError('');
-    } catch (error) {
-      setError(error instanceof Error ? error.message : 'বার্তা লোড করা যায়নি।');
+    } catch (loadError) {
+      setError(loadError instanceof Error ? loadError.message : 'লোড করা যায়নি।');
     }
     setLoading(false);
   }, [fetchConversations]);
@@ -132,8 +142,8 @@ export default function CustomerMessages({
         setReplies(data.replies);
         setError('');
       })
-      .catch((error: unknown) => {
-        if (active) setError(error instanceof Error ? error.message : 'বার্তা লোড করা যায়নি।');
+      .catch((loadError: unknown) => {
+        if (active) setError(loadError instanceof Error ? loadError.message : 'লোড করা যায়নি।');
       })
       .finally(() => {
         if (active) setLoading(false);
@@ -274,73 +284,87 @@ export default function CustomerMessages({
     setBusy(false);
   };
 
+  const visible = items.filter((item) =>
+    isComplaints ? item.subject === 'complaint' : item.subject !== 'complaint'
+  );
+
   return (
     <div className="space-y-4">
       <header>
-        <h1 className="text-xl font-extrabold text-ink-900">যোগাযোগ কেন্দ্র</h1>
-        <p className="mt-1 text-[12.5px] text-ink-500">আপনার কথোপকথন ও অভিযোগের আপডেট ব্যক্তিগতভাবে দেখুন।</p>
+        <h1 className="text-xl font-extrabold text-ink-900">{isComplaints ? 'অভিযোগ কেন্দ্র' : 'বার্তা'}</h1>
+        <p className="mt-1 text-[12.5px] text-ink-500">
+          {isComplaints
+            ? 'সমস্যা জানান এবং সাপোর্ট টিমের সাড়া ও অগ্রগতি এক জায়গায় দেখুন।'
+            : 'সাপোর্ট টিমের সাথে আপনার ব্যক্তিগত কথোপকথন দেখুন ও নতুন বার্তা পাঠান।'}
+        </p>
       </header>
 
-      <form onSubmit={submitNew} className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4">
-        <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-ink-900">
-          <Mail className="h-4 w-4 text-brand-700" /> অ্যাডমিনকে মেসেজ দিন
-        </h2>
-        <p className="text-xs leading-relaxed text-ink-500">আপনার ব্যক্তিগত কথোপকথন শুধু আপনি ও সাপোর্ট টিম দেখতে পারবেন।</p>
-        <label className="grid gap-1 text-xs font-bold text-ink-700">
-          বিষয়
-          <select value={subject} onChange={(event) => setSubject(event.target.value)} className="min-h-11 rounded-xl border border-brand-100 px-3 text-sm">
-            {SUBJECTS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-ink-700">
-          আপনার বার্তা
-          <textarea required minLength={12} maxLength={1500} rows={4} value={message} onChange={(event) => setMessage(event.target.value)} className="rounded-xl border border-brand-100 px-3 py-2.5 text-sm" />
-        </label>
-        {error && <p role="alert" className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">{error}</p>}
-        {success && <p role="status" className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-800">{success}</p>}
-        <button type="submit" disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
-          <Send className="h-4 w-4" />{busy ? 'পাঠানো হচ্ছে…' : 'সাপোর্টে পাঠান'}
-        </button>
-      </form>
-
-      <form id="complaint-form" onSubmit={submitComplaint} className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
-        <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-ink-900">
-          <MessageCircle className="h-4 w-4 text-amber-800" /> অভিযোগ ও সাহায্য
-        </h2>
-        <p className="text-xs leading-relaxed text-ink-600">অভিযোগটি সঠিক টিমে পাঠাতে বিভাগ বাছুন। প্রয়োজন হলে ছবি বা PDF যুক্ত করুন।</p>
-        <label className="grid gap-1 text-xs font-bold text-ink-700">
-          অভিযোগের বিভাগ
-          <select value={complaintCategory} onChange={(event) => setComplaintCategory(event.target.value)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 text-sm">
-            {COMPLAINT_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-ink-700">
-          বিষয়
-          <input required minLength={3} maxLength={120} value={complaintSubject} onChange={(event) => setComplaintSubject(event.target.value)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 text-sm" placeholder="সংক্ষেপে সমস্যাটি লিখুন" />
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-ink-700">
-          বিস্তারিত
-          <textarea required minLength={12} maxLength={1500} rows={4} value={complaintDetails} onChange={(event) => setComplaintDetails(event.target.value)} className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm" placeholder="কী ঘটেছে এবং কীভাবে সাহায্য করতে পারি তা লিখুন" />
-        </label>
-        <label className="grid gap-1 text-xs font-bold text-ink-700">
-          সংযুক্তি <span className="font-normal text-ink-500">(ঐচ্ছিক · JPG, PNG, WEBP বা PDF · সর্বোচ্চ ৫ MB)</span>
-          <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 file:px-2 file:py-1 file:text-xs file:font-bold" />
-        </label>
-        {attachment && <p className="text-xs text-ink-500">{attachment.name} · {(attachment.size / 1024 / 1024).toFixed(1)} MB</p>}
-        {error && <p role="alert" className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">{error}</p>}
-        {success && <p role="status" className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-800">{success}</p>}
-        <button type="submit" disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber-800 px-4 text-sm font-bold text-white hover:bg-amber-900 disabled:opacity-50">
-          <Send className="h-4 w-4" />{busy ? 'জমা হচ্ছে…' : 'অভিযোগ জমা দিন'}
-        </button>
-      </form>
+      {isComplaints ? (
+        <form id="complaint-form" onSubmit={submitComplaint} className="space-y-3 rounded-2xl border border-amber-200 bg-amber-50/40 p-4">
+          <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-ink-900">
+            <MessageCircle className="h-4 w-4 text-amber-800" /> অভিযোগ জানান
+          </h2>
+          <p className="text-xs leading-relaxed text-ink-600">অভিযোগটি সঠিক টিমে পাঠাতে বিভাগ বাছুন। প্রয়োজন হলে ছবি বা PDF যুক্ত করুন।</p>
+          <label className="grid gap-1 text-xs font-bold text-ink-700">
+            অভিযোগের বিভাগ
+            <select value={complaintCategory} onChange={(event) => setComplaintCategory(event.target.value)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 text-sm">
+              {COMPLAINT_CATEGORIES.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-bold text-ink-700">
+            বিষয়
+            <input required minLength={3} maxLength={120} value={complaintSubject} onChange={(event) => setComplaintSubject(event.target.value)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 text-sm" placeholder="সংক্ষেপে সমস্যাটি লিখুন" />
+          </label>
+          <label className="grid gap-1 text-xs font-bold text-ink-700">
+            বিস্তারিত
+            <textarea required minLength={12} maxLength={1500} rows={4} value={complaintDetails} onChange={(event) => setComplaintDetails(event.target.value)} className="rounded-xl border border-amber-200 bg-white px-3 py-2.5 text-sm" placeholder="কী ঘটেছে এবং কীভাবে সাহায্য করতে পারি তা লিখুন" />
+          </label>
+          <label className="grid gap-1 text-xs font-bold text-ink-700">
+            সংযুক্তি <span className="font-normal text-ink-500">(ঐচ্ছিক · JPG, PNG, WEBP বা PDF · সর্বোচ্চ ৫ MB)</span>
+            <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(event) => setAttachment(event.target.files?.[0] ?? null)} className="min-h-11 rounded-xl border border-amber-200 bg-white px-3 py-2 text-xs file:mr-3 file:rounded-md file:border-0 file:bg-amber-100 file:px-2 file:py-1 file:text-xs file:font-bold" />
+          </label>
+          {attachment && <p className="text-xs text-ink-500">{attachment.name} · {(attachment.size / 1024 / 1024).toFixed(1)} MB</p>}
+          {error && <p role="alert" className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">{error}</p>}
+          {success && <p role="status" className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-800">{success}</p>}
+          <button type="submit" disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-amber-800 px-4 text-sm font-bold text-white hover:bg-amber-900 disabled:opacity-50">
+            <Send className="h-4 w-4" />{busy ? 'জমা হচ্ছে…' : 'অভিযোগ জমা দিন'}
+          </button>
+        </form>
+      ) : (
+        <form onSubmit={submitNew} className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4">
+          <h2 className="flex items-center gap-2 text-[13px] font-extrabold text-ink-900">
+            <Mail className="h-4 w-4 text-brand-700" /> অ্যাডমিনকে মেসেজ দিন
+          </h2>
+          <p className="text-xs leading-relaxed text-ink-500">আপনার ব্যক্তিগত কথোপকথন শুধু আপনি ও সাপোর্ট টিম দেখতে পারবেন।</p>
+          <label className="grid gap-1 text-xs font-bold text-ink-700">
+            বিষয়
+            <select value={subject} onChange={(event) => setSubject(event.target.value)} className="min-h-11 rounded-xl border border-brand-100 px-3 text-sm">
+              {SUBJECTS.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+            </select>
+          </label>
+          <label className="grid gap-1 text-xs font-bold text-ink-700">
+            আপনার বার্তা
+            <textarea required minLength={12} maxLength={1500} rows={4} value={message} onChange={(event) => setMessage(event.target.value)} className="rounded-xl border border-brand-100 px-3 py-2.5 text-sm" />
+          </label>
+          {error && <p role="alert" className="rounded-lg bg-rose-50 p-2.5 text-xs text-rose-800">{error}</p>}
+          {success && <p role="status" className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-800">{success}</p>}
+          <button type="submit" disabled={busy} className="inline-flex min-h-11 items-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-bold text-white hover:bg-brand-800 disabled:opacity-50">
+            <Send className="h-4 w-4" />{busy ? 'পাঠানো হচ্ছে…' : 'সাপোর্টে পাঠান'}
+          </button>
+        </form>
+      )}
 
       <section className="space-y-2" aria-labelledby="conversation-heading">
-        <h2 id="conversation-heading" className="text-[13px] font-extrabold text-ink-900">কথোপকথন ও অভিযোগের ইতিহাস</h2>
+        <h2 id="conversation-heading" className="text-[13px] font-extrabold text-ink-900">
+          {isComplaints ? 'অভিযোগের ইতিহাস' : 'কথোপকথনের ইতিহাস'}
+        </h2>
         {loading ? (
-          <div className="h-28 animate-pulse rounded-xl bg-mist-100" aria-label="বার্তা লোড হচ্ছে" />
-        ) : error && items.length === 0 ? null : items.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-brand-200 bg-white p-6 text-center text-xs text-ink-500">এখনো কোনো কথোপকথন নেই।</div>
-        ) : items.map((item) => {
+          <div className="h-28 animate-pulse rounded-xl bg-mist-100" aria-label="লোড হচ্ছে" />
+        ) : error && visible.length === 0 ? null : visible.length === 0 ? (
+          <div className="rounded-xl border border-dashed border-brand-200 bg-white p-6 text-center text-xs text-ink-500">
+            {isComplaints ? 'এখনো কোনো অভিযোগ জমা দেওয়া হয়নি।' : 'এখনো কোনো কথোপকথন নেই।'}
+          </div>
+        ) : visible.map((item) => {
           const threadReplies = replies.filter((reply) => reply.message_id === item.id);
           const isOpen = expanded === item.id;
           return (
@@ -362,7 +386,7 @@ export default function CustomerMessages({
                   <MessageBubble sender="আপনি" body={item.message} time={item.created_at} />
                   {item.attachment_url && (
                     <a href={item.attachment_url} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center rounded-lg border border-brand-200 bg-white px-3 text-xs font-bold text-brand-800 hover:bg-brand-50">
-                      অভিযোগের সংযুক্তি দেখুন
+                      সংযুক্তি দেখুন
                     </a>
                   )}
                   {threadReplies.map((reply) => (

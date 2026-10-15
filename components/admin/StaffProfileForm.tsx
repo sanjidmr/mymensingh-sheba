@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -9,38 +9,29 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertTriangle,
-  MapPin,
-  Briefcase,
   DollarSign,
   Phone,
 } from 'lucide-react';
 import { saveStaffProfile } from '@/app/admin/actions/staff';
 import type { StaffProfile, StaffProfileInput, StaffServiceKey } from '@/lib/staff-types';
-import { STAFF_SERVICE_UI, STAFF_WORK_MODE_LABELS, formatSalaryBn } from '@/lib/staff-types';
-import {
-  KAJER_BUA_WORK_TYPES,
-  KAJER_BUA_WORK_MODES,
-  KAJER_BUA_TIME_SLOTS,
-  KAJER_BUA_SALARY_PRESETS,
-  ELECTRICIAN_SERVICE_TYPES,
-  PLUMBING_SERVICE_TYPES,
-  AC_FRIDGE_SERVICE_TYPES,
-  STAFF_AVAILABILITY_OPTIONS,
-} from '@/lib/filter-definitions';
-import { getAllMCCAreas } from '@/lib/locations';
+import { STAFF_SERVICE_UI } from '@/lib/staff-types';
 
 interface StaffProfileFormProps {
   mode: 'create' | 'edit';
   initialProfile?: StaffProfile | null;
 }
 
-function optionList(list: Array<{ id: string; labelBn: string }>) {
-  return list.filter((o) => o.id !== 'all');
-}
-
+/**
+ * Internal worker-directory form.
+ *
+ * This form is the ONLY place worker details are recorded, and it lives behind
+ * `/admin`. It intentionally collects just what an admin needs to contact and
+ * describe a worker (name, service, phone, honourarium, notes). Customers never
+ * see this form or its data — they submit a service request and an admin
+ * assigns a worker from the directory.
+ */
 export default function StaffProfileForm({ mode, initialProfile }: StaffProfileFormProps) {
   const router = useRouter();
-  const allAreas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
 
   const [serviceSlug, setServiceSlug] = useState<StaffServiceKey>(
     initialProfile?.serviceSlug || 'kajer-bua'
@@ -48,18 +39,6 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
   const [nameBn, setNameBn] = useState(initialProfile?.nameBn || '');
   const [titleBn, setTitleBn] = useState(initialProfile?.titleBn || '');
   const imageUrl = initialProfile?.imageUrl || '';
-  const [areaIds, setAreaIds] = useState<string[]>(initialProfile?.areaIds || []);
-  const [workTypes, setWorkTypes] = useState<string[]>(initialProfile?.workTypes || []);
-  const [workMode, setWorkMode] = useState(initialProfile?.workMode || '');
-  const [timeSlot, setTimeSlot] = useState(initialProfile?.timeSlot || '');
-  const [experienceYears, setExperienceYears] = useState<string>(
-    initialProfile?.experienceYears != null ? String(initialProfile.experienceYears) : ''
-  );
-  const [availability, setAvailability] = useState(initialProfile?.availability || 'available');
-  const [isEmergency, setIsEmergency] = useState(initialProfile?.isEmergency || false);
-  const [salaryMin, setSalaryMin] = useState<string>(
-    initialProfile?.salaryMin != null ? String(initialProfile.salaryMin) : ''
-  );
   const [salaryMax, setSalaryMax] = useState<string>(
     initialProfile?.salaryMax != null ? String(initialProfile.salaryMax) : ''
   );
@@ -75,71 +54,36 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
 
   const ui = STAFF_SERVICE_UI[serviceSlug];
 
-  const workTypeOptions = useMemo(() => {
-    if (serviceSlug === 'kajer-bua') return optionList(KAJER_BUA_WORK_TYPES);
-    if (serviceSlug === 'electrician') return optionList(ELECTRICIAN_SERVICE_TYPES);
-    if (serviceSlug === 'ac-fridge') return optionList(AC_FRIDGE_SERVICE_TYPES);
-    return optionList(PLUMBING_SERVICE_TYPES);
-  }, [serviceSlug]);
-
   const handleServiceChange = (next: StaffServiceKey) => {
     setServiceSlug(next);
-    setWorkTypes([]);
-    setWorkMode('');
-    setTimeSlot('');
-    setSalaryMin('');
     setSalaryMax('');
-    setIsEmergency(false);
-  };
-
-  const toggleArea = (id: string) => {
-    setAreaIds((prev) =>
-      prev.includes(id) ? prev.filter((a) => a !== id) : [...prev, id]
-    );
-  };
-
-  const toggleWorkType = (id: string) => {
-    setWorkTypes((prev) =>
-      prev.includes(id) ? prev.filter((w) => w !== id) : [...prev, id]
-    );
+    setRateLabel('');
   };
 
   const buildInput = (): StaffProfileInput => {
-    const exp = Number(experienceYears) || 0;
-    const min = salaryMin ? Number(salaryMin) : undefined;
     const max = salaryMax ? Number(salaryMax) : undefined;
     return {
       serviceSlug,
       nameBn: nameBn.trim(),
       titleBn: titleBn.trim(),
       imageUrl,
-      areaIds,
-      workTypes,
-      workMode: ui.usesSalary ? (workMode || undefined) : undefined,
-      timeSlot: ui.usesSalary ? (timeSlot || undefined) : undefined,
-      experienceYears: exp,
-      availability,
-      isEmergency: ui.usesEmergency ? isEmergency : undefined,
-      salaryMin: ui.usesSalary ? min : undefined,
       salaryMax: ui.usesSalary ? max : undefined,
       rateLabel: rateLabel.trim() || undefined,
       aboutBn: aboutBn.trim(),
       isVerified,
       isActive,
-      phonePrivate: phonePrivate.trim() || undefined,
+      // Sent even when empty, so an admin can clear a stale number.
+      phonePrivate: phonePrivate.trim(),
     };
   };
 
   const validate = (): string => {
     if (nameBn.trim().length < 2) return 'নাম লিখুন (সর্বনিম্ন ২ অক্ষর)';
     if (titleBn.trim().length < 2) return 'পদবি / সংক্ষিপ্ত পরিচয় লিখুন';
-    if (areaIds.length === 0) return 'অন্তত একটি কাজের এলাকা বাছাই করুন';
-    if (workTypes.length === 0) return 'অন্তত একটি কাজের ধরন বাছাই করুন';
     if (aboutBn.trim().length < 10) return 'বিস্তারিত তথ্য লিখুন (সর্বনিম্ন ১০ অক্ষর)';
-    if (ui.usesSalary && salaryMin) {
-      const min = Number(salaryMin);
-      const max = salaryMax ? Number(salaryMax) : min;
-      if (min < 0 || max < min) return 'সম্মানীর সীমা সঠিক নয়';
+    if (ui.usesSalary && salaryMax) {
+      const max = Number(salaryMax);
+      if (max < 0) return 'সম্মানীর পরিমাণ ঋণাত্মক হতে পারবে না';
     }
     return '';
   };
@@ -196,7 +140,8 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
             {mode === 'create' ? 'নতুন কর্মী প্রোফাইল' : 'কর্মী প্রোফাইল সম্পাদনা'}
           </h1>
           <p className="text-xs sm:text-sm text-slate-600 mt-0.5">
-            অ্যাডমিন যাচাইয়ের পরই প্রোফাইলটি পাবলিক ওয়েবসাইটে প্রকাশিত হয়। অনুগ্রহ করে বাস্তব তথ্য দিন।
+            এটি অ্যাডমিনের অভ্যন্তরীণ কর্মী-তালিকা। কর্মীর নাম ও মোবাইল নম্বর কোথাও প্রকাশ্যে দেখানো হয় না।
+            গ্রাহক সেবা-অনুরোধ পাঠালে অ্যাডমিন এখান থেকেই উপযুক্ত কর্মী নির্ধারণ করেন।
           </p>
         </div>
 
@@ -226,7 +171,7 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
                   onChange={(e) => setIsActive(e.target.value === 'active')}
                   className={inputCls}
                 >
-                  <option value="active">সক্রিয় (পাবলিকে দেখা যাবে)</option>
+                  <option value="active">সক্রিয় (নির্ধারণের জন্য প্রস্তুত)</option>
                   <option value="inactive">নিষ্ক্রিয় (লুকানো)</option>
                 </select>
               </div>
@@ -273,36 +218,20 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
                   />
                 </div>
                 {ui.usesSalary && (
-                  <>
-                    <div>
-                      <label className={labelCls}>প্রতীক্ষিত সম্মানী (নিম্ন)</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                          type="number"
-                          min={0}
-                          value={salaryMin}
-                          onChange={(e) => setSalaryMin(e.target.value)}
-                          placeholder="৩০০০"
-                          className={`${inputCls} pl-9`}
-                        />
-                      </div>
+                  <div>
+                    <label className={labelCls}>প্রতীক্ষিত সম্মানী (সর্বোচ্চ)</label>
+                    <div className="relative">
+                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="number"
+                        min={0}
+                        value={salaryMax}
+                        onChange={(e) => setSalaryMax(e.target.value)}
+                        placeholder="৫০০০"
+                        className={`${inputCls} pl-9`}
+                      />
                     </div>
-                    <div>
-                      <label className={labelCls}>প্রতীক্ষিত সম্মানী (সর্বোচ্চ)</label>
-                      <div className="relative">
-                        <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                        <input
-                          type="number"
-                          min={0}
-                          value={salaryMax}
-                          onChange={(e) => setSalaryMax(e.target.value)}
-                          placeholder="৫০০০"
-                          className={`${inputCls} pl-9`}
-                        />
-                      </div>
-                    </div>
-                  </>
+                  </div>
                 )}
                 {!ui.usesSalary && (
                   <div>
@@ -326,145 +255,10 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
                       className={`${inputCls} pl-9`}
                     />
                   </div>
+                  <p className="mt-1 text-[11px] text-slate-400">
+                    এই নম্বর কোনো পাবলিক পেজে প্রকাশিত হয় না — শুধু অ্যাডমিন দেখতে পান।
+                  </p>
                 </div>
-            </div>
-          </section>
-
-          {/* Work + availability */}
-          <section className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Briefcase className="w-4 h-4 text-emerald-700" />
-              কাজের তথ্য
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
-              <div>
-                <label className={labelCls}>অভিজ্ঞতা (বছর)</label>
-                <input
-                  type="number"
-                  min={0}
-                  max={60}
-                  value={experienceYears}
-                  onChange={(e) => setExperienceYears(e.target.value)}
-                  placeholder="যেমন: ৫"
-                  className={inputCls}
-                />
-              </div>
-              <div>
-                <label className={labelCls}>সর্বশেষ প্রাপ্যতা</label>
-                <select
-                  value={availability}
-                  onChange={(e) => setAvailability(e.target.value as StaffProfileInput['availability'])}
-                  className={inputCls}
-                >
-                  {optionList(STAFF_AVAILABILITY_OPTIONS).map((o) => (
-                    <option key={o.id} value={o.id}>
-                      {o.labelBn}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              {ui.usesSalary && (
-                <div>
-                  <label className={labelCls}>কাজের ধরন (শিফট)</label>
-                  <select
-                    value={workMode}
-                    onChange={(e) => setWorkMode(e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="">যে কোনো ধরন</option>
-                    {optionList(KAJER_BUA_WORK_MODES).map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.labelBn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {ui.usesSalary && (
-                <div>
-                  <label className={labelCls}>পছন্দের সময়</label>
-                  <select
-                    value={timeSlot}
-                    onChange={(e) => setTimeSlot(e.target.value)}
-                    className={inputCls}
-                  >
-                    <option value="">যে কোনো সময়</option>
-                    {optionList(KAJER_BUA_TIME_SLOTS).map((o) => (
-                      <option key={o.id} value={o.id}>
-                        {o.labelBn}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
-              {ui.usesEmergency && (
-                <div>
-                  <label className={labelCls}>জরুরি অন-কল</label>
-                  <div className="flex items-center h-[42px]">
-                    <button
-                      type="button"
-                      onClick={() => setIsEmergency((v) => !v)}
-                      className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold transition-colors ${
-                        isEmergency
-                          ? 'bg-rose-50 border-rose-300 text-rose-900'
-                          : 'bg-white border-slate-200 text-slate-600'
-                      }`}
-                    >
-                      {isEmergency ? 'জরুরি সেবা সক্রিয়' : 'জরুরি সেবা দেওয়া হয়'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="mb-4">
-              <label className={labelCls}>কাজের ধরন / দক্ষতা*</label>
-              <div className="flex flex-wrap gap-2">
-                {workTypeOptions.map((o) => {
-                  const selected = workTypes.includes(o.id);
-                  return (
-                    <button
-                      key={o.id}
-                      type="button"
-                      onClick={() => toggleWorkType(o.id)}
-                      className={`px-3 py-2 rounded-xl border text-xs font-semibold transition-colors ${
-                        selected
-                          ? 'bg-emerald-700 border-emerald-700 text-white'
-                          : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
-                      }`}
-                    >
-                      {o.labelBn}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          </section>
-
-          {/* Service areas */}
-          <section className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 className="text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-emerald-700" />
-              কর্মক্ষেত্র এলাকা*
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 max-h-72 overflow-y-auto pr-1">
-              {allAreas.map((area) => {
-                const selected = areaIds.includes(area.id);
-                return (
-                  <button
-                    key={area.id}
-                    type="button"
-                    onClick={() => toggleArea(area.id)}
-                    className={`text-left px-3 py-2 rounded-xl border text-xs font-medium transition-colors ${
-                      selected
-                        ? 'bg-emerald-700 border-emerald-700 text-white'
-                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
-                    }`}
-                  >
-                    {area.nameBn}
-                  </button>
-                );
-              })}
             </div>
           </section>
 

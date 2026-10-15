@@ -18,7 +18,7 @@ const ITEMS = [
  * Routes that own the whole screen and should not carry site navigation —
  * the admin console and the auth screens. Everything else keeps the bar.
  */
-const BARE_ROUTES = ['/admin', '/login', '/register', '/forgot-password', '/design-system', '/dashboard'];
+const BARE_ROUTES = ['/admin', '/login', '/register', '/forgot-password', '/design-system'];
 
 function isBareRoute(pathname: string): boolean {
   return BARE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -40,6 +40,9 @@ export default function MobileBottomNav() {
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
+    if (href === '/profile') {
+      return pathname.startsWith('/profile') || pathname.startsWith('/dashboard');
+    }
     return pathname.startsWith(href);
   };
 

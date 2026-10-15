@@ -39,7 +39,10 @@ export default function HomeServiceRequestEditor({
   const supportedAssignment = STAFF_SERVICE_KEYS.includes(request.service_slug as StaffServiceKey);
   const workerOptions = useMemo(() => {
     if (!request.area_id) return workers;
-    return workers.filter((worker) => worker.areas.includes(request.area_id));
+    // A worker with no recorded areas is available everywhere, not nowhere.
+    return workers.filter(
+      (worker) => worker.areas.length === 0 || worker.areas.includes(request.area_id!)
+    );
   }, [request.area_id, workers]);
 
   const save = async () => {
@@ -99,7 +102,7 @@ export default function HomeServiceRequestEditor({
               ))}
             </select>
             <span className="mt-1 block text-xs text-admin-muted">
-              কেবল সক্রিয়, ব্যস্ত নন, একই সেবা ও রিকোয়েস্ট এলাকার কর্মী নির্ধারণ করা যায়।
+              কেবল সক্রিয়, ব্যস্ত নন ও একই সেবার কর্মী নির্ধারণ করা যায়। এলাকা লেখা না থাকলে কর্মীকে সব এলাকার জন্য উপযুক্ত ধরা হয়।
             </span>
           </label>
         )}

@@ -70,12 +70,34 @@ export interface ServiceListing {
   driverIncluded?: boolean;
   /** "সকাল ৭টা – বিকাল ৬টা", "শুধু রাত্রি". */
   availableTimeBn?: string;
+  /** Explicit rate used only for an estimated vehicle booking fare. */
+  ratePerKm?: number;
+  minimumFare?: number;
+  additionalFee?: number;
+  additionalFeeNoteBn?: string;
+  availableFacilities?: string[];
+  unavailableFacilities?: string[];
   /**
    * How the numbers above should be read: "প্রতি কিলোমিটার", "প্রতি দিন",
    * "পুরো ভাড়া (ভাড়াও চালক)". Free text because the unit is a local
    * convention, not an enum anyone can enumerate correctly.
    */
   priceNoteBn?: string;
+  // --- coaching / wifi / bus extensions -----------------------------------
+  /**
+   * The bus operating company ("শ্যামলী", "এনা"), kept separate from the title
+   * so a search by operator name and a search by service name both work.
+   */
+  operatorBn?: string;
+  /** A centre's or provider's street address. */
+  addressBn?: string;
+  /**
+   * Published review aggregate. Read-only for every client — the database
+   * recomputes both from published reviews whenever one is written, so a score
+   * is never client-computed and never drifts from its reviews.
+   */
+  ratingAvg?: number;
+  ratingCount?: number;
   /**
    * Only set on `lib/vehicle-demo-data.ts` rows. The directory's "showing demo
    * data" state is per-category, so this has to ride on the row: one demo
@@ -93,6 +115,94 @@ export type ServiceListingInput = Omit<
 export type VehicleKind = 'গাড়ি' | 'অটো' | 'CNG';
 
 export const VEHICLE_KINDS: VehicleKind[] = ['গাড়ি', 'অটো', 'CNG'];
+
+// ---------------------------------------------------------------------------
+// Directory sub-entities (teachers, batches, packages) + reviews
+// ---------------------------------------------------------------------------
+
+/**
+ * A teacher attached to a coaching centre.
+ *
+ * `subjects` stores the COACHING_SUBJECTS slugs an admin ticked, plus any free
+ * text; the UI resolves the slugs through `tagLabel` so a raw slug is never
+ * printed at a reader.
+ */
+export interface CoachingTeacher {
+  id: string;
+  listingId: string;
+  nameBn: string;
+  subjects: string[];
+  qualificationBn?: string;
+  experienceBn?: string;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CoachingTeacherInput = Omit<CoachingTeacher, 'id' | 'createdAt' | 'updatedAt'>;
+
+/**
+ * A batch announcement for a coaching centre.
+ *
+ * There is deliberately no `expires_at` and no automatic removal: an admin
+ * announcement stays visible and editable until an admin edits or deactivates
+ * it, including after two days. See `is_active`.
+ */
+export interface CoachingBatch {
+  id: string;
+  listingId: string;
+  titleBn: string;
+  startDate?: string;
+  startTime?: string;
+  noteBn?: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type CoachingBatchInput = Omit<CoachingBatch, 'id' | 'createdAt' | 'updatedAt'>;
+
+/** One purchasable internet package under a WiFi provider. */
+export interface WifiPackage {
+  id: string;
+  listingId: string;
+  nameBn: string;
+  speedMbps?: number;
+  price?: number;
+  offerLabelBn?: string;
+  offerConditionsBn?: string;
+  isActive: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type WifiPackageInput = Omit<WifiPackage, 'id' | 'createdAt' | 'updatedAt'>;
+
+/** Reviews only ever attach to these two curated categories. */
+export type DirectoryReviewCategory = 'coaching' | 'wifi';
+
+export interface DirectoryReview {
+  id: string;
+  category: DirectoryReviewCategory;
+  listingId: string;
+  authorId: string;
+  /** Shown on the review card; falls back to "সদস্য" when the profile has none. */
+  authorName?: string;
+  rating: number;
+  commentBn?: string;
+  isPublished: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface DirectoryReviewInput {
+  category: DirectoryReviewCategory;
+  listingId: string;
+  rating: number;
+  commentBn?: string;
+}
+
 
 // ---------------------------------------------------------------------------
 // User-authored posts
@@ -205,7 +315,7 @@ export type EmergencyContactInput = Omit<EmergencyContact, 'id' | 'createdAt' | 
 // Vehicle rental requests
 // ---------------------------------------------------------------------------
 
-export type VehicleRequestStatus = 'new' | 'contacted' | 'closed';
+export type VehicleRequestStatus = 'new' | 'reviewing' | 'contacted' | 'approved' | 'rejected' | 'closed';
 
 export interface VehicleRequest {
   id: string;
@@ -226,7 +336,18 @@ export interface VehicleRequest {
   /** Optional ceiling the rider has in mind, in taka. */
   budget?: number;
   notes?: string;
+  estimatedDistanceKm?: number;
+  distanceSource?: 'road_route' | 'manual_estimate';
   status: VehicleRequestStatus;
+  assignedVehicleListingId?: string;
+  assignedDriverName?: string;
+  assignedDriverPhone?: string;
+  adminNotes?: string;
+  ratePerKm?: number;
+  minimumFare?: number;
+  estimatedFare?: number;
+  additionalFee?: number;
+  additionalFeeNoteBn?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -245,6 +366,8 @@ export interface VehicleRequestInput {
   tripDuration?: string;
   budget?: number;
   notes?: string;
+  estimatedDistanceKm: number;
+  distanceSource: 'road_route' | 'manual_estimate';
 }
 
 // ---------------------------------------------------------------------------
@@ -643,6 +766,12 @@ export function bnTaka(value?: number): string {
     .toString()
     .replace(/\B(?=(\d{3})+(?!\d))/g, ',');
   return `৳${toBn(grouped)}`;
+}
+
+/** Currency formatter for per-kilometre rates and fare estimates with paisha. */
+export function bnTakaDecimal(value?: number): string {
+  if (value == null || !Number.isFinite(value)) return '';
+  return `৳${value.toLocaleString('bn-BD', { maximumFractionDigits: 2 })}`;
 }
 
 /** A taka range, collapsed when both ends are equal. */

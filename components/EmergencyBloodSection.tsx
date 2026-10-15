@@ -34,7 +34,7 @@ export default function EmergencyBloodSection() {
             </h2>
 
             <p className="text-base sm:text-lg text-emerald-100/90 leading-relaxed max-w-2xl mb-6">
-              হাসপাতালে কোনো স্বজনের হঠাৎ রক্তের প্রয়োজন হলে আমরা ময়মনসিংহের স্বেচ্ছাসেবী রক্তদাতাদের সাথে দ্রুত সমন্বয়ে সহায়তা করি। কোনো বাণিজ্যিক উদ্দেশ্য নয়, সম্পূর্ণ মানবিক উদ্যোগে এই নেটওয়ার্ক পরিচালিত।
+              হাসপাতালে কোনো স্বজনের হঠাৎ রক্তের প্রয়োজন হলে ময়মনসিংহের স্বেচ্ছাসেবী রক্তদাতাদের তালিকা থেকে রক্তের গ্রুপ ও এলাকা অনুযায়ী খুঁজে সরাসরি কল করতে পারেন। কোনো বাণিজ্যিক উদ্দেশ্য নয়, সম্পূর্ণ মানবিক উদ্যোগে এই নেটওয়ার্ক পরিচালিত।
             </p>
 
             {/* Strict Privacy & Humanity Protocol */}
@@ -42,14 +42,14 @@ export default function EmergencyBloodSection() {
               <div className="flex items-start gap-3">
                 <Lock className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white font-semibold">সম্পূর্ণ গোপনীয়তা:</strong> রক্তদাতার ব্যক্তিগত মোবাইল নম্বর উন্মুক্ত করা হয় না। অযাচিত কল বা হয়রানি রোধ করাই আমাদের প্রধান অগ্রাধিকার।
+                  <strong className="text-white font-semibold">নম্বর প্রকাশ করা হয় না:</strong> রক্তদাতার মোবাইল নম্বর কোথাও লেখা হিসেবে দেখানো হয় না। কার্ডের “কল করুন” বাটনে চাপ দিলেই সরাসরি কল যায়, তাই অযাচিত হয়রানি থেকে সুরক্ষা থাকে।
                 </span>
               </div>
 
               <div className="flex items-start gap-3">
                 <FileText className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
                 <span>
-                  <strong className="text-white font-semibold">প্রেসক্রিপশন যাচাই:</strong> রোগীর সঠিক রিকুইজিশন ও হাসপাতাল স্লিপ অ্যাডমিন টিম কর্তৃক নিশ্চিতকরণের পরই কেবল স্বেচ্ছাসেবী রক্তদাতার সাথে যোগাযোগ করিয়ে দেওয়া হয়।
+                  <strong className="text-white font-semibold">সরাসরি যোগাযোগ:</strong> অ্যাডমিন অনুমোদিত রক্তদাতার প্রোফাইল ডিরেক্টরিতে প্রকাশিত হয় এবং যেকোনো ভিজিটর সরাসরি কল করতে পারেন — আগে কোনো অনুরোধ পাঠানোর দরকার নেই।
                 </span>
               </div>
 
@@ -114,7 +114,7 @@ export default function EmergencyBloodSection() {
                   <span>জরুরি সহায়তায় সক্রিয় টিম</span>
                 </div>
                 <p>
-                  ময়মনসিংহ মেডিকেল কলেজ হাসপাতাল (MMCH), সিবিএমসিবি (CBMCB) ও শহরের যেকোনো ক্লিনিকের প্রয়োজনে জরুরি রিকুইজিশন জমা দিন।
+                  ময়মনসিংহ মেডিকেল কলেজ হাসপাতাল (MMCH), সিবিএমসিবি (CBMCB) ও শহরের যেকোনো ক্লিনিকের প্রয়োজনে রক্তের গ্রুপ ও এলাকা বেছে নিয়ে রক্তদাতাকে সরাসরি কল করুন।
                 </p>
               </div>
             </div>

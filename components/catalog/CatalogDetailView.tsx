@@ -40,6 +40,12 @@ export interface CatalogDetailViewProps {
   ui: CategoryUiConfig;
   listing: ServiceListing;
   facts: DetailFact[];
+  /**
+   * Rendered inside the main article, under the description. This is where a
+   * category's own sections go (coaching teachers/batches, WiFi packages,
+   * reviews) so they read as part of the listing rather than as sidebar widgets.
+   */
+  body?: React.ReactNode;
   /** Optional block rendered under the facts (e.g. a rental request form). */
   children?: React.ReactNode;
   /** Labels for the call-to-action, e.g. "ভাড়ার অনুরোধ". */
@@ -50,6 +56,7 @@ export default function CatalogDetailView({
   ui,
   listing,
   facts,
+  body,
   children,
   action,
 }: CatalogDetailViewProps) {
@@ -144,6 +151,8 @@ export default function CatalogDetailView({
               </p>
             )}
           </div>
+
+          {body ? <div className="border-t border-brand-100 p-3.5 sm:p-5">{body}</div> : null}
         </article>
 
         <aside className="min-w-0 space-y-3 sm:sticky sm:top-4 sm:self-start">

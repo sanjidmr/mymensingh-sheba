@@ -79,6 +79,7 @@ interface ToletDetailPageProps {
 type ListingLoad =
   | { id: string; status: 'loading' }
   | { id: string; status: 'missing' }
+  | { id: string; status: 'error'; message: string }
   | { id: string; status: 'ready'; listing: ToletListing; similar: ToletListing[] };
 
 /** Stable empty array, so the derived `similar` keeps referential identity. */
@@ -99,7 +100,18 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
     let cancelled = false;
 
     (async () => {
-      const found = await fetchListingById(id);
+      let found: ToletListing | null;
+      try {
+        found = await fetchListingById(id);
+      } catch (error) {
+        if (cancelled) return;
+        setLoad({
+          id,
+          status: 'error',
+          message: error instanceof Error ? error.message : 'বিজ্ঞাপনের তথ্য লোড করা যায়নি।',
+        });
+        return;
+      }
       if (cancelled) return;
 
       if (!found) {
@@ -112,13 +124,17 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
       // hostage.
       setLoad({ id, status: 'ready', listing: found, similar: NO_SIMILAR });
 
-      const related = await fetchSimilarListings(found, 4);
-      if (cancelled) return;
-      setLoad((current) =>
-        current?.id === id && current.status === 'ready'
-          ? { ...current, similar: related }
-          : current
-      );
+      try {
+        const related = await fetchSimilarListings(found, 4);
+        if (cancelled) return;
+        setLoad((current) =>
+          current?.id === id && current.status === 'ready'
+            ? { ...current, similar: related }
+            : current
+        );
+      } catch (error) {
+        console.error('Related To-Let listings could not be loaded.', error);
+      }
     })();
 
     return () => {
@@ -135,7 +151,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
 
   // ---- View tracking: once per session per listing --------------------------
   useEffect(() => {
-    if (!listing) return;
+    if (!listing || listing.status !== 'approved') return;
     trackListingView({
       listingId: listing.id,
       userId: user?.id ?? null,
@@ -182,15 +198,17 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
       }
     }
 
-    void trackToletEvent({
-      listingId: listing.id,
-      eventType: 'favorite',
-      source: 'detail_page',
-      userId: user?.id ?? null,
-      areaId: listing.areaId,
-      propertyType: listing.propertyType,
-      rentPrice: listing.rentPrice,
-    });
+    if (listing.status === 'approved') {
+      void trackToletEvent({
+        listingId: listing.id,
+        eventType: 'favorite',
+        source: 'detail_page',
+        userId: user?.id ?? null,
+        areaId: listing.areaId,
+        propertyType: listing.propertyType,
+        rentPrice: listing.rentPrice,
+      });
+    }
   }, [listing, isFavorite, user, toggleSaveItem]);
 
   // ---- Contact fallback: jump to the request form --------------------------
@@ -199,6 +217,21 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
   }, [requestAnchor]);
 
   if (!isForCurrentId) return <ListingSkeleton />;
+  if (load?.id === id && load.status === 'error') {
+    return (
+      <div className="flex min-h-screen flex-col bg-mist-50">
+        <Navbar />
+        <main className="mx-auto flex w-full max-w-3xl flex-1 items-center justify-center px-4 py-12">
+          <div className="w-full rounded-2xl border border-rose-200 bg-white p-6 text-center">
+            <p role="alert" className="text-sm font-semibold text-rose-800">{load.message}</p>
+            <Link href="/tolet" className="mt-4 inline-flex min-h-10 items-center rounded-lg bg-brand-700 px-4 text-xs font-semibold text-white">
+              বাসার বিজ্ঞাপনে ফিরে যান
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
   if (!listing) notFound();
 
   const description = listing.description.trim();
@@ -310,12 +343,14 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
               <RentSummaryCard listing={listing} />
             </div>
 
-            <ContactActionsPanel
-              listing={listing}
-              userId={user?.id ?? null}
-              isLoggedIn={Boolean(user)}
-              onRequestFallback={scrollToRequest}
-            />
+            {listing.status === 'approved' && (
+              <ContactActionsPanel
+                listing={listing}
+                userId={user?.id ?? null}
+                isLoggedIn={Boolean(user)}
+                onRequestFallback={scrollToRequest}
+              />
+            )}
 
             <OwnerProfileCard listing={listing} />
 
@@ -323,16 +358,18 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
               <RequestSection listingId={listing.id} user={user} />
             </div>
 
-            <div className="flex justify-center pt-0.5">
-              <button
-                type="button"
-                onClick={() => setReportOpen(true)}
-                className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold text-ink-400 transition-colors hover:bg-mist-100 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
-              >
-                <Flag className="h-3.5 w-3.5" aria-hidden="true" />
-                বিজ্ঞাপনটি রিপোর্ট করুন
-              </button>
-            </div>
+            {listing.status === 'approved' && (
+              <div className="flex justify-center pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => setReportOpen(true)}
+                  className="inline-flex min-h-11 items-center gap-1.5 rounded-lg px-3 text-[12px] font-semibold text-ink-400 transition-colors hover:bg-mist-100 hover:text-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+                >
+                  <Flag className="h-3.5 w-3.5" aria-hidden="true" />
+                  বিজ্ঞাপনটি রিপোর্ট করুন
+                </button>
+              </div>
+            )}
           </aside>
         </div>
 
@@ -341,18 +378,22 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
         <StickyContactBarSpacer />
       </main>
 
-      <StickyContactBar
-        listing={listing}
-        userId={user?.id ?? null}
-        onRequestFallback={scrollToRequest}
-      />
+      {listing.status === 'approved' && (
+        <StickyContactBar
+          listing={listing}
+          userId={user?.id ?? null}
+          onRequestFallback={scrollToRequest}
+        />
+      )}
 
-      <ReportSheet
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        listingId={listing.id}
-        user={user}
-      />
+      {listing.status === 'approved' && (
+        <ReportSheet
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          listingId={listing.id}
+          user={user}
+        />
+      )}
     </div>
   );
 }

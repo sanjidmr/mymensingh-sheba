@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import ServiceListingForm from '@/components/admin/ServiceListingForm';
+import ListingSubEntities from '@/components/admin/ListingSubEntities';
 import { AdminError } from '@/components/admin/States';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { fetchAdminServiceListing } from '@/lib/admin/queries';
@@ -28,5 +29,10 @@ export default async function EditServiceListingPage({
     );
   }
   if (!listing || listing.category !== category) notFound();
-  return <ServiceListingForm category={category as ServiceCategory} listing={listing} />;
+  return (
+    <div className="space-y-6">
+      <ServiceListingForm category={category as ServiceCategory} listing={listing} />
+      <ListingSubEntities category={category as ServiceCategory} listingId={listing.id} />
+    </div>
+  );
 }

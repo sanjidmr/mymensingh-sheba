@@ -38,14 +38,36 @@ export interface StaffProfile {
   updatedAt: string;
 }
 
-/** Payload used by Admin create/update forms (includes private phone). */
-export type StaffProfileInput = Omit<
-  StaffProfile,
-  'id' | 'createdAt' | 'updatedAt' | 'isActive' | 'isVerified'
-> & {
-  isActive: boolean;
+/**
+ * Payload used by the Admin worker-directory form (includes the private phone).
+ *
+ * Only `serviceSlug`, `nameBn`, `titleBn`, `aboutBn`, `isVerified` and
+ * `isActive` are always present. Everything else is optional: the internal
+ * directory form no longer edits areas, work types, experience, availability,
+ * shift, preferred time, emergency flag or the lower salary bound, so those
+ * keys are simply omitted. The database defaults then apply on create, and an
+ * edit never wipes a value it did not touch.
+ */
+export interface StaffProfileInput {
+  serviceSlug: StaffServiceKey;
+  nameBn: string;
+  titleBn: string;
+  imageUrl?: string;
+  areaIds?: string[];
+  workTypes?: string[];
+  workMode?: string;
+  timeSlot?: string;
+  experienceYears?: number;
+  availability?: StaffAvailability;
+  isEmergency?: boolean;
+  salaryMin?: number;
+  salaryMax?: number;
+  rateLabel?: string;
+  aboutBn: string;
   isVerified: boolean;
-};
+  isActive: boolean;
+  phonePrivate?: string;
+}
 
 export interface StaffRequest {
   id: string;

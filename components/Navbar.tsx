@@ -150,8 +150,8 @@ export default function Navbar() {
 
             {user ? (
               <Link
-                href="/profile"
-                aria-label="আমার প্রোফাইল"
+                href={isAdmin ? '/admin' : '/profile'}
+                aria-label={isAdmin ? 'অ্যাডমিন প্যানেল' : 'আমার প্রোফাইল'}
                 className="flex items-center gap-2 rounded-xl border border-brand-200 bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:bg-brand-100/40"
               >
                 <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-400 text-xs font-bold text-brand-900">

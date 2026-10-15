@@ -13,7 +13,7 @@ import { PageHeader } from '@/components/admin/PageHeader';
 import { Panel } from '@/components/admin/PageHeader';
 
 const LABEL: Record<ServiceCategory, string> = {
-  vehicle: 'যানবাহন ভাড়া',
+  vehicle: 'যানবাহন',
   bus: 'বাস টিকিট তথ্য',
   wifi: 'WiFi প্রদানকারী',
   coaching: 'কোচিং সেন্টার',
@@ -53,6 +53,8 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     fareMax: row?.fare_max ?? undefined,
     originBn: row?.origin_bn ?? '',
     destinationBn: row?.destination_bn ?? '',
+    operatorBn: row?.operator_bn ?? '',
+    addressBn: row?.address_bn ?? '',
     seatCount: row?.seat_count ?? undefined,
     photos: row?.photos ?? [],
     modelNameBn: row?.model_name_bn ?? '',
@@ -61,6 +63,12 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     driverIncluded: row?.driver_included ?? undefined,
     availableTimeBn: row?.available_time_bn ?? '',
     priceNoteBn: row?.price_note_bn ?? '',
+    ratePerKm: row?.rate_per_km ?? undefined,
+    minimumFare: row?.minimum_fare ?? undefined,
+    additionalFee: row?.additional_fee ?? undefined,
+    additionalFeeNoteBn: row?.additional_fee_note_bn ?? '',
+    availableFacilities: row?.available_facilities ?? [],
+    unavailableFacilities: row?.unavailable_facilities ?? [],
     contactPhonePrivate: row?.contact_phone_private ?? '',
     isActive: row?.is_active ?? false,
     isFeatured: row?.is_featured ?? false,
@@ -83,6 +91,11 @@ export default function ServiceListingForm({
   const [photoText, setPhotoText] = useState(() => (listing?.photos ?? []).join('\n'));
   const [priceMinText, setPriceMinText] = useState(() => String(values.priceMin ?? ''));
   const [priceMaxText, setPriceMaxText] = useState(() => String(values.priceMax ?? ''));
+  const [ratePerKmText, setRatePerKmText] = useState(() => String(values.ratePerKm ?? ''));
+  const [minimumFareText, setMinimumFareText] = useState(() => String(values.minimumFare ?? ''));
+  const [additionalFeeText, setAdditionalFeeText] = useState(() => String(values.additionalFee ?? ''));
+  const [availableFacilitiesText, setAvailableFacilitiesText] = useState(() => (values.availableFacilities ?? []).join('\n'));
+  const [unavailableFacilitiesText, setUnavailableFacilitiesText] = useState(() => (values.unavailableFacilities ?? []).join('\n'));
   const [feeMinText, setFeeMinText] = useState(() => String(values.monthlyFeeMin ?? ''));
   const [feeMaxText, setFeeMaxText] = useState(() => String(values.monthlyFeeMax ?? ''));
   const [fareMinText, setFareMinText] = useState(() => String(values.fareMin ?? ''));
@@ -154,6 +167,11 @@ export default function ServiceListingForm({
       ...values,
       priceMin: toOptionalNumber(priceMinText),
       priceMax: toOptionalNumber(priceMaxText),
+      ratePerKm: toOptionalNumber(ratePerKmText),
+      minimumFare: toOptionalNumber(minimumFareText),
+      additionalFee: toOptionalNumber(additionalFeeText),
+      availableFacilities: availableFacilitiesText.split(/\r?\n/).map((item) => item.trim()).filter(Boolean),
+      unavailableFacilities: unavailableFacilitiesText.split(/\r?\n/).map((item) => item.trim()).filter(Boolean),
       monthlyFeeMin: toOptionalNumber(feeMinText),
       monthlyFeeMax: toOptionalNumber(feeMaxText),
       fareMin: toOptionalNumber(fareMinText),
@@ -232,6 +250,12 @@ export default function ServiceListingForm({
                 {field('ভাড়ার সর্বনিম্ন মূল্য', <input type="number" min={0} value={priceMinText} onChange={(e) => setPriceMinText(e.target.value)} className={inputClass} />)}
                 {field('ভাড়ার সর্বোচ্চ মূল্য', <input type="number" min={0} value={priceMaxText} onChange={(e) => setPriceMaxText(e.target.value)} className={inputClass} />)}
                 {field('মূল্যের একক / শর্ত', <input value={values.priceNoteBn ?? ''} onChange={(e) => set('priceNoteBn', e.target.value)} className={inputClass} placeholder="যেমন: প্রতি কিলোমিটার / প্রতি দিন" />)}
+                {field('প্রতি কিলোমিটারের ভাড়া (৳)', <input type="number" min="0.01" max="1000000" step="0.01" value={ratePerKmText} onChange={(e) => setRatePerKmText(e.target.value)} className={inputClass} />, 'এটি বুকিং ফর্মের স্বয়ংক্রিয় ভাড়া-হিসাবের জন্য ব্যবহৃত হবে।')}
+                {field('সর্বনিম্ন ভাড়া (৳)', <input type="number" min="0" step="1" value={minimumFareText} onChange={(e) => setMinimumFareText(e.target.value)} className={inputClass} />, 'ঐচ্ছিক; হিসাব করা ভাড়া এর কম হলে এই ন্যূনতম ভাড়া দেখানো হবে।')}
+                {field('নির্ধারিত অতিরিক্ত চার্জ (৳)', <input type="number" min="0" step="0.01" value={additionalFeeText} onChange={(e) => setAdditionalFeeText(e.target.value)} className={inputClass} />, 'যেমন টোল/রাতের চার্জ; যোগ করলে নিচে কারণ লিখুন, এটি মোট হিসাবের সঙ্গে যোগ হবে।')}
+                {field('অতিরিক্ত চার্জের কারণ', <input maxLength={160} value={values.additionalFeeNoteBn ?? ''} onChange={(e) => set('additionalFeeNoteBn', e.target.value)} className={inputClass} />)}
+                {field('যে সুবিধাগুলো আছে (প্রতি লাইনে একটি)', <textarea rows={3} value={availableFacilitiesText} onChange={(e) => setAvailableFacilitiesText(e.target.value)} className={textAreaClass} />)}
+                {field('যে সুবিধাগুলো নেই (প্রতি লাইনে একটি)', <textarea rows={3} value={unavailableFacilitiesText} onChange={(e) => setUnavailableFacilitiesText(e.target.value)} className={textAreaClass} />)}
                 {field('উপলভ্য সময় (যদি সরবরাহকৃত)', <input value={values.availableTimeBn ?? ''} onChange={(e) => set('availableTimeBn', e.target.value)} className={inputClass} />)}
                 {field('গ্যালারি ছবি URL / path (প্রতি লাইনে একটি)', <div className="space-y-2"><textarea rows={4} value={photoText} onChange={(e) => setPhotoText(e.target.value)} className={textAreaClass} /><input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={(event) => void uploadImage(event, (url) => setPhotoText((current) => [current.trim(), url].filter(Boolean).join('\n')))} className="block min-h-11 w-full text-sm file:mr-3 file:min-h-10 file:rounded-md file:border-0 file:bg-admin-page file:px-3 file:font-semibold" /></div>, 'সর্বোচ্চ ১০টি ছবি। আপলোডের জন্য site স্টোরেজ ব্যবহৃত হয়।')}
                 <label className="flex min-h-11 items-center gap-3 text-sm"><input type="checkbox" checked={values.hasAc === true} onChange={(e) => set('hasAc', e.target.checked)} className="h-4 w-4 accent-admin-navy" />AC আছে (যাচাইকৃত হলে)</label>
@@ -242,6 +266,7 @@ export default function ServiceListingForm({
               <>
                 {field('যাত্রার শুরু *', <input required value={values.originBn ?? ''} onChange={(e) => set('originBn', e.target.value)} className={inputClass} />)}
                 {field('গন্তব্য *', <input required value={values.destinationBn ?? ''} onChange={(e) => set('destinationBn', e.target.value)} className={inputClass} />)}
+                {field('অপারেটর / বাস কোম্পানি', <input maxLength={160} value={values.operatorBn ?? ''} onChange={(e) => set('operatorBn', e.target.value)} className={inputClass} placeholder="যেমন: নির্দিষ্ট কোম্পানির নাম" />, 'নাম দিলে অপারেটর অনুযায়ীও খুঁজে পাওয়া যাবে।')}
                 {field('সময়সূচি (শুধু সরবরাহকৃত)', <input value={values.availableTimeBn ?? ''} onChange={(e) => set('availableTimeBn', e.target.value)} className={inputClass} />)}
                 {field('সর্বনিম্ন ভাড়া', <input type="number" min={0} value={fareMinText} onChange={(e) => setFareMinText(e.target.value)} className={inputClass} />)}
                 {field('সর্বোচ্চ ভাড়া', <input type="number" min={0} value={fareMaxText} onChange={(e) => setFareMaxText(e.target.value)} className={inputClass} />)}
@@ -250,6 +275,7 @@ export default function ServiceListingForm({
             )}
             {category === 'wifi' && (
               <>
+                {field('কভারেজ / এলাকার বিবরণ', <input maxLength={400} value={values.addressBn ?? ''} onChange={(e) => set('addressBn', e.target.value)} className={inputClass} placeholder="যেসব এলাকায় সার্ভিস দেয়" />)}
                 {field('স্পিড (Mbps)', <input type="number" min={1} value={speedText} onChange={(e) => setSpeedText(e.target.value)} className={inputClass} />)}
                 {field('মাসিক সর্বনিম্ন মূল্য', <input type="number" min={0} value={priceMinText} onChange={(e) => setPriceMinText(e.target.value)} className={inputClass} />)}
                 {field('মাসিক সর্বোচ্চ মূল্য', <input type="number" min={0} value={priceMaxText} onChange={(e) => setPriceMaxText(e.target.value)} className={inputClass} />)}
@@ -258,6 +284,7 @@ export default function ServiceListingForm({
             )}
             {category === 'coaching' && (
               <>
+                {field('ঠিকানা', <input maxLength={400} value={values.addressBn ?? ''} onChange={(e) => set('addressBn', e.target.value)} className={inputClass} placeholder="রোড, এলাকা, ময়মনসিংহ" />)}
                 {field('মাসিক সর্বনিম্ন ফি', <input type="number" min={0} value={feeMinText} onChange={(e) => setFeeMinText(e.target.value)} className={inputClass} />)}
                 {field('মাসিক সর্বোচ্চ ফি', <input type="number" min={0} value={feeMaxText} onChange={(e) => setFeeMaxText(e.target.value)} className={inputClass} />)}
                 {field('ক্লাস, বিষয় ও প্রস্তুতির ধরন', <div className="max-h-56 overflow-y-auto rounded-md border border-admin-border p-2">{taxonomy.map((item) => <label key={item.id} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={values.tags.includes(item.id)} onChange={() => toggleValue('tags', item.id)} className="h-4 w-4 accent-admin-navy" />{item.labelBn}</label>)}</div>, 'সূচি, শিক্ষক ও যোগ্যতার তথ্য কেবল সরবরাহকৃত হলে বিস্তারিত ঘরে লিখুন।')}

@@ -4,8 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Bookmark, ArrowLeft, Trash2, ExternalLink, Home, GraduationCap, Briefcase } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 
 export default function SavedPage() {
   const { savedListings, savedListingsLoading, savedListingsError, toggleSaveItem } = useAuth();
@@ -34,10 +32,7 @@ export default function SavedPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-mist-50">
-      <Navbar />
-
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 sm:py-12">
+    <div className="space-y-5">
         <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
           <Link href="/profile" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -156,9 +151,6 @@ export default function SavedPage() {
           </div>
         )}
         {actionError && <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{actionError}</p>}
-      </main>
-
-      <Footer />
     </div>
   );
 }

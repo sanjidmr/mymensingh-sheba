@@ -14,7 +14,6 @@ import {
   Flag,
   Users,
   ShieldCheck,
-  Heart,
   Star,
   Bell,
   Activity,
@@ -54,8 +53,7 @@ export type AdminBadgeKey =
   | 'reports'
   | 'requests'
   | 'verifications'
-  | 'notifications'
-  | 'bloodRequests';
+  | 'notifications';
 
 export interface AdminNavGroup {
   title: string;
@@ -97,13 +95,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         description: 'কর্মী প্রোফাইল ও সেবার তালিকা',
       },
       {
-        href: '/admin/blood',
-        label: 'রক্তের অনুরোধ',
-        icon: Heart,
-        badgeKey: 'bloodRequests',
-        description: 'জরুরি রক্তের অনুরোধ পর্যালোচনা',
-      },
-      {
         href: '/admin/blood/donors',
         label: 'রক্তদাতা প্রোফাইল',
         icon: Droplet,
@@ -120,6 +111,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         label: 'ডিরেক্টরি ও ক্যাটালগ',
         icon: LayoutGrid,
         description: 'কোচিং, WiFi, বাস ও যানবাহন',
+      },
+      {
+        href: '/admin/catalog/vehicle',
+        label: 'যানবাহন',
+        icon: Car,
+        description: 'যানবাহন তালিকা, প্রকাশনা, সুবিধা ও ভাড়া পরিচালনা',
       },
     ],
   },
@@ -209,9 +206,9 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       },
       {
         href: '/admin/vehicle-requests',
-        label: 'যানবাহন অনুরোধ',
+        label: 'যানবাহন বুকিং অনুরোধ',
         icon: Car,
-        description: 'গাড়ি, অটো ও সিএনজি ভাড়ার অনুরোধ',
+        description: 'গাড়ি, অটো ও CNG বুকিং অনুরোধ পর্যালোচনা ও পরিচালনা',
       },
       {
         href: '/admin/analytics',

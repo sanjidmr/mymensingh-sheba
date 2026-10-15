@@ -1,7 +1,7 @@
 'use client';
 import React, { useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Camera, Home, GraduationCap, Heart, Lock, LogOut, CheckCircle2, ShieldCheck, Bookmark, Bell, MessageCircle, LifeBuoy, FileText } from 'lucide-react';
+import { Camera, Home, GraduationCap, Heart, Lock, LogOut, CheckCircle2, ShieldCheck, Bookmark, Bell, MessageCircle, CircleAlert, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { MCC_AREAS, getAreaById } from '@/lib/locations';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
@@ -254,9 +254,9 @@ function AccountLinksCard() {
   const links = [
     { href: '/profile/saved', label: 'সংরক্ষিত পোস্ট', detail: 'আপনার পছন্দের পোস্ট', icon: Bookmark },
     { href: '/dashboard/notifications', label: 'নোটিফিকেশন', detail: 'পোস্ট ও অ্যাকাউন্ট আপডেট', icon: Bell },
-    { href: '/dashboard/messages', label: 'অ্যাডমিনকে মেসেজ ও অভিযোগ', detail: 'সহায়তা ও অভিযোগের ইতিহাস', icon: MessageCircle },
+    { href: '/dashboard/messages', label: 'বার্তা', detail: 'সাপোর্ট টিমের সাথে কথোপকথন', icon: MessageCircle },
+    { href: '/dashboard/complaints', label: 'অভিযোগ', detail: 'অভিযোগ জানান ও ফলো করুন', icon: CircleAlert },
     { href: '/profile/requests', label: 'সেবা অনুরোধ', detail: 'আপনার জমা দেওয়া অনুরোধ', icon: FileText },
-    { href: '/help', label: 'সাহায্য কেন্দ্র', detail: 'প্রশ্ন ও যোগাযোগ', icon: LifeBuoy },
   ];
   return (
     <section className="rounded-2xl border border-brand-100 bg-white p-4" aria-labelledby="account-links-heading">

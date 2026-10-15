@@ -1,8 +1,9 @@
 import type { Metadata } from 'next';
-import CustomerMessages from './CustomerMessages';
+import { redirect } from 'next/navigation';
+import SupportCenter from '@/components/support/SupportCenter';
 
 export const metadata: Metadata = {
-  title: 'সাপোর্ট বার্তা — ময়মনসিংহ শেবা',
+  title: 'বার্তা — ময়মনসিংহ শেবা',
   robots: { index: false, follow: false },
 };
 
@@ -11,7 +12,10 @@ export default async function Page({
 }: {
   searchParams: Promise<{ subject?: string }>;
 }) {
+  // Older links and bookmarks pointed complaints at the shared messages page.
+  // Complaints now have their own home, so send those visitors to the right place.
   const { subject } = await searchParams;
-  const initialSubject = subject === 'complaint' ? 'complaint' : 'general';
-  return <CustomerMessages key={initialSubject} initialSubject={initialSubject} />;
+  if (subject === 'complaint') redirect('/dashboard/complaints');
+
+  return <SupportCenter mode="messages" />;
 }

@@ -29,7 +29,7 @@ import {
   Wind,
 } from 'lucide-react';
 import type { ServiceListing, VehicleKind } from '@/lib/catalog-types';
-import { areaNames, toBn, bnTaka } from '@/lib/catalog-types';
+import { areaNames, toBn, bnTaka, bnTakaDecimal } from '@/lib/catalog-types';
 
 // ---------------------------------------------------------------------------
 // Gallery
@@ -173,14 +173,36 @@ export function VehicleSpecGrid({ listing }: { listing: ServiceListing }) {
   }
 
   return (
-    <section className="rounded-2xl border border-mist-200 bg-white p-4 sm:p-5">
-      <h2 className="text-[14.5px] font-extrabold text-ink-900">বিস্তারিত</h2>
-      <dl className="mt-3.5 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3">
-        {specs.map((spec, i) => (
-          <SpecCell key={`${spec.labelBn}-${i}`} spec={spec} />
-        ))}
-      </dl>
-    </section>
+    <div className="space-y-3">
+      <section className="rounded-2xl border border-mist-200 bg-white p-4 sm:p-5">
+        <h2 className="text-[14.5px] font-extrabold text-ink-900">বিস্তারিত</h2>
+        <dl className="mt-3.5 grid grid-cols-2 gap-x-3 gap-y-4 sm:grid-cols-3">
+          {specs.map((spec, i) => (
+            <SpecCell key={`${spec.labelBn}-${i}`} spec={spec} />
+          ))}
+        </dl>
+      </section>
+      {((listing.availableFacilities?.length ?? 0) > 0 || (listing.unavailableFacilities?.length ?? 0) > 0) && (
+        <section className="grid gap-3 rounded-2xl border border-mist-200 bg-white p-4 sm:grid-cols-2 sm:p-5">
+          {listing.availableFacilities && listing.availableFacilities.length > 0 && (
+            <div>
+              <h2 className="text-sm font-extrabold text-ink-900">যে সুবিধাগুলো আছে</h2>
+              <ul className="mt-2 space-y-1.5 text-[13px] text-ink-700">
+                {listing.availableFacilities.map((facility, index) => <li key={`${facility}-${index}`}>✓ {facility}</li>)}
+              </ul>
+            </div>
+          )}
+          {listing.unavailableFacilities && listing.unavailableFacilities.length > 0 && (
+            <div>
+              <h2 className="text-sm font-extrabold text-ink-900">যে সুবিধাগুলো নেই</h2>
+              <ul className="mt-2 space-y-1.5 text-[13px] text-ink-700">
+                {listing.unavailableFacilities.map((facility, index) => <li key={`${facility}-${index}`}>— {facility}</li>)}
+              </ul>
+            </div>
+          )}
+        </section>
+      )}
+    </div>
   );
 }
 
@@ -219,6 +241,34 @@ function SpecCell({ spec }: { spec: Spec }) {
 export function VehiclePricing({ listing }: { listing: ServiceListing }) {
   const { priceMin, priceMax, priceNoteBn } = listing;
 
+  if (listing.ratePerKm != null) {
+    return (
+      <section className="rounded-2xl border border-brand-200 bg-brand-50 p-4 sm:p-5">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-brand-600">ভাড়া</p>
+        <p className="mt-1 text-xl font-black leading-tight text-brand-900 sm:text-2xl">
+          {bnTakaDecimal(listing.ratePerKm)} / কিমি
+        </p>
+        {listing.minimumFare != null && (
+          <p className="mt-1 text-[12.5px] leading-relaxed text-brand-800/85">
+            সর্বনিম্ন ভাড়া: {bnTakaDecimal(listing.minimumFare)}
+          </p>
+        )}
+        {listing.additionalFee != null && listing.additionalFee > 0 && (
+          <p className="mt-1 text-[12.5px] leading-relaxed text-brand-800/85">
+            অতিরিক্ত চার্জ: {bnTakaDecimal(listing.additionalFee)}
+            {listing.additionalFeeNoteBn ? ` · ${listing.additionalFeeNoteBn}` : ''}
+          </p>
+        )}
+        {listing.seatCount != null && (
+          <p className="mt-2.5 flex items-center gap-1.5 text-[12px] text-brand-800/70">
+            <Armchair className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            সর্বোচ্চ {toBn(listing.seatCount)} জনের জন্য উপযোগী
+          </p>
+        )}
+      </section>
+    );
+  }
+
   const figure = (() => {
     if (priceMin != null && priceMax != null && priceMin !== priceMax) {
       return `${bnTaka(priceMin)} – ${bnTaka(priceMax)}`;
@@ -256,6 +306,12 @@ export function VehiclePricing({ listing }: { listing: ServiceListing }) {
             সরাসরি জানানো হবে।
           </p>
         </>
+      )}
+      {listing.additionalFee != null && listing.additionalFee > 0 && (
+        <p className="mt-2 text-[12.5px] leading-relaxed text-brand-800/85">
+          অতিরিক্ত চার্জ: {bnTakaDecimal(listing.additionalFee)}
+          {listing.additionalFeeNoteBn ? ` · ${listing.additionalFeeNoteBn}` : ''}
+        </p>
       )}
       {listing.seatCount != null ? (
         <p className="mt-2.5 flex items-center gap-1.5 text-[12px] text-brand-800/70">

@@ -188,7 +188,6 @@ function AnalyticsSections({ data }: { data: AdminAnalytics }) {
         <MetricList title="সার্ভিস অনুরোধ" description="service_slug ও সংরক্ষিত বর্তমান status অনুযায়ী জমা হওয়া অনুরোধ।" rows={data.serviceRequests} />
         <MetricList title="To-Let অনুসন্ধান" rows={data.toletRequests} />
         <MetricList title="যানবাহন অনুরোধ" description="এগুলো অনুরোধের রেকর্ড; completed booking নির্দেশ করে না।" rows={data.vehicleRequests} />
-        <MetricList title="রক্তের অনুরোধ" rows={data.bloodRequests} />
         <MetricList title="রক্তদাতা (বর্তমান অবস্থা)" description="তারিখ-ফিল্টারবিহীন বর্তমান profile status; দ্বিতীয় সংখ্যা অনুমোদিত ও উপলভ্য হিসেবে চিহ্নিত দাতা।" rows={data.bloodDonors} secondaryLabel="উপলভ্য" />
         <MetricList title="রিপোর্ট ও অভিযোগ" rows={data.reports} />
         <MetricList title="To-Let engagement events" description="রেকর্ডকৃত view ও button click; এগুলো বাস্তব ফোনকল, বুকিং বা সেবা সম্পন্ন হওয়ার প্রমাণ নয়।" rows={data.toletEvents} />

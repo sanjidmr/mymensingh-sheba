@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/auth-context';
 import { bnRelativeTime } from '@/lib/catalog-types';
 
 export default function DashboardNotifications() {
-  const { notifications, notificationsError, markNotificationRead, markNotificationsReadAll } = useAuth();
+  const { notifications, notificationsError, notificationsLoading, markNotificationRead, markNotificationsReadAll } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const unread = notifications.filter((n) => !n.isRead).length;
@@ -57,7 +57,13 @@ export default function DashboardNotifications() {
       {notificationsError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{notificationsError}</p>}
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
       <div className="divide-y divide-brand-100/70 overflow-hidden rounded-2xl border border-brand-100 bg-white">
-        {notifications.length === 0 ? (
+        {notificationsLoading ? (
+          <div className="space-y-3 p-4" role="status" aria-label="নোটিফিকেশন লোড হচ্ছে">
+            {[0, 1, 2].map((row) => (
+              <div key={row} className="h-16 animate-pulse rounded-xl bg-mist-100" />
+            ))}
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="p-8 text-center">
             <Bell className="mx-auto h-10 w-10 text-brand-200" />
             <p className="mt-2 text-[13px] font-bold text-ink-900">কোনো নোটিফিকেশন নেই</p>

@@ -14,11 +14,14 @@ import {
   Info,
 } from 'lucide-react';
 import {
-  adminFetchToletAnalytics,
-  describeToletStats,
+  adminFetchToletAnalyticsReport,
 } from '@/lib/tolet-tracking';
-import type { ToletListingStats } from '@/lib/tolet-types';
+import type {
+  ToletAnalyticsListing,
+  ToletListingStats,
+} from '@/lib/tolet-types';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
+import { getAreaById } from '@/lib/locations';
 import { cn } from '@/lib/utils';
 
 /**
@@ -42,6 +45,13 @@ import { cn } from '@/lib/utils';
 function contactRate(stats: ToletListingStats): number | null {
   if (!stats.views) return null;
   return Math.round((stats.contactClicks / stats.views) * 100);
+}
+
+function localDateDaysAgo(days: number): string {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() - days);
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
 }
 
 function StatTile({
@@ -84,15 +94,21 @@ export function ToletListingStatsPanel({
   listingId: string;
   className?: string;
 }) {
-  const [stats, setStats] = useState<ToletListingStats | null>(null);
+  const [result, setResult] = useState<{ listingId: string; stats: ToletListingStats } | null>(null);
+  const [failure, setFailure] = useState<{ listingId: string; message: string } | null>(null);
 
   useEffect(() => {
     let active = true;
     (async () => {
-      const rows = await adminFetchToletAnalytics(200);
+      const report = await adminFetchToletAnalyticsReport({
+        from: localDateDaysAgo(29),
+        to: localDateDaysAgo(0),
+        period: 'day',
+      });
       if (!active) return;
-      setStats(
-        rows.find((r) => r.listingId === listingId) ?? {
+      setResult({
+        listingId,
+        stats: report.listings.find((r) => r.listingId === listingId) ?? {
           listingId,
           views: 0,
           callClicks: 0,
@@ -102,16 +118,24 @@ export function ToletListingStatsPanel({
           shares: 0,
           uniqueVisitors: 0,
           lastActivityAt: null,
-        }
-      );
-    })().catch(() => {
-      if (active) setStats(null);
+        },
+      });
+      setFailure(null);
+    })().catch((error: unknown) => {
+      if (active) {
+        setFailure({
+          listingId,
+          message: error instanceof Error ? error.message : 'পরিসংখ্যান লোড করা যায়নি।',
+        });
+      }
     });
     return () => {
       active = false;
     };
   }, [listingId]);
 
+  const stats = result?.listingId === listingId ? result.stats : null;
+  const currentFailure = failure?.listingId === listingId ? failure.message : '';
   const rate = stats ? contactRate(stats) : null;
 
   return (
@@ -126,7 +150,9 @@ export function ToletListingStatsPanel({
         </h3>
       </div>
 
-      {!stats ? (
+      {currentFailure ? (
+        <p role="alert" className="py-4 text-xs text-rose-700">{currentFailure}</p>
+      ) : !stats ? (
         <div className="flex items-center gap-2 py-4 text-xs text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           <span>পরিসংখ্যান লোড হচ্ছে…</span>
@@ -199,26 +225,63 @@ export function ToletListingStatsPanel({
  * above an expensive flat that real tenants rang about.
  */
 export function ToletAnalyticsTable({ limit = 25 }: { limit?: number }) {
-  const [rows, setRows] = useState<ToletListingStats[] | null>(null);
-  const [failed, setFailed] = useState(false);
+  const [report, setReport] = useState<{
+    key: string;
+    listings: ToletAnalyticsListing[];
+    trends: Array<{ date: string; views: number; callClicks: number; whatsappClicks: number }>;
+    totals: { views: number; callClicks: number; whatsappClicks: number };
+  } | null>(null);
+  const [failure, setFailure] = useState<{ key: string; message: string } | null>(null);
+  const [fromDate, setFromDate] = useState(() => localDateDaysAgo(29));
+  const [toDate, setToDate] = useState(() => localDateDaysAgo(0));
+  const [period, setPeriod] = useState<'day' | 'week' | 'month'>('day');
+  const [sortBy, setSortBy] = useState<'callClicks' | 'views'>('callClicks');
+  const [listingPage, setListingPage] = useState(1);
+  const filterKey = `${fromDate}:${toDate}:${period}`;
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const data = await adminFetchToletAnalytics(limit);
+        const data = await adminFetchToletAnalyticsReport({
+          from: fromDate,
+          to: toDate,
+          period,
+        });
         if (!active) return;
-        setRows(data);
-      } catch {
-        if (active) setFailed(true);
+        setReport({
+          key: filterKey,
+          listings: data.listings,
+          trends: data.trends,
+          totals: data.totals,
+        });
+        setFailure(null);
+      } catch (error) {
+        if (!active) return;
+        setFailure({
+          key: filterKey,
+          message: error instanceof Error ? error.message : 'পরিসংখ্যান লোড করা যায়নি।',
+        });
       }
     })();
     return () => {
       active = false;
     };
-  }, [limit]);
+  }, [fromDate, toDate, period, filterKey]);
 
-  const allZero = rows !== null && rows.length === 0;
+  const currentReport = report?.key === filterKey ? report : null;
+  const rows = currentReport?.listings ?? null;
+  const trends = currentReport?.trends ?? null;
+  const currentFailure = failure?.key === filterKey ? failure.message : '';
+  const loading = !rows && !currentFailure;
+  const rankedRows = [...(rows ?? [])].sort((a, b) =>
+    sortBy === 'views'
+      ? b.views - a.views || b.callClicks - a.callClicks
+      : b.callClicks - a.callClicks || b.views - a.views
+  );
+  const pageCount = Math.max(1, Math.ceil(rankedRows.length / limit));
+  const pageRows = rankedRows.slice((listingPage - 1) * limit, listingPage * limit);
+  const totals = currentReport?.totals ?? { views: 0, callClicks: 0, whatsappClicks: 0 };
 
   return (
     <section
@@ -232,88 +295,210 @@ export function ToletAnalyticsTable({ limit = 25 }: { limit?: number }) {
         </h3>
       </div>
       <p className="mb-4 text-[11px] leading-relaxed text-slate-500">
-        যোগাযোগের বাটন চাপার সংখ্যা অনুযায়ী সাজানো। ভিউ শুধু দেখা বোঝায়; ভাড়াটিয়ার সাথে প্রকৃত যোগাযোগের
-        কাছাকাছি পরিমাপ হলো বাটন চাপা।
+        অনুমোদিত বিজ্ঞাপনের প্রকৃত ডেটাবেজ ইভেন্ট। কলের সংখ্যা নয়—“কল” হলো কল বাটন চাপার সংখ্যা।
       </p>
 
-      {failed ? (
-        <p className="py-6 text-center text-xs text-slate-500">
-          পরিসংখ্যান লোড করা যায়নি।
-        </p>
-      ) : !rows ? (
+      <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_180px_auto] sm:items-end">
+        <label className="text-[11px] font-semibold text-slate-600">
+          শুরু
+          <input
+            type="date"
+            value={fromDate}
+            max={toDate}
+            onChange={(event) => {
+              setListingPage(1);
+              setFromDate(event.target.value);
+            }}
+            className="mt-1 block min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs"
+          />
+        </label>
+        <label className="text-[11px] font-semibold text-slate-600">
+          শেষ
+          <input
+            type="date"
+            value={toDate}
+            min={fromDate}
+            max={localDateDaysAgo(0)}
+            onChange={(event) => {
+              setListingPage(1);
+              setToDate(event.target.value);
+            }}
+            className="mt-1 block min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs"
+          />
+        </label>
+        <label className="text-[11px] font-semibold text-slate-600">
+          ট্রেন্ডের সময়
+          <select
+            value={period}
+            onChange={(event) => {
+              setListingPage(1);
+              setPeriod(event.target.value as 'day' | 'week' | 'month');
+            }}
+            className="mt-1 block min-h-10 w-full rounded-lg border border-slate-200 bg-white px-2 text-xs"
+          >
+            <option value="day">দৈনিক</option>
+            <option value="week">সাপ্তাহিক</option>
+            <option value="month">মাসিক</option>
+          </select>
+        </label>
+        <span className="min-h-10 self-end pb-2 text-[10px] text-slate-400">
+          সর্বোচ্চ ৩৬৬ দিনের তথ্য
+        </span>
+      </div>
+
+      {currentFailure ? (
+        <p role="alert" className="py-6 text-center text-xs text-rose-700">{currentFailure}</p>
+      ) : loading && !rows ? (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-slate-500">
           <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
           <span>লোড হচ্ছে…</span>
         </div>
-      ) : allZero ? (
-        // Being honest beats showing a tidy table of zeroes that reads like
-        // "nobody is interested" when the truth is "nothing is being recorded".
-        <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-5 text-center">
-          <p className="text-xs font-semibold text-slate-700">এখনো কোনো ইভেন্ট রেকর্ড হয়নি।</p>
-        </div>
       ) : (
-        <div className="-mx-1 overflow-x-auto px-1">
-          <table className="w-full min-w-[42rem] border-collapse text-left">
-            <thead>
-              <tr className="border-b border-slate-200 text-[11px] font-semibold text-slate-500">
-                <th scope="col" className="py-2 pr-3">বিজ্ঞাপন</th>
-                <th scope="col" className="px-2 py-2 text-right">ভিউ</th>
-                <th scope="col" className="px-2 py-2 text-right">ভিজিটর</th>
-                <th scope="col" className="px-2 py-2 text-right">কল বাটন</th>
-                <th scope="col" className="px-2 py-2 text-right">হোয়াটসঅ্যাপ বাটন</th>
-                <th scope="col" className="px-2 py-2 text-right">মোট যোগাযোগ</th>
-                <th scope="col" className="px-2 py-2 text-right">রেট</th>
-                <th scope="col" className="px-2 py-2 text-right">পছন্দ</th>
-                <th scope="col" className="py-2 pl-2 text-right">শেয়ার</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const meta = describeToletStats(row);
-                const rate = contactRate(row);
-                return (
-                  <tr key={row.listingId} className="border-b border-slate-100 last:border-0">
-                    <th scope="row" className="max-w-[16rem] py-2.5 pr-3 font-normal">
-                      <Link
-                        href={`/admin/tolet/${row.listingId}`}
-                        className="block truncate text-xs font-semibold text-slate-900 hover:text-emerald-800 hover:underline"
-                      >
-                        {meta.labelBn}
-                      </Link>
-                      <span className="block truncate text-[10.5px] text-slate-400">
-                        {meta.areaLabelBn} • {meta.typeLabelBn}
-                      </span>
-                    </th>
-                    <td className="px-2 py-2.5 text-right text-xs tabular-nums text-slate-600">
-                      {toBengaliDigits(row.views)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-xs tabular-nums text-slate-600">
-                      {toBengaliDigits(row.uniqueVisitors)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-xs font-bold tabular-nums text-emerald-800">
-                      {toBengaliDigits(row.callClicks)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-xs font-bold tabular-nums text-emerald-800">
-                      {toBengaliDigits(row.whatsappClicks)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-xs font-bold tabular-nums text-slate-900">
-                      {toBengaliDigits(row.contactClicks)}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-xs tabular-nums text-slate-600">
-                      {rate === null ? '—' : `${toBengaliDigits(rate)}%`}
-                    </td>
-                    <td className="px-2 py-2.5 text-right text-xs tabular-nums text-slate-600">
-                      {toBengaliDigits(row.favorites)}
-                    </td>
-                    <td className="py-2.5 pl-2 text-right text-xs tabular-nums text-slate-600">
-                      {toBengaliDigits(row.shares)}
-                    </td>
+        <>
+          <dl className="mb-4 grid grid-cols-3 gap-2">
+            <StatTile icon={Eye} labelBn="মোট ভিউ" value={totals.views} />
+            <StatTile icon={Phone} labelBn="কল বাটন চাপা" value={totals.callClicks} tone="emerald" />
+            <StatTile icon={MessageCircle} labelBn="WhatsApp বাটন" value={totals.whatsappClicks} tone="emerald" />
+          </dl>
+
+          <section aria-labelledby="tolet-trend-heading" className="mb-5 rounded-xl border border-slate-200 p-3">
+            <div className="mb-2 flex items-center gap-2">
+              <h4 id="tolet-trend-heading" className="text-xs font-bold text-slate-800">
+                {period === 'day' ? 'দৈনিক' : period === 'week' ? 'সাপ্তাহিক' : 'মাসিক'} ভিউ ও যোগাযোগ ট্রেন্ড
+              </h4>
+              {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-slate-400" aria-label="লোড হচ্ছে" />}
+            </div>
+            {!trends?.length ? (
+              <p className="py-3 text-center text-[11px] text-slate-500">এই সময়সীমায় কোনো ইভেন্ট নেই।</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full min-w-[28rem] text-left text-[11px]">
+                  <thead className="text-slate-500">
+                    <tr className="border-b border-slate-100">
+                      <th className="py-2 pr-3">তারিখ</th>
+                      <th className="px-2 py-2 text-right">ভিউ</th>
+                      <th className="px-2 py-2 text-right">কল বাটন চাপা</th>
+                      <th className="px-2 py-2 text-right">WhatsApp চাপা</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {trends.map((trend) => (
+                      <tr key={trend.date} className="border-b border-slate-50 last:border-0">
+                        <th className="py-2 pr-3 font-medium text-slate-700">{trend.date}</th>
+                        <td className="px-2 py-2 text-right tabular-nums">{toBengaliDigits(trend.views)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-emerald-800">{toBengaliDigits(trend.callClicks)}</td>
+                        <td className="px-2 py-2 text-right tabular-nums text-emerald-800">{toBengaliDigits(trend.whatsappClicks)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </section>
+
+          <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+            <h4 className="text-xs font-bold text-slate-800">বিজ্ঞাপনভিত্তিক ফলাফল</h4>
+            <div className="flex gap-1.5" role="group" aria-label="বিজ্ঞাপন সাজান">
+              <button
+                type="button"
+                aria-pressed={sortBy === 'views'}
+                onClick={() => {
+                  setListingPage(1);
+                  setSortBy('views');
+                }}
+                className={cn('min-h-9 rounded-lg border px-2.5 text-[11px] font-semibold', sortBy === 'views' ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-slate-200 text-slate-600')}
+              >
+                সর্বাধিক দেখা
+              </button>
+              <button
+                type="button"
+                aria-pressed={sortBy === 'callClicks'}
+                onClick={() => {
+                  setListingPage(1);
+                  setSortBy('callClicks');
+                }}
+                className={cn('min-h-9 rounded-lg border px-2.5 text-[11px] font-semibold', sortBy === 'callClicks' ? 'border-emerald-800 bg-emerald-800 text-white' : 'border-slate-200 text-slate-600')}
+              >
+                সর্বাধিক কল বাটন
+              </button>
+            </div>
+          </div>
+
+          {!rankedRows.length ? (
+            <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50/60 p-5 text-center">
+              <p className="text-xs font-semibold text-slate-700">এই সময়সীমায় কোনো অনুমোদিত বিজ্ঞাপন বা ইভেন্ট নেই।</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[54rem] border-collapse text-left">
+                <thead>
+                  <tr className="border-b border-slate-200 text-[11px] font-semibold text-slate-500">
+                    <th scope="col" className="py-2 pr-3">বিজ্ঞাপন / আইডি</th>
+                    <th scope="col" className="px-2 py-2">মালিক</th>
+                    <th scope="col" className="px-2 py-2">অবস্থান</th>
+                    <th scope="col" className="px-2 py-2 text-right">ভিউ</th>
+                    <th scope="col" className="px-2 py-2 text-right">কল বাটন</th>
+                    <th scope="col" className="px-2 py-2 text-right">WhatsApp</th>
+                    <th scope="col" className="py-2 pl-2 text-right">সর্বশেষ কার্যকলাপ</th>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                </thead>
+                <tbody>
+                  {pageRows.map((row) => {
+                    const areaName = row.areaId ? getAreaById(row.areaId)?.nameBn ?? row.areaId : '—';
+                    const location = [areaName, row.specificAddress].filter(Boolean).join(' • ');
+                    return (
+                      <tr key={row.listingId} className="border-b border-slate-100 last:border-0">
+                        <th scope="row" className="max-w-[15rem] py-2.5 pr-3 font-normal">
+                          {row.status ? (
+                            <Link href={`/admin/tolet/${row.listingId}`} className="block truncate text-xs font-semibold text-slate-900 hover:text-emerald-800 hover:underline">
+                              {row.title}
+                            </Link>
+                          ) : (
+                            <span className="block truncate text-xs font-semibold text-slate-700">{row.title}</span>
+                          )}
+                          <span className="block truncate text-[10px] text-slate-400">{row.listingId}</span>
+                        </th>
+                        <td className="max-w-[10rem] truncate px-2 py-2.5 text-xs text-slate-600">{row.ownerName || '—'}</td>
+                        <td className="max-w-[14rem] truncate px-2 py-2.5 text-xs text-slate-600" title={location}>{location}</td>
+                        <td className="px-2 py-2.5 text-right text-xs tabular-nums text-slate-600">{toBengaliDigits(row.views)}</td>
+                        <td className="px-2 py-2.5 text-right text-xs font-bold tabular-nums text-emerald-800">{toBengaliDigits(row.callClicks)}</td>
+                        <td className="px-2 py-2.5 text-right text-xs tabular-nums text-slate-600">{toBengaliDigits(row.whatsappClicks)}</td>
+                        <td className="py-2.5 pl-2 text-right text-[10px] tabular-nums text-slate-500">
+                          {row.lastActivityAt ? new Date(row.lastActivityAt).toLocaleString('bn-BD', { dateStyle: 'medium', timeStyle: 'short' }) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+          {rankedRows.length > limit && (
+            <nav aria-label="বিশ্লেষণ ফলাফল পৃষ্ঠা" className="mt-3 flex items-center justify-between gap-2">
+              <span className="text-[10px] text-slate-500">
+                {toBengaliDigits((listingPage - 1) * limit + 1)}–{toBengaliDigits(Math.min(listingPage * limit, rankedRows.length))} / {toBengaliDigits(rankedRows.length)}
+              </span>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  disabled={listingPage <= 1}
+                  onClick={() => setListingPage((page) => Math.max(1, page - 1))}
+                  className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-semibold text-slate-700 disabled:opacity-40"
+                >
+                  আগের
+                </button>
+                <button
+                  type="button"
+                  disabled={listingPage >= pageCount}
+                  onClick={() => setListingPage((page) => Math.min(pageCount, page + 1))}
+                  className="min-h-9 rounded-lg border border-slate-200 px-2.5 text-[11px] font-semibold text-slate-700 disabled:opacity-40"
+                >
+                  পরের
+                </button>
+              </div>
+            </nav>
+          )}
+        </>
       )}
     </section>
   );

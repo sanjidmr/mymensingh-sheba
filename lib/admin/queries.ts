@@ -297,7 +297,6 @@ export interface AdminBadgeCounts {
   requests: number;
   verifications: number;
   notifications: number;
-  bloodRequests: number;
   unavailable: boolean;
   error?: string;
 }
@@ -319,7 +318,6 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
       requests: 0,
       verifications: 0,
       notifications: 0,
-      bloodRequests: 0,
       unavailable: true,
     };
   }
@@ -332,7 +330,6 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     requests,
     verifications,
     notifications,
-    bloodRequests,
   ] = await Promise.all([
     client.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'new'),
     client.from('community_posts').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
@@ -353,10 +350,6 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
       .select('id', { count: 'exact', head: true })
       .eq('target_role', 'admin')
       .eq('is_read', false),
-    client
-      .from('blood_requests')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending_review'),
   ]);
 
   const failedQuery = [
@@ -366,7 +359,6 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     requests,
     verifications,
     notifications,
-    bloodRequests,
   ].find((result) => result.error);
   if (failedQuery?.error) {
     return {
@@ -376,7 +368,6 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
       requests: 0,
       verifications: 0,
       notifications: 0,
-      bloodRequests: 0,
       unavailable: true,
       error: failedQuery.error.message,
     };
@@ -389,7 +380,6 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     requests: requests.count ?? 0,
     verifications: verifications.count ?? 0,
     notifications: notifications.count ?? 0,
-    bloodRequests: bloodRequests.count ?? 0,
     unavailable: false,
   };
 }
@@ -1940,6 +1930,17 @@ export interface AdminVehicleRequestRow {
   trip_duration: string | null;
   budget: number | null;
   notes: string | null;
+  estimated_distance_km: number | null;
+  distance_source: 'road_route' | 'manual_estimate' | null;
+  rate_per_km: number | null;
+  minimum_fare: number | null;
+  estimated_fare: number | null;
+  additional_fee: number | null;
+  additional_fee_note_bn: string | null;
+  assigned_vehicle_listing_id: string | null;
+  assigned_driver_name: string | null;
+  assigned_driver_phone: string | null;
+  admin_notes: string | null;
   status: string;
   created_at: string;
   updated_at: string;
@@ -1958,7 +1959,7 @@ export async function fetchVehicleRequests(params: ListParams): Promise<Paged<Ad
   let query = client
     .from('vehicle_requests')
     .select(
-      'id, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, status, created_at, updated_at',
+      'id, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, estimated_distance_km, distance_source, rate_per_km, minimum_fare, estimated_fare, additional_fee, additional_fee_note_bn, assigned_vehicle_listing_id, assigned_driver_name, assigned_driver_phone, admin_notes, status, created_at, updated_at',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
@@ -2010,13 +2011,13 @@ export async function fetchVehicleRequests(params: ListParams): Promise<Paged<Ad
 }
 
 export async function fetchVehicleRequestCounts(): Promise<{
-  counts: { total: number; new: number; contacted: number; closed: number };
+  counts: { total: number; new: number; reviewing: number; approved: number; rejected: number; contacted: number; closed: number };
   error?: string;
 }> {
   const admin = await getAdminDataClient();
-  if (!admin) return { counts: { total: 0, new: 0, contacted: 0, closed: 0 }, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
+  if (!admin) return { counts: { total: 0, new: 0, reviewing: 0, approved: 0, rejected: 0, contacted: 0, closed: 0 }, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
 
-  const statuses = ['new', 'contacted', 'closed'] as const;
+  const statuses = ['new', 'reviewing', 'approved', 'rejected', 'contacted', 'closed'] as const;
   const results = await Promise.all([
     admin.client.from('vehicle_requests').select('id', { count: 'exact', head: true }),
     ...statuses.map((status) => admin.client
@@ -2025,13 +2026,16 @@ export async function fetchVehicleRequestCounts(): Promise<{
       .eq('status', status)),
   ]);
   const failed = results.find((result) => result.error);
-  if (failed?.error) return { counts: { total: 0, new: 0, contacted: 0, closed: 0 }, error: failed.error.message };
+  if (failed?.error) return { counts: { total: 0, new: 0, reviewing: 0, approved: 0, rejected: 0, contacted: 0, closed: 0 }, error: failed.error.message };
   return {
     counts: {
       total: results[0].count ?? 0,
       new: results[1].count ?? 0,
-      contacted: results[2].count ?? 0,
-      closed: results[3].count ?? 0,
+      reviewing: results[2].count ?? 0,
+      approved: results[3].count ?? 0,
+      rejected: results[4].count ?? 0,
+      contacted: results[5].count ?? 0,
+      closed: results[6].count ?? 0,
     },
   };
 }
@@ -2048,7 +2052,7 @@ export async function fetchVehicleRequestById(id: string): Promise<{
   const { data, error } = await admin.client
     .from('vehicle_requests')
     .select(
-      'id, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, status, created_at, updated_at'
+      'id, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, estimated_distance_km, distance_source, rate_per_km, minimum_fare, estimated_fare, additional_fee, additional_fee_note_bn, assigned_vehicle_listing_id, assigned_driver_name, assigned_driver_phone, admin_notes, status, created_at, updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -2061,6 +2065,7 @@ export async function fetchVehicleRequestById(id: string): Promise<{
   } catch (attachError) {
     return { row: null, unavailable: true, error: attachError instanceof Error ? attachError.message : 'যানবাহনের তালিকা সংযুক্ত করা যায়নি।' };
   }
+
   if (row.customer_id) {
     const { data: profile, error: profileError } = await admin.client
       .from('profiles')
@@ -2071,6 +2076,19 @@ export async function fetchVehicleRequestById(id: string): Promise<{
     row.customer_full_name = profile?.full_name ?? null;
   }
   return { row, unavailable: false };
+}
+
+export async function fetchAssignableVehicles(): Promise<Array<{ id: string; title_bn: string }>> {
+  const admin = await getAdminDataClient();
+  if (!admin) throw new Error('অ্যাডমিন অনুমতি যাচাই করা যায়নি।');
+  const { data, error } = await admin.client
+    .from('service_listings')
+    .select('id, title_bn')
+    .eq('category', 'vehicle')
+    .eq('is_active', true)
+    .order('title_bn', { ascending: true });
+  if (error) throw new Error(`উপলভ্য যানবাহন লোড ব্যর্থ হয়েছে: ${error.message}`);
+  return data ?? [];
 }
 
 async function attachVehicleRequestListingData(
@@ -2215,7 +2233,7 @@ export function notificationTargetLink(relatedType: string | null, relatedId: st
   const id = relatedId ? encodeURIComponent(relatedId) : '';
   switch (relatedType) {
     case 'service_request': return id ? `/admin/requests/${id}` : '/admin/requests';
-    case 'blood_request': return id ? `/admin/blood/${id}` : '/admin/blood';
+    case 'blood_request': return '/admin/blood/donors';
     case 'vehicle_request': return id ? `/admin/vehicle-requests/${id}` : '/admin/vehicle-requests';
     case 'contact_message': return id ? `/admin/messages/${id}` : '/admin/messages';
     case 'community_post': return id ? `/admin/posts/${id}` : '/admin/posts';
@@ -2354,7 +2372,7 @@ export async function fetchReports(params: ListParams): Promise<Paged<AdminRepor
     build('listing_reports', 'listing', () => 'বাসা ভাড়া বিজ্ঞাপন', () => '/admin/tolet'),
     build('staff_profile_reports', 'staff', () => 'কর্মী প্রোফাইল', () => '/admin/services'),
     build('tutor_reports', 'tutor', () => 'গৃহশিক্ষক প্রোফাইল', () => '/admin/verifications'),
-    build('blood_donor_reports', 'donor', () => 'রক্তদাতা প্রোফাইল', () => '/admin/blood'),
+    build('blood_donor_reports', 'donor', () => 'রক্তদাতা প্রোফাইল', () => '/admin/blood/donors'),
     build('community_post_reports', 'community_post', () => 'কমিউনিটি পোস্ট', () => '/admin/posts'),
   ]);
 
@@ -2398,6 +2416,10 @@ export interface AdminServiceListingRow {
   fare_max: number | null;
   origin_bn: string | null;
   destination_bn: string | null;
+  operator_bn: string | null;
+  address_bn: string | null;
+  rating_avg: number;
+  rating_count: number;
   seat_count: number | null;
   photos: string[];
   model_name_bn: string | null;
@@ -2406,6 +2428,12 @@ export interface AdminServiceListingRow {
   driver_included: boolean | null;
   available_time_bn: string | null;
   price_note_bn: string | null;
+  rate_per_km: number | null;
+  minimum_fare: number | null;
+  additional_fee: number | null;
+  additional_fee_note_bn: string | null;
+  available_facilities: string[];
+  unavailable_facilities: string[];
   contact_phone_private: string | null;
   is_active: boolean;
   is_featured: boolean;
@@ -2418,7 +2446,7 @@ export interface AdminServiceListingPage extends Paged<AdminServiceListingRow> {
 }
 
 const SERVICE_LISTING_SELECT =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, is_active, is_featured, created_at, updated_at';
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, is_active, is_featured, created_at, updated_at';
 
 type AdminRpcResult = ReturnType<AdminClient['client']['rpc']>;
 
@@ -2476,7 +2504,7 @@ export async function fetchServiceListings(params: ListParams, category?: string
 
   const term = searchFilter(params.search, [
     'title_bn', 'slug', 'subtitle_bn', 'summary_bn', 'description_bn',
-    'origin_bn', 'destination_bn', 'model_name_bn',
+    'origin_bn', 'destination_bn', 'operator_bn', 'address_bn', 'model_name_bn',
   ]);
   if (term) query = query.or(term);
   if (params.status === 'active') query = query.eq('is_active', true);

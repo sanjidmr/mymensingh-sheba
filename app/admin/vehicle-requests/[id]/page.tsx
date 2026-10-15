@@ -4,7 +4,7 @@ import { CalendarDays, Clock3, MapPin, Phone, Users } from 'lucide-react';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
 import { PageHeader, DetailField, Panel } from '@/components/admin/PageHeader';
 import VehicleRequestActions from '@/components/admin/VehicleRequestActions';
-import { fetchVehicleRequestById } from '@/lib/admin/queries';
+import { fetchAssignableVehicles, fetchVehicleRequestById } from '@/lib/admin/queries';
 import { formatDateTime, formatDate } from '@/lib/admin/format';
 import { getAreaById } from '@/lib/locations';
 
@@ -21,7 +21,7 @@ export default async function AdminVehicleRequestDetailPage({
   if (result.unavailable) {
     return (
       <>
-        <PageHeader title="যানবাহন রিকোয়েস্ট" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }} />
+        <PageHeader title="যানবাহন বুকিং অনুরোধ" breadcrumb={{ href: '/admin/vehicle-requests', label: 'যানবাহন বুকিং অনুরোধ' }} />
         <AdminError title="রিকোয়েস্ট লোড করা যায়নি" message={result.error} />
       </>
     );
@@ -30,7 +30,7 @@ export default async function AdminVehicleRequestDetailPage({
   if (!result.row) {
     return (
       <>
-        <PageHeader title="যানবাহন রিকোয়েস্ট" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }} />
+        <PageHeader title="যানবাহন বুকিং অনুরোধ" breadcrumb={{ href: '/admin/vehicle-requests', label: 'যানবাহন বুকিং অনুরোধ' }} />
         <AdminEmpty
           title="রিকোয়েস্টটি পাওয়া যায়নি"
           description="রেকর্ডটি নেই অথবা লিংকটি ভুল।"
@@ -48,6 +48,7 @@ export default async function AdminVehicleRequestDetailPage({
   }
 
   const booking = result.row;
+  const assignableVehicles = await fetchAssignableVehicles();
   const pickup = booking.pickup_area_id ? getAreaById(booking.pickup_area_id) : undefined;
   const destination = booking.destination_area_id ? getAreaById(booking.destination_area_id) : undefined;
   const title = booking.vehicle_name || booking.vehicle_kind;
@@ -55,10 +56,10 @@ export default async function AdminVehicleRequestDetailPage({
   return (
     <>
       <PageHeader
-        title="যানবাহন রিকোয়েস্ট"
+        title="যানবাহন বুকিং অনুরোধ"
         description={`রিকোয়েস্ট ${booking.id} · ${title} · জমা ${formatDateTime(booking.created_at)} · সর্বশেষ আপডেট ${formatDateTime(booking.updated_at)}`}
-        breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি রিকোয়েস্ট' }}
-        actions={<VehicleRequestActions request={booking} />}
+        breadcrumb={{ href: '/admin/vehicle-requests', label: 'যানবাহন বুকিং অনুরোধ' }}
+        actions={<VehicleRequestActions request={booking} vehicles={assignableVehicles} />}
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -126,8 +127,32 @@ export default async function AdminVehicleRequestDetailPage({
             <DetailField label="বাজেট">
               {booking.budget ? `৳${booking.budget.toLocaleString('bn-BD')}` : 'উল্লেখ নেই'}
             </DetailField>
+            <DetailField label="আনুমানিক দূরত্ব">
+              {booking.estimated_distance_km != null
+                ? `${booking.estimated_distance_km.toLocaleString('bn-BD')} কিমি · ${booking.distance_source === 'road_route' ? 'সড়কপথ' : 'গ্রাহকের ম্যানুয়াল অনুমান'}`
+                : 'পুরোনো অনুরোধে দূরত্ব সংরক্ষিত হয়নি'}
+            </DetailField>
+            <DetailField label="দর ও আনুমানিক ভাড়া">
+              {booking.rate_per_km != null
+                ? `৳${booking.rate_per_km.toLocaleString('bn-BD', { maximumFractionDigits: 2 })} / কিমি · আনুমানিক মোট ৳${booking.estimated_fare?.toLocaleString('bn-BD', { maximumFractionDigits: 2 }) ?? '—'}${booking.minimum_fare != null ? ` · ন্যূনতম ৳${booking.minimum_fare.toLocaleString('bn-BD', { maximumFractionDigits: 2 })}` : ''}${booking.additional_fee ? ` · অতিরিক্ত ৳${booking.additional_fee.toLocaleString('bn-BD', { maximumFractionDigits: 2 })}${booking.additional_fee_note_bn ? ` (${booking.additional_fee_note_bn})` : ''}` : ''}`
+                : 'তালিকায় দর ছিল না; ভাড়ার কোটেশন লাগবে'}
+            </DetailField>
+            <DetailField label="নির্ধারিত যানবাহন">
+              {booking.assigned_vehicle_listing_id
+                ? assignableVehicles.find((vehicle) => vehicle.id === booking.assigned_vehicle_listing_id)?.title_bn
+                  ?? (booking.assigned_vehicle_listing_id === booking.vehicle_listing_id ? booking.vehicle_title : null)
+                  ?? 'সংরক্ষিত যানবাহন আর সক্রিয় নেই'
+                : 'নির্ধারণ করা হয়নি'}
+            </DetailField>
+            <DetailField label="নির্ধারিত চালক">
+              {booking.assigned_driver_name || 'নির্ধারণ করা হয়নি'}
+              {booking.assigned_driver_phone ? ` · ${booking.assigned_driver_phone}` : ''}
+            </DetailField>
             <DetailField label="অতিরিক্ত নির্দেশনা" wide>
               <span className="whitespace-pre-wrap">{booking.notes || 'কোনো অতিরিক্ত তথ্য দেওয়া হয়নি।'}</span>
+            </DetailField>
+            <DetailField label="অ্যাডমিন নোট" wide>
+              <span className="whitespace-pre-wrap">{booking.admin_notes || 'কোনো নোট নেই।'}</span>
             </DetailField>
           </dl>
         </Panel>

@@ -379,8 +379,27 @@ export function mockAdminFetchStaffProfileById(id: string): StaffProfile | undef
 
 export function mockCreateStaffProfile(input: StaffProfileInput): StaffProfile {
   const now = new Date().toISOString();
+  // Fill the columns the internal directory form no longer edits with their
+  // database defaults, mirroring what Postgres would apply on INSERT.
   const profile: StaffProfile = {
-    ...input,
+    serviceSlug: input.serviceSlug,
+    nameBn: input.nameBn,
+    titleBn: input.titleBn,
+    imageUrl: input.imageUrl || '',
+    areaIds: input.areaIds ?? [],
+    workTypes: input.workTypes ?? [],
+    workMode: input.workMode,
+    timeSlot: input.timeSlot,
+    experienceYears: input.experienceYears ?? 0,
+    availability: input.availability ?? 'available',
+    isEmergency: input.isEmergency,
+    salaryMin: input.salaryMin,
+    salaryMax: input.salaryMax,
+    rateLabel: input.rateLabel,
+    aboutBn: input.aboutBn,
+    isVerified: input.isVerified,
+    isActive: input.isActive,
+    phonePrivate: input.phonePrivate,
     id: `sp-${Date.now()}-${profileSeq++}`,
     createdAt: now,
     updatedAt: now,

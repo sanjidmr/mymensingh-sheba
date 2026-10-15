@@ -78,6 +78,19 @@ const columns: AdminColumn<AdminVehicleRequestRow>[] = [
     ),
   },
   {
+    key: 'estimate',
+    header: 'দূরত্ব / আনুমানিক ভাড়া',
+    render: (row) => (
+      <span className="block text-xs text-ink-600">
+        <span>{row.estimated_distance_km != null ? `${row.estimated_distance_km.toLocaleString('bn-BD')} কিমি${row.distance_source === 'manual_estimate' ? ' · ম্যানুয়াল' : ''}` : 'দূরত্ব নেই'}</span>
+        <span className="block text-ink-400">
+          {row.estimated_fare != null ? `৳${row.estimated_fare.toLocaleString('bn-BD')} (আনুমানিক)` : 'ভাড়া কোটেশন লাগবে'}
+        </span>
+        {row.additional_fee != null && row.additional_fee > 0 && <span className="block text-[10px] text-ink-400">অতিরিক্ত চার্জ ৳{row.additional_fee.toLocaleString('bn-BD')}</span>}
+      </span>
+    ),
+  },
+  {
     key: 'budget',
     header: 'বাজেট',
     hideOnMobile: true,
@@ -125,11 +138,11 @@ export default async function AdminVehicleRequestsPage({
     return (
       <>
         <PageHeader
-          title="গাড়ি রিকোয়েস্ট"
+          title="যানবাহন বুকিং অনুরোধ"
           description="গাড়ি, অটো ও সিএনজি ভাড়ার অনুরোধ। রিকোয়েস্টের অবস্থা বুকিং বা পেমেন্ট নিশ্চিত করে না."
         />
         <AdminError
-          title="গাড়ি রিকোয়েস্ট লোড করা যায়নি"
+          title="যানবাহন অনুরোধ লোড করা যায়নি"
           message={result.error ?? 'Supabase ডেটাবেজ কনফিগারেশন ও অনুমতি যাচাই করুন।'}
         />
       </>
@@ -139,18 +152,29 @@ export default async function AdminVehicleRequestsPage({
   return (
     <>
       <PageHeader
-        title="গাড়ি রিকোয়েস্ট"
+        title="যানবাহন বুকিং অনুরোধ"
         description="গাড়ি, অটো ও সিএনজি ভাড়ার অনুরোধ পর্যালোচনা করুন। স্ট্যাটাস পরিবর্তন করলেই বুকিং, পেমেন্ট বা চালক নিশ্চিত হয় না।"
         count={`মোট ${result.total} টি রিকোয়েস্ট`}
+        actions={
+          <Link
+            href="/admin/catalog/vehicle"
+            className="inline-flex min-h-11 items-center rounded-md border border-admin-border bg-white px-3 text-sm font-semibold"
+          >
+            যানবাহন ভাড়ার তালিকা
+          </Link>
+        }
       />
 
       {summary.error ? (
         <AdminError title="সারাংশ লোড করা যায়নি" message={summary.error} className="mb-4" />
       ) : (
-        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-7">
           <StatCard label="মোট রিকোয়েস্ট" value={summary.counts.total} />
           <StatCard label="নতুন" value={summary.counts.new} tone="attention" />
+          <StatCard label="পর্যালোচনায়" value={summary.counts.reviewing} />
           <StatCard label="যোগাযোগ নথিভুক্ত" value={summary.counts.contacted} tone="good" />
+          <StatCard label="অনুমোদিত" value={summary.counts.approved} tone="good" />
+          <StatCard label="প্রত্যাখ্যাত" value={summary.counts.rejected} />
           <StatCard label="বন্ধ (বুকিং নয়)" value={summary.counts.closed} />
         </div>
       )}

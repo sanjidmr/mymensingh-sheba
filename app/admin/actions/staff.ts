@@ -16,11 +16,11 @@ function validateInput(input: StaffProfileInput): string | null {
   if (!STAFF_SERVICES.includes(input.serviceSlug)) return 'কর্মীর সেবার ধরন সঠিক নয়।';
   if (input.nameBn.trim().length < 2 || input.nameBn.trim().length > 120) return 'কর্মীর নাম ২ থেকে ১২০ অক্ষরের মধ্যে লিখুন।';
   if (input.titleBn.trim().length < 2 || input.titleBn.trim().length > 160) return 'পদবি ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।';
-  if (!input.areaIds.length || input.areaIds.some((area) => typeof area !== 'string' || area.length > 80)) return 'অন্তত একটি সঠিক কর্ম-এলাকা বাছাই করুন।';
-  if (!input.workTypes.length || input.workTypes.some((type) => typeof type !== 'string' || type.length > 100)) return 'অন্তত একটি কাজের ধরন বাছাই করুন।';
   if (input.aboutBn.trim().length < 10 || input.aboutBn.length > 5000) return 'কর্মীর পরিচিতি ১০ থেকে ৫০০০ অক্ষরের মধ্যে লিখুন।';
-  if (!STAFF_AVAILABILITY.includes(input.availability)) return 'কর্মীর প্রাপ্যতার মান সঠিক নয়।';
-  if (!Number.isInteger(input.experienceYears) || input.experienceYears < 0 || input.experienceYears > 100) return 'অভিজ্ঞতার বছর সঠিক নয়।';
+  if (input.availability != null && !STAFF_AVAILABILITY.includes(input.availability)) return 'কর্মীর প্রাপ্যতার মান সঠিক নয়।';
+  if (input.experienceYears != null && (!Number.isInteger(input.experienceYears) || input.experienceYears < 0 || input.experienceYears > 100)) return 'অভিজ্ঞতার বছর সঠিক নয়।';
+  if (input.areaIds != null && input.areaIds.some((area) => typeof area !== 'string' || area.length > 80)) return 'কর্ম-এলাকার তথ্য সঠিক নয়।';
+  if (input.workTypes != null && input.workTypes.some((type) => typeof type !== 'string' || type.length > 100)) return 'কাজের ধরনের তথ্য সঠিক নয়।';
   if ((input.salaryMin != null && input.salaryMin < 0) || (input.salaryMax != null && input.salaryMax < 0)) return 'সম্মানীর পরিমাণ ঋণাত্মক হতে পারবে না।';
   if (input.salaryMin != null && input.salaryMax != null && input.salaryMax < input.salaryMin) return 'সর্বোচ্চ সম্মানী সর্বনিম্ন সম্মানীর চেয়ে কম হতে পারবে না।';
   if (input.phonePrivate && !/^[+\d][\d\s().-]{5,24}$/.test(input.phonePrivate.trim())) return 'ফোন নম্বরের ফরম্যাট সঠিক নয়।';
@@ -28,27 +28,38 @@ function validateInput(input: StaffProfileInput): string | null {
   return null;
 }
 
-function toDatabaseInput(input: StaffProfileInput) {
-  return {
+/**
+ * Maps the form payload to a `staff_profiles` row.
+ *
+ * Optional keys are written ONLY when the caller supplied them. The internal
+ * directory form no longer edits areas / work types / experience / shift /
+ * preferred time / emergency flag / lower salary bound, so those columns are
+ * left alone: on create the database defaults apply, and on edit a legacy
+ * value is preserved instead of being overwritten with `null`.
+ */
+function toDatabaseInput(input: StaffProfileInput): Record<string, unknown> {
+  const row: Record<string, unknown> = {
     service_slug: input.serviceSlug,
     name_bn: input.nameBn.trim(),
     title_bn: input.titleBn.trim(),
     image_url: input.imageUrl || null,
-    areas: input.areaIds,
-    work_types: input.workTypes,
-    work_mode: input.workMode || null,
-    time_slot: input.timeSlot || null,
-    experience_years: input.experienceYears,
-    availability: input.availability,
-    is_emergency: input.isEmergency ?? false,
-    salary_min: input.salaryMin ?? null,
-    salary_max: input.salaryMax ?? null,
-    rate_label: input.rateLabel?.trim() || null,
     about_bn: input.aboutBn.trim(),
+    // Always written so an admin can also clear a bad number.
     phone_private: input.phonePrivate?.trim() || null,
     is_verified: input.isVerified,
     is_active: input.isActive,
   };
+  if (input.areaIds !== undefined) row.areas = input.areaIds;
+  if (input.workTypes !== undefined) row.work_types = input.workTypes;
+  if (input.workMode !== undefined) row.work_mode = input.workMode || null;
+  if (input.timeSlot !== undefined) row.time_slot = input.timeSlot || null;
+  if (input.experienceYears !== undefined) row.experience_years = input.experienceYears;
+  if (input.availability !== undefined) row.availability = input.availability;
+  if (input.isEmergency !== undefined) row.is_emergency = input.isEmergency;
+  if (input.salaryMin !== undefined) row.salary_min = input.salaryMin;
+  if (input.salaryMax !== undefined) row.salary_max = input.salaryMax;
+  if (input.rateLabel !== undefined) row.rate_label = input.rateLabel.trim() || null;
+  return row;
 }
 
 function revalidateStaffPaths(id?: string) {

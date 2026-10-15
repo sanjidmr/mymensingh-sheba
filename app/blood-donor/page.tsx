@@ -5,7 +5,7 @@
  *
  * This is the whole feature: a filter bar and a grid of cards. There is no
  * detail page to link to (`/blood-donor/[id]` redirects here), so everything a
- * reader needs — including starting a request — happens on this screen.
+ * reader needs — including the call action — happens on this screen.
  */
 
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
@@ -136,23 +136,23 @@ function BloodDonorContent() {
             রক্তদাতা ডিরেক্টরি — ময়মনসিংহ
           </h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-ink-500">
-            রক্তের গ্রুপ ও এলাকা বেছে নিন। অ্যাডমিন যাচাইয়ের ভিত্তিতে রক্তদাতার সঙ্গে নিরাপদ
-            যোগাযোগ স্থাপন করা হয়।
+            রক্তের গ্রুপ ও এলাকা বেছে নিন। অনুমোদিত রক্তদাতার কার্ড বা “কল করুন” বাটনে চাপ
+            দিলে সরাসরি ফোন কল চলে যায়।
           </p>
         </header>
 
-        {/* The privacy contract, stated once, plainly. The card's call button
-            depends on the reader understanding WHY there is no number here. */}
+        {/* The privacy contract, stated once, plainly. The number is not printed
+            anywhere on the page; the card only carries it inside a `tel:` link. */}
         <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
           <div className="flex items-start gap-2.5">
             <Lock className="mt-0.5 h-4.5 w-4.5 shrink-0 text-brand-700" aria-hidden="true" />
             <div>
               <h2 className="text-[13.5px] font-bold text-brand-900">
-                রক্তদাতার নম্বর কখনোই প্রকাশিত হয় না
+                নম্বর কোথাও লেখা থাকে না — শুধু সরাসরি কল
               </h2>
               <p className="mt-1 text-[12.5px] leading-relaxed text-brand-800/85">
-                কার্ডের “কল করুন” বাটনটি অনুরোধ পাঠায়। প্রেসক্রিপশন ও হাসপাতালের তথ্য যাচাই
-                করার পর অ্যাডমিন সরাসরি আপনাকে যোগাযোগ করিয়ে দেন।
+                রক্তদাতার ফোন নম্বর কোথাও লেখা হিসেবে দেখানো হয় না। কার্ডে চাপ দিলেই সরাসরি
+                কল চলে যায় — আগে কোনো অনুরোধ পাঠানো বা অ্যাডমিনের জন্য অপেক্ষা করার দরকার নেই।
               </p>
             </div>
           </div>

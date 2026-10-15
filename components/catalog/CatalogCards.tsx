@@ -17,8 +17,53 @@
  */
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, MapPin, Phone } from 'lucide-react';
+import { ArrowRight, BadgeCheck, MapPin, Phone, Star } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { toBn } from '@/lib/catalog-types';
+
+/**
+ * Star + count summary for a rated listing.
+ *
+ * The average comes straight from the database aggregate, so it always matches
+ * the reviews it is built from. A listing with no reviews renders nothing at
+ * all rather than an empty "০.০" row that would read as a bad score.
+ */
+export function RatingSummary({
+  avg,
+  count,
+  className = '',
+  size = 'sm',
+}: {
+  avg?: number;
+  count?: number;
+  className?: string;
+  size?: 'sm' | 'md';
+}) {
+  if (!count || count <= 0 || avg == null) return null;
+  const rounded = Math.round(avg);
+  const starClass = size === 'md' ? 'h-4 w-4' : 'h-3 w-3';
+  return (
+    <span
+      className={`inline-flex items-center gap-1 ${className}`}
+      aria-label={`রেটিং ${toBn(avg.toFixed(1))} / ৫, ${toBn(count)} টি রিভিউ`}
+    >
+      <span className="inline-flex items-center gap-[1px]" aria-hidden="true">
+        {[1, 2, 3, 4, 5].map((n) => (
+          <Star
+            key={n}
+            className={
+              n <= rounded
+                ? `${starClass} fill-amber-400 text-amber-400`
+                : `${starClass} text-brand-100`
+            }
+          />
+        ))}
+      </span>
+      <span className="text-[11px] font-bold text-ink-600">{toBn(avg.toFixed(1))}</span>
+      <span className="text-[10.5px] text-ink-400">({toBn(count)})</span>
+    </span>
+  );
+}
 
 /** Initial-letter tile shown when a listing has no photo. */
 export function MediaInitial({
@@ -123,6 +168,9 @@ export interface BannerCardProps {
   /** Overrides the default link CTA (e.g. route to /contact instead). */
   actionHref?: string;
   tone?: 'brand' | 'bronze' | 'cyan';
+  /** Published review aggregate; renders a star row when present. */
+  ratingAvg?: number;
+  ratingCount?: number;
 }
 
 /**
@@ -149,6 +197,8 @@ export function BannerCard({
   actionLabel = 'বিস্তারিত',
   actionHref,
   tone = 'brand',
+  ratingAvg,
+  ratingCount,
 }: BannerCardProps) {
   const accent =
     tone === 'bronze'
@@ -205,6 +255,8 @@ export function BannerCard({
             {subtitle}
           </p>
         )}
+
+        <RatingSummary avg={ratingAvg} count={ratingCount} className="mt-1" />
 
         {description && (
           <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-ink-500 sm:line-clamp-2 sm:text-[13px]">

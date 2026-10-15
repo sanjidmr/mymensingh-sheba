@@ -135,8 +135,11 @@ export const STATUS_OPTIONS: Record<string, StatusOption[]> = {
   ],
   vehicle_requests: [
     { value: 'new', label: 'নতুন', tone: 'warning' },
+    { value: 'reviewing', label: 'পর্যালোচনায়', tone: 'info' },
     { value: 'contacted', label: 'যোগাযোগ নথিভুক্ত', tone: 'info' },
-    { value: 'closed', label: 'রিকোয়েস্ট বন্ধ', tone: 'neutral' },
+    { value: 'approved', label: 'অনুমোদিত', tone: 'success' },
+    { value: 'rejected', label: 'প্রত্যাখ্যাত', tone: 'danger' },
+    { value: 'closed', label: 'বন্ধ', tone: 'neutral' },
   ],
   contact_messages: [
     { value: 'new', label: 'নতুন', tone: 'warning' },

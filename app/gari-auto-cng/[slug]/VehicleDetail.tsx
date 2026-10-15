@@ -107,13 +107,6 @@ export default function VehicleDetail({ slug }: { slug: string }) {
         </button>
       }
     >
-      {listing.isDemo && (
-        <p className="mb-3 rounded-xl border border-accent-200 bg-accent-100/50 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-accent-700">
-          এটি একটি <strong className="font-bold">নমুনা তালিকা</strong>, বাস্তবে ভাড়া দেওয়া হয় না।
-          অনুরোধ পাঠালে কোনো গাড়ির সঙ্গে যোগাযোগ হবে না।
-        </p>
-      )}
-
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12">
         {/* ---------------------------------------------------------------
             Main column: photo, then facts.

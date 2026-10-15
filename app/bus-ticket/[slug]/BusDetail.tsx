@@ -41,6 +41,7 @@ export default function BusDetail({ slug }: { slug: string }) {
   if (!listing) return <CatalogDetailMissing ui={ui} />;
 
   const facts: DetailFact[] = [
+    ...(listing.operatorBn ? [{ label: 'অপারেটর', value: listing.operatorBn }] : []),
     ...(listing.originBn ? [{ label: 'যাত্রার শুরু', value: listing.originBn }] : []),
     ...(listing.destinationBn
       ? [{ label: 'গন্তব্য', value: listing.destinationBn }]

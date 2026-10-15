@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { BusFront, CarFront, GraduationCap, Router } from 'lucide-react';
+import { BusFront, GraduationCap, Router } from 'lucide-react';
 import { PageHeader, Panel } from '@/components/admin/PageHeader';
 import { AdminError } from '@/components/admin/States';
 import { StatCard } from '@/components/admin/StatCard';
@@ -13,19 +13,12 @@ const MODULES: Array<{
   title: string;
   description: string;
   href: string;
-  icon: typeof CarFront;
+  icon: typeof BusFront;
 }> = [
-  {
-    category: 'vehicle',
-    title: 'যানবাহন ভাড়া',
-    description: 'গাড়ি, অটো ও CNG তালিকা প্রকাশনা এবং সম্পাদনা করুন।',
-    href: '/admin/catalog/vehicle',
-    icon: CarFront,
-  },
   {
     category: 'bus',
     title: 'বাস টিকিট তথ্য',
-    description: 'অপারেটর, রুট ও সরবরাহকৃত ভাড়ার তথ্য ডিরেক্টরি। বুকিং নয়।',
+    description: 'অপারেটর, রুট, সময় ও সরবরাহকৃত ভাড়ার তথ্য। বুকিং নয়।',
     href: '/admin/catalog/bus',
     icon: BusFront,
   },
@@ -58,7 +51,7 @@ export default async function AdminCatalogPage() {
     <>
       <PageHeader
         title="ডিরেক্টরি ব্যবস্থাপনা"
-        description="যানবাহন, বাস, WiFi ও কোচিং ডিরেক্টরির বিদ্যমান রেকর্ড পরিচালনা করুন। সক্রিয় মান প্রকাশিত; এটি যাচাইকরণ বা প্রাপ্যতার প্রমাণ নয়।"
+        description="বাস, WiFi ও কোচিং ডিরেক্টরির বিদ্যমান রেকর্ড পরিচালনা করুন। সক্রিয় মান প্রকাশিত; এটি যাচাইকরণ বা প্রাপ্যতার প্রমাণ নয়।"
         actions={<Link href="/admin/vehicle-requests" className="inline-flex min-h-11 items-center rounded-md border border-admin-border bg-white px-3 text-sm font-semibold">যানবাহন রিকোয়েস্ট</Link>}
       />
       {failed && <AdminError title="ডিরেক্টরি গণনা করা যায়নি" message={failed.result.error} className="mb-4" />}

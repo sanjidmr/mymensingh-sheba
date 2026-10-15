@@ -2,10 +2,10 @@
 
 import { useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Pencil, PauseCircle, RotateCcw, XCircle } from 'lucide-react';
+import { CheckCircle2, Pencil, PauseCircle, RotateCcw, Trash2, XCircle } from 'lucide-react';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { useToast } from '@/components/admin/ToastProvider';
-import { updateDonorProfile } from '@/app/admin/actions/donor-profiles';
+import { updateDonorProfile, deleteDonorProfile } from '@/app/admin/actions/donor-profiles';
 import type { DonorProfileUpdate } from '@/app/admin/actions/donor-profiles';
 import type { AdminBloodDonorRow } from '@/lib/admin/queries';
 import type { BloodDonorStatus, BloodGroup } from '@/lib/supabase/types';
@@ -22,6 +22,7 @@ export default function DonorProfileActions({ donor }: { donor: DonorProfile }) 
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmStatus, setConfirmStatus] = useState<BloodDonorStatus | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
   const [form, setForm] = useState({
     fullName: donor.full_name,
@@ -94,6 +95,26 @@ export default function DonorProfileActions({ donor }: { donor: DonorProfile }) 
     await save(patch);
   };
 
+  const removeProfile = async () => {
+    setBusy(true);
+    try {
+      const result = await deleteDonorProfile(donor.id);
+      if (!result.ok) {
+        notify('error', 'প্রোফাইল মুছে ফেলা হয়নি', result.error);
+        return;
+      }
+      notify('success', result.message ?? 'প্রোফাইল মুছে ফেলা হয়েছে।');
+      setConfirmDelete(false);
+      // The detail screen no longer exists after the row is gone.
+      router.push('/admin/blood/donors');
+      router.refresh();
+    } catch (error) {
+      notify('error', 'প্রোফাইল মুছে ফেলা হয়নি', error instanceof Error ? error.message : 'আবার চেষ্টা করুন।');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const field = (label: string, _key: keyof typeof form, input: ReactNode) => (
     <label className="grid gap-1.5 text-xs font-semibold text-ink-700">
       {label}
@@ -151,6 +172,14 @@ export default function DonorProfileActions({ donor }: { donor: DonorProfile }) 
             <RotateCcw className="h-4 w-4" /> পর্যালোচনায় ফেরান
           </button>
         )}
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => setConfirmDelete(true)}
+          className="ml-auto inline-flex min-h-10 items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+        >
+          <Trash2 className="h-4 w-4" /> প্রোফাইল মুছুন
+        </button>
       </div>
 
       {editing && (
@@ -239,6 +268,17 @@ export default function DonorProfileActions({ donor }: { donor: DonorProfile }) 
         isLoading={busy}
         onConfirm={() => void confirmAction()}
         onCancel={() => { setConfirmStatus(null); setRejectReason(''); }}
+      />
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title="রক্তদাতার প্রোফাইল মুছে ফেলবেন?"
+        description="প্রোফাইলটি স্থায়ীভাবে মুছে যাবে এবং পাবলিক ডিরেক্টরিসহ সব জায়গা থেকে সরে যাবে। এটি ফিরিয়ে আনা যাবে না। বিকল্প হিসেবে “প্রত্যাখ্যান” বা “স্থগিত” ব্যবহার করতে পারেন।"
+        confirmLabel="মুছে ফেলুন"
+        tone="danger"
+        isLoading={busy}
+        onConfirm={() => void removeProfile()}
+        onCancel={() => setConfirmDelete(false)}
       />
     </section>
   );

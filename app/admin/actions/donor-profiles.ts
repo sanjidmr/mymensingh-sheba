@@ -165,10 +165,39 @@ export async function updateDonorProfile(
       }
     }
 
-    revalidatePath('/admin/blood');
     revalidatePath('/admin/blood/donors');
     revalidatePath(`/admin/blood/donors/${id}`);
     revalidatePath('/blood-donor');
     return { ok: true, message: 'রক্তদাতার প্রোফাইল আপডেট হয়েছে।' };
   });
 }
+
+/**
+ * Remove a donor profile entirely.
+ *
+ * "Remove" is the last resort in the admin action set (reject/suspend are the
+ * reversible options); it deletes the row so a duplicate, spam or requested
+ * deletion stops appearing anywhere. The admin `FOR ALL` policy on
+ * `blood_donor_profiles` is what authorises the DELETE at the DB layer.
+ */
+export async function deleteDonorProfile(id: string): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return { ok: false, error: 'রক্তদাতার আইডি সঠিক নয়।' };
+    }
+
+    const { data, error } = await client
+      .from('blood_donor_profiles')
+      .delete()
+      .eq('id', id)
+      .select('id')
+      .maybeSingle();
+    if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'রক্তদাতার প্রোফাইলটি পাওয়া যায়নি।' };
+
+    revalidatePath('/admin/blood/donors');
+    revalidatePath('/blood-donor');
+    return { ok: true, message: 'রক্তদাতার প্রোফাইল মুছে ফেলা হয়েছে।' };
+  });
+}
+

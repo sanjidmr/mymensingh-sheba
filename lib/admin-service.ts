@@ -378,7 +378,7 @@ export async function adminFetchNotifications(): Promise<NotificationItem[]> {
     const id = notification.relatedId;
     const links: Record<string, string> = {
       service_request: id ? `/admin/requests/${id}` : '/admin/requests',
-      blood_request: id ? `/admin/blood/${id}` : '/admin/blood',
+      blood_request: '/admin/blood/donors',
       vehicle_request: '/admin/vehicle-requests',
       community_post: '/admin/posts',
       community_post_report: '/admin/reports',
@@ -426,6 +426,6 @@ export function reportTargetLink(type: AdminReportRow['type'], relatedId?: strin
     case 'tutor':
       return '/admin/verifications';
     case 'donor':
-      return '/admin/blood';
+      return '/admin/blood/donors';
   }
 }

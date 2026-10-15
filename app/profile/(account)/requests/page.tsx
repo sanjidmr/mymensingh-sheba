@@ -21,10 +21,6 @@ import {
   Briefcase,
   Package,
   GraduationCap,
-  Droplets,
-  Heart,
-  Lock,
-  Eye,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
@@ -35,15 +31,7 @@ import {
 } from '@/lib/tolet-service';
 import type { ToletRequest } from '@/lib/tolet-types';
 import { RequestStatusBadge } from '@/components/tolet/ListingStatusBadge';
-import {
-  fetchMyBloodRequests,
-  cancelMyBloodRequest,
-} from '@/lib/blood-donor-service';
-import { BLOOD_REQUEST_STATUS_META } from '@/lib/blood-donor-types';
-import type { BloodRequest, BloodRequestStatus } from '@/lib/supabase/types';
 import { createClient } from '@/lib/supabase/client';
-import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 
 const STATUS_CONFIGS = {
   new: { label: 'নতুন', badgeClass: 'bg-sky-50 text-sky-900 border-sky-200', icon: FileText },
@@ -63,9 +51,6 @@ export default function RequestsPage() {
   const [toletRequests, setToletRequests] = useState<ToletRequest[]>([]);
   const [loadingTolet, setLoadingTolet] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
-  const [bloodRequests, setBloodRequests] = useState<BloodRequest[]>([]);
-  const [loadingBlood, setLoadingBlood] = useState(true);
-  const [cancellingBloodId, setCancellingBloodId] = useState<string | null>(null);
   const [cancellingServiceId, setCancellingServiceId] = useState<string | null>(null);
   const [cancelledServiceIds, setCancelledServiceIds] = useState<Set<string>>(() => new Set());
   const [requestError, setRequestError] = useState('');
@@ -73,14 +58,10 @@ export default function RequestsPage() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    Promise.all([
-      fetchToletRequestsAsCustomer(user.id),
-      fetchMyBloodRequests(user.id),
-    ])
-      .then(([t, b]) => {
+    fetchToletRequestsAsCustomer(user.id)
+      .then((t) => {
         if (!active) return;
         setToletRequests(t);
-        setBloodRequests(b);
       })
       .catch((error: unknown) => {
         if (active) {
@@ -88,10 +69,7 @@ export default function RequestsPage() {
         }
       })
       .finally(() => {
-        if (active) {
-          setLoadingTolet(false);
-          setLoadingBlood(false);
-        }
+        if (active) setLoadingTolet(false);
       });
     return () => {
       active = false;
@@ -113,26 +91,6 @@ export default function RequestsPage() {
       setRequestError(error instanceof Error ? error.message : 'অনুরোধ বাতিল করা যায়নি।');
     } finally {
       setCancellingId(null);
-    }
-  };
-
-  const handleCancelBlood = async (id: string) => {
-    if (!user) return;
-    const confirmed = window.confirm('এই রক্তদান অনুরোধটি বাতিল করবেন?');
-    if (!confirmed) return;
-    setCancellingBloodId(id);
-    setRequestError('');
-    try {
-      const result = await cancelMyBloodRequest(id, user.id);
-      if (result.success) {
-        setBloodRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' as BloodRequestStatus } : r)));
-      } else {
-        setRequestError(result.error || 'অনুরোধ বাতিল করা যায়নি।');
-      }
-    } catch (error) {
-      setRequestError(error instanceof Error ? error.message : 'অনুরোধ বাতিল করা যায়নি।');
-    } finally {
-      setCancellingBloodId(null);
     }
   };
 
@@ -164,7 +122,7 @@ export default function RequestsPage() {
     }
   };
 
-  const allEmpty = requests.length === 0 && toletRequests.length === 0 && bloodRequests.length === 0;
+  const allEmpty = requests.length === 0 && toletRequests.length === 0;
 
   const sortedTolet = useMemo(
     () => [...toletRequests].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
@@ -172,10 +130,7 @@ export default function RequestsPage() {
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-mist-50">
-      <Navbar />
-
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 sm:py-12">
+    <div className="space-y-5">
         <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
           <Link href="/profile" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -207,7 +162,7 @@ export default function RequestsPage() {
           </Link>
         </div>
 
-        {loadingTolet || loadingBlood ? (
+        {loadingTolet ? (
           <div className="py-16 flex flex-col items-center gap-2 text-ink-400 text-sm">
             <Loader2 className="w-5 h-5 animate-spin text-brand-600" />
             <span>রিকোয়েস্ট লোড হচ্ছে...</span>
@@ -217,7 +172,7 @@ export default function RequestsPage() {
             <FileText className="w-12 h-12 text-brand-200 mx-auto mb-3" />
             <h3 className="text-base font-bold text-ink-900">এখনও কোনো রিকোয়েস্ট নেই</h3>
             <p className="text-xs text-ink-400 mt-1 max-w-sm mx-auto mb-5">
-              বাসা দেখার অনুরোধ, রক্তদান (জরুরি), কাজের বুয়া, ইলেক্ট্রিশিয়ান জাতীয় সেবা রিকোয়েস্ট করলে তা এখানে দেখা যাবে।
+              বাসা দেখার অনুরোধ, কাজের বুয়া, ইলেক্ট্রিশিয়ান জাতীয় সেবা রিকোয়েস্ট করলে তা এখানে দেখা যাবে।
             </p>
             <Link
               href="/tolet"
@@ -294,103 +249,6 @@ export default function RequestsPage() {
                     </div>
                   );
                 })}
-              </>
-            )}
-
-            {/* BLOOD DONATION REQUESTS */}
-            {bloodRequests.length > 0 && (
-              <>
-                <h2 className="text-sm font-bold text-ink-900 pt-3">রক্তদান অনুরোধ</h2>
-                {bloodRequests.map((req) => {
-                  const meta = BLOOD_REQUEST_STATUS_META[req.status];
-                  const hospitalArea = req.hospitalAreaId ? getAreaById(req.hospitalAreaId) : undefined;
-                  const canCancel = req.status === 'pending_review' || (req.status === 'approved' && !req.contactReleasedAt);
-                  return (
-                    <div key={req.id} className="bg-white rounded-2xl border border-rose-200/70 p-5 sm:p-6  hover:border-rose-300 transition-all">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-semibold text-rose-500 uppercase tracking-wider inline-flex items-center gap-1">
-                            <Heart className="w-3.5 h-3.5" /> জরুরি রক্তদান
-                          </span>
-                          <div className="flex items-center gap-2 flex-wrap mt-1">
-                            <h3 className="text-base font-bold text-ink-900">{req.patientName}</h3>
-                            <span className="px-2 py-0.5 rounded-md bg-rose-50 border border-rose-100 text-rose-500 font-black text-xs">
-                              {req.bloodGroup}
-                            </span>
-                            <span className="text-xs text-ink-400">{req.units} ইউনিট</span>
-                          </div>
-                        </div>
-                        <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${meta.badge}`}>
-                          <Droplets className="w-3.5 h-3.5" />
-                          <span>{meta.labelBn}</span>
-                        </span>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink-500 mt-3 pt-3 border-t border-rose-100">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
-                          <span>
-                            <span className="block text-[10px] text-ink-400">হাসপাতাল</span>
-                            {req.hospitalName} {hospitalArea ? `(${hospitalArea.nameBn})` : ''}
-                          </span>
-                        </div>
-                        {req.requiredDateTime && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-ink-400 shrink-0" />
-                            <span>প্রয়োজন: {req.requiredDateTime}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Phone className="w-4 h-4 text-ink-400 shrink-0" />
-                          <span>যোগাযোগ: {req.phone}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-ink-400 shrink-0" />
-                          <span>জমার তারিখ: {new Date(req.createdAt).toLocaleDateString('bn-BD')}</span>
-                        </div>
-                      </div>
-
-                      {req.contactReleasedAt && req.donorName && (
-                        <div className="mt-3 p-3 rounded-xl bg-brand-50 border border-brand-200 text-xs text-brand-800">
-                          <div className="flex items-center gap-1.5 font-bold">
-                            <Eye className="w-3.5 h-3.5" />
-                            রক্তদাতা: {req.donorName} ({req.donorBloodGroup})
-                          </div>
-                          <p className="text-[11px] text-brand-700 mt-1">
-                            অ্যাডমিন রক্তদাতার নম্বরটি প্রকাশ করেছেন ({new Date(req.contactReleasedAt).toLocaleDateString('bn-BD')} থেকে)। নম্বরটি সরাসরি অ্যাডমিনের সাথে যোগাযোগের মাধ্যমে সংগ্রহ করুন এবং অন্যদের সাথে শেয়ার করবেন না।
-                          </p>
-                          <p className="text-[11px] text-brand-700 mt-1">
-                            রক্তদান সম্পূর্ণ স্বেচ্ছাসেবী — কোনো অর্থহীন লেনদেনে যাবেন না।
-                          </p>
-                        </div>
-                      )}
-
-                      {req.status === 'rejected' && req.rejectionReason && (
-                        <div className="mt-3 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-500">
-                          <AlertCircle className="w-3.5 h-3.5 inline" /> প্রত্যাখ্যানের কারণ: {req.rejectionReason}
-                        </div>
-                      )}
-
-                      {canCancel && (
-                        <div className="mt-4 pt-3 border-t border-rose-100 flex justify-end">
-                          <button
-                            type="button"
-                            disabled={cancellingBloodId === req.id}
-                            onClick={() => handleCancelBlood(req.id)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand-200 text-ink-500 text-xs font-semibold hover:bg-mist-50 disabled:opacity-50"
-                          >
-                            {cancellingBloodId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
-                            অনুরোধ বাতিল করুন
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-                <p className="flex items-center gap-1.5 text-[11px] text-ink-400 pt-1">
-                  <Lock className="w-3 h-3" />
-                  প্রেসক্রিপশন ও রক্তদাতার নম্বর শুধুমাত্র যাচাইয়ের পরে অ্যাডমিনের নিয়ন্ত্রণে প্রকাশ হয়।
-                </p>
               </>
             )}
 
@@ -561,9 +419,6 @@ export default function RequestsPage() {
             )}
           </div>
         )}
-      </main>
-
-      <Footer />
     </div>
   );
 }

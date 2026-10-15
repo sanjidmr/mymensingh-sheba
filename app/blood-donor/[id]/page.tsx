@@ -13,9 +13,9 @@ import { redirect } from 'next/navigation';
  * than a redirect to the list they can actually use.
  *
  * The donor id rides along as `?donor=`, which `app/blood-donor/page.tsx` reads
- * to scroll that card into view. It deliberately does NOT auto-open the request
- * sheet: a shared link that immediately opens a form about a patient's hospital
- * and prescription is not something to hand someone who just wanted to look.
+ * to scroll that card into view. A shared link scrolls to the donor and stops
+ * there; it never opens the dialer on its own, because a phone call is a thing
+ * the visitor should choose to start with their own tap.
  */
 export default async function DonorDetailRedirect({
   params,

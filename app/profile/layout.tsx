@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
+import { ADMIN_HOME } from '@/lib/auth-routes';
 // ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
 import { DEV_AUTH_BYPASS } from '@/lib/dev-auth-bypass';
 
@@ -19,15 +20,21 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (devOpened) return;
     if (!isLoading && !user) {
-      router.replace('/login');
+      router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+      return;
     }
-  }, [devOpened, isLoading, user, router]);
+    // A verified admin is not a customer: never leave them in the customer
+    // account area. This also covers a page refresh on /profile or /dashboard.
+    if (!isLoading && user && user.role === 'admin') {
+      router.replace(ADMIN_HOME);
+    }
+  }, [devOpened, isLoading, user, router, pathname]);
 
   if (devOpened) {
     return <>{children}</>;
   }
 
-  if (isLoading || !user) {
+  if (isLoading || !user || user.role === 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-mist-50 text-sm text-slate-500">
         লোড হচ্ছে...

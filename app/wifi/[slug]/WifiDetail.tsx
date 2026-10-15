@@ -7,6 +7,7 @@ import CatalogDetailView, {
   DetailSkeleton,
   type DetailFact,
 } from '@/components/catalog/CatalogDetailView';
+import WifiDetailSections from '@/components/catalog/WifiDetailSections';
 import { fetchServiceListingForContact } from '@/lib/catalog-service';
 import {
   areaNames,
@@ -47,8 +48,12 @@ export default function WifiDetail({ slug }: { slug: string }) {
     ...(listing.speedMbps != null
       ? [{ label: 'স্পিড', value: `${toBn(listing.speedMbps)} Mbps` }]
       : []),
+    ...(listing.addressBn ? [{ label: 'কভারেজ', value: listing.addressBn }] : []),
     ...(listing.areaIds.length > 0
       ? [{ label: 'সার্ভিস এলাকা', value: areaNames(listing.areaIds) }]
+      : []),
+    ...(listing.ratingCount && listing.ratingCount > 0
+      ? [{ label: 'রেটিং', value: `${toBn((listing.ratingAvg ?? 0).toFixed(1))} / ৫ (${toBn(listing.ratingCount)})` }]
       : []),
   ];
 
@@ -57,6 +62,13 @@ export default function WifiDetail({ slug }: { slug: string }) {
       ui={ui}
       listing={listing}
       facts={facts}
+      body={
+        <WifiDetailSections
+          listingId={listing.id}
+          ratingAvg={listing.ratingAvg}
+          ratingCount={listing.ratingCount}
+        />
+      }
       action={<ContactBlock phone={listing.contactPhonePrivate} />}
     />
   );

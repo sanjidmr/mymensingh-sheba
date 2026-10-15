@@ -16,7 +16,7 @@ import { getAllMCCAreas } from '@/lib/locations';
 export const dynamic = 'force-dynamic';
 
 const LABELS = {
-  vehicle: 'যানবাহন ভাড়া',
+  vehicle: 'যানবাহন',
   bus: 'বাস টিকিট তথ্য',
   wifi: 'WiFi প্রদানকারী',
   coaching: 'কোচিং সেন্টার',
@@ -52,7 +52,9 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
     columns.push({
       key: 'price',
       header: 'ভাড়া (তথ্যসূত্র)',
-      render: (row) => row.price_min != null
+      render: (row) => row.rate_per_km != null
+        ? `৳${row.rate_per_km.toLocaleString('bn-BD', { maximumFractionDigits: 2 })}/কিমি${row.minimum_fare != null ? ` · সর্বনিম্ন ৳${row.minimum_fare.toLocaleString('bn-BD')}` : ''}${row.additional_fee ? ` · অতিরিক্ত ৳${row.additional_fee.toLocaleString('bn-BD')}` : ''}`
+        : row.price_min != null
         ? `৳${row.price_min}${row.price_max != null ? `–${row.price_max}` : '+'}${row.price_note_bn ? ` · ${row.price_note_bn}` : ''}`
         : 'উল্লেখ নেই',
     });

@@ -21,21 +21,23 @@
  * state. Inventing providers, prices or emergency phone numbers is exactly what
  * this platform must never do.
  *
- * Two categories are the exception, and only because the alternative was an
- * undesignable page: `vehicle` and the `buy_sell` post kind fall back to the
- * sample rows in `lib/vehicle-demo-data.ts` / `lib/market-demo-data.ts`, but
- * ONLY while the live directory is completely empty — the first real listing
- * replaces them wholesale, so a sample item is never shown beside a real one.
- * Coaching, bus, wifi, job and news have no such fallback on purpose: a demo
- * coaching centre or a fake vacancy would be a fabricated local commercial fact.
+ * The buy/sell marketplace may use sample rows only while its live directory
+ * is empty. Vehicles always come from Supabase because a sample rental or fare
+ * could mislead a customer into submitting a real booking request.
  */
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
-import { DEMO_VEHICLE_LISTINGS, getDemoVehicleListing } from './vehicle-demo-data';
 import type {
+  CoachingBatch,
+  CoachingBatchInput,
+  CoachingTeacher,
+  CoachingTeacherInput,
   CommunityPost,
   CommunityPostInput,
+  DirectoryReview,
+  DirectoryReviewCategory,
+  DirectoryReviewInput,
   EmergencyContact,
   EmergencyContactInput,
   EmergencyService,
@@ -48,6 +50,8 @@ import type {
   VehicleRequest,
   VehicleRequestInput,
   VehicleRequestStatus,
+  WifiPackage,
+  WifiPackageInput,
 } from './catalog-types';
 
 const NOT_CONFIGURED =
@@ -64,12 +68,15 @@ const NOT_SIGNED_IN = 'এই কাজটি করতে আগে লগই�
  *
  * `contact_phone_private` is deliberately absent: it is admin-only at the RLS
  * layer AND omitted here, so the public path cannot reach it even if the policy
- * were ever relaxed. Note `photos`/`model_*` are vehicle-only columns that older
- * rows simply do not have — Supabase returns them as null and `mapListing` drops
- * them, so a pre-migration row still renders.
+ * were ever relaxed. `photos`/`model_*` are vehicle-only and
+ * `operator_bn`/`address_bn`/`rating_*` come from the directory-catalog
+ * migration; `mapListing` drops a null with `optStr`/`optNum`, so a row that
+ * leaves them unset still renders. NOTE: because this list is explicit, the
+ * directory-catalog migration must be applied before this query runs — PostgREST
+ * errors on an unknown column rather than ignoring it.
  */
 const PUBLIC_LISTING_COLUMNS =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, is_active, is_featured, created_at, updated_at';
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, is_active, is_featured, created_at, updated_at';
 
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
@@ -120,6 +127,10 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     fareMax: optNum(c.fareMax),
     originBn: optStr(c.originBn),
     destinationBn: optStr(c.destinationBn),
+    operatorBn: optStr(c.operatorBn),
+    addressBn: optStr(c.addressBn),
+    ratingAvg: optNum(c.ratingAvg),
+    ratingCount: optNum(c.ratingCount),
     seatCount: optNum(c.seatCount),
     // --- vehicle only; absent on every other category and on pre-migration
     // rows, where they arrive as null and `optStr`/`optNum` drop them.
@@ -130,6 +141,12 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     driverIncluded: typeof c.driverIncluded === 'boolean' ? c.driverIncluded : undefined,
     availableTimeBn: optStr(c.availableTimeBn),
     priceNoteBn: optStr(c.priceNoteBn),
+    ratePerKm: optNum(c.ratePerKm),
+    minimumFare: optNum(c.minimumFare),
+    additionalFee: optNum(c.additionalFee),
+    additionalFeeNoteBn: optStr(c.additionalFeeNoteBn),
+    availableFacilities: strArray(c.availableFacilities),
+    unavailableFacilities: strArray(c.unavailableFacilities),
     // Admin-only column: only populated on the authenticated admin path.
     contactPhonePrivate: admin ? optStr(c.contactPhonePrivate) : undefined,
     isActive: c.isActive !== false,
@@ -226,7 +243,81 @@ function mapVehicleRequest(row: Record<string, unknown>): VehicleRequest {
     tripDuration: optStr(c.tripDuration),
     budget: optNum(c.budget),
     notes: optStr(c.notes),
+    estimatedDistanceKm: optNum(c.estimatedDistanceKm),
+    distanceSource: c.distanceSource === 'road_route' || c.distanceSource === 'manual_estimate' ? c.distanceSource : undefined,
+    ratePerKm: optNum(c.ratePerKm),
+    minimumFare: optNum(c.minimumFare),
+    estimatedFare: optNum(c.estimatedFare),
+    additionalFee: optNum(c.additionalFee),
+    additionalFeeNoteBn: optStr(c.additionalFeeNoteBn),
+    assignedVehicleListingId: optStr(c.assignedVehicleListingId),
+    assignedDriverName: optStr(c.assignedDriverName),
+    assignedDriverPhone: optStr(c.assignedDriverPhone),
+    adminNotes: optStr(c.adminNotes),
     status: (c.status as VehicleRequestStatus) || 'new',
+    createdAt: str(c.createdAt),
+    updatedAt: str(c.updatedAt),
+  };
+}
+
+function mapTeacher(row: Record<string, unknown>): CoachingTeacher {
+  const c = toCamelObject(row) as Record<string, unknown>;
+  return {
+    id: str(c.id),
+    listingId: str(c.listingId),
+    nameBn: str(c.nameBn),
+    subjects: strArray(c.subjects),
+    qualificationBn: optStr(c.qualificationBn),
+    experienceBn: optStr(c.experienceBn),
+    sortOrder: optNum(c.sortOrder) ?? 0,
+    createdAt: str(c.createdAt),
+    updatedAt: str(c.updatedAt),
+  };
+}
+
+function mapBatch(row: Record<string, unknown>): CoachingBatch {
+  const c = toCamelObject(row) as Record<string, unknown>;
+  return {
+    id: str(c.id),
+    listingId: str(c.listingId),
+    titleBn: str(c.titleBn),
+    startDate: optStr(c.startDate),
+    startTime: optStr(c.startTime),
+    noteBn: optStr(c.noteBn),
+    isActive: c.isActive !== false,
+    createdAt: str(c.createdAt),
+    updatedAt: str(c.updatedAt),
+  };
+}
+
+function mapPackage(row: Record<string, unknown>): WifiPackage {
+  const c = toCamelObject(row) as Record<string, unknown>;
+  return {
+    id: str(c.id),
+    listingId: str(c.listingId),
+    nameBn: str(c.nameBn),
+    speedMbps: optNum(c.speedMbps),
+    price: optNum(c.price),
+    offerLabelBn: optStr(c.offerLabelBn),
+    offerConditionsBn: optStr(c.offerConditionsBn),
+    isActive: c.isActive !== false,
+    sortOrder: optNum(c.sortOrder) ?? 0,
+    createdAt: str(c.createdAt),
+    updatedAt: str(c.updatedAt),
+  };
+}
+
+function mapReview(row: Record<string, unknown>): DirectoryReview {
+  const c = toCamelObject(row) as Record<string, unknown>;
+  return {
+    id: str(c.id),
+    category: c.category as DirectoryReviewCategory,
+    listingId: str(c.listingId),
+    authorId: str(c.authorId),
+    authorName: optStr(c.authorName),
+    rating: optNum(c.rating) ?? 0,
+    commentBn: optStr(c.commentBn),
+    isPublished: c.isPublished !== false,
     createdAt: str(c.createdAt),
     updatedAt: str(c.updatedAt),
   };
@@ -364,23 +455,11 @@ export type AckResult = { success: true } | { success: false; error: string };
 // demo bus route would be inventing local commercial facts, whereas a demo
 // phone for sale or a demo Toyota Axio is plainly a sample.
 
-/** Demo rows are only worth showing for the categories that have them. */
-function showcaseFor(category: ServiceCategory): ServiceListing[] {
-  return category === 'vehicle' ? [...DEMO_VEHICLE_LISTINGS] : [];
-}
-
-function withListingShowcase(
-  category: ServiceCategory,
-  real: ServiceListing[]
-): ServiceListing[] {
-  return real.length > 0 ? real : showcaseFor(category);
-}
-
 /** Active listings for a public category page. */
 export async function fetchServiceListings(
   category: ServiceCategory
 ): Promise<ServiceListing[]> {
-  if (!isSupabaseConfigured) return withListingShowcase(category, []);
+  if (!isSupabaseConfigured) return [];
   const client = createClient();
   if (!client) return [];
   const { data, error } = await client
@@ -402,8 +481,6 @@ export async function fetchServiceListingBySlug(
   slug: string
 ): Promise<ServiceListing | null> {
   if (!isSupabaseConfigured) {
-    const demo = getDemoVehicleListing(slug);
-    if (demo && demo.category === category) return demo;
     return null;
   }
   const client = createClient();
@@ -432,11 +509,7 @@ export async function fetchServiceListingForContact(
   category: ServiceCategory,
   slug: string
 ): Promise<ServiceListing | null> {
-  // Preview mode resolves the demo listing; on the configured site a demo has
-  // no private number to release, so the page renders its request CTA instead.
   if (!isSupabaseConfigured) {
-    const demo = getDemoVehicleListing(slug);
-    if (demo && demo.category === category) return demo;
     return null;
   }
   const client = createClient();
@@ -541,6 +614,615 @@ export async function adminDeleteServiceListing(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const { error } = await client.from('service_listings').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+// ---------------------------------------------------------------------------
+// Directory sub-entities: coaching teachers / batches, wifi packages
+// ---------------------------------------------------------------------------
+//
+// Public reads resolve only what a published parent may show (RLS gates the
+// parent + the row's own `is_active`). Admin reads/writes are guarded here AND
+// by RLS, matching every other write path in this module.
+
+const PUBLIC_TEACHER_COLUMNS =
+  'id, listing_id, name_bn, subjects, qualification_bn, experience_bn, sort_order, created_at, updated_at';
+const PUBLIC_BATCH_COLUMNS =
+  'id, listing_id, title_bn, start_date, start_time, note_bn, is_active, created_at, updated_at';
+const PUBLIC_PACKAGE_COLUMNS =
+  'id, listing_id, name_bn, speed_mbps, price, offer_label_bn, offer_conditions_bn, is_active, sort_order, created_at, updated_at';
+const REVIEW_COLUMNS =
+  'id, category, listing_id, author_id, rating, comment_bn, is_published, created_at, updated_at';
+
+function isUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+export async function fetchCoachingTeachers(listingId: string): Promise<CoachingTeacher[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('coaching_teachers')
+    .select(PUBLIC_TEACHER_COLUMNS)
+    .eq('listing_id', listingId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapTeacher);
+}
+
+export async function fetchCoachingBatches(listingId: string): Promise<CoachingBatch[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('coaching_batches')
+    .select(PUBLIC_BATCH_COLUMNS)
+    .eq('listing_id', listingId)
+    .eq('is_active', true)
+    .order('start_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapBatch);
+}
+
+export async function fetchWifiPackages(listingId: string): Promise<WifiPackage[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('wifi_packages')
+    .select(PUBLIC_PACKAGE_COLUMNS)
+    .eq('listing_id', listingId)
+    .eq('is_active', true)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapPackage);
+}
+
+/**
+ * Published reviews for a listing, newest first.
+ *
+ * Deliberately does NOT read `profiles` for the author name: an anonymous
+ * visitor has no business seeing who wrote a review in a small town, so cards
+ * render a neutral label and the caller matches its own rows by `authorId`.
+ */
+export async function fetchDirectoryReviews(
+  category: DirectoryReviewCategory,
+  listingId: string
+): Promise<DirectoryReview[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('directory_reviews')
+    .select(REVIEW_COLUMNS)
+    .eq('category', category)
+    .eq('listing_id', listingId)
+    .eq('is_published', true)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapReview);
+}
+
+/** The signed-in member's own review for a listing, or null. */
+export async function fetchMyDirectoryReview(
+  category: DirectoryReviewCategory,
+  listingId: string
+): Promise<DirectoryReview | null> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return null;
+  const userId = await currentUserId();
+  if (!userId) return null;
+  const client = createClient();
+  if (!client) return null;
+  const { data, error } = await client
+    .from('directory_reviews')
+    .select(REVIEW_COLUMNS)
+    .eq('category', category)
+    .eq('listing_id', listingId)
+    .eq('author_id', userId)
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapReview(data as Record<string, unknown>);
+}
+
+const MAX_COMMENT_CHARS = 2000;
+
+function validateReviewInput(input: DirectoryReviewInput): string | null {
+  if (input.category !== 'coaching' && input.category !== 'wifi') {
+    return 'রিভিউর ক্যাটাগরি সঠিক নয়।';
+  }
+  if (!isUuid(input.listingId)) return 'তালিকাটি সঠিক নয়।';
+  const rating = Number(input.rating);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+    return 'রেটিং ১ থেকে ৫-এর মধ্যে হতে হবে।';
+  }
+  const comment = (input.commentBn ?? '').trim();
+  if (comment.length > MAX_COMMENT_CHARS) {
+    return `মন্তব্য সর্বোচ্চ ${MAX_COMMENT_CHARS} অক্ষরের মধ্যে লিখুন।`;
+  }
+  return null;
+}
+
+/**
+ * Submit a star rating (and optional written review) as the signed-in member.
+ *
+ * Auth, authorship and immediate publication are enforced by RLS + the
+ * `guard_directory_review` trigger; the unique constraint means a second review
+ * for the same listing comes back as a real database error the UI can explain
+ * rather than as a silent duplicate.
+ */
+export async function submitDirectoryReview(
+  input: DirectoryReviewInput
+): Promise<WriteResult<DirectoryReview>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const invalid = validateReviewInput(input);
+  if (invalid) return { success: false, error: invalid };
+
+  const { data, error } = await client
+    .from('directory_reviews')
+    .insert({
+      category: input.category,
+      listing_id: input.listingId,
+      author_id: userId,
+      rating: Number(input.rating),
+      comment_bn: (input.commentBn ?? '').trim() || null,
+    })
+    .select(REVIEW_COLUMNS)
+    .single();
+  if (error || !data) {
+    const message = error?.message ?? 'রিভিউ সংরক্ষণ ব্যর্থ হয়েছে।';
+    const duplicate =
+      /duplicate|unique constraint/i.test(message) ||
+      message.includes('directory_reviews_one_per_author');
+    return {
+      success: false,
+      error: duplicate
+        ? 'আপনি ইতিমধ্যে এই তালিকার জন্য রিভিউ দিয়েছেন। সেটি হালনাগাদ করতে পারেন।'
+        : message,
+    };
+  }
+  return { success: true, data: mapReview(data as Record<string, unknown>) };
+}
+
+/** Edit your own rating/comment. Authorship and publication are pinned server-side. */
+export async function updateMyDirectoryReview(
+  id: string,
+  rating: number,
+  commentBn?: string
+): Promise<WriteResult<DirectoryReview>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'রিভিউটি সঠিক নয়।' };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const r = Number(rating);
+  if (!Number.isInteger(r) || r < 1 || r > 5) {
+    return { success: false, error: 'রেটিং ১ থেকে ৫-এর মধ্যে হতে হবে।' };
+  }
+  const comment = (commentBn ?? '').trim();
+  if (comment.length > MAX_COMMENT_CHARS) {
+    return { success: false, error: `মন্তব্য সর্বোচ্চ ${MAX_COMMENT_CHARS} অক্ষরের মধ্যে লিখুন।` };
+  }
+
+  const { data, error } = await client
+    .from('directory_reviews')
+    .update({ rating: r, comment_bn: comment || null })
+    .eq('id', id)
+    .eq('author_id', userId)
+    .select(REVIEW_COLUMNS)
+    .maybeSingle();
+  if (error || !data) {
+    return { success: false, error: error?.message ?? 'রিভিউ হালনাগাদ ব্যর্থ হয়েছে (অথবা এটি আপনার নয়)।' };
+  }
+  return { success: true, data: mapReview(data as Record<string, unknown>) };
+}
+
+export async function deleteMyDirectoryReview(id: string): Promise<AckResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'রিভিউটি সঠিক নয়।' };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client
+    .from('directory_reviews')
+    .delete()
+    .eq('id', id)
+    .eq('author_id', userId);
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+// --- admin: sub-entity management ---
+
+export async function adminFetchCoachingTeachers(listingId: string): Promise<CoachingTeacher[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  if (!(await currentUserIsAdmin())) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('coaching_teachers')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapTeacher);
+}
+
+export async function adminFetchCoachingBatches(listingId: string): Promise<CoachingBatch[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  if (!(await currentUserIsAdmin())) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('coaching_batches')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapBatch);
+}
+
+export async function adminFetchWifiPackages(listingId: string): Promise<WifiPackage[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  if (!(await currentUserIsAdmin())) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('wifi_packages')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapPackage);
+}
+
+/**
+ * Every review for a listing (published or not) with the author's name.
+ *
+ * Admin-only, which is why the author name is safe to resolve here: it is never
+ * part of a public read path.
+ */
+export async function adminFetchDirectoryReviews(
+  listingId: string
+): Promise<(DirectoryReview & { listingTitleBn?: string })[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  if (!(await currentUserIsAdmin())) return [];
+  const client = createClient();
+  if (!client) return [];
+
+  const [reviewsRes, listingRes] = await Promise.all([
+    client
+      .from('directory_reviews')
+      .select('*')
+      .eq('listing_id', listingId)
+      .order('created_at', { ascending: false }),
+    client.from('service_listings').select('title_bn').eq('id', listingId).maybeSingle(),
+  ]);
+  if (reviewsRes.error || !reviewsRes.data) return [];
+
+  const rows = (reviewsRes.data as Record<string, unknown>[]).map(mapReview);
+  const authorIds = Array.from(new Set(rows.map((r) => r.authorId).filter(Boolean)));
+  const names = new Map<string, string>();
+  if (authorIds.length > 0) {
+    const { data: profiles } = await client
+      .from('profiles')
+      .select('id, full_name')
+      .in('id', authorIds);
+    for (const row of (profiles ?? []) as Record<string, unknown>[]) {
+      if (typeof row.id === 'string' && typeof row.full_name === 'string') {
+        names.set(row.id, row.full_name);
+      }
+    }
+  }
+  const listingTitleBn =
+    typeof listingRes.data?.title_bn === 'string' ? listingRes.data.title_bn : undefined;
+  return rows.map((r) => ({
+    ...r,
+    authorName: names.get(r.authorId),
+    listingTitleBn,
+  }));
+}
+
+type TeacherPatch = {
+  nameBn?: string;
+  subjects?: string[];
+  qualificationBn?: string | null;
+  experienceBn?: string | null;
+  sortOrder?: number;
+};
+type BatchPatch = {
+  titleBn?: string;
+  startDate?: string | null;
+  startTime?: string | null;
+  noteBn?: string | null;
+  isActive?: boolean;
+};
+type PackagePatch = {
+  nameBn?: string;
+  speedMbps?: number | null;
+  price?: number | null;
+  offerLabelBn?: string | null;
+  offerConditionsBn?: string | null;
+  isActive?: boolean;
+  sortOrder?: number;
+};
+
+function dbWriteError(error: { message: string } | null, fallback: string) {
+  return error ? { success: false as const, error: error.message || fallback } : null;
+}
+
+export async function adminCreateCoachingTeacher(
+  listingId: string,
+  input: Omit<CoachingTeacherInput, 'listingId'>
+): Promise<WriteResult<CoachingTeacher | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(listingId)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const name = input.nameBn.trim();
+  if (name.length < 2) return { success: false, error: 'শিক্ষকের নাম লিখুন।' };
+  const { data, error } = await client
+    .from('coaching_teachers')
+    .insert({
+      listing_id: listingId,
+      name_bn: name,
+      subjects: input.subjects ?? [],
+      qualification_bn: input.qualificationBn?.trim() || null,
+      experience_bn: input.experienceBn?.trim() || null,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select('*')
+    .single();
+  const failed = dbWriteError(error, 'শিক্ষক সংরক্ষণ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  return { success: true, data: mapTeacher(data as Record<string, unknown>) };
+}
+
+export async function adminUpdateCoachingTeacher(
+  id: string,
+  patch: TeacherPatch
+): Promise<WriteResult<CoachingTeacher | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'শিক্ষকটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const payload: Record<string, unknown> = {};
+  if (patch.nameBn !== undefined) {
+    const name = patch.nameBn.trim();
+    if (name.length < 2) return { success: false, error: 'শিক্ষকের নাম লিখুন।' };
+    payload.name_bn = name;
+  }
+  if (patch.subjects !== undefined) payload.subjects = patch.subjects;
+  if (patch.qualificationBn !== undefined) payload.qualification_bn = patch.qualificationBn?.trim() || null;
+  if (patch.experienceBn !== undefined) payload.experience_bn = patch.experienceBn?.trim() || null;
+  if (patch.sortOrder !== undefined) payload.sort_order = patch.sortOrder;
+  const { data, error } = await client
+    .from('coaching_teachers')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  const failed = dbWriteError(error, 'শিক্ষক হালনাগাদ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  if (!data) return { success: true, data: undefined };
+  return { success: true, data: mapTeacher(data as Record<string, unknown>) };
+}
+
+export async function adminDeleteCoachingTeacher(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'শিক্ষকটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('coaching_teachers').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+export async function adminCreateCoachingBatch(
+  listingId: string,
+  input: Omit<CoachingBatchInput, 'listingId'>
+): Promise<WriteResult<CoachingBatch | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(listingId)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const title = input.titleBn.trim();
+  if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };
+  const { data, error } = await client
+    .from('coaching_batches')
+    .insert({
+      listing_id: listingId,
+      title_bn: title,
+      start_date: input.startDate?.trim() || null,
+      start_time: input.startTime?.trim() || null,
+      note_bn: input.noteBn?.trim() || null,
+      is_active: input.isActive !== false,
+    })
+    .select('*')
+    .single();
+  const failed = dbWriteError(error, 'ব্যাচ সংরক্ষণ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  return { success: true, data: mapBatch(data as Record<string, unknown>) };
+}
+
+export async function adminUpdateCoachingBatch(
+  id: string,
+  patch: BatchPatch
+): Promise<WriteResult<CoachingBatch | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'ব্যাচটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const payload: Record<string, unknown> = {};
+  if (patch.titleBn !== undefined) {
+    const title = patch.titleBn.trim();
+    if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };
+    payload.title_bn = title;
+  }
+  if (patch.startDate !== undefined) payload.start_date = patch.startDate?.trim() || null;
+  if (patch.startTime !== undefined) payload.start_time = patch.startTime?.trim() || null;
+  if (patch.noteBn !== undefined) payload.note_bn = patch.noteBn?.trim() || null;
+  if (patch.isActive !== undefined) payload.is_active = patch.isActive;
+  const { data, error } = await client
+    .from('coaching_batches')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  const failed = dbWriteError(error, 'ব্যাচ হালনাগাদ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  if (!data) return { success: true, data: undefined };
+  return { success: true, data: mapBatch(data as Record<string, unknown>) };
+}
+
+export async function adminDeleteCoachingBatch(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'ব্যাচটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('coaching_batches').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+export async function adminCreateWifiPackage(
+  listingId: string,
+  input: Omit<WifiPackageInput, 'listingId'>
+): Promise<WriteResult<WifiPackage | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(listingId)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const name = input.nameBn.trim();
+  if (name.length < 2) return { success: false, error: 'প্যাকেজের নাম লিখুন।' };
+  if (input.speedMbps != null && input.speedMbps <= 0) {
+    return { success: false, error: 'স্পিড শূন্যের বেশি হতে হবে।' };
+  }
+  if (input.price != null && input.price < 0) {
+    return { success: false, error: 'দাম ঋণাত্মক হতে পারে না।' };
+  }
+  const { data, error } = await client
+    .from('wifi_packages')
+    .insert({
+      listing_id: listingId,
+      name_bn: name,
+      speed_mbps: input.speedMbps ?? null,
+      price: input.price ?? null,
+      offer_label_bn: input.offerLabelBn?.trim() || null,
+      offer_conditions_bn: input.offerConditionsBn?.trim() || null,
+      is_active: input.isActive !== false,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select('*')
+    .single();
+  const failed = dbWriteError(error, 'প্যাকেজ সংরক্ষণ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  return { success: true, data: mapPackage(data as Record<string, unknown>) };
+}
+
+export async function adminUpdateWifiPackage(
+  id: string,
+  patch: PackagePatch
+): Promise<WriteResult<WifiPackage | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'প্যাকেজটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const payload: Record<string, unknown> = {};
+  if (patch.nameBn !== undefined) {
+    const name = patch.nameBn.trim();
+    if (name.length < 2) return { success: false, error: 'প্যাকেজের নাম লিখুন।' };
+    payload.name_bn = name;
+  }
+  if (patch.speedMbps !== undefined) {
+    if (patch.speedMbps != null && patch.speedMbps <= 0) {
+      return { success: false, error: 'স্পিড শূন্যের বেশি হতে হবে।' };
+    }
+    payload.speed_mbps = patch.speedMbps;
+  }
+  if (patch.price !== undefined) {
+    if (patch.price != null && patch.price < 0) {
+      return { success: false, error: 'দাম ঋণাত্মক হতে পারে না।' };
+    }
+    payload.price = patch.price;
+  }
+  if (patch.offerLabelBn !== undefined) payload.offer_label_bn = patch.offerLabelBn?.trim() || null;
+  if (patch.offerConditionsBn !== undefined)
+    payload.offer_conditions_bn = patch.offerConditionsBn?.trim() || null;
+  if (patch.isActive !== undefined) payload.is_active = patch.isActive;
+  if (patch.sortOrder !== undefined) payload.sort_order = patch.sortOrder;
+  const { data, error } = await client
+    .from('wifi_packages')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  const failed = dbWriteError(error, 'প্যাকেজ হালনাগাদ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  if (!data) return { success: true, data: undefined };
+  return { success: true, data: mapPackage(data as Record<string, unknown>) };
+}
+
+export async function adminDeleteWifiPackage(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'প্যাকেজটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('wifi_packages').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+// --- admin: review moderation ---
+
+/** Publish / unpublish a review. Admin only. */
+export async function adminSetDirectoryReviewPublished(
+  id: string,
+  isPublished: boolean
+): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'রিভিউটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client
+    .from('directory_reviews')
+    .update({ is_published: isPublished })
+    .eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+export async function adminDeleteDirectoryReview(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'রিভিউটি সঠিক নয়।' };
+  if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('directory_reviews').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
   return { success: true, data: undefined };
 }
@@ -1084,36 +1766,32 @@ export async function uploadPostImage(
 // ---------------------------------------------------------------------------
 
 /**
- * Submit a vehicle rental request.
- *
- * Open to guests by design: a taxi enquiry should not require an account. The
- * row is real and lands in the admin inbox.
- *
- * Note there is deliberately NO `.select()` on this insert. Guests are allowed
- * to INSERT the row but not to read `vehicle_requests` back, so asking
- * PostgREST to `RETURNING *` would come back empty even though the write
- * succeeded — and reporting that as a failure would tell a real customer their
- * request was lost. Success is therefore keyed purely on Supabase reporting no
- * error, which is the actual signal that the row was written. Nothing is
- * synthesised: a failure still surfaces the real database message.
+ * Submit a public rental request through the server endpoint. The endpoint
+ * validates the request and invokes the database function that snapshots the
+ * active listing's pricing and calculates the final estimate; browser-side
+ * inserts are intentionally not permitted.
  */
 export async function createVehicleRequest(
   input: VehicleRequestInput
 ): Promise<AckResult> {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
-  const client = createClient();
-  if (!client) return { success: false, error: NOT_CONFIGURED };
-
-  const userId = await currentUserId();
-  const payload = {
-    ...toSnakeObject(input as unknown as Record<string, unknown>),
-    customer_id: userId,
-    status: 'new',
-  };
-
-  const { error } = await client.from('vehicle_requests').insert(payload);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
+  try {
+    const response = await fetch('/api/vehicle-requests', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(input),
+    });
+    const result = await response.json() as { error?: string };
+    if (!response.ok) {
+      return { success: false, error: result.error || 'যানবাহনের অনুরোধ পাঠানো যায়নি।' };
+    }
+    return { success: true };
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'যানবাহনের অনুরোধ পাঠানো যায়নি।',
+    };
+  }
 }
 
 export async function adminFetchVehicleRequests(): Promise<VehicleRequest[]> {

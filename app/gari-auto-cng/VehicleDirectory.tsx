@@ -23,6 +23,7 @@ import { fetchServiceListings } from '@/lib/catalog-service';
 import {
   areaNames,
   bnTaka,
+  bnTakaDecimal,
   CATEGORY_UI,
   tagLabels,
   toBn,
@@ -42,7 +43,7 @@ const SORTERS = {
   seats_desc: (a: ServiceListing, b: ServiceListing) =>
     (b.seatCount ?? -1) - (a.seatCount ?? -1),
   price_asc: (a: ServiceListing, b: ServiceListing) =>
-    (a.priceMin ?? Number.POSITIVE_INFINITY) - (b.priceMin ?? Number.POSITIVE_INFINITY),
+    (a.ratePerKm ?? a.priceMin ?? Number.POSITIVE_INFINITY) - (b.ratePerKm ?? b.priceMin ?? Number.POSITIVE_INFINITY),
 };
 
 /**
@@ -53,6 +54,9 @@ const SORTERS = {
  * is more honest than a card that prints a zero.
  */
 function priceParts(listing: ServiceListing): { label: string; suffix?: string } | null {
+  if (listing.ratePerKm != null) {
+    return { label: bnTakaDecimal(listing.ratePerKm), suffix: 'প্রতি কিলোমিটার' };
+  }
   const { priceMin, priceMax, priceNoteBn } = listing;
   if (priceMin == null && priceMax == null) return null;
 
@@ -111,23 +115,18 @@ export default function VehicleDirectory() {
         chips={[
           listing.seatCount ? `${toBn(listing.seatCount)} সিট` : undefined,
           ...tagLabels(listing.tags),
+          ...(listing.availableFacilities ?? []).slice(0, 2),
           'যাচাইয়ের তথ্য নেই',
         ]}
         badge={
           listing.isFeatured
             ? 'ফিচার্ড'
-            : listing.isDemo
-              ? 'নমুনা'
-              : undefined
+            : undefined
         }
-        badgeTone={listing.isDemo && !listing.isFeatured ? 'accent' : 'brand'}
+        badgeTone="brand"
       />
     );
   }, []);
-
-  // Only announced when the directory is actually showing fallback rows, so a
-  // real inventory never carries a banner it did not need.
-  const showingDemo = listings.length > 0 && listings.every((l) => l.isDemo);
 
   return (
     <CatalogDirectory
@@ -139,15 +138,6 @@ export default function VehicleDirectory() {
       sorters={SORTERS}
       renderCard={renderCard}
       action={<AdminListingLink category="vehicle" label="যান যোগ করুন" />}
-      banner={
-        showingDemo ? (
-          <p className="rounded-xl border border-accent-200 bg-accent-100/50 px-3.5 py-2.5 text-[12.5px] leading-relaxed text-accent-700">
-            এখনকার ভাড়ার তালিকায় কোনো গাড়ি যোগ করা হয়নি। নিচের সবগুলো{' '}
-            <strong className="font-bold">নমুনা তালিকা</strong> — বাস্তবে ভাড়া দেওয়া হয় না,
-            অনুরোধ পাঠালে কোনো গাড়ির সঙ্গে যোগাযোগ হবে না।
-          </p>
-        ) : null
-      }
     />
   );
 }

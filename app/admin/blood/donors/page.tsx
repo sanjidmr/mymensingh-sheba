@@ -125,7 +125,6 @@ export default async function AdminBloodDonorsPage({
       <PageHeader
         title="রক্তদাতা ব্যবস্থাপনা"
         description="অনুমোদিত তথ্য, মডারেশন ও উপলভ্যতা। ব্যক্তিগত ফোন নম্বর কেবল রেকর্ডের সুরক্ষিত বিস্তারিত পাতায় দেখানো হয়।"
-        actions={<Link href="/admin/blood" className="inline-flex min-h-10 items-center rounded-lg border border-admin-border bg-white px-3 text-sm font-semibold text-ink-700">রক্তের অনুরোধ</Link>}
       />
 
       <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">

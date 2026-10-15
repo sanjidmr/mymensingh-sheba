@@ -41,6 +41,7 @@ import { mockTrackListingMeta } from './tolet-tracking';
 import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
 
 export const toletStorageConfigured = isSupabaseConfigured;
+const LISTING_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ---------------------------------------------------------------------------
 // Row mapping helpers
@@ -92,6 +93,31 @@ function mapListingRow(row: RawListingRow): ToletListing {
     updatedAt: (c.updatedAt as string) || '',
     publishedAt: (c.publishedAt as string) || undefined,
   };
+}
+
+async function attachApprovedListingPhones(
+  client: NonNullable<ReturnType<typeof createClient>>,
+  listings: ToletListing[]
+): Promise<ToletListing[]> {
+  const ids = listings
+    .filter((listing) => listing.status === 'approved' && LISTING_UUID_PATTERN.test(listing.id))
+    .map((listing) => listing.id);
+  if (ids.length === 0) return listings;
+
+  const { data, error } = await client.rpc('fn_public_tolet_listing_contacts', {
+    p_listing_ids: ids,
+  });
+  if (error) throw new Error(`মালিকের যোগাযোগের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
+
+  const phoneByListing = new Map<string, string>(
+    (data ?? []).map(
+      (row: { listing_id: string; phone: string }): [string, string] => [row.listing_id, row.phone]
+    )
+  );
+  return listings.map((listing) => ({
+    ...listing,
+    ownerPhone: phoneByListing.get(listing.id) || undefined,
+  }));
 }
 
 function mapRequestRow(row: Record<string, unknown>, listingTitle = ''): ToletRequest {
@@ -192,7 +218,10 @@ export async function fetchPublicListings(): Promise<ToletListing[]> {
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   if (error) return [];
-  const real = (data || []).map((row) => mapListingRow(row as RawListingRow));
+  const real = await attachApprovedListingPhones(
+    client,
+    (data || []).map((row) => mapListingRow(row as RawListingRow))
+  );
   real.forEach(rememberListingMeta);
   return real;
 }
@@ -214,7 +243,10 @@ export async function fetchListingById(id: string): Promise<ToletListing | null>
     .eq('id', id)
     .maybeSingle();
   if (error || !data) return null;
-  const listing = mapListingRow(data as RawListingRow);
+  let listing = mapListingRow(data as RawListingRow);
+  if (listing.status === 'approved' && LISTING_UUID_PATTERN.test(listing.id)) {
+    [listing] = await attachApprovedListingPhones(client, [listing]);
+  }
   rememberListingMeta(listing);
   return listing;
 }

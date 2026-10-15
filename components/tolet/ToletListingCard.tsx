@@ -3,12 +3,13 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Bed, Bath, Calendar, Heart, ShieldCheck } from 'lucide-react';
+import { MapPin, Bed, Bath, Calendar, Heart, Phone, ShieldCheck } from 'lucide-react';
 import { calculateToletFee } from '@/lib/tolet-fees';
 import type { ToletListing } from '@/lib/tolet-types';
 import { TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { getAreaById } from '@/lib/locations';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
+import { useListingContact } from '@/components/tolet/detail/ContactActions';
 import { cn } from '@/lib/utils';
 
 interface ToletListingCardProps {
@@ -34,6 +35,7 @@ export function ToletListingCard({
   const isMessLike = typeInfo?.isMessLike ?? false;
   const platformFee = calculateToletFee(listing.rentPrice, listing.propertyType);
   const totalRent = listing.rentPrice + platformFee;
+  const contact = useListingContact({ listing, source: 'card' });
 
   const handleHeartClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -158,12 +160,25 @@ export function ToletListingCard({
               <span className="text-[11px] text-slate-500"> /মাস</span>
             </div>
 
-            <Link
-              href={`/tolet/${listing.id}`}
-              className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-2xs transition-colors"
-            >
-              বিস্তারিত দেখুন
-            </Link>
+            <div className="flex items-center gap-2">
+              {listing.status === 'approved' && contact.telHref && (
+                <a
+                  href={contact.telHref}
+                  onClick={contact.onCall}
+                  aria-label={`${contact.callLabelBn}: ${listing.title}`}
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-xl border border-emerald-800 px-3 py-2 text-xs font-semibold text-emerald-900 transition-colors hover:bg-emerald-50"
+                >
+                  <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+                  {contact.callLabelBn}
+                </a>
+              )}
+              <Link
+                href={`/tolet/${listing.id}`}
+                className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-2xs transition-colors"
+              >
+                বিস্তারিত দেখুন
+              </Link>
+            </div>
           </div>
         </div>
       </div>

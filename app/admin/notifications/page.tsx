@@ -10,7 +10,6 @@ export const dynamic = 'force-dynamic';
 
 const CATEGORIES = [
   { value: 'service_request', label: 'সেবা অনুরোধ' },
-  { value: 'blood_request', label: 'রক্তের অনুরোধ' },
   { value: 'vehicle_request', label: 'যানবাহন অনুরোধ' },
   { value: 'contact_message', label: 'গ্রাহক সহায়তা' },
   { value: 'community_post', label: 'কমিউনিটি পোস্ট' },

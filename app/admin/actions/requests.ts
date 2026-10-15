@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
+import { normalizeBdPhone } from '@/lib/contact-types';
 import { HOME_SERVICE_SLUGS, SERVICE_REQUEST_STATUSES } from '@/lib/admin/service-request-constants';
 import { STAFF_SERVICE_KEYS, type StaffServiceKey } from '@/lib/staff-types';
 
@@ -113,11 +114,17 @@ export async function updateHomeServiceRequest(input: {
       const requestedWorkType = typeof serviceMeta?.serviceTypeId === 'string'
         ? serviceMeta.serviceTypeId
         : null;
-      if (requestedWorkType && !(data.work_types ?? []).includes(requestedWorkType)) {
+      // Empty work_types means "no specific skill recorded" (the internal
+      // directory form no longer edits skills), so treat it as a wildcard
+      // rather than blocking the assignment.
+      const workerWorkTypes = data.work_types ?? [];
+      if (requestedWorkType && workerWorkTypes.length && !workerWorkTypes.includes(requestedWorkType)) {
         return { ok: false, error: 'নির্বাচিত কর্মীর প্রোফাইলে এই নির্দিষ্ট কাজের দক্ষতা নেই।' };
       }
+      // Same for areas: an empty list is not "works nowhere", it is "area not
+      // recorded", so it must not reject a valid assignment.
       const workerAreas = data.areas ?? [];
-      if (existing.area_id && (!workerAreas.length || !workerAreas.includes(existing.area_id))) {
+      if (existing.area_id && workerAreas.length && !workerAreas.includes(existing.area_id)) {
         return { ok: false, error: 'নির্বাচিত কর্মী এই রিকোয়েস্টের এলাকায় কাজ করেন না।' };
       }
       worker = { id: data.id, name_bn: data.name_bn };
@@ -223,7 +230,7 @@ export async function setVehicleRequestStatus(
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
       return { ok: false, error: 'রিকোয়েস্ট আইডি সঠিক নয়।' };
     }
-    const allowed = ['new', 'contacted', 'closed'];
+    const allowed = ['new', 'reviewing', 'contacted', 'approved', 'rejected', 'closed'];
     if (!allowed.includes(status)) {
       return { ok: false, error: 'অবৈধ স্ট্যাটাস।' };
     }
@@ -242,6 +249,76 @@ export async function setVehicleRequestStatus(
     revalidatePath(`/admin/vehicle-requests/${requestId}`);
     revalidatePath('/profile/requests');
     return { ok: true, message: status === 'closed' ? 'রিকোয়েস্টটি বন্ধ হয়েছে; বুকিং বা পেমেন্ট নিশ্চিত করা হয়নি।' : 'রিকোয়েস্টের অবস্থা আপডেট হয়েছে।' };
+  });
+}
+
+export async function updateVehicleRequestManagement(input: {
+  requestId: string;
+  status: string;
+  assignedVehicleListingId: string;
+  assignedDriverName: string;
+  assignedDriverPhone: string;
+  adminNotes: string;
+}): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.requestId)) {
+      return { ok: false, error: 'রিকোয়েস্ট আইডি সঠিক নয়।' };
+    }
+    const allowed = ['new', 'reviewing', 'contacted', 'approved', 'rejected', 'closed'];
+    if (!allowed.includes(input.status)) return { ok: false, error: 'অবৈধ রিকোয়েস্ট অবস্থা।' };
+    if (input.adminNotes.length > 1200) return { ok: false, error: 'অ্যাডমিন নোট সর্বোচ্চ ১২০০ অক্ষরের মধ্যে লিখুন।' };
+    if (input.assignedDriverName.trim().length > 120) return { ok: false, error: 'চালকের নাম সর্বোচ্চ ১২০ অক্ষরের মধ্যে লিখুন।' };
+    const normalizedPhone = normalizeBdPhone(input.assignedDriverPhone);
+    if (normalizedPhone && !/^01[3-9]\d{8}$/.test(normalizedPhone)) {
+      return { ok: false, error: 'চালকের ফোন নম্বরটি সঠিক নয়।' };
+    }
+    if (input.assignedVehicleListingId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(input.assignedVehicleListingId)) {
+      return { ok: false, error: 'নির্ধারিত যানবাহনের আইডি সঠিক নয়।' };
+    }
+    if (input.assignedVehicleListingId) {
+      const { data: currentRequest, error: currentError } = await client
+        .from('vehicle_requests')
+        .select('assigned_vehicle_listing_id')
+        .eq('id', input.requestId)
+        .maybeSingle();
+      if (currentError) return { ok: false, error: `রিকোয়েস্ট যাচাই ব্যর্থ হয়েছে: ${currentError.message}` };
+      if (!currentRequest) return { ok: false, error: 'রিকোয়েস্টটি পাওয়া যায়নি।' };
+      let vehicleQuery = client
+        .from('service_listings')
+        .select('id')
+        .eq('id', input.assignedVehicleListingId)
+        .eq('category', 'vehicle');
+      if (currentRequest.assigned_vehicle_listing_id !== input.assignedVehicleListingId) {
+        vehicleQuery = vehicleQuery.eq('is_active', true);
+      }
+      const { data: vehicle, error: vehicleError } = await vehicleQuery.maybeSingle();
+      if (vehicleError) return { ok: false, error: `নির্ধারিত যানবাহন যাচাই ব্যর্থ হয়েছে: ${vehicleError.message}` };
+      if (!vehicle) return { ok: false, error: 'নির্বাচিত যানবাহনটি সক্রিয় তালিকায় নেই।' };
+    }
+
+    const { data, error } = await client
+      .from('vehicle_requests')
+      .update({
+        status: input.status,
+        assigned_vehicle_listing_id: input.assignedVehicleListingId || null,
+        assigned_driver_name: input.assignedDriverName.trim() || null,
+        assigned_driver_phone: normalizedPhone ? `+880${normalizedPhone.slice(1)}` : null,
+        admin_notes: input.adminNotes.trim() || null,
+      })
+      .eq('id', input.requestId)
+      .select('id')
+      .maybeSingle();
+    if (error) return { ok: false, error: `যানবাহন রিকোয়েস্ট সংরক্ষণ ব্যর্থ হয়েছে: ${error.message}` };
+    if (!data) return { ok: false, error: 'রিকোয়েস্টটি পাওয়া যায়নি অথবা আপডেটের অনুমতি নেই।' };
+
+    revalidatePath('/admin/vehicle-requests');
+    revalidatePath(`/admin/vehicle-requests/${input.requestId}`);
+    return {
+      ok: true,
+      message: input.status === 'approved'
+        ? 'রিকোয়েস্ট অনুমোদিত হয়েছে; এটি চূড়ান্ত বুকিং বা প্রেরণ নিশ্চিত করে না।'
+        : 'রিকোয়েস্টের তথ্য সংরক্ষিত হয়েছে।',
+    };
   });
 }
 

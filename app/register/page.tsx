@@ -10,6 +10,7 @@ import AuthField, { AuthSubmit, PasswordStrength } from '@/components/auth/AuthF
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
 import { getAllMCCAreas } from '@/lib/locations';
+import { CUSTOMER_HOME, resolveAuthRedirect } from '@/lib/auth-routes';
 
 const AREAS = getAllMCCAreas();
 const MIN_PASSWORD = 6;
@@ -36,7 +37,10 @@ export default function RegisterPage() {
   const [done, setDone] = useState(false);
 
   useEffect(() => {
-    if (user) router.replace('/profile');
+    // Role-aware: a self-registered account is always a customer, but if an
+    // already-signed-in admin ever lands here they go to the console, not the
+    // customer profile.
+    if (user) router.replace(resolveAuthRedirect(user.role, null));
   }, [user, router]);
 
   const clearError = (key: keyof Errors) =>
@@ -98,7 +102,7 @@ export default function RegisterPage() {
         setDone(true);
         return;
       }
-      router.replace('/profile');
+      router.replace(CUSTOMER_HOME);
       return;
     }
     setFormError(res.error || 'অ্যাকাউন্ট তৈরি করা যায়নি। একটু পরে আবার চেষ্টা করুন।');
