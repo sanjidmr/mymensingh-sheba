@@ -151,6 +151,12 @@ function DonorDashboard({ donor }: { donor: BloodDonorProfile }) {
                 <strong className="text-ink-900">{area?.nameBn || donor.areaId}</strong>
               </div>
               <div className="p-3 rounded-xl bg-mist-50">
+                <span className="block text-[11px] text-ink-400">কার্ডে প্রস্তুতির তথ্য</span>
+                <strong className={donor.showReadiness ? 'text-brand-700' : 'text-ink-500'}>
+                  {donor.showReadiness ? 'দেখানো হচ্ছে' : 'দেখানো হচ্ছে না'}
+                </strong>
+              </div>
+              <div className="p-3 rounded-xl bg-mist-50">
                 <span className="block text-[11px] text-ink-400">যাচাইকরণ অবস্থা</span>
                 <strong className={donor.isVerified ? 'text-brand-700' : 'text-ink-500'}>
                   {donor.isVerified ? 'ভেরিফাইড' : 'ভেরিফিকেশনের অপেক্ষায়'}

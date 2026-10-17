@@ -52,7 +52,20 @@ export default function AdminToletPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
+  const [refreshTick, setRefreshTick] = useState(0);
   const pageSize = 20;
+
+  useEffect(() => {
+    const refresh = () => {
+      if (document.visibilityState === 'visible') setRefreshTick((tick) => tick + 1);
+    };
+    const interval = window.setInterval(refresh, 30_000);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, []);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -113,7 +126,7 @@ export default function AdminToletPage() {
     return () => {
       active = false;
     };
-  }, [tab, debouncedSearch, propertyType, areaId, fromDate, toDate, page]);
+  }, [tab, debouncedSearch, propertyType, areaId, fromDate, toDate, page, refreshTick]);
 
   const handleSaveFee = async (e: React.FormEvent) => {
     e.preventDefault();

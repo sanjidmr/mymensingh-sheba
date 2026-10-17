@@ -10,16 +10,19 @@
  *
  * What the card has to answer, in the order a reader asks:
  *   1. Is this the right blood group?               → the group token, top-left
- *   2. Are they fit to give right now?               → the availability panel
- *   3. Where are they?                              → the area line
- *   4. How do I reach them?                         → the call action, bottom
+ *   2. Where are they?                              → the area line
+ *   3. How do I reach them?                         → the call action, bottom
+ *   4. (Opt-in) Are they fit to give right now?     → the readiness panel, if shown
+ *
+ * The readiness panel is the donor's to publish. It renders only when the donor
+ * turned it on, and it collapses by default: a card must not imply "fit to give
+ * right now" for someone who never said so.
  *
  * Calling
  * -------
  * A visitor calls an approved donor DIRECTLY. No blood request, no admin in the
- * middle. Both the card itself and the কল করুন action are a single `tel:` link,
- * so tapping anywhere on the card opens the device dialer with that donor's
- * number.
+ * middle. The কল করুন action is a single `tel:` link, so tapping it opens the
+ * device dialer with that donor's number.
  *
  * The number is NEVER printed as text. It reaches the browser only through the
  * `fn_public_donor_directory` RPC (approved rows only) so that the `tel:` href
@@ -27,7 +30,8 @@
  */
 
 import React from 'react';
-import { BadgeCheck, Droplets, MapPin, Phone } from 'lucide-react';
+import { BadgeCheck, ChevronDown, Droplets, MapPin, Phone } from 'lucide-react';
+import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { resolveDonorPhotoUrl } from '@/lib/blood-donor-service';
 import { donorRecovery } from '@/lib/blood-donor-types';
 import { getAreaById } from '@/lib/locations';
@@ -77,6 +81,11 @@ export default function DonorCard({ donor }: DonorCardProps) {
   const area = getAreaById(donor.areaId);
   const recovery = donorRecovery(donor);
   const href = telHref(donor.contactPhone);
+  // The readiness panel is opt-in and opens on demand. It is a separate control
+  // from the call action below, which is why it sits OUTSIDE the card's `tel:`
+  // link: a button nested inside an anchor is invalid, and a tap meant for the
+  // detail must not place a call.
+  const [readinessOpen, setReadinessOpen] = React.useState(false);
 
   const body = (
     <>
@@ -114,50 +123,65 @@ export default function DonorCard({ donor }: DonorCardProps) {
         </div>
       </div>
 
-      {/* Availability — whether the donor is likely fit to give right now */}
-      <div className="mt-3 flex items-start gap-2 rounded-xl border border-mist-200 bg-mist-50 p-2.5">
-        <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${recovery.chipClassName}`}>
-          {recovery.labelBn}
-        </span>
-        <p className="text-[12px] leading-relaxed text-ink-600">{recovery.detailBn}</p>
-      </div>
-
       {donor.intro ? (
         <p className="mt-2.5 line-clamp-2 text-[12.5px] leading-relaxed text-ink-600">{donor.intro}</p>
       ) : null}
     </>
   );
 
-  // No dialable number yet → non-interactive card that says so, rather than a
-  // link that leads nowhere.
-  if (!href) {
-    return (
-      <article className="flex flex-col rounded-2xl border border-mist-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(7,39,31,0.04)] sm:p-4">
-        {body}
-        <div className="mt-3.5 pt-3.5">
-          <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-mist-200 bg-mist-100 px-4 text-sm font-extrabold text-ink-400">
-            <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden="true" />
-            <span>নম্বর শীঘ্রই যুক্ত হবে</span>
-          </span>
-        </div>
-      </article>
-    );
-  }
-
-  // The whole card is the call action, so tapping anywhere opens the dialer.
-  return (
+  const callAction = href ? (
     <a
       href={href}
       aria-label={`${donor.fullName} (${donor.bloodGroup}) — কল করুন`}
-      className="group flex flex-col rounded-2xl border border-mist-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(7,39,31,0.04)] transition-colors hover:border-rose-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2 sm:p-4"
+      className="mt-3.5 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"
     >
-      {body}
-      <div className="mt-3.5 pt-3.5">
-        <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-extrabold text-white transition-colors group-hover:bg-rose-800">
-          <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden="true" />
-          <span>📞 কল করুন</span>
-        </span>
-      </div>
+      <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden="true" />
+      <span>📞 কল করুন</span>
     </a>
+  ) : (
+    <span className="mt-3.5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-mist-200 bg-mist-100 px-4 text-sm font-extrabold text-ink-400">
+      <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden="true" />
+      <span>নম্বর শীঘ্রই যুক্ত হবে</span>
+    </span>
+  );
+
+  return (
+    <article className="flex flex-col rounded-2xl border border-mist-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(7,39,31,0.04)] sm:p-4">
+      {body}
+
+      {/*
+        Readiness is OPT-IN. It is shown only when the donor turned it on in
+        their own profile — a stranger never sees a "প্রস্তুত" badge the donor did
+        not choose to publish. With it off, nothing here hints at availability
+        beyond the group and area.
+      */}
+      {donor.showReadiness ? (
+        <div className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-2.5">
+          <button
+            type="button"
+            onClick={() => setReadinessOpen((open) => !open)}
+            aria-expanded={readinessOpen}
+            className={`inline-flex min-h-9 items-center gap-1.5 text-[12px] font-bold text-ink-700 ${LIGHT_FOCUS}`}
+          >
+            <Droplets className="h-3.5 w-3.5 text-brand-600" strokeWidth={2.25} aria-hidden="true" />
+            রক্তদানের বর্তমান প্রস্তুতি
+            <ChevronDown
+              className={`h-3.5 w-3.5 text-ink-400 transition-transform ${readinessOpen ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+          {readinessOpen && (
+            <div className="mt-2 flex items-start gap-2">
+              <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${recovery.chipClassName}`}>
+                {recovery.labelBn}
+              </span>
+              <p className="text-[12px] leading-relaxed text-ink-600">{recovery.detailBn}</p>
+            </div>
+          )}
+        </div>
+      ) : null}
+
+      {callAction}
+    </article>
   );
 }

@@ -66,6 +66,7 @@ export default function CoachingDetail({ slug }: { slug: string }) {
   if (!listing) return <CatalogDetailMissing ui={ui} />;
 
   const fee = bnTakaRange(listing.monthlyFeeMin, listing.monthlyFeeMax);
+  const contactPhone = listing.contactPhonePublic || listing.contactPhonePrivate;
   const facts: DetailFact[] = [
     ...(fee ? [{ label: 'মাসিক ফি', value: `${fee} টাকা` }] : []),
     ...(listing.addressBn ? [{ label: 'ঠিকানা', value: listing.addressBn }] : []),
@@ -75,6 +76,9 @@ export default function CoachingDetail({ slug }: { slug: string }) {
     ...taxonomyFacts(listing),
     ...(listing.ratingCount && listing.ratingCount > 0
       ? [{ label: 'রেটিং', value: `${toBn((listing.ratingAvg ?? 0).toFixed(1))} / ৫ (${toBn(listing.ratingCount)})` }]
+      : []),
+    ...(listing.admissionInfoBn
+      ? [{ label: 'ভর্তি ও ফি তথ্য', value: listing.admissionInfoBn }]
       : []),
   ];
 
@@ -92,10 +96,11 @@ export default function CoachingDetail({ slug }: { slug: string }) {
       }
       action={
         <ContactBlock
-          phone={listing.contactPhonePrivate}
+          phone={contactPhone}
+          hideRequestFallback
           onCopy={() => {
-            if (!listing.contactPhonePrivate) return;
-            void navigator.clipboard?.writeText(listing.contactPhonePrivate);
+            if (!contactPhone) return;
+            void navigator.clipboard?.writeText(contactPhone);
             setCopied(true);
             window.setTimeout(() => setCopied(false), 2000);
           }}

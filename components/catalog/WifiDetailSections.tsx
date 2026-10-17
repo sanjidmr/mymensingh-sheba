@@ -12,7 +12,7 @@ import React, { useEffect, useState } from 'react';
 import { Gift, Loader2, Wifi } from 'lucide-react';
 import DirectoryReviews from '@/components/catalog/DirectoryReviews';
 import { fetchWifiPackages } from '@/lib/catalog-service';
-import { bnTaka, toBn, type WifiPackage } from '@/lib/catalog-types';
+import { bnDate, bnTaka, toBn, type WifiPackage } from '@/lib/catalog-types';
 
 export default function WifiDetailSections({
   listingId,
@@ -79,6 +79,16 @@ export default function WifiDetailSections({
                       শর্ত: {p.offerConditionsBn}
                     </p>
                   )}
+                  {p.connectionFee != null && (
+                    <p className="mt-1 text-[11px] text-ink-500">
+                      সংযোগ ফি: {bnTaka(p.connectionFee)} টাকা
+                    </p>
+                  )}
+                  {p.offerExpiresOn && (
+                    <p className="mt-0.5 text-[11px] text-ink-500">
+                      অফার শেষ: {bnDate(p.offerExpiresOn)}
+                    </p>
+                  )}
                 </li>
               ))}
             </ul>
@@ -103,6 +113,11 @@ export default function WifiDetailSections({
                       </td>
                       <td className="px-3 py-2.5 font-extrabold text-brand-800">
                         {p.price != null ? bnTaka(p.price) : '—'}
+                        {p.connectionFee != null && (
+                          <p className="mt-0.5 text-[11px] font-semibold text-ink-500">
+                            সংযোগ ফি: {bnTaka(p.connectionFee)}
+                          </p>
+                        )}
                       </td>
                       <td className="px-3 py-2.5">
                         {p.offerLabelBn ? (
@@ -115,6 +130,11 @@ export default function WifiDetailSections({
                         {p.offerConditionsBn && (
                           <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
                             {p.offerConditionsBn}
+                          </p>
+                        )}
+                        {p.offerExpiresOn && (
+                          <p className="mt-0.5 text-[11px] text-ink-500">
+                            অফার শেষ: {bnDate(p.offerExpiresOn)}
                           </p>
                         )}
                       </td>

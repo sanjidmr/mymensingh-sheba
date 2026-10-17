@@ -18,7 +18,6 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import NotificationBell from '@/components/account/NotificationBell';
 
 const ACCOUNT_LINKS = [
   { href: '/dashboard', label: 'ওভারভিউ', icon: LayoutDashboard },
@@ -134,9 +133,6 @@ export default function AccountShell({ children }: { children: React.ReactNode }
               })}
             </div>
           </nav>
-          <div className="mb-2 flex justify-end">
-            <NotificationBell />
-          </div>
           {children}
         </div>
       </main>

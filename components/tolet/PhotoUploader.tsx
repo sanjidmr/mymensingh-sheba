@@ -14,6 +14,8 @@ interface PhotoUploaderProps {
   onUpload: (file: File) => Promise<string>;
   maxPhotos?: number;
   label?: string;
+  /** Lets the surrounding form block submission while a photo is uploading. */
+  onBusyChange?: (busy: boolean) => void;
 }
 
 export function PhotoUploader({
@@ -22,6 +24,7 @@ export function PhotoUploader({
   onUpload,
   maxPhotos = MAX_PHOTOS,
   label = 'বাসার ছবি',
+  onBusyChange,
 }: PhotoUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
@@ -53,16 +56,21 @@ export function PhotoUploader({
     if (valid.length === 0) return;
 
     setUploading(true);
+    onBusyChange?.(true);
     const uploaded: string[] = [];
-    for (const file of valid) {
-      try {
-        const url = await onUpload(file);
-        uploaded.push(url);
-      } catch {
-        setError('একটি ছবি আপলোড ব্যর্থ হয়েছে। আবার চেষ্টা করুন।');
+    try {
+      for (const file of valid) {
+        try {
+          const url = await onUpload(file);
+          uploaded.push(url);
+        } catch {
+          setError('একটি ছবি আপলোড ব্যর্থ হয়েছে। আবার চেষ্টা করুন।');
+        }
       }
+    } finally {
+      setUploading(false);
+      onBusyChange?.(false);
     }
-    setUploading(false);
     if (uploaded.length > 0) {
       onChange([...photos, ...uploaded].slice(0, maxPhotos));
     }

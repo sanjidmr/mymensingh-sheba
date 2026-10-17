@@ -22,7 +22,9 @@ const columns: AdminColumn<AdminStaffListRow>[] = [
     render: (row) => (
       <span className="block min-w-0">
         <span className="block break-words font-semibold">{row.name_bn}</span>
-        <span className="block break-words text-xs text-admin-muted">{row.title_bn}</span>
+      {row.phone_private
+        ? <a href={`tel:${row.phone_private}`} className="block break-words text-xs text-admin-muted">{row.phone_private}</a>
+        : <span className="block text-xs text-admin-muted">ফোন নম্বর দেওয়া হয়নি</span>}
       </span>
     ),
   },
@@ -94,7 +96,7 @@ export default async function AdminServicesPage({
     <>
       <PageHeader
         title="কর্মী ব্যবস্থাপনা"
-        description="কাজের বুয়া, ইলেকট্রিশিয়ান, প্লাম্বার ও এসি/ফ্রিজ মেরামত প্রোফাইল পরিচালনা করুন। ফোন নম্বর শুধু অনুমোদিত কর্মী-সম্পাদনা পেজে দেখা যায়।"
+        description="কাজের বুয়া, ইলেকট্রিশিয়ান, প্লাম্বার ও এসি/ফ্রিজ মেরামত প্রোফাইল পরিচালনা করুন। কর্মীদের ব্যক্তিগত ফোন নম্বর শুধু এই অ্যাডমিন তালিকায় ও সুরক্ষিত ব্যবস্থাপনায় দেখা যায়।"
         count={`ফিল্টার করা ${result.total} টি প্রোফাইল`}
         actions={
           <Link href="/admin/services/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white hover:bg-admin-navy/90">
@@ -111,7 +113,7 @@ export default async function AdminServicesPage({
       </div>
 
       <div className="mb-4 grid grid-cols-1 gap-2 rounded-admin-card border border-admin-border bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
-        <AdminSearch placeholder="নাম, পদবি বা কর্মী আইডি খুঁজুন…" />
+        <AdminSearch placeholder="নাম, ফোন বা কর্মী আইডি খুঁজুন…" />
         <FilterNav id="staff-service" label="সেবা" value={params.service ?? ''} options={SERVICE_OPTIONS} placeholder="সব সেবা" param="service" searchParams={resolvedSearchParams} />
         <FilterNav id="staff-status" label="অবস্থা" value={params.status ?? ''} options={STATUS_OPTIONS} placeholder="সব অবস্থা" param="status" searchParams={resolvedSearchParams} />
         <FilterNav id="staff-area" label="এলাকা" value={params.area ?? ''} options={areaOptions} placeholder="সব এলাকা" param="area" searchParams={resolvedSearchParams} />
@@ -124,7 +126,6 @@ export default async function AdminServicesPage({
         columns={columns}
         rows={result.rows}
         getKey={(row) => row.id}
-        getHref={(row) => `/admin/services/${row.id}`}
         caption="কর্মী প্রোফাইল তালিকা"
         empty={<AdminEmpty title="কোনো কর্মী পাওয়া যায়নি" description="সার্চ বা ফিল্টার পরিবর্তন করুন, অথবা নতুন কর্মী যোগ করুন।" />}
       />

@@ -47,7 +47,15 @@ export default function MyToletListingsPage() {
   const [requests, setRequests] = useState<ToletRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [notice, setNotice] = useState(searchParams.get('created') ? 'created' : searchParams.get('updated') ? 'updated' : '');
+  const [notice, setNotice] = useState(
+    searchParams.get('created')
+      ? 'created'
+      : searchParams.get('updated')
+        ? 'updated'
+        : searchParams.get('draft')
+          ? 'draft'
+          : ''
+  );
   const [busyId, setBusyId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -239,7 +247,9 @@ export default function MyToletListingsPage() {
               ? 'আপনার বিজ্ঞাপন জমা হয়েছে। প্রকাশের আগে এটি যাচাইয়ের অপেক্ষায় থাকবে।'
               : notice === 'updated'
                 ? 'বিজ্ঞাপনের পরিবর্তন সংরক্ষণ করা হয়েছে।'
-                : notice}
+                : notice === 'draft'
+                  ? 'আপনার খসড়া সংরক্ষণ করা হয়েছে। চাইলে পরে সম্পাদনা করে প্রকাশ করতে পারবেন।'
+                  : notice}
           </div>
         )}
         {error && (

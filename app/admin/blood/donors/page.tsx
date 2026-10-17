@@ -40,6 +40,13 @@ const columns: AdminColumn<AdminBloodDonorRow>[] = [
       </span>
     ),
   },
+  {
+    key: 'phone',
+    header: 'ফোন নম্বর',
+    render: (row) => row.private_phone
+      ? <a href={`tel:${row.private_phone}`} className="font-medium text-admin-navy hover:underline">{row.private_phone}</a>
+      : 'নম্বর দেওয়া হয়নি',
+  },
   { key: 'blood', header: 'রক্তের গ্রুপ', render: (row) => row.blood_group || 'উল্লেখ নেই' },
   {
     key: 'area',
@@ -124,7 +131,7 @@ export default async function AdminBloodDonorsPage({
     <>
       <PageHeader
         title="রক্তদাতা ব্যবস্থাপনা"
-        description="অনুমোদিত তথ্য, মডারেশন ও উপলভ্যতা। ব্যক্তিগত ফোন নম্বর কেবল রেকর্ডের সুরক্ষিত বিস্তারিত পাতায় দেখানো হয়।"
+        description="অনুমোদিত তথ্য, মডারেশন, উপলভ্যতা ও ব্যক্তিগত ফোন নম্বর। ফোন নম্বর শুধু অনুমোদিত অ্যাডমিনরা দেখতে পান।"
       />
 
       <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">

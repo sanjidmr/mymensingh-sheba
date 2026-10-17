@@ -11,7 +11,7 @@ import {
   uploadListingPhotos,
 } from '@/lib/tolet-service';
 import type { ToletListing, ToletListingInput } from '@/lib/tolet-types';
-import { ToletWizardForm } from '@/components/tolet/ToletWizardForm';
+import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -123,11 +123,8 @@ export default function EditToletListingPage({ params }: EditToletListingPagePro
           </p>
         </div>
 
-        <ToletWizardForm
+        <ToletListingForm
           mode="owner"
-          ownerId={user.id}
-          ownerName={listing.ownerName || user.fullName}
-          ownerVerified={listing.ownerVerified || user.isVerified}
           initialListing={listing}
           onUploadFile={handleUploadFile}
           onSubmit={handleSubmit}

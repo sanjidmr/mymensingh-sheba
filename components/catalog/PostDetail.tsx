@@ -33,10 +33,7 @@ import {
 } from '@/lib/catalog-types';
 
 /** Resolves a taxonomy id found in `tags` to its Bangla label. */
-function pickTag(
-  tags: string[] | undefined,
-  entries: readonly { id: string; labelBn: string }[]
-): string | undefined {
+function pickTag(tags: string[] | undefined, entries: readonly { id: string; labelBn: string }[]): string | undefined {
   if (!tags) return undefined;
   for (const tag of tags) {
     const match = entries.find((e) => e.id === tag);
@@ -124,7 +121,14 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
   const jobTypeLabel = post.jobType ? tagLabel(post.jobType) : undefined;
   const condition = post.conditionLabel ? tagLabel(post.conditionLabel) : undefined;
   const deadlineLabel = post.deadline ? bnDate(post.deadline) : undefined;
-  const education = pickTag(post.tags, JOB_EDUCATION);
+  /**
+   * Education is free text now (see `PostForm`), but rows written before that
+   * change stored one of the fixed `JOB_EDUCATION` slugs. Prefer the known label
+   * when there is one, otherwise fall back to the first tag the writer typed —
+   * the form puts education first, so that is the education line.
+   */
+  const education =
+    pickTag(post.tags, JOB_EDUCATION) ?? post.tags.find((tag) => tagLabels([tag]).length === 0);
   const experience = pickTag(post.tags, JOB_EXPERIENCE);
 
   const salary =

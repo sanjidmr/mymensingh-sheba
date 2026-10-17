@@ -34,10 +34,8 @@ import {
 import { getAllMCCAreas } from '@/lib/locations';
 import { normalizeBdPhone } from '@/lib/contact-types';
 import {
-  JOB_EDUCATION,
   JOB_EXPERIENCE,
   JOB_TYPES,
-  MARKET_CATEGORIES,
   MARKET_CONDITIONS,
   NEWS_CATEGORIES,
   tagLabels,
@@ -135,6 +133,20 @@ function isPostDraft(value: unknown): value is PostDraft {
     Object.values(value.values).every((entry) => typeof entry === 'string');
 }
 
+function draftSignature(values: FormValues, tags: string[], photos: PhotoSlot[]): string {
+  return JSON.stringify({
+    values,
+    tags,
+    photos: photos.map(({ key, url, file }) => [
+      key,
+      url,
+      file?.name,
+      file?.size,
+      file?.lastModified,
+    ]),
+  });
+}
+
 /**
  * The form's starting state for an existing post.
  *
@@ -202,15 +214,99 @@ export default function PostForm({
   const [uploadedCount, setUploadedCount] = useState(0);
   const [formError, setFormError] = useState('');
   const [draftNotice, setDraftNotice] = useState('');
+  /**
+   * A stored draft is never applied on its own any more.
+   *
+   * It used to be, which meant opening "নতুন চাকরির খবর" silently re-filled the
+   * form with the last job a member had written — from their point of view the
+   * site had put them back inside an existing post instead of starting a new
+   * one, and they could not tell which of the two they were about to publish.
+   * Holding it here and asking keeps "new" meaning new, while still making the
+   * saved copy one tap away.
+   */
+  const [pendingDraft, setPendingDraft] = useState<{
+    values: FormValues;
+    tags: string[];
+    photos: string[];
+    savedAt: string | null;
+  } | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [draftLoadedFor, setDraftLoadedFor] = useState<string | null>(null);
   const [draftSavedAt, setDraftSavedAt] = useState<string | null>(null);
   const [draftBusy, setDraftBusy] = useState(false);
+  const [autosaving, setAutosaving] = useState(false);
+  const [autosaveRevision, setAutosaveRevision] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
-  const draftKey = `mymensingh-sheba:post-draft:${user?.id ?? 'guest'}:${kind}`;
+  const userId = user?.id;
+  const hasInteractedRef = useRef(false);
+  const submittedRef = useRef(false);
+  const autosavingRef = useRef(false);
+  const lastSavedDraftRef = useRef<string | null>(null);
+  const latestDraftRef = useRef({ values, tags, photos });
+  const objectUrlsRef = useRef(new Set<string>());
+  const draftKey = `mymensingh-sheba:post-draft:${userId ?? 'guest'}:${kind}`;
   const draftReady = Boolean(editing) || draftLoadedFor === draftKey;
 
   const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
+
+  useEffect(() => {
+    latestDraftRef.current = { values, tags, photos };
+  }, [photos, tags, values]);
+
+  async function uploadPendingPhotos(
+    slots: PhotoSlot[],
+    onUploaded?: () => void
+  ): Promise<PhotoSlot[]> {
+    const hasPending = slots.some((photo) => photo.file);
+    const authorId = hasPending ? await currentUserId() : null;
+    if (hasPending && !authorId) {
+      throw new Error('ছবি সংরক্ষণ করতে লগইন করুন।');
+    }
+
+    const persisted: PhotoSlot[] = [];
+    for (const photo of slots) {
+      if (!photo.file) {
+        persisted.push(photo);
+        continue;
+      }
+      if (!authorId) throw new Error('ছবি সংরক্ষণ করতে লগইন করুন।');
+      const result = await uploadPostImage(authorId, photo.file);
+      if (!result.success) throw new Error('ছবি সংরক্ষণ করা যায়নি।');
+      persisted.push({ ...photo, file: null, url: result.data });
+      onUploaded?.();
+      setPhotos((current) => current.map((item) =>
+        item.key === photo.key ? { ...item, file: null, url: result.data } : item
+      ));
+    }
+    return persisted;
+  }
+
+  /**
+   * Object URLs are released only once nothing points at them any more.
+   *
+   * The preview is a `blob:` URL that the `<img>` is already showing. Revoking
+   * it at the moment the upload finishes blanked that `<img>` before React had
+   * repainted with the stored URL — the photo "vanished" for a beat, and on a
+   * slow device it stayed gone. Releasing here (and on unmount, below) means the
+   * swap happens first and the blob is freed afterwards.
+   */
+  useEffect(() => {
+    const live = new Set(photos.map((slot) => slot.url));
+    objectUrlsRef.current.forEach((url) => {
+      if (!live.has(url)) {
+        URL.revokeObjectURL(url);
+        objectUrlsRef.current.delete(url);
+      }
+    });
+  }, [photos]);
+
+  useEffect(() => {
+    const urls = objectUrlsRef.current;
+    return () => {
+      urls.forEach((url) => URL.revokeObjectURL(url));
+      urls.clear();
+    };
+  }, []);
 
   useEffect(() => {
     if (editing) return;
@@ -219,9 +315,9 @@ export default function PostForm({
       try {
         let parsed: unknown = null;
         let savedAt: string | null = null;
-        if (user) {
+        if (userId) {
           const result = await loadCommunityPostDraft(kind);
-          if (!result.success) throw new Error(`খসড়া লোড করা যায়নি: ${result.error}`);
+          if (!result.success) throw new Error('খসড়া লোড করা যায়নি।');
           parsed = result.data.draft;
           savedAt = result.data.updatedAt;
         } else {
@@ -229,81 +325,116 @@ export default function PostForm({
           if (raw) parsed = JSON.parse(raw);
         }
         if (parsed !== null) {
-          if (!isPostDraft(parsed)) throw new Error('সংরক্ষিত খসড়ার তথ্য পড়া যাচ্ছে না।');
-          if (active) {
-            const restoredValues = { ...EMPTY };
+          if (!isPostDraft(parsed)) throw new Error('খসড়াটি পড়া যায়নি।');
+          if (active && !hasInteractedRef.current) {
+            const storedValues = { ...EMPTY };
             for (const key of Object.keys(EMPTY) as (keyof FormValues)[]) {
               const value = parsed.values[key];
-              if (typeof value === 'string') restoredValues[key] = value;
+              if (typeof value === 'string') storedValues[key] = value;
             }
-            setValues(restoredValues);
-            setTags(parsed.tags.slice(0, 6));
-            setPhotos((parsed.photos ?? []).slice(0, MAX_PHOTOS).map((url, index) => ({
-              key: `draft-${index}`,
-              file: null,
-              url,
-            })));
-            setDraftSavedAt(savedAt ?? parsed.savedAt);
-            setDraftNotice(parsed.photos?.length
-              ? 'সংরক্ষিত খসড়া ও ছবিগুলো ফিরিয়ে আনা হয়েছে।'
-              : user
-                ? 'Supabase-এ সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে।'
-                : 'এই ব্রাউজারে আগে সংরক্ষিত খসড়া ফিরিয়ে আনা হয়েছে।');
+            const hasContent =
+              Object.values(storedValues).some((value) => value.trim().length > 0) ||
+              parsed.tags.length > 0 ||
+              (parsed.photos?.length ?? 0) > 0;
+            // Held, not applied. The member decides whether this form is the
+            // draft they left behind or a genuinely new post — see `pendingDraft`.
+            if (hasContent) {
+              setPendingDraft({
+                values: storedValues,
+                tags: parsed.tags.slice(0, 6),
+                photos: (parsed.photos ?? []).slice(0, MAX_PHOTOS),
+                savedAt: savedAt ?? parsed.savedAt,
+              });
+              setDraftSavedAt(savedAt ?? parsed.savedAt);
+            }
           }
         }
-      } catch (error) {
-        if (active) setFormError(error instanceof Error ? error.message : 'খসড়া পড়া যায়নি।');
+      } catch {
+        if (active) setFormError('খসড়াটি পড়া যায়নি। আবার চেষ্টা করুন।');
       } finally {
         if (active) setDraftLoadedFor(draftKey);
       }
     });
     return () => { active = false; };
-  }, [draftKey, editing, kind, user]);
+  }, [draftKey, editing, kind, userId]);
 
   useEffect(() => {
-    if (!draftReady || editing || submitting || draftBusy) return;
-    const timeout = window.setTimeout(() => {
-      void (async () => {
-       try {
+    if (!draftReady || editing || submitting || draftBusy || submittedRef.current) return;
+    // Nothing is written until the member has actually touched the form. Writing
+    // first would overwrite the stored draft they have not been asked about yet.
+    if (!hasInteractedRef.current) return;
+    const signature = draftSignature(values, tags, photos);
+    if (signature === lastSavedDraftRef.current || autosavingRef.current) return;
+    const timeout = window.setTimeout(async () => {
+      autosavingRef.current = true;
+      setAutosaving(true);
+      let saved = false;
+      try {
         const hasContent =
           Object.values(values).some((value) => value.trim().length > 0) ||
           tags.length > 0 ||
           photos.length > 0;
         if (!hasContent) {
-          if (user) {
+          if (userId) {
             const result = await deleteCommunityPostDraft(kind);
-            if (!result.success) throw new Error(result.error);
+            if (!result.success) throw new Error('খসড়া মুছে ফেলা যায়নি।');
           } else {
             window.localStorage.removeItem(draftKey);
           }
           setDraftSavedAt(null);
+          lastSavedDraftRef.current = signature;
+          saved = true;
           return;
         }
+
+        const savedPhotos = userId
+          ? await uploadPendingPhotos(photos)
+          : photos.filter((photo) => !photo.file);
         const savedAt = new Date().toISOString();
         const draft: PostDraft = {
           version: DRAFT_VERSION,
           values: { ...values },
           tags,
-          photos: photos.filter((photo) => !photo.file).map((photo) => photo.url),
+          photos: savedPhotos.map((photo) => photo.url),
           savedAt,
         };
-        if (user) {
+        if (userId) {
           const result = await saveCommunityPostDraft(kind, draft);
-          if (!result.success) throw new Error(result.error);
+          if (!result.success) throw new Error('খসড়া সংরক্ষণ করা যায়নি।');
           setDraftSavedAt(result.data);
         } else {
           window.localStorage.setItem(draftKey, JSON.stringify(draft));
           setDraftSavedAt(savedAt);
         }
-       } catch (error) {
-        setFormError(error instanceof Error ? `খসড়া সংরক্ষণ করা যায়নি: ${error.message}` : 'খসড়া সংরক্ষণ করা যায়নি।');
-       }
-      })();
+        lastSavedDraftRef.current = draftSignature(
+          values,
+          tags,
+          userId ? savedPhotos : photos
+        );
+        saved = true;
+      } catch (error) {
+        console.error('Post draft autosave failed', error);
+        setFormError('খসড়া সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+      } finally {
+        autosavingRef.current = false;
+        setAutosaving(false);
+        if (
+          saved &&
+          draftSignature(
+            latestDraftRef.current.values,
+            latestDraftRef.current.tags,
+            latestDraftRef.current.photos
+          ) !== lastSavedDraftRef.current
+        ) {
+          setAutosaveRevision((revision) => revision + 1);
+        }
+      }
     }, 700);
     return () => window.clearTimeout(timeout);
-  }, [draftBusy, draftKey, draftReady, editing, kind, photos, submitting, tags, user, values]);
+  }, [autosaveRevision, draftBusy, draftKey, draftReady, editing, kind, photos, submitting, tags, userId, values]);
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
+    hasInteractedRef.current = true;
     setValues((prev) => ({ ...prev, [key]: value }));
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
@@ -322,15 +453,8 @@ export default function PostForm({
     if (kind === 'news' && values.body.trim().length < 40) {
       next.body = 'সংবাদের মূল বিষয়বস্তু কমপক্ষে ৪০ অক্ষরের হতে হবে।';
     }
-    if (kind === 'job' && values.body.trim().length < 20) {
-      next.body = 'কাজের বিবরণ কমপক্ষে ২০ অক্ষরের হতে হবে।';
-    }
-    if (kind === 'buy_sell' && values.body.trim().length < 10) {
-      next.body = 'পণ্যের বিবরণ লিখুন।';
-    }
-
     if (kind === 'buy_sell') {
-      if (!values.category) next.category = 'ক্যাটাগরি বেছে নিন।';
+      if (!values.category.trim()) next.category = 'ক্যাটাগরি লিখুন।';
       if (!values.condition) next.condition = 'পণ্যের অবস্থা বেছে নিন।';
       const price = Number(values.price);
       if (!values.price.trim()) next.price = 'দাম লিখুন।';
@@ -362,6 +486,7 @@ export default function PostForm({
       if (values.organization.trim().length < 2) {
         next.organization = 'প্রতিষ্ঠানের নাম লিখুন (কমপক্ষে ২ অক্ষর)।';
       }
+      if (!values.category.trim()) next.category = 'ক্যাটাগরি লিখুন।';
       if (!values.jobType) next.jobType = 'চাকরির ধরন বেছে নিন।';
       const min = values.salaryMin.trim() ? Number(values.salaryMin) : null;
       const max = values.salaryMax.trim() ? Number(values.salaryMax) : null;
@@ -389,6 +514,7 @@ export default function PostForm({
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setFormError('');
+    hasInteractedRef.current = true;
 
     const found = validate();
     setErrors(found);
@@ -402,39 +528,16 @@ export default function PostForm({
 
     setSubmitting(true);
     try {
-      const authorId = await currentUserId();
-
-      // Upload only the slots holding a local file; the rest are already in
-      // storage and are re-sent unchanged. Sequential rather than parallel
-      // because they share one author-id path prefix and a burst of five
-      // simultaneous uploads is the shape that trips bucket rate limits.
-      const pending = photos.filter((slot) => slot.file);
-      const urls: string[] = [];
       setUploadedCount(0);
-      for (const slot of photos) {
-        if (!slot.file) {
-          urls.push(slot.url);
-          continue;
-        }
-        if (!authorId) {
-          setFormError('ছবি আপলোড করতে লগইন করুন।');
-          return;
-        }
-        const uploaded = await uploadPostImage(authorId, slot.file);
-        if (!uploaded.success) {
-          setFormError(uploaded.error);
-          return;
-        }
-        urls.push(uploaded.data);
-        setUploadedCount((n) => n + 1);
-      }
-      if (pending.length === 0) setUploadedCount(0);
+      const pendingCount = photos.filter((slot) => slot.file).length;
+      const persistedPhotos = await uploadPendingPhotos(photos, () => setUploadedCount((n) => n + 1));
+      const urls = persistedPhotos.map((photo) => photo.url);
+      if (pendingCount === 0) setUploadedCount(0);
 
-      // The taxonomy facets are stored as slugs, so a chip and the facet share
-      // one value and the filter works on the row that was just written.
-      const allTags = [...tags];
+      const allTags: string[] = [];
+      if (kind === 'job' && values.education.trim()) allTags.push(values.education.trim());
+      allTags.push(...tags);
       if (kind === 'job') {
-        if (values.education) allTags.push(values.education);
         if (values.experience) allTags.push(values.experience);
       }
 
@@ -445,10 +548,10 @@ export default function PostForm({
         kind,
         titleBn: values.title.trim(),
         summaryBn: values.summary.trim() || undefined,
-        bodyBn: values.body.trim() || undefined,
+        bodyBn: kind === 'news' ? values.body.trim() || undefined : undefined,
         coverImageUrl: urls[0] || undefined,
         gallery: urls.slice(1),
-        category: values.category || undefined,
+        category: values.category.trim() || undefined,
         areaId: values.areaId || undefined,
         tags: allTags,
         authorName: editing?.authorName,
@@ -476,18 +579,21 @@ export default function PostForm({
       if (editing) {
         const result = await updateCommunityPost(editing.id, content);
         if (!result.success) {
-          setFormError(result.error);
+          console.error('Post update failed', result.error);
+          setFormError('পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
           return;
         }
         router.push(`${KIND_ROUTE[editing.kind]}/${result.data.slug}`);
       } else {
         const result = await createCommunityPost(content);
         if (!result.success) {
-          setFormError(result.error);
+          console.error('Post creation failed', result.error);
+          setFormError('পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
           return;
         }
+        submittedRef.current = true;
         let draftCleanupFailed = false;
-        if (user) {
+        if (userId) {
           const cleanup = await deleteCommunityPostDraft(kind);
           draftCleanupFailed = !cleanup.success;
         } else {
@@ -501,6 +607,9 @@ export default function PostForm({
           `/dashboard/posts?submitted=${encodeURIComponent(result.data.slug)}${draftCleanupFailed ? `&draftCleanup=${kind}` : ''}`
         );
       }
+    } catch (error) {
+      console.error('Post submission failed', error);
+      setFormError('পোস্টটি পাঠানো যায়নি। আবার চেষ্টা করুন।');
     } finally {
       setSubmitting(false);
     }
@@ -520,6 +629,7 @@ export default function PostForm({
 
   function pickImages(files: FileList | null) {
     if (!files || files.length === 0) return;
+    hasInteractedRef.current = true;
     const room = MAX_PHOTOS - photos.length;
     if (room <= 0) {
       setFormError(`সর্বোচ্চ ${MAX_PHOTOS}টি ছবি দেওয়া যাবে।`);
@@ -535,10 +645,12 @@ export default function PostForm({
         setFormError('প্রতিটি ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।');
         continue;
       }
+      const previewUrl = URL.createObjectURL(file);
+      objectUrlsRef.current.add(previewUrl);
       accepted.push({
         key: `local-${file.name}-${file.size}-${crypto.randomUUID()}`,
         file,
-        url: URL.createObjectURL(file),
+        url: previewUrl,
       });
     }
     // Reporting the truncation matters: silently dropping the 6th photo leaves
@@ -560,14 +672,15 @@ export default function PostForm({
    * cover is removed and the next photo takes over.
    */
   function removePhoto(key: string) {
-    setPhotos((prev) => {
-      const next = prev.filter((slot) => slot.key !== key);
-      return next.length ? next : [];
-    });
+    hasInteractedRef.current = true;
+    // The blob itself is released by the effect that watches `photos`; doing it
+    // here would blank the tile before the row is gone.
+    setPhotos((prev) => prev.filter((slot) => slot.key !== key));
   }
 
   /** Promote a gallery photo to be the cover. */
   function makeCover(key: string) {
+    hasInteractedRef.current = true;
     setPhotos((prev) => {
       const index = prev.findIndex((slot) => slot.key === key);
       if (index <= 0) return prev;
@@ -579,42 +692,27 @@ export default function PostForm({
   }
 
   async function saveDraftNow() {
+    if (autosavingRef.current) return;
+    hasInteractedRef.current = true;
     setDraftBusy(true);
     setFormError('');
     try {
-      const savedPhotos: string[] = [];
-      for (const photo of photos) {
-        if (!photo.file) {
-          savedPhotos.push(photo.url);
-          continue;
-        }
-        if (!user) continue;
-        const authorId = await currentUserId();
-        if (!authorId) {
-          throw new Error('ছবিসহ খসড়া সংরক্ষণ করতে লগইন করুন।');
-        }
-        const result = await uploadPostImage(authorId, photo.file);
-        if (!result.success) throw new Error(result.error);
-        savedPhotos.push(result.data);
-        setPhotos((current) =>
-          current.map((item) =>
-            item.key === photo.key ? { ...item, file: null, url: result.data } : item
-          )
-        );
-      }
+      const persistedPhotos = userId
+        ? await uploadPendingPhotos(photos)
+        : photos.filter((photo) => !photo.file);
       const savedAt = new Date().toISOString();
       const draft: PostDraft = {
         version: DRAFT_VERSION,
         values: { ...values },
         tags,
-        photos: savedPhotos,
+        photos: persistedPhotos.map((photo) => photo.url),
         savedAt,
       };
-      if (user) {
+      if (userId) {
         const result = await saveCommunityPostDraft(kind, draft);
-        if (!result.success) throw new Error(result.error);
+        if (!result.success) throw new Error('খসড়া সংরক্ষণ করা যায়নি।');
         setDraftSavedAt(result.data);
-        setDraftNotice('খসড়া ও ছবিগুলো আপনার Supabase অ্যাকাউন্টে সংরক্ষিত হয়েছে।');
+        setDraftNotice('খসড়া ও ছবিগুলো সংরক্ষিত হয়েছে।');
       } else {
         window.localStorage.setItem(draftKey, JSON.stringify(draft));
         setDraftSavedAt(savedAt);
@@ -624,11 +722,62 @@ export default function PostForm({
             : 'খসড়া এই ব্রাউজারে সংরক্ষিত হয়েছে।'
         );
       }
+      lastSavedDraftRef.current = draftSignature(
+        values,
+        tags,
+        userId ? persistedPhotos : photos
+      );
     } catch (error) {
-      setFormError(error instanceof Error ? `খসড়া সংরক্ষণ করা যায়নি: ${error.message}` : 'খসড়া সংরক্ষণ করা যায়নি।');
+      console.error('Post draft save failed', error);
+      setFormError('খসড়া সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
     } finally {
       setDraftBusy(false);
     }
+  }
+
+  /** Continue from the stored draft the member was offered. */
+  function restorePendingDraft() {
+    if (!pendingDraft) return;
+    hasInteractedRef.current = true;
+    const restoredPhotos: PhotoSlot[] = pendingDraft.photos.map((url, index) => ({
+      key: `draft-${index}`,
+      file: null,
+      url,
+    }));
+    setValues(pendingDraft.values);
+    setTags(pendingDraft.tags);
+    setPhotos(restoredPhotos);
+    setErrors({});
+    setFormError('');
+    lastSavedDraftRef.current = draftSignature(
+      pendingDraft.values,
+      pendingDraft.tags,
+      restoredPhotos
+    );
+    setDraftNotice(
+      pendingDraft.photos.length
+        ? 'খসড়া ও ছবিগুলো ফিরিয়ে আনা হয়েছে।'
+        : 'খসড়া ফিরিয়ে আনা হয়েছে।'
+    );
+    setPendingDraft(null);
+  }
+
+  /** Start a brand-new post and throw the stored draft away. */
+  async function discardPendingDraft() {
+    setPendingDraft(null);
+    setDraftSavedAt(null);
+    hasInteractedRef.current = true;
+    try {
+      if (userId) {
+        await deleteCommunityPostDraft(kind);
+      } else {
+        window.localStorage.removeItem(draftKey);
+      }
+    } catch {
+      // The draft is gone from this screen either way; a retry is not useful to
+      // the member, so this stays silent.
+    }
+    setDraftNotice('খসড়া মুছে ফেলা হয়েছে।');
   }
 
   return (
@@ -653,13 +802,46 @@ export default function PostForm({
         </p>
         {!editing && (
           <p className="mt-1 text-[11px] text-ink-400">
-            {user ? 'খসড়া আপনার Supabase অ্যাকাউন্টে সংরক্ষিত হবে' : 'খসড়া শুধু এই ব্রাউজারে সংরক্ষিত হবে'}
+            {user ? 'খসড়া স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে' : 'খসড়া শুধু এই ব্রাউজারে সংরক্ষিত হবে'}
             {' · '}
             {user
               ? 'ছবিসহ সংরক্ষণ করতে “খসড়া সংরক্ষণ” চাপুন'
               : 'ছবি সংরক্ষণ করতে লগইন করুন'}
+            {autosaving ? ' · খসড়া সংরক্ষণ হচ্ছে…' : ''}
             {draftSavedAt ? ` · সর্বশেষ সংরক্ষণ ${new Date(draftSavedAt).toLocaleTimeString('bn-BD')}` : ''}।
           </p>
+        )}
+
+        {pendingDraft && !editing && (
+          <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+            <p className="text-[12.5px] font-semibold text-amber-900">
+              আপনি আগে লেখা একটি খসড়া রেখে গেছেন
+              {pendingDraft.savedAt
+                ? ` (${new Date(pendingDraft.savedAt).toLocaleString('bn-BD')})`
+                : ''}
+              ।
+            </p>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-amber-800">
+              চাইলে সেটি ফিরিয়ে আনুন, নয়তো খালি ফর্ম থেকেই নতুন পোস্ট লিখুন — এভাবে জমা দিলে এটি
+              আলাদা নতুন পোস্ট হিসেবেই সংরক্ষিত হবে।
+            </p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={restorePendingDraft}
+                className={`inline-flex min-h-[40px] items-center justify-center rounded-lg bg-brand-700 px-3 text-[12px] font-bold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+              >
+                খসড়া ফিরিয়ে আনুন
+              </button>
+              <button
+                type="button"
+                onClick={discardPendingDraft}
+                className={`inline-flex min-h-[40px] items-center justify-center rounded-lg border border-amber-300 bg-white px-3 text-[12px] font-bold text-amber-900 transition-colors hover:bg-amber-100 ${LIGHT_FOCUS}`}
+              >
+                খসড়া মুছে ফেলুন
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Why this post came back — the whole point of editing a rejected
@@ -701,44 +883,65 @@ export default function PostForm({
             />
           </Field>
 
-          <Field
-            id="body"
-            label={kind === 'news' ? 'সংবাদের বিষয়বস্তু' : 'বিস্তারিত'}
-            required
-            error={errors.body}
-          >
-            <textarea
-              id="field-body"
-              value={values.body}
-              onChange={(e) => set('body', e.target.value)}
-              rows={6}
-              maxLength={6000}
-              aria-invalid={Boolean(errors.body)}
-              className={inputClass(Boolean(errors.body))}
-            />
-          </Field>
+          {/*
+            Only news carries a long body now. A job or a marketplace item is a
+            short set of facts, and the old "বিস্তারিত" box on the job form was
+            the field members filled last and least usefully — the vacancy text
+            belongs in the summary and the facts. News keeps its article body.
+          */}
+          {kind === 'news' && (
+            <Field id="body" label="সংবাদের বিষয়বস্তু" required error={errors.body}>
+              <textarea
+                id="field-body"
+                value={values.body}
+                onChange={(e) => set('body', e.target.value)}
+                rows={6}
+                maxLength={6000}
+                aria-invalid={Boolean(errors.body)}
+                className={inputClass(Boolean(errors.body))}
+              />
+            </Field>
+          )}
 
-          {/* Category: the news desk, or the marketplace category. */}
+          {/*
+            Category is typed, not chosen. Only the news desk keeps a list,
+            because the newsroom filter is a fixed set of desks; a job's category
+            and a marketplace item's category are whatever the writer calls them,
+            so a dropdown there only ever meant "your option is missing".
+          */}
           <Field
             id="category"
             label={kind === 'news' ? 'বিভাগ' : 'ক্যাটাগরি'}
-            required={kind !== 'job'}
+            required={kind !== 'news'}
             error={errors.category}
           >
-            <select
-              id="field-category"
-              value={values.category}
-              onChange={(e) => set('category', e.target.value)}
-              aria-invalid={Boolean(errors.category)}
-              className={inputClass(Boolean(errors.category))}
-            >
-              <option value="">বেছে নিন</option>
-              {(kind === 'news' ? NEWS_CATEGORIES : MARKET_CATEGORIES).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.labelBn}
-                </option>
-              ))}
-            </select>
+            {kind === 'news' ? (
+              <select
+                id="field-category"
+                value={values.category}
+                onChange={(e) => set('category', e.target.value)}
+                aria-invalid={Boolean(errors.category)}
+                className={inputClass(Boolean(errors.category))}
+              >
+                <option value="">বেছে নিন</option>
+                {NEWS_CATEGORIES.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.labelBn}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              <input
+                id="field-category"
+                type="text"
+                value={values.category}
+                onChange={(e) => set('category', e.target.value)}
+                maxLength={60}
+                placeholder={kind === 'job' ? 'যেমন: শিক্ষক, বিক্রয় প্রতিনিধি' : 'যেমন: মোবাইল, আসবাবপত্র'}
+                aria-invalid={Boolean(errors.category)}
+                className={inputClass(Boolean(errors.category))}
+              />
+            )}
           </Field>
 
           {kind === 'job' && (
@@ -804,19 +1007,15 @@ export default function PostForm({
 
               <div className="grid gap-3.5 sm:grid-cols-2">
                 <Field id="education" label="শিক্ষাগত যোগ্যতা">
-                  <select
+                  <input
                     id="field-education"
+                    type="text"
                     value={values.education}
                     onChange={(e) => set('education', e.target.value)}
+                    maxLength={80}
+                    placeholder="যেমন: এইচএসসি, স্নাতক"
                     className={inputClass(false)}
-                  >
-                    <option value="">বেছে নিন</option>
-                    {JOB_EDUCATION.map((t) => (
-                      <option key={t.id} value={t.id}>
-                        {t.labelBn}
-                      </option>
-                    ))}
-                  </select>
+                  />
                 </Field>
                 <Field id="experience" label="অভিজ্ঞতা">
                   <select
@@ -977,7 +1176,8 @@ export default function PostForm({
                       <button
                         type="button"
                         onClick={() => makeCover(slot.key)}
-                        className={`absolute bottom-1 left-1 rounded bg-white/90 px-1.5 py-0.5 text-[9.5px] font-bold text-ink-700 ${LIGHT_FOCUS}`}
+                        disabled={submitting || draftBusy || autosaving}
+                        className={`absolute bottom-1 left-1 min-h-11 rounded bg-white/90 px-2 text-[10px] font-bold text-ink-700 disabled:opacity-60 ${LIGHT_FOCUS}`}
                       >
                         প্রচ্ছদ করুন
                       </button>
@@ -986,7 +1186,8 @@ export default function PostForm({
                       type="button"
                       onClick={() => removePhoto(slot.key)}
                       aria-label={`ছবি ${index + 1} সরান`}
-                      className={`absolute -right-2 -top-2 flex h-6 w-6 items-center justify-center rounded-full bg-white text-ink-500 shadow-sm ring-1 ring-mist-200 ${LIGHT_FOCUS}`}
+                      disabled={submitting || draftBusy || autosaving}
+                      className={`absolute -right-2 -top-2 flex h-11 w-11 items-center justify-center rounded-full bg-white text-ink-500 shadow-sm ring-1 ring-mist-200 disabled:opacity-60 ${LIGHT_FOCUS}`}
                     >
                       <X className="h-3.5 w-3.5" aria-hidden="true" />
                     </button>
@@ -1012,7 +1213,7 @@ export default function PostForm({
             <button
               type="button"
               onClick={() => fileRef.current?.click()}
-              disabled={photos.length >= MAX_PHOTOS}
+              disabled={photos.length >= MAX_PHOTOS || submitting || draftBusy || autosaving}
               className={`min-h-[44px] w-full rounded-lg border border-dashed border-brand-200 bg-white px-4 text-sm font-bold text-brand-700 transition-colors hover:bg-mist-50 disabled:cursor-not-allowed disabled:text-ink-400 ${LIGHT_FOCUS}`}
             >
               {photos.length === 0
@@ -1030,7 +1231,13 @@ export default function PostForm({
           </div>
 
           {/* Free-text tags */}
-          <TagEditor tags={tags} onChange={setTags} />
+          <TagEditor
+            tags={tags}
+            onChange={(next) => {
+              hasInteractedRef.current = true;
+              setTags(next);
+            }}
+          />
 
           {phoneRequired && (
             <Field
@@ -1081,7 +1288,11 @@ export default function PostForm({
               )}
               <h2 className="text-base font-extrabold text-ink-900">{values.title.trim() || 'আপনার শিরোনাম'}</h2>
               {values.summary.trim() && <p className="mt-1 text-sm text-ink-600">{values.summary}</p>}
-              <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-700">{values.body || 'বিস্তারিত এখানে দেখা যাবে।'}</p>
+              {kind === 'news' && (
+                <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed text-ink-700">
+                  {values.body || 'সংবাদের বিষয়বস্তু এখানে দেখা যাবে।'}
+                </p>
+              )}
               {values.price && <p className="mt-2 font-extrabold text-brand-700">৳ {values.price}</p>}
               {values.organization && <p className="mt-2 text-xs text-ink-500">{values.organization}</p>}
             </section>
@@ -1092,7 +1303,7 @@ export default function PostForm({
               <button
                 type="button"
                 onClick={saveDraftNow}
-                disabled={submitting || deleting || draftBusy || !draftReady}
+                disabled={submitting || deleting || draftBusy || autosaving || !draftReady}
                 className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[12px] font-bold text-brand-700 hover:bg-mist-50 disabled:opacity-60 ${LIGHT_FOCUS}`}
               >
                 <Save className="h-4 w-4" aria-hidden="true" />
@@ -1110,7 +1321,7 @@ export default function PostForm({
             </button>
             <button
               type="submit"
-              disabled={submitting || deleting}
+              disabled={submitting || deleting || draftBusy || autosaving}
               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 disabled:opacity-60 ${LIGHT_FOCUS}`}
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

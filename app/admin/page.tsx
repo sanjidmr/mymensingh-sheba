@@ -376,9 +376,16 @@ async function DashboardContent({ range }: { range: ResolvedDashboardRange }) {
         <SectionHeading
           id="platform-snapshot-title"
           title="প্ল্যাটফর্ম স্ন্যাপশট (বর্তমান)"
-          description="এগুলো সর্বমোট (all-time) গণনা — নির্দিষ্ট সময়সীমার নয়, তাই এদের তুলনা-চিহ্ন নেই।"
+          description="এগুলো সর্বমোট গণনা; সক্রিয় ভিজিটর গত ৫ মিনিটে ওয়েবসাইট ব্যবহার করেছেন। তথ্য প্রতি ৩০ সেকেন্ডে আপডেট হয়।"
         />
         <StatGrid>
+          <StatCard
+            label="এখন সক্রিয় ভিজিটর"
+            value={stats.active_users}
+            hint="গত ৫ মিনিটের অনন্য ব্রাউজার"
+            icon={Users}
+            tone="good"
+          />
           <StatCard
             label="নিবন্ধিত কাস্টমার"
             value={stats.total_customers}
@@ -387,12 +394,56 @@ async function DashboardContent({ range }: { range: ResolvedDashboardRange }) {
             href="/admin/users"
           />
           <StatCard
+            label="মোট পোস্ট"
+            value={stats.total_posts}
+            hint="সব ধরন ও স্ট্যাটাস"
+            icon={FileText}
+            href="/admin/posts"
+          />
+          <StatCard
+            label="অপেক্ষমাণ পোস্ট"
+            value={stats.pending_posts}
+            hint="অ্যাডমিন পর্যালোচনা প্রয়োজন"
+            icon={ShieldCheck}
+            href="/admin/posts?status=pending"
+            tone="attention"
+          />
+          <StatCard
             label="প্রকাশিত পোস্ট"
             value={stats.approved_posts}
             hint="খবর, চাকরি ও কেনাবেচা"
             icon={FileText}
             href="/admin/posts?status=approved"
             tone="good"
+          />
+          <StatCard
+            label="প্রত্যাখ্যাত পোস্ট"
+            value={stats.rejected_posts}
+            hint="সব পোস্টের ধরন"
+            icon={FileText}
+            href="/admin/posts?status=rejected"
+            tone="attention"
+          />
+          <StatCard
+            label="খবর পোস্ট"
+            value={stats.post_kind_counts.news}
+            hint="সব স্ট্যাটাস"
+            icon={FileText}
+            href="/admin/posts?kind=news"
+          />
+          <StatCard
+            label="চাকরি পোস্ট"
+            value={stats.post_kind_counts.job}
+            hint="সব স্ট্যাটাস"
+            icon={FileText}
+            href="/admin/posts?kind=job"
+          />
+          <StatCard
+            label="কেনাবেচা পোস্ট"
+            value={stats.post_kind_counts.buy_sell}
+            hint="সব স্ট্যাটাস"
+            icon={FileText}
+            href="/admin/posts?kind=buy_sell"
           />
           <StatCard
             label="পর্যালোচনার অপেক্ষায়"

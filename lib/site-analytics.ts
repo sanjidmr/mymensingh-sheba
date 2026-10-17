@@ -325,6 +325,21 @@ export function trackPageView(path: string): void {
   void writeEvent({ eventType: 'page_view', path });
 }
 
+/** Records a lightweight heartbeat for the opaque browser visitor id. */
+export function trackActiveVisitor(path: string): void {
+  if (typeof window === 'undefined' || !shouldTrackPath(path)) return;
+  if (!isSupabaseConfigured) return;
+
+  const client = getClient();
+  if (!client) return;
+
+  void client.rpc('fn_record_active_visitor', {
+    p_visitor_id: getVisitorId(),
+  }).then(({ error }) => {
+    if (error) console.warn('Active visitor heartbeat could not be recorded.', error);
+  });
+}
+
 /** A button was pressed. Not proof the action completed. */
 export function trackCtaClick(input: {
   ctaType: CtaClickType;

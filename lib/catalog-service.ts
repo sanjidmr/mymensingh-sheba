@@ -35,6 +35,8 @@ import type {
   CoachingTeacherInput,
   CommunityPost,
   CommunityPostInput,
+  CustomerServiceCategory,
+  CustomerServiceListingInput,
   DirectoryReview,
   DirectoryReviewCategory,
   DirectoryReviewInput,
@@ -46,6 +48,7 @@ import type {
   ServiceCategory,
   ServiceListing,
   ServiceListingInput,
+  ServiceListingStatus,
   VehicleKind,
   VehicleRequest,
   VehicleRequestInput,
@@ -55,7 +58,7 @@ import type {
 } from './catalog-types';
 
 const NOT_CONFIGURED =
-  'ডেটাবেস সংযোগ নেই। প্রকল্পে Supabase কনফিগারেশন ও মাইগ্রেশন সম্পন্ন হলে এই সেবা চালু হবে।';
+  'সেবাটি এই মুহূর্তে চালু নেই। কিছুক্ষণ পরে আবার চেষ্টা করুন।';
 const NOT_ALLOWED = 'এই কাজটি করতে অ্যাডমিন অনুমতি প্রয়োজন।';
 const NOT_SIGNED_IN = 'এই কাজটি করতে আগে লগইন করুন।';
 
@@ -74,9 +77,16 @@ const NOT_SIGNED_IN = 'এই কাজটি করতে আগে লগই�
  * leaves them unset still renders. NOTE: because this list is explicit, the
  * directory-catalog migration must be applied before this query runs — PostgREST
  * errors on an unknown column rather than ignoring it.
+ *
+ * `owner_id` and the customer-owned columns (`contact_phone_public`,
+ * `admission_info_bn`, `connection_fee`, `terms_bn`) are public: the first is
+ * how the detail page tells a member submission from an admin one, the rest are
+ * exactly what the public card/detail must show. `status` is deliberately NOT
+ * here — the public policy already guarantees `approved`, so the reader never
+ * needs the field, and the owner path reads it through `fn_my_service_listings`.
  */
 const PUBLIC_LISTING_COLUMNS =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, is_active, is_featured, created_at, updated_at';
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
 
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
@@ -102,6 +112,10 @@ function optNum(v: unknown): number | undefined {
 
 function strArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+}
+
+function isServiceListingStatus(v: unknown): v is ServiceListingStatus {
+  return v === 'draft' || v === 'pending' || v === 'approved' || v === 'rejected';
 }
 
 function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListing {
@@ -147,6 +161,19 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     additionalFeeNoteBn: optStr(c.additionalFeeNoteBn),
     availableFacilities: strArray(c.availableFacilities),
     unavailableFacilities: strArray(c.unavailableFacilities),
+    // --- customer ownership + moderation ---------------------------------
+    // `ownerId` is public (it drives the "provider-submitted" trust chip).
+    // `status`/`rejectionReason`/`publishedAt` are owner-or-admin only: they are
+    // absent from PUBLIC_LISTING_COLUMNS, so they simply arrive undefined on the
+    // public path and `optStr` would drop them anyway.
+    ownerId: optStr(c.ownerId),
+    status: isServiceListingStatus(c.status) ? c.status : undefined,
+    rejectionReason: optStr(c.rejectionReason),
+    publishedAt: optStr(c.publishedAt),
+    contactPhonePublic: optStr(c.contactPhonePublic),
+    admissionInfoBn: optStr(c.admissionInfoBn),
+    connectionFee: optNum(c.connectionFee),
+    termsBn: optStr(c.termsBn),
     // Admin-only column: only populated on the authenticated admin path.
     contactPhonePrivate: admin ? optStr(c.contactPhonePrivate) : undefined,
     isActive: c.isActive !== false,
@@ -300,6 +327,8 @@ function mapPackage(row: Record<string, unknown>): WifiPackage {
     price: optNum(c.price),
     offerLabelBn: optStr(c.offerLabelBn),
     offerConditionsBn: optStr(c.offerConditionsBn),
+    connectionFee: optNum(c.connectionFee),
+    offerExpiresOn: optStr(c.offerExpiresOn),
     isActive: c.isActive !== false,
     sortOrder: optNum(c.sortOrder) ?? 0,
     createdAt: str(c.createdAt),
@@ -467,6 +496,9 @@ export async function fetchServiceListings(
     .select(PUBLIC_LISTING_COLUMNS)
     .eq('category', category)
     .eq('is_active', true)
+    // Explicit, not just the RLS rule: an admin browsing the public directory
+    // bypasses RLS and would otherwise see other members' pending rows.
+    .eq('status', 'approved')
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false });
   // With Supabase configured the page shows real curated listings only; a
@@ -491,6 +523,7 @@ export async function fetchServiceListingBySlug(
     .eq('category', category)
     .eq('slug', slug)
     .eq('is_active', true)
+    .eq('status', 'approved')
     .maybeSingle();
   if (error || !data) return null;
   return mapListing(data as Record<string, unknown>, false);
@@ -619,6 +652,560 @@ export async function adminDeleteServiceListing(
 }
 
 // ---------------------------------------------------------------------------
+// Customer-owned service listings (coaching + wifi)
+// ---------------------------------------------------------------------------
+//
+// A signed-in member manages their own coaching centre / wifi provider here.
+// Everything is owner-scoped: ownership is re-checked in SQL (the guard trigger
+// + RLS), never trusted from the client. `status` is decided by moderation — a
+// member can save a `draft` or send a row to `pending`, never to `approved`.
+
+/** Columns the owner may read back after a write (no private contact column). */
+const OWNER_LISTING_COLUMNS = `${PUBLIC_LISTING_COLUMNS}, status, rejection_reason, published_at`;
+
+/** Labels used in the "which category" copy and notification text. */
+const CUSTOMER_CATEGORY_LABEL: Record<CustomerServiceCategory, string> = {
+  coaching: 'কোচিং সেন্টার',
+  wifi: 'WiFi প্রদানকারী',
+};
+
+export function customerCategoryLabel(category: CustomerServiceCategory): string {
+  return CUSTOMER_CATEGORY_LABEL[category];
+}
+
+/** The category page a customer-owned listing belongs to. */
+export function customerCategoryRoute(category: CustomerServiceCategory): string {
+  return category === 'coaching' ? '/coaching' : '/wifi';
+}
+
+/**
+ * A URL-safe slug that never collides.
+ *
+ * Bengali titles do not transliterate cleanly, so the readable part is built
+ * from any ASCII the title happens to contain and the uniqueness comes from a
+ * short random suffix. The `(category, slug)` unique constraint plus this
+ * suffix makes a collision effectively impossible for a manual post.
+ */
+function makeServiceSlug(category: CustomerServiceCategory, title: string): string {
+  const readable = title
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 40);
+  const suffix = Math.random().toString(36).slice(2, 8);
+  return `${readable || category}-${suffix}`;
+}
+
+/**
+ * Accepts the shapes people actually type ("01712-345678", "+8801712345678")
+ * and returns the local 11-digit form, or null when it is not a valid BD mobile.
+ */
+export function normalizeBdPhone(input: string): string | null {
+  const digits = input.replace(/\D/g, '');
+  let local = digits;
+  if (local.startsWith('880') && local.length === 13) local = `0${local.slice(3)}`;
+  return /^01\d{9}$/.test(local) ? local : null;
+}
+
+function customerListingPayload(
+  input: CustomerServiceListingInput
+): Record<string, unknown> {
+  return {
+    category: input.category,
+    title_bn: input.titleBn.trim(),
+    subtitle_bn: input.subtitleBn?.trim() || null,
+    summary_bn: input.summaryBn?.trim() || null,
+    description_bn: input.descriptionBn?.trim() || null,
+    image_url: input.imageUrl?.trim() || null,
+    logo_url: input.logoUrl?.trim() || null,
+    area_ids: input.areaIds ?? [],
+    tags: input.tags ?? [],
+    address_bn: input.addressBn?.trim() || null,
+    contact_phone_public: input.contactPhonePublic?.trim() || null,
+    monthly_fee_min: input.monthlyFeeMin ?? null,
+    monthly_fee_max: input.monthlyFeeMax ?? null,
+    admission_info_bn: input.admissionInfoBn?.trim() || null,
+    price_min: input.priceMin ?? null,
+    price_max: input.priceMax ?? null,
+    speed_mbps: input.speedMbps ?? null,
+    connection_fee: input.connectionFee ?? null,
+    terms_bn: input.termsBn?.trim() || null,
+  };
+}
+
+/**
+ * Validation shared by create and edit. A draft only needs a title (the DB
+ * requires one); a submission must also carry a reachable number and at least
+ * one service area, since that is what a reader relies on.
+ */
+function validateCustomerListing(
+  input: CustomerServiceListingInput,
+  mode: 'draft' | 'submit'
+): string | null {
+  if (input.titleBn.trim().length < 2) return 'প্রতিষ্ঠানের নাম লিখুন।';
+  if (mode === 'submit') {
+    if (!normalizeBdPhone(input.contactPhonePublic ?? '')) {
+      return 'সঠিক ১১-ডিজিটের মোবাইল নম্বর লিখুন (যেমন ০১৭xxxxxxxx)।';
+    }
+    if (!input.areaIds || input.areaIds.length === 0) {
+      return 'অন্তত একটি এলাকা নির্বাচন করুন।';
+    }
+  }
+  return null;
+}
+
+/** The signed-in member's own service listings, any moderation state. */
+export async function fetchMyServiceListings(strict = false): Promise<ServiceListing[]> {
+  if (!isSupabaseConfigured) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
+  const userId = await currentUserId();
+  if (!userId) {
+    if (strict) throw new Error(NOT_SIGNED_IN);
+    return [];
+  }
+  const client = createClient();
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
+  const { data, error } = await client.rpc('fn_my_service_listings');
+  if (error || !Array.isArray(data)) {
+    if (strict) throw new Error(error?.message || 'তালিকা লোড করা যায়নি।');
+    return [];
+  }
+  return (data as Record<string, unknown>[]).map((row) => mapListing(row, false));
+}
+
+/** One of the signed-in member's own listings (draft/pending/rejected too). */
+export async function fetchMyServiceListing(id: string): Promise<ServiceListing | null> {
+  if (!isSupabaseConfigured || !isUuid(id)) return null;
+  const userId = await currentUserId();
+  if (!userId) return null;
+  const client = createClient();
+  if (!client) return null;
+  const { data, error } = await client
+    .rpc('fn_my_service_listing', { p_id: id })
+    .maybeSingle();
+  if (error || !data) return null;
+  return mapListing(data as Record<string, unknown>, false);
+}
+
+export async function createCustomerServiceListing(
+  input: CustomerServiceListingInput,
+  mode: 'draft' | 'submit'
+): Promise<WriteResult<ServiceListing | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const invalid = validateCustomerListing(input, mode);
+  if (invalid) return { success: false, error: invalid };
+
+  const payload = {
+    ...customerListingPayload(input),
+    slug: makeServiceSlug(input.category, input.titleBn),
+    owner_id: userId,
+    status: mode === 'draft' ? 'draft' : 'pending',
+    is_active: true,
+  };
+
+  const { data, error } = await client
+    .from('service_listings')
+    .insert(payload)
+    .select(OWNER_LISTING_COLUMNS)
+    .single();
+  if (error || !data) {
+    return { success: false, error: error?.message || 'সংরক্ষণ ব্যর্থ হয়েছে।' };
+  }
+  return { success: true, data: mapListing(data as Record<string, unknown>, false) };
+}
+
+export async function updateCustomerServiceListing(
+  id: string,
+  input: CustomerServiceListingInput,
+  mode: 'draft' | 'submit'
+): Promise<WriteResult<ServiceListing | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const invalid = validateCustomerListing(input, mode);
+  if (invalid) return { success: false, error: invalid };
+
+  // `category` and `owner_id` are intentionally not written here: the guard
+  // trigger pins the owner and a listing never changes category.
+  const payload = {
+    ...customerListingPayload(input),
+    status: mode === 'draft' ? 'draft' : 'pending',
+    updated_at: new Date().toISOString(),
+  };
+  delete (payload as Record<string, unknown>).category;
+  delete (payload as Record<string, unknown>).owner_id;
+
+  const { data, error } = await client
+    .from('service_listings')
+    .update(payload)
+    .eq('id', id)
+    .eq('owner_id', userId)
+    .select(OWNER_LISTING_COLUMNS)
+    .maybeSingle();
+  if (error) return { success: false, error: error.message || 'আপডেট ব্যর্থ হয়েছে।' };
+  if (!data) return { success: false, error: 'তালিকাটি পাওয়া যায়নি বা সম্পাদনার অনুমতি নেই।' };
+  return { success: true, data: mapListing(data as Record<string, unknown>, false) };
+}
+
+export async function deleteCustomerServiceListing(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  const userId = await currentUserId();
+  if (!userId) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client
+    .from('service_listings')
+    .delete()
+    .eq('id', id)
+    .eq('owner_id', userId);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+const SERVICE_IMAGE_BUCKET = 'listings';
+const SERVICE_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Upload one cover image for a customer listing into the shared, public
+ * `listings` bucket, namespaced by owner so one member cannot overwrite
+ * another's file. Type and size are checked before sending.
+ */
+export async function uploadServiceListingImage(
+  ownerId: string,
+  file: File
+): Promise<WriteResult<string>> {
+  if (!file.type.startsWith('image/')) {
+    return { success: false, error: 'শুধুমাত্র ছবি ফাইল দেওয়া যাবে।' };
+  }
+  if (file.size > SERVICE_IMAGE_MAX_BYTES) {
+    return { success: false, error: 'ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।' };
+  }
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+  const path = `${ownerId}/service-listings/${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}.${ext}`;
+  const { error } = await client.storage.from(SERVICE_IMAGE_BUCKET).upload(path, file, {
+    contentType: file.type,
+    upsert: false,
+  });
+  if (error) return { success: false, error: `ছবি আপলোড ব্যর্থ: ${error.message}` };
+  const { data } = client.storage.from(SERVICE_IMAGE_BUCKET).getPublicUrl(path);
+  return { success: true, data: data.publicUrl };
+}
+
+// --- owner: coaching teachers ---------------------------------------------
+
+export async function fetchOwnCoachingTeachers(listingId: string): Promise<CoachingTeacher[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('coaching_teachers')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapTeacher);
+}
+
+export async function createOwnCoachingTeacher(
+  listingId: string,
+  input: Omit<CoachingTeacherInput, 'listingId'>
+): Promise<WriteResult<CoachingTeacher | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(listingId)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const name = input.nameBn.trim();
+  if (name.length < 2) return { success: false, error: 'শিক্ষকের নাম লিখুন।' };
+  const { data, error } = await client
+    .from('coaching_teachers')
+    .insert({
+      listing_id: listingId,
+      name_bn: name,
+      subjects: input.subjects ?? [],
+      qualification_bn: input.qualificationBn?.trim() || null,
+      experience_bn: input.experienceBn?.trim() || null,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select('*')
+    .single();
+  const failed = dbWriteError(error, 'শিক্ষক সংরক্ষণ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  return { success: true, data: mapTeacher(data as Record<string, unknown>) };
+}
+
+export async function updateOwnCoachingTeacher(
+  id: string,
+  patch: TeacherPatch
+): Promise<WriteResult<CoachingTeacher | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'শিক্ষকটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const payload: Record<string, unknown> = {};
+  if (patch.nameBn !== undefined) {
+    const name = patch.nameBn.trim();
+    if (name.length < 2) return { success: false, error: 'শিক্ষকের নাম লিখুন।' };
+    payload.name_bn = name;
+  }
+  if (patch.subjects !== undefined) payload.subjects = patch.subjects;
+  if (patch.qualificationBn !== undefined) payload.qualification_bn = patch.qualificationBn?.trim() || null;
+  if (patch.experienceBn !== undefined) payload.experience_bn = patch.experienceBn?.trim() || null;
+  if (patch.sortOrder !== undefined) payload.sort_order = patch.sortOrder;
+  const { data, error } = await client
+    .from('coaching_teachers')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  const failed = dbWriteError(error, 'শিক্ষকের তথ্য হালনাগাদ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  if (!data) return { success: true, data: undefined };
+  return { success: true, data: mapTeacher(data as Record<string, unknown>) };
+}
+
+export async function deleteOwnCoachingTeacher(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'শিক্ষকটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('coaching_teachers').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+// --- owner: coaching batches ----------------------------------------------
+
+export async function fetchOwnCoachingBatches(listingId: string): Promise<CoachingBatch[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('coaching_batches')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('start_date', { ascending: true, nullsFirst: false })
+    .order('created_at', { ascending: false });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapBatch);
+}
+
+export async function createOwnCoachingBatch(
+  listingId: string,
+  input: Omit<CoachingBatchInput, 'listingId'>
+): Promise<WriteResult<CoachingBatch | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(listingId)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const title = input.titleBn.trim();
+  if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };
+  const { data, error } = await client
+    .from('coaching_batches')
+    .insert({
+      listing_id: listingId,
+      title_bn: title,
+      start_date: input.startDate?.trim() || null,
+      start_time: input.startTime?.trim() || null,
+      note_bn: input.noteBn?.trim() || null,
+      is_active: input.isActive !== false,
+    })
+    .select('*')
+    .single();
+  const failed = dbWriteError(error, 'ব্যাচ সংরক্ষণ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  return { success: true, data: mapBatch(data as Record<string, unknown>) };
+}
+
+export async function updateOwnCoachingBatch(
+  id: string,
+  patch: BatchPatch
+): Promise<WriteResult<CoachingBatch | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'ব্যাচটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const payload: Record<string, unknown> = {};
+  if (patch.titleBn !== undefined) {
+    const title = patch.titleBn.trim();
+    if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };
+    payload.title_bn = title;
+  }
+  if (patch.startDate !== undefined) payload.start_date = patch.startDate?.trim() || null;
+  if (patch.startTime !== undefined) payload.start_time = patch.startTime?.trim() || null;
+  if (patch.noteBn !== undefined) payload.note_bn = patch.noteBn?.trim() || null;
+  if (patch.isActive !== undefined) payload.is_active = patch.isActive;
+  const { data, error } = await client
+    .from('coaching_batches')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  const failed = dbWriteError(error, 'ব্যাচ হালনাগাদ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  if (!data) return { success: true, data: undefined };
+  return { success: true, data: mapBatch(data as Record<string, unknown>) };
+}
+
+export async function deleteOwnCoachingBatch(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'ব্যাচটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('coaching_batches').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+// --- owner: wifi packages --------------------------------------------------
+
+export async function fetchOwnWifiPackages(listingId: string): Promise<WifiPackage[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+  const client = createClient();
+  if (!client) return [];
+  const { data, error } = await client
+    .from('wifi_packages')
+    .select('*')
+    .eq('listing_id', listingId)
+    .order('sort_order', { ascending: true })
+    .order('created_at', { ascending: true });
+  if (error || !data) return [];
+  return (data as Record<string, unknown>[]).map(mapPackage);
+}
+
+export async function createOwnWifiPackage(
+  listingId: string,
+  input: Omit<WifiPackageInput, 'listingId'>
+): Promise<WriteResult<WifiPackage | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(listingId)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const name = input.nameBn.trim();
+  if (name.length < 2) return { success: false, error: 'প্যাকেজের নাম লিখুন।' };
+  if (input.speedMbps != null && input.speedMbps <= 0) {
+    return { success: false, error: 'স্পিড শূন্যের বেশি হতে হবে।' };
+  }
+  if (input.price != null && input.price < 0) {
+    return { success: false, error: 'দাম ঋণাত্মক হতে পারে না।' };
+  }
+  if (input.connectionFee != null && input.connectionFee < 0) {
+    return { success: false, error: 'সংযোগ ফি ঋণাত্মক হতে পারে না।' };
+  }
+  const { data, error } = await client
+    .from('wifi_packages')
+    .insert({
+      listing_id: listingId,
+      name_bn: name,
+      speed_mbps: input.speedMbps ?? null,
+      price: input.price ?? null,
+      offer_label_bn: input.offerLabelBn?.trim() || null,
+      offer_conditions_bn: input.offerConditionsBn?.trim() || null,
+      connection_fee: input.connectionFee ?? null,
+      offer_expires_on: input.offerExpiresOn?.trim() || null,
+      is_active: input.isActive !== false,
+      sort_order: input.sortOrder ?? 0,
+    })
+    .select('*')
+    .single();
+  const failed = dbWriteError(error, 'প্যাকেজ সংরক্ষণ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  return { success: true, data: mapPackage(data as Record<string, unknown>) };
+}
+
+export async function updateOwnWifiPackage(
+  id: string,
+  patch: PackagePatch
+): Promise<WriteResult<WifiPackage | undefined>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'প্যাকেজটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const payload: Record<string, unknown> = {};
+  if (patch.nameBn !== undefined) {
+    const name = patch.nameBn.trim();
+    if (name.length < 2) return { success: false, error: 'প্যাকেজের নাম লিখুন।' };
+    payload.name_bn = name;
+  }
+  if (patch.speedMbps !== undefined) {
+    if (patch.speedMbps != null && patch.speedMbps <= 0) {
+      return { success: false, error: 'স্পিড শূন্যের বেশি হতে হবে।' };
+    }
+    payload.speed_mbps = patch.speedMbps;
+  }
+  if (patch.price !== undefined) {
+    if (patch.price != null && patch.price < 0) {
+      return { success: false, error: 'দাম ঋণাত্মক হতে পারে না।' };
+    }
+    payload.price = patch.price;
+  }
+  if (patch.offerLabelBn !== undefined) payload.offer_label_bn = patch.offerLabelBn?.trim() || null;
+  if (patch.offerConditionsBn !== undefined)
+    payload.offer_conditions_bn = patch.offerConditionsBn?.trim() || null;
+  if (patch.connectionFee !== undefined) {
+    if (patch.connectionFee != null && patch.connectionFee < 0) {
+      return { success: false, error: 'সংযোগ ফি ঋণাত্মক হতে পারে না।' };
+    }
+    payload.connection_fee = patch.connectionFee;
+  }
+  if (patch.offerExpiresOn !== undefined)
+    payload.offer_expires_on = patch.offerExpiresOn?.trim() || null;
+  if (patch.isActive !== undefined) payload.is_active = patch.isActive;
+  if (patch.sortOrder !== undefined) payload.sort_order = patch.sortOrder;
+  const { data, error } = await client
+    .from('wifi_packages')
+    .update(payload)
+    .eq('id', id)
+    .select('*')
+    .maybeSingle();
+  const failed = dbWriteError(error, 'প্যাকেজ হালনাগাদ ব্যর্থ হয়েছে।');
+  if (failed) return failed;
+  if (!data) return { success: true, data: undefined };
+  return { success: true, data: mapPackage(data as Record<string, unknown>) };
+}
+
+export async function deleteOwnWifiPackage(id: string): Promise<WriteResult> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(id)) return { success: false, error: 'প্যাকেজটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { error } = await client.from('wifi_packages').delete().eq('id', id);
+  if (error) return { success: false, error: error.message };
+  return { success: true, data: undefined };
+}
+
+// ---------------------------------------------------------------------------
 // Directory sub-entities: coaching teachers / batches, wifi packages
 // ---------------------------------------------------------------------------
 //
@@ -631,7 +1218,7 @@ const PUBLIC_TEACHER_COLUMNS =
 const PUBLIC_BATCH_COLUMNS =
   'id, listing_id, title_bn, start_date, start_time, note_bn, is_active, created_at, updated_at';
 const PUBLIC_PACKAGE_COLUMNS =
-  'id, listing_id, name_bn, speed_mbps, price, offer_label_bn, offer_conditions_bn, is_active, sort_order, created_at, updated_at';
+  'id, listing_id, name_bn, speed_mbps, price, offer_label_bn, offer_conditions_bn, connection_fee, offer_expires_on, is_active, sort_order, created_at, updated_at';
 const REVIEW_COLUMNS =
   'id, category, listing_id, author_id, rating, comment_bn, is_published, created_at, updated_at';
 
@@ -957,6 +1544,8 @@ type PackagePatch = {
   price?: number | null;
   offerLabelBn?: string | null;
   offerConditionsBn?: string | null;
+  connectionFee?: number | null;
+  offerExpiresOn?: string | null;
   isActive?: boolean;
   sortOrder?: number;
 };
@@ -1131,6 +1720,8 @@ export async function adminCreateWifiPackage(
       price: input.price ?? null,
       offer_label_bn: input.offerLabelBn?.trim() || null,
       offer_conditions_bn: input.offerConditionsBn?.trim() || null,
+      connection_fee: input.connectionFee ?? null,
+      offer_expires_on: input.offerExpiresOn?.trim() || null,
       is_active: input.isActive !== false,
       sort_order: input.sortOrder ?? 0,
     })
@@ -1171,6 +1762,14 @@ export async function adminUpdateWifiPackage(
   if (patch.offerLabelBn !== undefined) payload.offer_label_bn = patch.offerLabelBn?.trim() || null;
   if (patch.offerConditionsBn !== undefined)
     payload.offer_conditions_bn = patch.offerConditionsBn?.trim() || null;
+  if (patch.connectionFee !== undefined) {
+    if (patch.connectionFee != null && patch.connectionFee < 0) {
+      return { success: false, error: 'সংযোগ ফি ঋণাত্মক হতে পারে না।' };
+    }
+    payload.connection_fee = patch.connectionFee;
+  }
+  if (patch.offerExpiresOn !== undefined)
+    payload.offer_expires_on = patch.offerExpiresOn?.trim() || null;
   if (patch.isActive !== undefined) payload.is_active = patch.isActive;
   if (patch.sortOrder !== undefined) payload.sort_order = patch.sortOrder;
   const { data, error } = await client
@@ -1453,6 +2052,37 @@ export async function fetchMyPosts(strict = false): Promise<CommunityPost[]> {
   }
   if (!data) return [];
   return (data as Record<string, unknown>[]).map(mapPost);
+}
+
+/**
+ * Real page-view counts for the signed-in author's own posts, keyed by slug.
+ *
+ * Reads the narrow owner-facing aggregate `fn_my_post_views()` added in
+ * 20261016120000_customer_post_views.sql — the raw `site_events` table is
+ * admin-only, and this function exists precisely so an author can see their own
+ * traffic without opening raw visitor rows to every member. Ownership is
+ * re-checked inside the SQL (`author_id = auth.uid()`), never trusted here.
+ *
+ * Degrades gracefully: while the migration has not been applied yet, or when
+ * analytics is unavailable, it returns an empty map instead of throwing, so the
+ * dashboard still renders posts — just without a view figure.
+ */
+export async function fetchMyPostViewCounts(): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured) return {};
+  const userId = await currentUserId();
+  if (!userId) return {};
+  const client = createClient();
+  if (!client) return {};
+
+  const { data, error } = await client.rpc('fn_my_post_views');
+  if (error || !Array.isArray(data)) return {};
+
+  const counts: Record<string, number> = {};
+  for (const row of data as { post_slug?: unknown; view_count?: unknown }[]) {
+    if (typeof row.post_slug !== 'string') continue;
+    counts[row.post_slug] = Number(row.view_count ?? 0);
+  }
+  return counts;
 }
 
 /**

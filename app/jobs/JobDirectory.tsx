@@ -6,7 +6,6 @@ import { JobCard } from '@/components/catalog/CommunityCards';
 import { rangeGroup, tagFacet } from '@/components/catalog/CatalogDirectory';
 import { areaFilterGroupMulti, type FilterGroup } from '@/lib/directory-filters';
 import {
-  JOB_EDUCATION,
   JOB_EXPERIENCE,
   JOB_TYPES,
   type CommunityPost,
@@ -36,7 +35,9 @@ export default function JobDirectory() {
     () => [
       areaFilterGroupMulti(),
       tagFacet('jobType', 'চাকরির ধরন', JOB_TYPES),
-      tagFacet('category', 'শিক্ষাগত যোগ্যতা', JOB_EDUCATION),
+      // No "ক্যাটাগরি" facet: the job category is free text now, so a fixed
+      // taxonomy list could never match a row. "চাকরির ধরন" (jobType) remains
+      // the taxonomy-backed facet.
       tagFacet('experience', 'অভিজ্ঞতা', JOB_EXPERIENCE),
     ],
     []

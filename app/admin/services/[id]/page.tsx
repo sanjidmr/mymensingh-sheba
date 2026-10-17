@@ -13,14 +13,13 @@ import {
   Briefcase,
   BadgeCheck,
   Zap,
-  DollarSign,
   Clock,
   CalendarDays,
   Share2,
 } from 'lucide-react';
 import { adminFetchStaffProfileById, adminFetchStaffRequests, resolveStaffImageUrl } from '@/lib/staff-service';
 import type { StaffProfile } from '@/lib/staff-types';
-import { STAFF_SERVICE_UI, STAFF_REQUEST_STATUS_INFO, formatExperienceBn, formatSalaryBn } from '@/lib/staff-types';
+import { STAFF_SERVICE_UI, STAFF_REQUEST_STATUS_INFO, formatExperienceBn } from '@/lib/staff-types';
 import { STAFF_AVAILABILITY_LABELS, STAFF_WORK_MODE_LABELS } from '@/lib/staff-types';
 import { STAFF_ACCENT_CLASSES, staffWorkTypeLabels } from '@/lib/staff-labels';
 import { getAreaById } from '@/lib/locations';
@@ -160,7 +159,6 @@ export default function AdminStaffProfileDetailPage({ params }: AdminStaffProfil
                   )}
                 </div>
                 <h1 className="font-bold text-slate-900 text-lg sm:text-xl">{profile.nameBn}</h1>
-                <p className="text-xs text-slate-600 mt-0.5">{profile.titleBn}</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2 shrink-0">
@@ -175,7 +173,7 @@ export default function AdminStaffProfileDetailPage({ params }: AdminStaffProfil
           </div>
 
           {/* Stat boxes */}
-          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
             <div className="p-3 rounded-xl bg-slate-50">
               <p className="text-slate-500 mb-0.5 flex items-center gap-1">
                 <Briefcase className="w-3.5 h-3.5" /> অভিজ্ঞতা
@@ -193,16 +191,6 @@ export default function AdminStaffProfileDetailPage({ params }: AdminStaffProfil
                 <Clock className="w-3.5 h-3.5" /> প্রাপ্যতা
               </p>
               <p className="font-bold text-slate-900">{STAFF_AVAILABILITY_LABELS[profile.availability]}</p>
-            </div>
-            <div className="p-3 rounded-xl bg-slate-50">
-              <p className="text-slate-500 mb-0.5 flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5" /> প্রত্যাশিত সম্মানী
-              </p>
-              <p className="font-bold text-slate-900 line-clamp-1">
-                {ui?.usesSalary
-                  ? formatSalaryBn(profile.salaryMin, profile.salaryMax)
-                  : profile.rateLabel || 'আলোচনা সাপেক্ষে'}
-              </p>
             </div>
           </div>
         </div>

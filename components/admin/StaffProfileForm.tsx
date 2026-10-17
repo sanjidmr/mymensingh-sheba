@@ -9,7 +9,6 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertTriangle,
-  DollarSign,
   Phone,
 } from 'lucide-react';
 import { saveStaffProfile } from '@/app/admin/actions/staff';
@@ -25,10 +24,7 @@ interface StaffProfileFormProps {
  * Internal worker-directory form.
  *
  * This form is the ONLY place worker details are recorded, and it lives behind
- * `/admin`. It intentionally collects just what an admin needs to contact and
- * describe a worker (name, service, phone, honourarium, notes). Customers never
- * see this form or its data — they submit a service request and an admin
- * assigns a worker from the directory.
+ * `/admin`. Customers never see this form or its private contact data.
  */
 export default function StaffProfileForm({ mode, initialProfile }: StaffProfileFormProps) {
   const router = useRouter();
@@ -37,11 +33,7 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
     initialProfile?.serviceSlug || 'kajer-bua'
   );
   const [nameBn, setNameBn] = useState(initialProfile?.nameBn || '');
-  const [titleBn, setTitleBn] = useState(initialProfile?.titleBn || '');
   const imageUrl = initialProfile?.imageUrl || '';
-  const [salaryMax, setSalaryMax] = useState<string>(
-    initialProfile?.salaryMax != null ? String(initialProfile.salaryMax) : ''
-  );
   const [rateLabel, setRateLabel] = useState(initialProfile?.rateLabel || '');
   const [aboutBn, setAboutBn] = useState(initialProfile?.aboutBn || '');
   const [phonePrivate, setPhonePrivate] = useState(initialProfile?.phonePrivate || '');
@@ -56,18 +48,15 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
 
   const handleServiceChange = (next: StaffServiceKey) => {
     setServiceSlug(next);
-    setSalaryMax('');
     setRateLabel('');
   };
 
   const buildInput = (): StaffProfileInput => {
-    const max = salaryMax ? Number(salaryMax) : undefined;
     return {
       serviceSlug,
       nameBn: nameBn.trim(),
-      titleBn: titleBn.trim(),
+      titleBn: STAFF_SERVICE_UI[serviceSlug].nameBn,
       imageUrl,
-      salaryMax: ui.usesSalary ? max : undefined,
       rateLabel: rateLabel.trim() || undefined,
       aboutBn: aboutBn.trim(),
       isVerified,
@@ -79,12 +68,7 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
 
   const validate = (): string => {
     if (nameBn.trim().length < 2) return 'নাম লিখুন (সর্বনিম্ন ২ অক্ষর)';
-    if (titleBn.trim().length < 2) return 'পদবি / সংক্ষিপ্ত পরিচয় লিখুন';
     if (aboutBn.trim().length < 10) return 'বিস্তারিত তথ্য লিখুন (সর্বনিম্ন ১০ অক্ষর)';
-    if (ui.usesSalary && salaryMax) {
-      const max = Number(salaryMax);
-      if (max < 0) return 'সম্মানীর পরিমাণ ঋণাত্মক হতে পারবে না';
-    }
     return '';
   };
 
@@ -110,7 +94,7 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
       return;
     }
     setSuccess('প্রোফাইল সফলভাবে সংরক্ষণ হয়েছে');
-    setTimeout(() => router.replace(`/admin/services/${result.id}`), 900);
+    setTimeout(() => router.replace('/admin/services'), 900);
   };
 
   const inputCls =
@@ -208,31 +192,6 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
                     className={inputCls}
                   />
                 </div>
-                <div>
-                  <label className={labelCls}>পদবি / সংক্ষিপ্ত পরিচয়*</label>
-                  <input
-                    value={titleBn}
-                    onChange={(e) => setTitleBn(e.target.value)}
-                    placeholder="যেমন: অভিজ্ঞ গৃহকর্মী / মাস্টার ইলেক্ট্রিশিয়ান"
-                    className={inputCls}
-                  />
-                </div>
-                {ui.usesSalary && (
-                  <div>
-                    <label className={labelCls}>প্রতীক্ষিত সম্মানী (সর্বোচ্চ)</label>
-                    <div className="relative">
-                      <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="number"
-                        min={0}
-                        value={salaryMax}
-                        onChange={(e) => setSalaryMax(e.target.value)}
-                        placeholder="৫০০০"
-                        className={`${inputCls} pl-9`}
-                      />
-                    </div>
-                  </div>
-                )}
                 {!ui.usesSalary && (
                   <div>
                     <label className={labelCls}>দক্ষতা / চার্জ নোট</label>

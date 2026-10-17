@@ -301,8 +301,8 @@ export async function adminFetchToletAnalyticsReport(params: {
 
   const { data, error } = await client.rpc('fn_admin_tolet_listing_analytics', {
     p_from: params.from,
-    p_to: params.to,
     p_period: params.period,
+    p_to: params.to,
   });
   if (error) throw new Error(`বাসাভাড়ার পরিসংখ্যান লোড ব্যর্থ হয়েছে: ${error.message}`);
   if (!data || typeof data !== 'object') throw new Error('বাসাভাড়ার পরিসংখ্যানের উত্তর সঠিক নয়।');

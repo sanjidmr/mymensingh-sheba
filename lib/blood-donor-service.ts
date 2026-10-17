@@ -52,6 +52,7 @@ function mapDonorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {
     isVerified: Boolean(c.isVerified),
     intro: (c.intro as string) || undefined,
     profilePhotoUrl: (c.profilePhotoUrl as string) || undefined,
+    showReadiness: Boolean(c.showReadiness),
     adminNotes: opts.admin ? (c.adminNotes as string) || undefined : undefined,
     rejectionReason: opts.admin ? (c.rejectionReason as string) || undefined : undefined,
     publishedAt: (c.publishedAt as string) || undefined,

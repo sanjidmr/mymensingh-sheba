@@ -12,6 +12,7 @@ import { fetchServiceListingForContact } from '@/lib/catalog-service';
 import {
   areaNames,
   bnTaka,
+  bnTakaRange,
   CATEGORY_UI,
   toBn,
   type ServiceListing,
@@ -41,12 +42,18 @@ export default function WifiDetail({ slug }: { slug: string }) {
   if (loading) return <DetailSkeleton />;
   if (!listing) return <CatalogDetailMissing ui={ui} />;
 
+  const contactPhone = listing.contactPhonePublic || listing.contactPhonePrivate;
+  const priceRange =
+    listing.priceMin != null
+      ? bnTakaRange(listing.priceMin, listing.priceMax)
+      : null;
   const facts: DetailFact[] = [
-    ...(listing.priceMin != null
-      ? [{ label: 'মাসিক দাম', value: `${bnTaka(listing.priceMin)} টাকা` }]
-      : []),
+    ...(priceRange ? [{ label: 'মাসিক দাম', value: `${priceRange} টাকা` }] : []),
     ...(listing.speedMbps != null
       ? [{ label: 'স্পিড', value: `${toBn(listing.speedMbps)} Mbps` }]
+      : []),
+    ...(listing.connectionFee != null
+      ? [{ label: 'সংযোগ ফি', value: `${bnTaka(listing.connectionFee)} টাকা` }]
       : []),
     ...(listing.addressBn ? [{ label: 'কভারেজ', value: listing.addressBn }] : []),
     ...(listing.areaIds.length > 0
@@ -55,6 +62,7 @@ export default function WifiDetail({ slug }: { slug: string }) {
     ...(listing.ratingCount && listing.ratingCount > 0
       ? [{ label: 'রেটিং', value: `${toBn((listing.ratingAvg ?? 0).toFixed(1))} / ৫ (${toBn(listing.ratingCount)})` }]
       : []),
+    ...(listing.termsBn ? [{ label: 'সংযোগের শর্ত', value: listing.termsBn }] : []),
   ];
 
   return (
@@ -69,7 +77,7 @@ export default function WifiDetail({ slug }: { slug: string }) {
           ratingCount={listing.ratingCount}
         />
       }
-      action={<ContactBlock phone={listing.contactPhonePrivate} />}
+      action={<ContactBlock phone={contactPhone} hideRequestFallback />}
     />
   );
 }

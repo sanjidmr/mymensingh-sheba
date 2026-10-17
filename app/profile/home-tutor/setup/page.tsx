@@ -12,7 +12,6 @@ import {
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
-  Lock,
   Video,
   Home as HomeIcon,
   RefreshCw,
@@ -22,21 +21,10 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { MCC_AREAS } from '@/lib/locations';
 import { uploadTutorProfilePhoto } from '@/lib/home-tutor-service';
-import { TUTOR_TEACHING_MODE_LABELS, TUTOR_AVAILABILITY_LABELS } from '@/lib/home-tutor-types';
-import type { TutorAvailability, TutorTeachingMode } from '@/lib/supabase/types';
+import { TUTOR_TEACHING_MODE_LABELS } from '@/lib/home-tutor-types';
+import type { TutorTeachingMode } from '@/lib/supabase/types';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-
-const COMMON_INSTITUTIONS = [
-  'আনন্দ মোহন কলেজ, ময়মনসিংহ',
-  'ময়মনসিংহ মেডিকেল কলেজ',
-  'বাংলাদেশ কৃষি বিশ্ববিদ্যালয় (বাকৃবি)',
-  'নাসিরাবাদ সরকারি কলেজ',
-  'মুমিনুন্নিসা সরকারি মহিলা কলেজ',
-  'ময়মনসিংহ ইঞ্জিনিয়ারিং কলেজ',
-  'কমিউনিটি বেসড মেডিকেল কলেজ',
-  'অন্যান্য',
-];
 
 const AVAILABLE_CLASSES = [
   '১ম - ৫ম শ্রেণি',
@@ -64,12 +52,15 @@ export default function HomeTutorSetupPage() {
 
   const [fullName, setFullName] = useState(homeTutorProfile?.fullName || user?.fullName || '');
   const [gender, setGender] = useState<'male' | 'female'>(homeTutorProfile?.gender || 'male');
-  const [institution, setInstitution] = useState(
-    homeTutorProfile?.institution || 'আনন্দ মোহন কলেজ, ময়মনসিংহ'
-  );
-  const [customInstitution, setCustomInstitution] = useState('');
+  const [institution, setInstitution] = useState(homeTutorProfile?.institution || '');
   const [department, setDepartment] = useState(homeTutorProfile?.department || '');
   const [qualification, setQualification] = useState(homeTutorProfile?.qualification || '');
+  const initialEducationStatus = homeTutorProfile?.educations?.[0]?.status;
+  const [educationStatus, setEducationStatus] = useState<'studying' | 'completed' | ''>(
+    initialEducationStatus === 'studying' || initialEducationStatus === 'completed'
+      ? initialEducationStatus
+      : ''
+  );
   const [experienceYears, setExperienceYears] = useState(homeTutorProfile?.experienceYears || 2);
   const [selectedAreas, setSelectedAreas] = useState<string[]>(
     homeTutorProfile?.preferredAreas || ['charpara', 'ganginarpar']
@@ -89,9 +80,6 @@ export default function HomeTutorSetupPage() {
   );
   const [teachingMode, setTeachingMode] = useState<TutorTeachingMode>(
     homeTutorProfile?.teachingMode || 'both'
-  );
-  const [availability, setAvailability] = useState<TutorAvailability>(
-    homeTutorProfile?.availability || 'available'
   );
   const [profilePhotoUrl, setProfilePhotoUrl] = useState(homeTutorProfile?.profilePhotoUrl || '');
   const [photoUploading, setPhotoUploading] = useState(false);
@@ -122,12 +110,18 @@ export default function HomeTutorSetupPage() {
     const file = e.target.files?.[0];
     if (!file || !user) return;
     setPhotoUploading(true);
-    const res = await uploadTutorProfilePhoto(user.id, file);
-    setPhotoUploading(false);
-    if (res.success && res.url) {
-      setProfilePhotoUrl(res.url);
-    } else {
-      setError(res.error || 'ছবি আপলোড ব্যর্থ হয়েছে');
+    try {
+      const res = await uploadTutorProfilePhoto(user.id, file);
+      if (res.success && res.url) {
+        setProfilePhotoUrl(res.url);
+      } else {
+        setError('ছবি আপলোড করা যায়নি। আবার চেষ্টা করুন।');
+      }
+    } catch (uploadError) {
+      console.error('Tutor profile photo upload failed', uploadError);
+      setError('ছবি আপলোড করা যায়নি। আবার চেষ্টা করুন।');
+    } finally {
+      setPhotoUploading(false);
     }
   };
 
@@ -136,8 +130,10 @@ export default function HomeTutorSetupPage() {
       setError('নাম, বিভাগ এবং অন্তত একটি এলাকা নির্বাচন করুন।');
       return;
     }
-
-    const finalInstitution = institution === 'অন্যান্য' ? customInstitution || 'অন্যান্য' : institution;
+    if (mode === 'submit' && !educationStatus) {
+      setError('আপনার পড়াশোনার বর্তমান অবস্থা নির্বাচন করুন।');
+      return;
+    }
 
     setLoading(true);
     setError('');
@@ -145,9 +141,20 @@ export default function HomeTutorSetupPage() {
       const result = await activateHomeTutorProfile({
         fullName,
         gender,
-        institution: finalInstitution,
+        institution,
         department,
         qualification,
+        educations: educationStatus && qualification.trim()
+          ? [
+              {
+                institution,
+                department,
+                degree: qualification.trim(),
+                status: educationStatus,
+              },
+              ...(homeTutorProfile?.educations?.slice(1) ?? []),
+            ]
+          : homeTutorProfile?.educations ?? [],
         experienceYears: Number(experienceYears),
         preferredAreas: selectedAreas,
         preferredClasses: selectedClasses,
@@ -159,7 +166,7 @@ export default function HomeTutorSetupPage() {
         privatePhone,
         isVerified: false,
         teachingMode,
-        availability,
+        availability: homeTutorProfile?.availability || 'available',
         profilePhotoUrl,
       }, mode);
       if (!result.success) throw new Error(result.error || 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
@@ -174,8 +181,9 @@ export default function HomeTutorSetupPage() {
       setTimeout(() => {
         router.push('/dashboard/posts');
       }, 1200);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
+    } catch (saveError) {
+      console.error('Tutor profile save failed', saveError);
+      setError('প্রোফাইল সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
     } finally {
       setLoading(false);
     }
@@ -190,7 +198,7 @@ export default function HomeTutorSetupPage() {
     <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-3 py-4 sm:px-4 sm:py-7">
         <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
           <Link href="/profile" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -200,10 +208,10 @@ export default function HomeTutorSetupPage() {
           <span className="text-ink-800 font-semibold">গৃহশিক্ষক (Home Tutor) প্রোফাইল সেটআপ</span>
         </div>
 
-        <div className="bg-white rounded-2xl border border-brand-100  p-6 sm:p-8">
-          <div className="flex items-center gap-3.5 mb-6 pb-6 border-b border-brand-100">
-            <div className="w-12 h-12 rounded-xl bg-brand-100 text-brand-700 flex items-center justify-center shrink-0">
-              <GraduationCap className="w-6 h-6" />
+        <div className="rounded-xl border border-brand-100 bg-white p-3 sm:rounded-2xl sm:p-5">
+          <div className="mb-4 flex items-center gap-3 border-b border-brand-100 pb-4 sm:mb-5 sm:pb-5">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
+              <GraduationCap className="h-5 w-5" />
             </div>
             <div>
               <h1 className="text-xl sm:text-2xl font-bold text-ink-900">
@@ -229,18 +237,7 @@ export default function HomeTutorSetupPage() {
             </div>
           )}
 
-          {/* Strict Privacy Protection Notice */}
-          <div className="mb-6 p-4 rounded-2xl bg-brand-50/90 border border-brand-200 text-xs text-ink-900 flex items-start gap-3">
-            <Lock className="w-5 h-5 text-brand-700 shrink-0 mt-0.5" />
-            <div>
-              <span className="font-bold text-sm block mb-1">
-                শিক্ষকদের ব্যক্তিগত তথ্যের কঠোর সুরক্ষা:
-              </span>
-              আপনার মোবাইল নম্বরটি পাবলিক ডিরেক্টরিতে কখনোই সরাসরি দেখানো হবে না। কোনো অভিভাবক আপনার প্রোফাইল দেখে টিউশন রিকোয়েস্ট পাঠালে, অ্যাডমিন টিম উভয় পক্ষের ভেরিফিকেশনের পরই কেবল যোগাযোগ সমন্বয় করবে।
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {/* Profile photo (optional) */}
             <div>
               <label className="block text-xs font-semibold text-ink-800 mb-1.5">
@@ -330,28 +327,15 @@ export default function HomeTutorSetupPage() {
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষা প্রতিষ্ঠান
                 </label>
-                <select
+                <input
+                  type="text"
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  placeholder="প্রতিষ্ঠানের নাম লিখুন"
+                  maxLength={160}
+                  className="min-h-11 w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
-                >
-                  {COMMON_INSTITUTIONS.map((inst) => (
-                    <option key={inst} value={inst}>
-                      {inst}
-                    </option>
-                  ))}
-                </select>
-                {institution === 'অন্যান্য' && (
-                  <input
-                    type="text"
-                    value={customInstitution}
-                    onChange={(e) => setCustomInstitution(e.target.value)}
-                    placeholder="প্রতিষ্ঠানের নাম লিখুন"
-                    className="w-full mt-2 px-3.5 py-2 rounded-xl border border-brand-200 text-xs"
-                    required
-                  />
-                )}
+                />
               </div>
 
               <div>
@@ -369,7 +353,7 @@ export default function HomeTutorSetupPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষাগত যোগ্যতা
@@ -383,6 +367,35 @@ export default function HomeTutorSetupPage() {
                   required
                 />
               </div>
+
+              <fieldset>
+                <legend className="block text-xs font-semibold text-ink-800 mb-1.5">
+                  পড়াশোনার অবস্থা
+                </legend>
+                <div className="flex min-h-11 flex-wrap items-center gap-x-4 gap-y-1">
+                  <label className="flex min-h-11 items-center gap-2 text-sm text-ink-800">
+                    <input
+                      type="radio"
+                      name="education-status"
+                      checked={educationStatus === 'studying'}
+                      onChange={() => setEducationStatus('studying')}
+                      required
+                      className="text-brand-700 focus:ring-brand-500"
+                    />
+                    <span>এখনও পড়াশোনা করছি</span>
+                  </label>
+                  <label className="flex min-h-11 items-center gap-2 text-sm text-ink-800">
+                    <input
+                      type="radio"
+                      name="education-status"
+                      checked={educationStatus === 'completed'}
+                      onChange={() => setEducationStatus('completed')}
+                      className="text-brand-700 focus:ring-brand-500"
+                    />
+                    <span>পড়াশোনা সম্পন্ন</span>
+                  </label>
+                </div>
+              </fieldset>
 
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
@@ -546,32 +559,6 @@ export default function HomeTutorSetupPage() {
                       {mode === 'home' && <HomeIcon className="inline w-3.5 h-3.5 mr-1" />}
                       {mode === 'online' && <Video className="inline w-3.5 h-3.5 mr-1" />}
                       {TUTOR_TEACHING_MODE_LABELS[mode]}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Availability */}
-            <div>
-              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
-                বর্তমান প্রাপ্যতা
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {(Object.keys(TUTOR_AVAILABILITY_LABELS) as TutorAvailability[]).map((av) => {
-                  const active = availability === av;
-                  return (
-                    <button
-                      type="button"
-                      key={av}
-                      onClick={() => setAvailability(av)}
-                      className={`px-3.5 py-2 rounded-xl text-xs font-medium border transition-colors ${
-                        active
-                          ? 'bg-brand-700 text-white border-brand-700'
-                          : 'bg-white text-ink-700 border-brand-100 hover:bg-mist-50'
-                      }`}
-                    >
-                      {TUTOR_AVAILABILITY_LABELS[av].labelBn}
                     </button>
                   );
                 })}

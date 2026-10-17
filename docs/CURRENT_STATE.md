@@ -74,7 +74,7 @@ Package manager: **npm** (Node >= 20). `bun.lock` was removed.
 | `/` home (hero, categories, previews, trust) | Real |
 | `/tolet` | **Real (complete)** — directory listing with filters |
 | `/tolet/[id]` | **Real** — full listing detail, gallery, request, report |
-| `/profile/tolet`, `/profile/tolet/new`, `/profile/tolet/[id]/edit` | **Real** — owner dashboard, wizard create/edit |
+| `/profile/tolet`, `/profile/tolet/new`, `/profile/tolet/[id]/edit` | **Real** — owner dashboard, single-page create/edit form |
 | `/profile/requests` | **Real** — merged customer requests incl. tolet |
 | `/admin/tolet`, `/admin/tolet/[id]`, `/admin/tolet/[id]/edit` | **Real** — moderation, review, fee config |
 | `/home-tutor`, `/blood-donor` | `/home-tutor` directory + `/home-tutor/[id]` and `/blood-donor` directory + `/blood-donor/[id]` are **Real (complete)** |
@@ -124,18 +124,21 @@ Package manager: **npm** (Node >= 20). `bun.lock` was removed.
 - **Filtering** (`lib/tolet-filters.ts`): search + area + type groups
   (family-like vs mess-like) + rent preset + beds + baths + 16 facilities +
   availability; sorts newest/recent/price asc/desc/availability.
-- **UI**: `ToletListingCard`, 9-step `ToletWizardForm` (types→area→rent→home
-  info→facilities→photos→description→preview→submit; mess-like collapses beds/
-  baths/balconies into totalRooms), `ListingStatusBadge`/`RequestStatusBadge`,
-  `PhotoUploader` (validation image + ≤5MB, max 6), `RequestSection`,
-  `ReportSheet`. Favorites reuse the one-account `toggleSaveItem`.
+- **UI**: `ToletListingCard`, one-page `ToletListingForm` (title→description→
+  photos→type→area/address→floor & start month→rent→room counts→available
+  facilities→missing facilities→publish; mess-like collapses beds/baths/balconies
+  into totalRooms; facilities are free-text, normalised to token arrays so
+  directory filters still match known facilities; no platform fee is shown to the
+  owner), `ListingStatusBadge`/`RequestStatusBadge`, `PhotoUploader` (validation
+  image + ≤5MB, max 6), `RequestSection`, `ReportSheet`. Favorites reuse the
+  one-account `toggleSaveItem`.
 - **Routes**: `/tolet` (URL-synced filters + sort), `/tolet/[id]` (visibility
   guard: approved public, owner/admin see own; gallery, transparent price box,
   request, report), `/profile/tolet` + `new` + `[id]/edit` (owner dashboard +
-  wizard, inbox with status management), `/admin/tolet` + `[id]` + `[id]/edit`
-  (pending_review default tab, approve/reject(reason)/suspend/unavailable/
-  archive, verify toggle, reports + requests per listing, fee config),
-  `/profile/requests` merged inbox.
+  one-page form, inbox with status management), `/admin/tolet` + `[id]` +
+  `[id]/edit` (pending_review default tab, approve/reject(reason)/suspend/
+  unavailable/archive, verify toggle, reports + requests per listing, fee
+  config), `/profile/requests` merged inbox.
 
 ## 7. Admin-managed staff services (কাজের বুয়া / Electrician / Plumber)
 

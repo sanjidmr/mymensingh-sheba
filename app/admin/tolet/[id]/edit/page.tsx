@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { adminFetchListingById, adminUpdateListing, uploadListingPhotos } from '@/lib/tolet-service';
 import type { ToletListing, ToletListingInput } from '@/lib/tolet-types';
-import { ToletWizardForm } from '@/components/tolet/ToletWizardForm';
+import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 
 interface AdminEditToletListingPageProps {
   params: Promise<{ id: string }>;
@@ -113,11 +113,8 @@ export default function AdminEditToletListingPage({ params }: AdminEditToletList
           </p>
         </div>
 
-        <ToletWizardForm
+        <ToletListingForm
           mode="admin"
-          ownerId={listing.ownerId}
-          ownerName={listing.ownerName || ''}
-          ownerVerified={listing.ownerVerified || false}
           initialListing={listing}
           onUploadFile={handleUploadFile}
           onSubmit={handleSubmit}

@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
 import { requireAdminAction } from '@/lib/admin/actions';
-import type { StaffProfileInput, StaffServiceKey } from '@/lib/staff-types';
+import { STAFF_SERVICE_UI, type StaffProfileInput, type StaffServiceKey } from '@/lib/staff-types';
 
 const STAFF_SERVICES: StaffServiceKey[] = ['kajer-bua', 'electrician', 'plumber', 'ac-fridge'];
 const STAFF_AVAILABILITY = ['available', 'limited', 'busy'] as const;
@@ -15,7 +15,7 @@ function isUuid(value: string): boolean {
 function validateInput(input: StaffProfileInput): string | null {
   if (!STAFF_SERVICES.includes(input.serviceSlug)) return 'কর্মীর সেবার ধরন সঠিক নয়।';
   if (input.nameBn.trim().length < 2 || input.nameBn.trim().length > 120) return 'কর্মীর নাম ২ থেকে ১২০ অক্ষরের মধ্যে লিখুন।';
-  if (input.titleBn.trim().length < 2 || input.titleBn.trim().length > 160) return 'পদবি ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।';
+  if (input.titleBn != null && (input.titleBn.trim().length < 2 || input.titleBn.trim().length > 160)) return 'পদবি ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।';
   if (input.aboutBn.trim().length < 10 || input.aboutBn.length > 5000) return 'কর্মীর পরিচিতি ১০ থেকে ৫০০০ অক্ষরের মধ্যে লিখুন।';
   if (input.availability != null && !STAFF_AVAILABILITY.includes(input.availability)) return 'কর্মীর প্রাপ্যতার মান সঠিক নয়।';
   if (input.experienceYears != null && (!Number.isInteger(input.experienceYears) || input.experienceYears < 0 || input.experienceYears > 100)) return 'অভিজ্ঞতার বছর সঠিক নয়।';
@@ -37,11 +37,10 @@ function validateInput(input: StaffProfileInput): string | null {
  * left alone: on create the database defaults apply, and on edit a legacy
  * value is preserved instead of being overwritten with `null`.
  */
-function toDatabaseInput(input: StaffProfileInput): Record<string, unknown> {
+function toDatabaseInput(input: StaffProfileInput, isCreate = false): Record<string, unknown> {
   const row: Record<string, unknown> = {
     service_slug: input.serviceSlug,
     name_bn: input.nameBn.trim(),
-    title_bn: input.titleBn.trim(),
     image_url: input.imageUrl || null,
     about_bn: input.aboutBn.trim(),
     // Always written so an admin can also clear a bad number.
@@ -49,6 +48,7 @@ function toDatabaseInput(input: StaffProfileInput): Record<string, unknown> {
     is_verified: input.isVerified,
     is_active: input.isActive,
   };
+  if (isCreate) row.title_bn = input.titleBn.trim() || STAFF_SERVICE_UI[input.serviceSlug].nameBn;
   if (input.areaIds !== undefined) row.areas = input.areaIds;
   if (input.workTypes !== undefined) row.work_types = input.workTypes;
   if (input.workMode !== undefined) row.work_mode = input.workMode || null;
@@ -82,12 +82,11 @@ export async function saveStaffProfile(input: StaffProfileInput, id?: string): P
       .from('staff_profiles')
       .select('id')
       .eq('service_slug', input.serviceSlug)
-      .eq('name_bn', input.nameBn.trim())
-      .eq('title_bn', input.titleBn.trim());
+      .eq('name_bn', input.nameBn.trim());
     if (id) query = query.neq('id', id);
     const { data: duplicates, error: duplicateError } = await query.limit(1);
     if (duplicateError) return { ok: false, error: `সম্ভাব্য ডুপ্লিকেট যাচাই ব্যর্থ হয়েছে: ${duplicateError.message}` };
-    if (duplicates?.length) return { ok: false, error: 'একই সেবা, নাম ও পদবির কর্মী প্রোফাইল আগে থেকেই আছে।' };
+    if (duplicates?.length) return { ok: false, error: 'একই সেবায় এই নামের কর্মী প্রোফাইল আগে থেকেই আছে।' };
 
     if (id) {
       const { data, error } = await client
@@ -104,7 +103,7 @@ export async function saveStaffProfile(input: StaffProfileInput, id?: string): P
 
     const { data, error } = await client
       .from('staff_profiles')
-      .insert(toDatabaseInput(input))
+      .insert(toDatabaseInput(input, true))
       .select('id')
       .single();
     if (error) return { ok: false, error: `কর্মী প্রোফাইল তৈরি ব্যর্থ হয়েছে: ${error.message}` };

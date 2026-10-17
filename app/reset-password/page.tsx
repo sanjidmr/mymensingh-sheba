@@ -30,7 +30,7 @@ export default function ResetPasswordPage() {
       if (!isSupabaseConfigured) {
         if (active) {
           setChecking(false);
-          setErrorMsg('Supabase সংযুক্ত নেই — পাসওয়ার্ড পুনরুদ্ধার করা যাচ্ছে না।');
+          setErrorMsg('এই মুহূর্তে পাসওয়ার্ড পুনরুদ্ধার করা যাচ্ছে না। কিছুক্ষণ পরে আবার চেষ্টা করুন।');
         }
         return;
       }

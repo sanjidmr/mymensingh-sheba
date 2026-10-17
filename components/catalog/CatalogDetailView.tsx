@@ -96,9 +96,15 @@ export default function CatalogDetailView({
                   ফিচার্ড
                 </span>
               )}
-              <span className="rounded-md border border-brand-100 bg-mist-50 px-1.5 py-[3px] text-[10px] font-bold text-ink-600">
-                অ্যাডমিন-পরিচালিত · আলাদা যাচাইয়ের তথ্য নেই
-              </span>
+              {listing.ownerId ? (
+                <span className="rounded-md border border-brand-100 bg-mist-50 px-1.5 py-[3px] text-[10px] font-bold text-ink-600">
+                  প্রতিষ্ঠান-জমা দেওয়া তথ্য · যাচাই করা হয়নি
+                </span>
+              ) : (
+                <span className="rounded-md border border-brand-100 bg-mist-50 px-1.5 py-[3px] text-[10px] font-bold text-ink-600">
+                  অ্যাডমিন-পরিচালিত · আলাদা যাচাইয়ের তথ্য নেই
+                </span>
+              )}
             </div>
 
             <h1 className="mt-2 text-lg font-extrabold leading-snug text-ink-900 sm:text-2xl">
@@ -206,24 +212,34 @@ export function CatalogDetailMissing({ ui }: { ui: CategoryUiConfig }) {
 export function ContactBlock({
   phone,
   onCopy,
+  hideRequestFallback = false,
 }: {
   phone?: string;
   onCopy?: (value: string) => void;
+  /**
+   * When true and there is no number, show a neutral note instead of the
+   * /contact request call-to-action. The member-facing coaching/wifi pages use
+   * this so they never present a service-request CTA.
+   */
+  hideRequestFallback?: boolean;
 }) {
   if (!phone) {
     return (
       <div className="rounded-xl border border-brand-100 bg-white p-3.5 sm:p-4">
         <h2 className="text-[14px] font-bold text-ink-900 sm:text-base">যোগাযোগ</h2>
         <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-500">
-          এখনো কোনো সরাসরি নম্বর যোগ করা হয়নি। অনুরোধ পাঠালে অ্যাডমিন যোগাযোগ
-          করাবেন।
+          {hideRequestFallback
+            ? 'এখনো সরাসরি যোগাযোগের নম্বর যোগ করা হয়নি।'
+            : 'এখনো কোনো সরাসরি নম্বর যোগ করা হয়নি। অনুরোধ পাঠালে অ্যাডমিন যোগাযোগ করাবেন।'}
         </p>
-        <Link
-          href="/contact#contact-form"
-          className={`mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
-        >
-          অনুরোধ পাঠান
-        </Link>
+        {!hideRequestFallback && (
+          <Link
+            href="/contact#contact-form"
+            className={`mt-3 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+          >
+            অনুরোধ পাঠান
+          </Link>
+        )}
       </div>
     );
   }
@@ -234,11 +250,14 @@ export function ContactBlock({
       <h2 className="text-[14px] font-bold text-ink-900 sm:text-base">যোগাযোগ</h2>
       <a
         href={`tel:${tel}`}
-        className={`mt-2.5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+        className={`mt-2.5 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-[15px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
       >
         <Phone className="h-4 w-4" aria-hidden="true" />
-        <span className="truncate">{phone}</span>
+        <span>কল করুন</span>
       </a>
+      <p className="mt-1.5 text-center text-[12.5px] font-semibold tracking-wide text-ink-600">
+        {phone}
+      </p>
       {onCopy && (
         <button
           type="button"

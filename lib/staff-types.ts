@@ -41,8 +41,8 @@ export interface StaffProfile {
 /**
  * Payload used by the Admin worker-directory form (includes the private phone).
  *
- * Only `serviceSlug`, `nameBn`, `titleBn`, `aboutBn`, `isVerified` and
- * `isActive` are always present. Everything else is optional: the internal
+ * The title is generated from the selected service; the admin does not enter
+ * it. Everything else is optional apart from the required profile fields.
  * directory form no longer edits areas, work types, experience, availability,
  * shift, preferred time, emergency flag or the lower salary bound, so those
  * keys are simply omitted. The database defaults then apply on create, and an

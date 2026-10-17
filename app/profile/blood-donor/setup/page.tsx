@@ -7,7 +7,6 @@ import {
   Heart,
   MapPin,
   Phone,
-  ShieldCheck,
   ArrowRight,
   ArrowLeft,
   CheckCircle2,
@@ -36,6 +35,15 @@ export default function BloodDonorSetupPage() {
   const [birthYear, setBirthYear] = useState<number>(bloodDonorProfile?.birthYear || 1998);
   const [weightKg, setWeightKg] = useState<number>(bloodDonorProfile?.weightKg || 65);
   const [isAvailable, setIsAvailable] = useState<boolean>(bloodDonorProfile?.isAvailable ?? true);
+  /**
+   * Whether the public card may show the "রক্তদানের বর্তমান প্রস্তুতি" panel.
+   *
+   * Off unless the donor switches it on. Readiness is the donor's own statement,
+   * so the default is "do not publish it" rather than a status inferred for them.
+   */
+  const [showReadiness, setShowReadiness] = useState<boolean>(
+    bloodDonorProfile?.showReadiness ?? false
+  );
   const [lastDonationDate, setLastDonationDate] = useState(
     bloodDonorProfile?.lastDonationDate || ''
   );
@@ -84,6 +92,7 @@ export default function BloodDonorSetupPage() {
         birthYear: Number(birthYear),
         weightKg: Number(weightKg),
         isAvailable,
+        showReadiness,
         lastDonationDate: lastDonationDate || undefined,
         donationCount: Number(donationCount),
         privatePhone,
@@ -157,19 +166,6 @@ export default function BloodDonorSetupPage() {
               </span>
             </div>
           )}
-
-          {/* Critical Privacy & Anti-Commercialization Banner */}
-          <div className="mb-6 p-4 rounded-2xl bg-rose-50/80 border border-rose-200 text-xs text-ink-900 space-y-2">
-            <div className="flex items-center gap-2 font-bold text-sm text-rose-500">
-              <ShieldCheck className="w-4 h-4 text-rose-500" />
-              <span>রক্তদাতা সুরক্ষা ও সম্পূর্ণ অ-বাণিজ্যিক সেবা নীতি</span>
-            </div>
-            <ul className="list-disc list-inside space-y-1 text-rose-500/90 leading-relaxed pl-1">
-              <li><strong>নম্বর লেখা হিসেবে প্রকাশিত নয়:</strong> আপনার মোবাইল নম্বর কোথাও লেখা হিসেবে দেখানো হয় না। অনুমোদিত হলে ডিরেক্টরির কার্ডে “কল করুন” চাপলে সরাসরি আপনার নম্বরে কল যায়।</li>
-              <li><strong>অ্যাডমিন অনুমোদন:</strong> প্রোফাইল জমা দেওয়ার পর অ্যাডমিন অনুমোদন করলেই সেটি রক্তদাতা ডিরেক্টরিতে প্রকাশিত হয়।</li>
-              <li><strong>রক্ত কেনা-বেচা নিষিদ্ধ:</strong> রক্তদান একটি মানবিক ও সম্পূর্ণ নিঃস্বার্থ সেবা। কোনো ধরনের অর্থ লেনদেন আইনত ও প্ল্যাটফর্মের নীতিমালায় সম্পূর্ণ নিষিদ্ধ।</li>
-            </ul>
-          </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Blood Group Selection */}
@@ -361,7 +357,7 @@ export default function BloodDonorSetupPage() {
             <div className="p-4 rounded-xl border border-brand-100 bg-mist-50 flex items-center justify-between">
               <div>
                 <span className="font-semibold text-sm text-ink-900 block">
-                  রক্তদানের বর্তমান প্রস্তুতি
+                  এখন রক্ত দিতে প্রস্তুত?
                 </span>
                 <span className="text-xs text-ink-500">
                   {isAvailable
@@ -378,6 +374,30 @@ export default function BloodDonorSetupPage() {
                 />
                 <div className="w-11 h-6 bg-brand-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
               </label>
+            </div>
+
+            {/* Readiness visibility — the public-card opt-in */}
+            <div className="rounded-xl border border-brand-100 bg-mist-50 p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <span className="block text-sm font-semibold text-ink-900">
+                    কার্ডে “রক্তদানের বর্তমান প্রস্তুতি” দেখান
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-relaxed text-ink-500">
+                    চালু করলে ডিরেক্টরির কার্ডে সর্বশেষ রক্তদানের তারিখ অনুযায়ী আপনার প্রস্তুতির তথ্য
+                    দেখানো হবে। বন্ধ থাকলে কার্ডে এই তথ্য কিছুই দেখানো হবে না।
+                  </span>
+                </div>
+                <label className="relative inline-flex shrink-0 cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={showReadiness}
+                    onChange={(e) => setShowReadiness(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-brand-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
+                </label>
+              </div>
             </div>
 
             {/* Private Phone */}

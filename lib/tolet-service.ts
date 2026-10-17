@@ -214,7 +214,7 @@ export async function fetchPublicListings(): Promise<ToletListing[]> {
   if (!client) return [];
   const { data, error } = await client
     .from('tolet_listings')
-    .select('*, owner:owner_id(full_name, is_verified)')
+    .select('*, owner:profiles!tolet_listings_owner_id_fkey(full_name, is_verified)')
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   if (error) return [];
@@ -239,7 +239,7 @@ export async function fetchListingById(id: string): Promise<ToletListing | null>
   if (!client) return null;
   const { data, error } = await client
     .from('tolet_listings')
-    .select('*, owner:owner_id(full_name, is_verified)')
+    .select('*, owner:profiles!tolet_listings_owner_id_fkey(full_name, is_verified)')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) return null;
@@ -570,7 +570,7 @@ export async function adminFetchListingsPage(
 
   let query = client
     .from('tolet_listings')
-    .select('*, owner:owner_id(full_name,is_verified)', { count: 'exact' })
+    .select('*, owner:profiles!tolet_listings_owner_id_fkey(full_name,is_verified)', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
   const term = params.search?.trim().replace(/[%_,().*\\"]/g, ' ').replace(/[\[\]]/g, ' ');
@@ -578,7 +578,16 @@ export async function adminFetchListingsPage(
     if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term)) {
       query = query.eq('id', term);
     } else {
-      const filters = [`title.ilike.%${term}%`, `area_id.ilike.%${term}%`, `owner.full_name.ilike.%${term}%`];
+      const filters = [`title.ilike.%${term}%`, `area_id.ilike.%${term}%`];
+      const { data: owners, error: ownersError } = await client
+        .from('profiles')
+        .select('id')
+        .ilike('full_name', `%${term}%`)
+        .limit(1000);
+      if (ownersError) {
+        return { rows: [], total: 0, counts: {}, error: `মালিকের তথ্য খোঁজা যায়নি: ${ownersError.message}` };
+      }
+      if (owners?.length) filters.push(`owner_id.in.(${owners.map(({ id }) => id).join(',')})`);
       query = query.or(filters.join(','));
     }
   }
@@ -632,7 +641,7 @@ export async function adminFetchListingById(listingId: string): Promise<ToletLis
   if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client
     .from('tolet_listings')
-    .select('*, owner:owner_id(id, phone, full_name, is_verified)')
+    .select('*, owner:profiles!tolet_listings_owner_id_fkey(id, phone, full_name, is_verified)')
     .eq('id', listingId)
     .maybeSingle();
   if (error) throw new Error(`বিজ্ঞাপনের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);

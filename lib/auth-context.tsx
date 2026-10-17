@@ -614,7 +614,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const client = createClient();
     if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
 
-    const path = `${user.id}/avatar-${crypto.randomUUID()}.${extension}`;
+    const uniqueId =
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const path = `${user.id}/avatar-${uniqueId}.${extension}`;
     const { error } = await client.storage.from('avatars').upload(path, file, {
       contentType: file.type,
       upsert: false,
@@ -717,6 +721,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       teaching_mode: details.teachingMode,
       availability: details.availability,
       profile_photo_url: details.profilePhotoUrl || null,
+      educations: details.educations ?? [],
       status,
     };
     // The trigger permits keeping an existing approved profile approved but
@@ -785,6 +790,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       private_phone: details.privatePhone,
       intro: details.intro || null,
       profile_photo_url: details.profilePhotoUrl || null,
+      // Owner-controlled visibility of the "রক্তদানের বর্তমান প্রস্তুতি" panel on
+      // the public card. Defaults to hidden so a donor who never chose to show it
+      // is never published as if they had.
+      show_readiness: details.showReadiness ?? false,
       status,
     };
     const result = existing

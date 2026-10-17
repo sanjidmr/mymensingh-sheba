@@ -7,7 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createListing, uploadListingPhotos } from '@/lib/tolet-service';
 import type { ToletListingInput } from '@/lib/tolet-types';
-import { ToletWizardForm } from '@/components/tolet/ToletWizardForm';
+import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -63,7 +63,7 @@ export default function NewToletListingPage() {
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-ink-900">নতুন বাসা ভাড়ার বিজ্ঞাপন</h1>
           <p className="text-xs sm:text-sm text-ink-500 mt-0.5">
-            ধাপে ধাপে তথ্য দিন। জমার পর বিজ্ঞাপনটি যাচাইয়ের অপেক্ষায় থাকবে।
+            একটি পেজেই সব তথ্য দিন। জমার পর বিজ্ঞাপনটি যাচাইয়ের অপেক্ষায় থাকবে।
           </p>
         </div>
 
@@ -78,15 +78,12 @@ export default function NewToletListingPage() {
           </p>
         </div>
 
-        <ToletWizardForm
+        <ToletListingForm
           mode="owner"
-          ownerId={user.id}
-          ownerName={user.fullName}
-          ownerVerified={user.isVerified}
           onUploadFile={handleUploadFile}
           onSubmit={handleSubmit}
           onDone={(action) =>
-            router.replace(action === 'draft_saved' ? '/profile/tolet' : '/profile/tolet?created=1')
+            router.replace(action === 'draft_saved' ? '/profile/tolet?draft=1' : '/profile/tolet?created=1')
           }
         />
       </main>

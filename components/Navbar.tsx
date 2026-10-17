@@ -22,6 +22,8 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import MymensinghLiveBar from '@/components/MymensinghLiveBar';
+import NotificationBell from '@/components/account/NotificationBell';
+import { ListingMedia } from '@/components/catalog/CatalogCards';
 
 /**
  * Premium navbar, same on every page.
@@ -149,13 +151,24 @@ export default function Navbar() {
             </Link>
 
             {user ? (
+              <>
+              {!isAdmin && <NotificationBell />}
               <Link
                 href={isAdmin ? '/admin' : '/profile'}
                 aria-label={isAdmin ? 'অ্যাডমিন প্যানেল' : 'আমার প্রোফাইল'}
                 className="flex items-center gap-2 rounded-xl border border-brand-200 bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:bg-brand-100/40"
               >
-                <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-accent-400 text-xs font-bold text-brand-900">
-                  {user.fullName.charAt(0)}
+                <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-accent-400 text-xs font-bold text-brand-900">
+                  {user.avatarUrl ? (
+                    <ListingMedia
+                      src={user.avatarUrl}
+                      alt={user.fullName}
+                      label={user.fullName}
+                      imgClassName="h-full w-full object-cover"
+                    />
+                  ) : (
+                    user.fullName.charAt(0)
+                  )}
                 </div>
                 <div className="flex flex-col text-left">
                   <span className="text-xs font-bold leading-tight text-brand-900">
@@ -166,6 +179,7 @@ export default function Navbar() {
                   </span>
                 </div>
               </Link>
+              </>
             ) : authLoading ? (
               // The stored session is still being restored (page refresh), so a
               // signed-in visitor would otherwise see লগইন / রেজিস্ট্রেশন flash
@@ -174,7 +188,7 @@ export default function Navbar() {
               // the swap flicker-free in both directions.
               <div
                 aria-hidden="true"
-                className="h-11 w-[212px] animate-pulse rounded-xl bg-brand-100/60 motion-reduce:animate-none"
+                className="h-11 w-[260px] animate-pulse rounded-xl bg-brand-100/60 motion-reduce:animate-none"
               />
             ) : (
               <>
@@ -194,17 +208,20 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile — hamburger only (search lives in the hero) */}
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="flex h-11 w-11 items-center justify-center rounded-xl text-brand-900 transition-colors hover:bg-brand-100/60 lg:hidden"
-            aria-label={mobileMenuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
-            aria-expanded={mobileMenuOpen}
-            aria-controls="mobile-menu"
-          >
-            {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-          </button>
+          {/* Mobile — notifications + hamburger (search lives in the hero) */}
+          <div className="flex items-center gap-1 lg:hidden">
+            {user && !isAdmin && <NotificationBell />}
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-brand-900 transition-colors hover:bg-brand-100/60"
+              aria-label={mobileMenuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
+              aria-expanded={mobileMenuOpen}
+              aria-controls="mobile-menu"
+            >
+              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
+            </button>
+          </div>
         </div>
       </div>
 

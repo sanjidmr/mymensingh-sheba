@@ -76,9 +76,11 @@ export interface DashboardRow {
   post?: CommunityPost;
   listing?: ToletListing;
   analytics?: ToletListingStats;
+  /** Real page views for a community post (keyed by slug); undefined when unknown. */
+  postViews?: number;
 }
 
-function postRow(post: CommunityPost): DashboardRow {
+function postRow(post: CommunityPost, postViews?: number): DashboardRow {
   const meta = POST_STATUS_META[post.status];
   const marketplaceStatus = post.kind === 'buy_sell' ? post.marketplaceStatus ?? 'available' : 'available';
   const isApprovedMarket = post.status === 'approved' && post.kind === 'buy_sell';
@@ -120,6 +122,7 @@ function postRow(post: CommunityPost): DashboardRow {
       post.status === 'approved'
         ? undefined
         : `/profile/posts/${post.kind}/${post.id}/edit`,
+    postViews,
   };
 }
 
@@ -229,10 +232,11 @@ export function mergeRows(
   tutor?: HomeTutorProfile | null,
   donor?: BloodDonorProfile | null,
   drafts: DashboardRow[] = [],
-  listingStats: Record<string, ToletListingStats> = {}
+  listingStats: Record<string, ToletListingStats> = {},
+  postViewsBySlug: Record<string, number> = {}
 ): DashboardRow[] {
   return [
-    ...posts.map(postRow),
+    ...posts.map((post) => postRow(post, postViewsBySlug[post.slug])),
     ...listings.map((listing) => listingRow(listing, listingStats[listing.id])),
     ...(tutor ? [profileRow(tutor, 'tutor')] : []),
     ...(donor ? [profileRow(donor, 'donor')] : []),

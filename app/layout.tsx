@@ -47,6 +47,9 @@ export async function generateMetadata(): Promise<Metadata> {
     description,
     ...(image ? { images: [image] } : {}),
   },
+  other: {
+    google: 'notranslate',
+  },
   };
 }
 
@@ -56,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" className={`${notoBengali.variable} scroll-smooth`}>
+    <html lang="bn" translate="no" className={`${notoBengali.variable} scroll-smooth`}>
       <body className="min-h-screen bg-mist-50 text-ink-900 antialiased font-sans selection:bg-accent-200 selection:text-brand-800">
         <PageViewTracker />
         <ClientProviders>

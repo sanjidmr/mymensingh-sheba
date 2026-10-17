@@ -3,6 +3,7 @@ import { requireAdmin } from '@/lib/admin/guard';
 import AdminShell from '@/components/admin/AdminShell';
 import { ToastProvider } from '@/components/admin/ToastProvider';
 import { fetchAdminBadgeCounts } from '@/lib/admin/queries';
+import AdminAutoRefresh from '@/components/admin/AdminAutoRefresh';
 
 export const metadata: Metadata = {
   title: 'অ্যাডমিন কন্ট্রোল',
@@ -36,6 +37,7 @@ export default async function AdminLayout({
 
   return (
     <ToastProvider>
+      <AdminAutoRefresh />
       <AdminShell adminName={session.fullName} badges={badges}>
         {children}
       </AdminShell>

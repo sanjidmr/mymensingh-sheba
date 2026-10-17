@@ -28,6 +28,46 @@ import { getAllMCCAreas } from './locations';
 
 export type ServiceCategory = 'coaching' | 'wifi' | 'bus' | 'vehicle';
 
+/** The two categories a signed-in customer may create and manage. */
+export type CustomerServiceCategory = 'coaching' | 'wifi';
+
+export const CUSTOMER_SERVICE_CATEGORIES: CustomerServiceCategory[] = ['coaching', 'wifi'];
+
+/**
+ * Moderation state of an owner-submitted listing.
+ *
+ * Admin-curated rows default to `approved`; a customer row starts `draft` or
+ * `pending` and only becomes public once an admin approves it. An owner edit
+ * sends an approved row back to `pending`.
+ */
+export type ServiceListingStatus = 'draft' | 'pending' | 'approved' | 'rejected';
+
+export const SERVICE_LISTING_STATUS_META: Record<
+  ServiceListingStatus,
+  { labelBn: string; className: string; descriptionBn: string }
+> = {
+  draft: {
+    labelBn: 'খসড়া',
+    className: 'bg-slate-100 text-slate-700',
+    descriptionBn: 'এখনো জমা দেওয়া হয়নি। শুধু আপনি দেখতে পাচ্ছেন।',
+  },
+  pending: {
+    labelBn: 'পর্যালোচনাধীন',
+    className: 'bg-amber-100 text-amber-800',
+    descriptionBn: 'অনুমোদনের জন্য অপেক্ষমাণ। অনুমোদনের পর সবার জন্য দেখা যাবে।',
+  },
+  approved: {
+    labelBn: 'প্রকাশিত',
+    className: 'bg-emerald-100 text-emerald-800',
+    descriptionBn: 'অনুমোদিত ও সবার জন্য দৃশ্যমান।',
+  },
+  rejected: {
+    labelBn: 'অনুমোদিত হয়নি',
+    className: 'bg-rose-100 text-rose-800',
+    descriptionBn: 'কারণ দেখে তথ্য সংশোধন করে আবার জমা দিন।',
+  },
+};
+
 export interface ServiceListing {
   id: string;
   category: ServiceCategory;
@@ -98,6 +138,28 @@ export interface ServiceListing {
    */
   ratingAvg?: number;
   ratingCount?: number;
+  // --- customer ownership + moderation ------------------------------------
+  /**
+   * The member who created the row, or undefined for an admin-curated one.
+   * Presence is how the detail page tells a member submission apart from an
+   * admin listing (and shows the right trust chip).
+   */
+  ownerId?: string;
+  /** Only populated on the owner / admin read paths, never on the public list. */
+  status?: ServiceListingStatus;
+  rejectionReason?: string;
+  publishedAt?: string;
+  /**
+   * The number the owner publishes for the public "কল করুন" button. Distinct
+   * from `contactPhonePrivate`, which stays admin-only.
+   */
+  contactPhonePublic?: string;
+  /** কোচিং: ভর্তি ও ফি সংক্রান্ত তথ্য. WiFi: —. */
+  admissionInfoBn?: string;
+  /** WiFi: এককালীন সংযোগ/ইনস্টলেশন ফি. Coaching: —. */
+  connectionFee?: number;
+  /** WiFi: সংযোগের শর্ত / শর্তাবলি. Coaching: —. */
+  termsBn?: string;
   /**
    * Only set on `lib/vehicle-demo-data.ts` rows. The directory's "showing demo
    * data" state is per-category, so this has to ride on the row: one demo
@@ -171,6 +233,10 @@ export interface WifiPackage {
   price?: number;
   offerLabelBn?: string;
   offerConditionsBn?: string;
+  /** One-time connection/installation fee for this specific package. */
+  connectionFee?: number;
+  /** ISO date the offer runs out; printed as "অফার শেষ: …". */
+  offerExpiresOn?: string;
   isActive: boolean;
   sortOrder: number;
   createdAt: string;
@@ -178,6 +244,39 @@ export interface WifiPackage {
 }
 
 export type WifiPackageInput = Omit<WifiPackage, 'id' | 'createdAt' | 'updatedAt'>;
+
+/**
+ * The write-side shape the customer create/edit form produces.
+ *
+ * Narrower than `ServiceListingInput` on purpose: an owner never chooses slug,
+ * status, featured/published state, the admin-only private contact, or the
+ * review aggregate. Slug is generated server-side; moderation state is forced
+ * by the database guard trigger.
+ */
+export interface CustomerServiceListingInput {
+  category: CustomerServiceCategory;
+  titleBn: string;
+  subtitleBn?: string;
+  summaryBn?: string;
+  descriptionBn?: string;
+  imageUrl?: string;
+  logoUrl?: string;
+  areaIds: string[];
+  /** Free-form highlight chips (coaching: classes/subjects/সুবিধা). */
+  tags: string[];
+  addressBn?: string;
+  contactPhonePublic: string;
+  // coaching
+  monthlyFeeMin?: number;
+  monthlyFeeMax?: number;
+  admissionInfoBn?: string;
+  // wifi
+  priceMin?: number;
+  priceMax?: number;
+  speedMbps?: number;
+  connectionFee?: number;
+  termsBn?: string;
+}
 
 /** Reviews only ever attach to these two curated categories. */
 export type DirectoryReviewCategory = 'coaching' | 'wifi';
@@ -587,6 +686,11 @@ export interface CategoryUiConfig {
   desktopCols: GridColumns;
   /** Whether the empty state should invite an admin to add the first row. */
   adminOwned: boolean;
+  /**
+   * Whether a signed-in provider can add and manage their own listing here.
+   * Drives the "আপনার প্রতিষ্ঠান যোগ করুন" call-to-action on the directory.
+   */
+  customerOwned: boolean;
 }
 
 export const CATEGORY_UI: Record<ServiceCategory, CategoryUiConfig> = {
@@ -595,32 +699,34 @@ export const CATEGORY_UI: Record<ServiceCategory, CategoryUiConfig> = {
     route: '/coaching',
     title: 'কোচিং সেন্টার',
     subtitle:
-      'ময়মনসিংহের অ্যাডমিন-যাচাইকৃত কোচিং সেন্টারগুলো — ক্লাস, বিষয়, এলাকা ও মাসিক ফি অনুযায়ী খুঁজুন।',
+      'ময়মনসিংহের কোচিং সেন্টারগুলো — ক্লাস, বিষয়, এলাকা ও মাসিক ফি অনুযায়ী খুঁজুন। প্রতিষ্ঠান নিজেই তথ্য যোগ করতে পারে, অ্যাডমিন অনুমোদনের পর প্রকাশিত হয়।',
     placeholder: 'কোচিং সেন্টার, এলাকা বা বিষয় লিখে খুঁজুন...',
     seoDescription:
-      'ময়মনসিংহের অ্যাডমিন-যাচাইকৃত কোচিং সেন্টার তালিকা। ক্লাস, বিষয়, এলাকা ও মাসিক ফি অনুযায়ী খুঁজে সরাসরি যোগাযোগ করুন।',
+      'ময়মনসিংহের কোচিং সেন্টার তালিকা। ক্লাস, বিষয়, এলাকা ও মাসিক ফি অনুযায়ী খুঁজে সরাসরি যোগাযোগ করুন।',
     noun: 'কোচিং',
     searchNoun: 'কোচিং সেন্টার',
-    highlights: ['অ্যাডমিন যাচাইকৃত', 'মাসিক ফি স্পষ্ট', 'সরাসরি যোগাযোগ'],
+    highlights: ['তথ্য যাচাই করা হয়', 'মাসিক ফি স্পষ্ট', 'সরাসরি কল করুন'],
     mobileCols: 1,
     desktopCols: 2,
     adminOwned: true,
+    customerOwned: true,
   },
   wifi: {
     category: 'wifi',
     route: '/wifi',
     title: 'ওয়াইফাই ও ইন্টারনেট',
     subtitle:
-      'ময়মনসিংহের লোকাল ইন্টারনেট প্রদানকারীদের স্পিড, মাসিক দাম ও সার্ভিস এলাকা একসঙ্গে দেখুন।',
+      'ময়মনসিংহের লোকাল ইন্টারনেট প্রদানকারীদের স্পিড, মাসিক দাম ও সার্ভিস এলাকা একসঙ্গে দেখুন। প্রদানকারী নিজেই প্যাকেজ যোগ করতে পারে।',
     placeholder: 'প্রোভাইডার, প্যাকেজ বা এলাকা লিখে খুঁজুন...',
     seoDescription:
       'ময়মনসিংহের লোকাল ওয়াইফাই ও ইন্টারনেট প্রদানকারীদের স্পিড, মাসিক দাম ও সার্ভিস এলাকা দেখুন, তারপর সঠিক প্যাকেজ বেছে নিন।',
     noun: 'প্রোভাইডার',
     searchNoun: 'ইন্টারনেট প্রদানকারী',
-    highlights: ['স্পিড ও দাম স্পষ্ট', 'সার্ভিস এলাকা', 'অ্যাডমিন তালিকাভুক্ত'],
+    highlights: ['স্পিড ও দাম স্পষ্ট', 'সার্ভিস এলাকা', 'সরাসরি কল করুন'],
     mobileCols: 1,
     desktopCols: 2,
     adminOwned: true,
+    customerOwned: true,
   },
   bus: {
     category: 'bus',
@@ -637,6 +743,7 @@ export const CATEGORY_UI: Record<ServiceCategory, CategoryUiConfig> = {
     mobileCols: 2,
     desktopCols: 4,
     adminOwned: true,
+    customerOwned: false,
   },
   vehicle: {
     category: 'vehicle',
@@ -653,6 +760,7 @@ export const CATEGORY_UI: Record<ServiceCategory, CategoryUiConfig> = {
     mobileCols: 2,
     desktopCols: 4,
     adminOwned: true,
+    customerOwned: false,
   },
 };
 

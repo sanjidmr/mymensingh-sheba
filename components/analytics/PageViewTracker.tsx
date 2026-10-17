@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { trackPageView } from '@/lib/site-analytics';
+import { shouldTrackPath, trackActiveVisitor, trackPageView } from '@/lib/site-analytics';
+
+const ACTIVE_VISITOR_TIMEOUT_MS = 5 * 60_000;
 
 /**
- * Records a page view for the initial load and for every client-side
- * navigation in the App Router.
+ * Records page views on App Router navigation and anonymous active-visitor
+ * heartbeats while the visible page has recent user activity.
  *
  * Why the module-level `lastTracked` and not just an effect that depends on
  * `pathname`:
@@ -30,9 +32,38 @@ export default function PageViewTracker() {
 
   useEffect(() => {
     if (!pathname) return;
-    if (lastTracked === pathname) return;
-    lastTracked = pathname;
-    trackPageView(pathname);
+    if (lastTracked !== pathname) {
+      lastTracked = pathname;
+      trackPageView(pathname);
+    }
+    if (!shouldTrackPath(pathname)) return;
+
+    let lastActivityAt = Date.now();
+    const markActivity = () => {
+      lastActivityAt = Date.now();
+    };
+    const heartbeat = () => {
+      if (
+        document.visibilityState === 'visible' &&
+        Date.now() - lastActivityAt < ACTIVE_VISITOR_TIMEOUT_MS
+      ) {
+        trackActiveVisitor(pathname);
+      }
+    };
+    heartbeat();
+    const interval = window.setInterval(heartbeat, 30_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') markActivity();
+      heartbeat();
+    };
+    const activityEvents = ['pointerdown', 'keydown', 'touchstart', 'scroll', 'input'] as const;
+    activityEvents.forEach((eventName) => window.addEventListener(eventName, markActivity, { passive: true }));
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.clearInterval(interval);
+      activityEvents.forEach((eventName) => window.removeEventListener(eventName, markActivity));
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
   }, [pathname]);
 
   return null;

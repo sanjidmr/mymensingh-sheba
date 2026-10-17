@@ -121,6 +121,48 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     ],
   },
   {
+    title: 'Business & Analytics',
+    items: [
+      {
+        href: '/admin/requests',
+        label: 'সেবা অনুরোধ',
+        icon: ClipboardList,
+        badgeKey: 'requests',
+        description: 'সেবা গ্রহণের অনুরোধ পরিচালনা',
+      },
+      {
+        href: '/admin/tutor-requests',
+        label: 'টিউটর আবেদন',
+        icon: GraduationCap,
+        description: 'নির্দিষ্ট গৃহশিক্ষকের জন্য পাঠানো আবেদন পর্যালোচনা',
+      },
+      {
+        href: '/admin/tolet-requests',
+        label: 'বাসা ভাড়ার অনুসন্ধান',
+        icon: Building2,
+        description: 'বাসা ভাড়ার বিজ্ঞাপনে আসা অনুসন্ধান',
+      },
+      {
+        href: '/admin/vehicle-requests',
+        label: 'যানবাহন বুকিং অনুরোধ',
+        icon: Car,
+        description: 'গাড়ি, অটো ও CNG বুকিং অনুরোধ পর্যালোচনা ও পরিচালনা',
+      },
+      {
+        href: '/admin/analytics',
+        label: 'অ্যানালিটিক্স',
+        icon: BarChart3,
+        description: 'বাস্তব ডেটাভিত্তিক প্ল্যাটফর্ম পরিসংখ্যান',
+      },
+      {
+        href: '/admin/analytics/website',
+        label: 'ওয়েবসাইট অ্যানালিটিক্স',
+        icon: MousePointerClick,
+        description: 'পেজ ভিউ, ভিজিটর, ট্রাফিক সোর্স ও CTA ক্লিক',
+      },
+    ],
+  },
+  {
     title: 'Communication & Trust',
     items: [
       {
@@ -179,48 +221,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         label: 'মিডিয়া লাইব্রেরি',
         icon: ImageIcon,
         description: 'আপলোড করা ছবি ও ফাইল',
-      },
-    ],
-  },
-  {
-    title: 'Business & Analytics',
-    items: [
-      {
-        href: '/admin/requests',
-        label: 'সেবা অনুরোধ',
-        icon: ClipboardList,
-        badgeKey: 'requests',
-        description: 'সেবা গ্রহণের অনুরোধ পরিচালনা',
-      },
-      {
-        href: '/admin/tutor-requests',
-        label: 'টিউটর আবেদন',
-        icon: GraduationCap,
-        description: 'নির্দিষ্ট গৃহশিক্ষকের জন্য পাঠানো আবেদন পর্যালোচনা',
-      },
-      {
-        href: '/admin/tolet-requests',
-        label: 'বাসা ভাড়ার অনুসন্ধান',
-        icon: Building2,
-        description: 'বাসা ভাড়ার বিজ্ঞাপনে আসা অনুসন্ধান',
-      },
-      {
-        href: '/admin/vehicle-requests',
-        label: 'যানবাহন বুকিং অনুরোধ',
-        icon: Car,
-        description: 'গাড়ি, অটো ও CNG বুকিং অনুরোধ পর্যালোচনা ও পরিচালনা',
-      },
-      {
-        href: '/admin/analytics',
-        label: 'অ্যানালিটিক্স',
-        icon: BarChart3,
-        description: 'বাস্তব ডেটাভিত্তিক প্ল্যাটফর্ম পরিসংখ্যান',
-      },
-      {
-        href: '/admin/analytics/website',
-        label: 'ওয়েবসাইট অ্যানালিটিক্স',
-        icon: MousePointerClick,
-        description: 'পেজ ভিউ, ভিজিটর, ট্রাফিক সোর্স ও CTA ক্লিক',
       },
     ],
   },

@@ -4,6 +4,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import CatalogDirectory, { providerGroup, rangeGroup } from '@/components/catalog/CatalogDirectory';
 import { BannerCard } from '@/components/catalog/CatalogCards';
 import AdminListingLink from '@/components/catalog/AdminListingLink';
+import OwnerListingCta from '@/components/catalog/OwnerListingCta';
 import { areaFilterGroupMulti, type FilterGroup } from '@/lib/directory-filters';
 import { fetchServiceListings } from '@/lib/catalog-service';
 import {
@@ -93,6 +94,7 @@ export default function WifiDirectory() {
       sortOptions={SORT_OPTIONS}
       sorters={SORTERS}
       renderCard={renderCard}
+      banner={<OwnerListingCta category="wifi" />}
       action={<AdminListingLink category="wifi" label="প্রোভাইডার যোগ করুন" />}
     />
   );

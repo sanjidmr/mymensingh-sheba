@@ -391,6 +391,7 @@ export interface DashboardStats {
   blocked_users: number;
   new_users_7d: number;
   total_posts: number;
+  post_kind_counts: Record<'news' | 'job' | 'buy_sell', number>;
   pending_posts: number;
   approved_posts: number;
   rejected_posts: number;
@@ -433,6 +434,7 @@ export interface DashboardDataIssue {
 
 type DashboardRpcStats = Omit<
   DashboardStats,
+  | 'post_kind_counts'
   | 'total_customers'
   | 'new_service_requests'
   | 'approved_blood_donors'
@@ -447,7 +449,8 @@ type DashboardRpcStats = Omit<
 function unavailableDashboardStats(issue: DashboardDataIssue): DashboardStats {
   return {
     total_users: 0, active_users: 0, blocked_users: 0, new_users_7d: 0,
-    total_posts: 0, pending_posts: 0, approved_posts: 0, rejected_posts: 0,
+    total_posts: 0, post_kind_counts: { news: 0, job: 0, buy_sell: 0 },
+    pending_posts: 0, approved_posts: 0, rejected_posts: 0,
     featured_posts: 0, total_requests: 0, open_requests: 0,
     completed_requests: 0, cancelled_requests: 0, rejected_requests: 0,
     total_tolet_requests: 0, open_tolet_requests: 0, total_blood_requests: 0,
@@ -604,8 +607,12 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
   const { admin, issue } = await getDashboardAdminClient();
   if (!admin) return unavailableDashboardStats(issue);
 
-  const { data, error } = await admin.client.rpc('get_admin_dashboard_stats');
+  const [{ data, error }, { data: activeVisitors, error: activeVisitorsError }] = await Promise.all([
+    admin.client.rpc('get_admin_dashboard_stats'),
+    admin.client.rpc('fn_admin_active_visitors'),
+  ]);
   if (error) return unavailableDashboardStats(dashboardDataIssue(error));
+  if (activeVisitorsError) return unavailableDashboardStats(dashboardDataIssue(activeVisitorsError));
 
   const row = Array.isArray(data) ? data[0] : data;
   if (!row) {
@@ -615,21 +622,29 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
       message: 'Dashboard statistics RPC কোনো result ফেরত দেয়নি।',
     });
   }
-  const [completed, cancelled, rejected, customers, newRequests, approvedDonors] = await Promise.all([
-    admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
-    admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
-    admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
-    admin.client.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'customer'),
-    admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
-    admin.client.from('blood_donor_profiles').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+  const postKinds = ['news', 'job', 'buy_sell'] as const;
+  const [otherCounts, postKindCounts] = await Promise.all([
+    Promise.all([
+      admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'completed'),
+      admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'cancelled'),
+      admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'rejected'),
+      admin.client.from('profiles').select('id', { count: 'exact', head: true }).eq('role', 'customer'),
+      admin.client.from('service_requests').select('id', { count: 'exact', head: true }).eq('status', 'new'),
+      admin.client.from('blood_donor_profiles').select('id', { count: 'exact', head: true }).eq('status', 'approved'),
+    ]),
+    Promise.all(postKinds.map((kind) =>
+      admin.client.rpc('fn_admin_posts', {}, { head: true, count: 'exact' }).eq('kind', kind)
+    )),
   ]);
+  const [completed, cancelled, rejected, customers, newRequests, approvedDonors] = otherCounts;
   const countError =
     completed.error ??
     cancelled.error ??
     rejected.error ??
     customers.error ??
     newRequests.error ??
-    approvedDonors.error;
+    approvedDonors.error ??
+    postKindCounts.find((result) => result.error)?.error;
   if (countError) return unavailableDashboardStats(dashboardDataIssue(countError));
   const stats = row as DashboardRpcStats;
   const empty =
@@ -644,6 +659,10 @@ export async function fetchDashboardStats(): Promise<DashboardStats> {
     (approvedDonors.count ?? 0) === 0;
   return {
     ...stats,
+    active_users: Number(activeVisitors ?? 0),
+    post_kind_counts: Object.fromEntries(
+      postKinds.map((kind, index) => [kind, postKindCounts[index].count ?? 0])
+    ) as DashboardStats['post_kind_counts'],
     total_customers: customers.count ?? 0,
     new_service_requests: newRequests.count ?? 0,
     approved_blood_donors: approvedDonors.count ?? 0,
@@ -1539,6 +1558,7 @@ export interface AdminStaffListRow {
   service_slug: string;
   name_bn: string;
   title_bn: string;
+  phone_private?: string | null;
   image_url: string | null;
   areas: string[];
   work_types: string[];
@@ -1783,8 +1803,7 @@ export async function fetchAdminStaffPage(params: ListParams): Promise<AdminStaf
   const countError = counts.find((result) => result.error);
   if (countError?.error) return failed(countError.error.message);
   let query = client
-    .from('staff_profiles')
-    .select('id, service_slug, name_bn, title_bn, image_url, areas, work_types, experience_years, availability, is_verified, is_active, created_at, updated_at', { count: 'exact' })
+    .rpc('fn_admin_staff_profiles', {}, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
   if (params.service && STAFF_SERVICE_KEYS.includes(params.service as StaffServiceKey)) {
@@ -1794,7 +1813,7 @@ export async function fetchAdminStaffPage(params: ListParams): Promise<AdminStaf
   if (params.status === 'inactive') query = query.eq('is_active', false);
   if (params.status === 'verified') query = query.eq('is_verified', true);
   if (params.search) {
-    const term = searchFilter(params.search, ['name_bn', 'title_bn']);
+    const term = searchFilter(params.search, ['name_bn', 'phone_private', 'service_slug']);
     const safeId = params.search.trim();
     const filters = [term, validUuid(safeId) ? `id.eq.${safeId}` : undefined]
       .filter((value): value is string => Boolean(value));
@@ -2572,6 +2591,7 @@ export interface AdminBloodDonorRow {
   id: string;
   status: string;
   full_name: string;
+  private_phone?: string | null;
   blood_group: string;
   area_id: string;
   gender: string;
@@ -2608,9 +2628,6 @@ const EMPTY_DONOR_COUNTS: AdminBloodDonorCounts = {
   rejected: 0,
   inactive: 0,
 };
-
-const ADMIN_DONOR_COLUMNS =
-  'id, status, full_name, blood_group, area_id, gender, birth_year, weight_kg, is_available, last_donation_date, donation_count, is_verified, intro, profile_photo_url, rejection_reason, published_at, created_at, updated_at';
 
 export async function fetchBloodDonorProfile(
   id: string
@@ -2669,8 +2686,7 @@ export async function fetchAdminBloodDonors(params: ListParams): Promise<AdminBl
 
   const from = (params.page - 1) * params.pageSize;
   let query = client
-    .from('blood_donor_profiles')
-    .select(ADMIN_DONOR_COLUMNS, { count: 'exact' })
+    .rpc('fn_admin_donor_profiles', {}, { count: 'exact' })
     .order('created_at', { ascending: false })
     .range(from, from + params.pageSize - 1);
 
@@ -2678,7 +2694,7 @@ export async function fetchAdminBloodDonors(params: ListParams): Promise<AdminBl
   if (term) {
     const safeTerm = term.replace(/[%_,().*\\"]/g, ' ').replace(/[\[\]]/g, ' ').trim();
     if (safeTerm) {
-      const fields = searchFilter(safeTerm, ['full_name', 'blood_group', 'area_id']);
+      const fields = searchFilter(safeTerm, ['full_name', 'private_phone', 'blood_group', 'area_id']);
       const idFilter = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(safeTerm)
         ? `,id.eq.${safeTerm}`
         : '';

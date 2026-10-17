@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useRef, useState } from 'react';
 import { ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
-import { ToletWizardForm } from '@/components/tolet/ToletWizardForm';
+import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 import { useAuth } from '@/lib/auth-context';
 import { createListing, uploadListingPhotos } from '@/lib/tolet-service';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
@@ -49,11 +49,8 @@ export default function AdminCreateToletListingPage() {
         এই বিজ্ঞাপনটি অ্যাডমিন অ্যাকাউন্টের মালিকানায় থাকবে; কোনো গ্রাহককে মালিক হিসেবে দেখানো হবে না।
       </p>
       {error && <div role="alert" className="mb-4 flex gap-2 rounded-xl border border-status-danger/20 bg-status-danger-bg p-3 text-sm text-status-danger"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>}
-      <ToletWizardForm
+      <ToletListingForm
         mode="admin"
-        ownerId={user.id}
-        ownerName={user.fullName || 'অ্যাডমিন'}
-        ownerVerified={false}
         onUploadFile={handleUpload}
         onSubmit={handleSubmit}
         onDone={() => router.replace(createdId.current ? `/admin/tolet/${createdId.current}` : '/admin/tolet')}

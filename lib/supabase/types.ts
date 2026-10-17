@@ -217,6 +217,14 @@ export interface BloodDonorProfile {
   isVerified: boolean;
   intro?: string;
   profilePhotoUrl?: string;
+  /**
+   * Whether the public card may show the "রক্তদানের বর্তমান প্রস্তুতি" panel.
+   *
+   * Opt-in and defaulted to FALSE: the readiness read-out is the donor's own
+   * statement about their body, and showing it for someone who never chose to
+   * would put a claim in their mouth. Absent means "do not show".
+   */
+  showReadiness?: boolean;
   adminNotes?: string;
   rejectionReason?: string;
   publishedAt?: string;
