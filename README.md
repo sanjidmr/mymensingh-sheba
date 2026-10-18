@@ -72,6 +72,6 @@ activity store.
 ## Scripts
 
 - `npm run dev` — development server
-- `npm run build` — production build (typecheck + build)
-- `npm run start` — start production server
+- `npm run build` — production build (typecheck + build) and prepare standalone assets
+- `npm run start` — start the production standalone server
 - `npm run lint` — ESLint

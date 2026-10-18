@@ -9,6 +9,7 @@ import { toCamelObject, toSnakeObject } from './supabase/transform';
 import type {
   ToletListing,
   ToletListingInput,
+  ToletRequest,
   ListingReport,
   ListingReportStatus,
 } from './tolet-types';
@@ -638,6 +639,54 @@ export async function adminFetchListingById(listingId: string): Promise<ToletLis
   if (error) throw new Error(`বিজ্ঞাপনের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
   if (!data) return null;
   return mapListingRow(data as RawListingRow);
+}
+
+export async function fetchRequestsForListing(listingId: string): Promise<ToletRequest[]> {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase সংযুক্ত নেই; বাসা ভাড়ার অনুরোধ লোড করা যায়নি।');
+  }
+  const client = createClient();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
+  const { data, error } = await client
+    .from('tolet_requests')
+    .select('id, listing_id, customer_id, customer_name, customer_phone, message, status, created_at')
+    .eq('listing_id', listingId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(`বাসা ভাড়ার অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
+  return (data || []).map((row) => ({
+    id: row.id,
+    listingId: row.listing_id,
+    customerId: row.customer_id,
+    customerName: row.customer_name,
+    customerPhone: row.customer_phone,
+    message: row.message,
+    status: row.status,
+    createdAt: row.created_at,
+  }));
+}
+
+export async function fetchToletRequestsAsCustomer(customerId: string): Promise<ToletRequest[]> {
+  if (!isSupabaseConfigured) {
+    throw new Error('ডেটাবেস সংযোগ নেই। Supabase কনফিগারেশন যাচাই করুন।');
+  }
+  const client = createClient();
+  if (!client) throw new Error('Supabase সংযুক্ত নয়।');
+  const { data, error } = await client
+    .from('tolet_requests')
+    .select('id, listing_id, customer_id, customer_name, customer_phone, message, status, created_at')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(`আপনার বাসা দেখার অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
+  return (data || []).map((row) => ({
+    id: row.id,
+    listingId: row.listing_id,
+    customerId: row.customer_id,
+    customerName: row.customer_name,
+    customerPhone: row.customer_phone,
+    message: row.message,
+    status: row.status,
+    createdAt: row.created_at,
+  }));
 }
 
 export async function adminUpdateListing(

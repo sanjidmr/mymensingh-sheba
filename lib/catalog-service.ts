@@ -157,7 +157,7 @@ function communityPostWriteError(
  * needs the field, and the owner path reads it through `fn_my_service_listings`.
  */
 const PUBLIC_LISTING_COLUMNS =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
 
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
@@ -227,6 +227,7 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     modelYear: optNum(c.modelYear),
     hasAc: typeof c.hasAc === 'boolean' ? c.hasAc : undefined,
     driverIncluded: typeof c.driverIncluded === 'boolean' ? c.driverIncluded : undefined,
+    driverNameBn: optStr(c.driverNameBn),
     availableTimeBn: optStr(c.availableTimeBn),
     priceNoteBn: optStr(c.priceNoteBn),
     ratePerKm: optNum(c.ratePerKm),
@@ -2334,6 +2335,39 @@ export async function fetchMyPostViewCounts(): Promise<Record<string, number>> {
   for (const row of data as { post_slug?: unknown; view_count?: unknown }[]) {
     if (typeof row.post_slug !== 'string') continue;
     counts[row.post_slug] = Number(row.view_count ?? 0);
+  }
+  return counts;
+}
+
+/**
+ * Real page-view counts for the signed-in member's own service profiles,
+ * keyed by content id: the home-tutor profile UUID, or the WiFi / coaching
+ * listing slug.
+ *
+ * Reads the narrow owner-facing aggregate `fn_my_profile_views()` added in
+ * 20261018000000_customer_profile_views.sql — the raw `site_events` table is
+ * admin-only, and this function exists so a member can see their own profile
+ * traffic without opening raw visitor rows to everyone. Ownership is re-checked
+ * inside the SQL (`auth.uid()`), never trusted here.
+ *
+ * Degrades gracefully: while the migration has not been applied yet, or when
+ * analytics is unavailable, it returns an empty map instead of throwing, so the
+ * dashboard still renders profiles — just without a view figure.
+ */
+export async function fetchMyProfileViewCounts(): Promise<Record<string, number>> {
+  if (!isSupabaseConfigured) return {};
+  const userId = await currentUserId();
+  if (!userId) return {};
+  const client = createClient();
+  if (!client) return {};
+
+  const { data, error } = await client.rpc('fn_my_profile_views');
+  if (error || !Array.isArray(data)) return {};
+
+  const counts: Record<string, number> = {};
+  for (const row of data as { content_id?: unknown; view_count?: unknown }[]) {
+    if (typeof row.content_id !== 'string') continue;
+    counts[row.content_id] = Number(row.view_count ?? 0);
   }
   return counts;
 }

@@ -2030,9 +2030,6 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
     CONSTRAINT community_posts_marketplace_status_check CHECK (
         (kind = 'buy_sell' AND marketplace_status IN ('available', 'sold', 'closed'))
         OR (kind <> 'buy_sell' AND marketplace_status IS NULL)
-    ),
-    CONSTRAINT community_posts_category_check CHECK (
-        category IS NULL OR char_length(category) <= 100
     )
 );
 
@@ -2243,6 +2240,34 @@ DROP TRIGGER IF EXISTS trg_community_posts_moderation_guard ON public.community_
 CREATE TRIGGER trg_community_posts_moderation_guard
 BEFORE INSERT OR UPDATE ON public.community_posts
 FOR EACH ROW EXECUTE FUNCTION public.community_posts_guard_moderation();
+
+CREATE OR REPLACE FUNCTION public.community_posts_validate_category_length()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SET search_path = ''
+AS $$
+BEGIN
+    IF NEW.category IS NOT NULL AND char_length(NEW.category) > 100 THEN
+        RAISE EXCEPTION 'category must be 100 characters or fewer'
+            USING ERRCODE = '23514',
+                  CONSTRAINT = 'community_posts_category_check';
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_community_posts_validate_category_length
+    ON public.community_posts;
+DROP TRIGGER IF EXISTS trg_community_posts_validate_category_length_insert
+    ON public.community_posts;
+DROP TRIGGER IF EXISTS trg_community_posts_validate_category_length_update
+    ON public.community_posts;
+CREATE TRIGGER trg_community_posts_validate_category_length_insert
+BEFORE INSERT ON public.community_posts
+FOR EACH ROW EXECUTE FUNCTION public.community_posts_validate_category_length();
+CREATE TRIGGER trg_community_posts_validate_category_length_update
+BEFORE UPDATE OF category ON public.community_posts
+FOR EACH ROW EXECUTE FUNCTION public.community_posts_validate_category_length();
 
 CREATE OR REPLACE FUNCTION public.community_posts_sync_legacy_content()
 RETURNS TRIGGER

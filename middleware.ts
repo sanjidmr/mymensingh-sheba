@@ -28,6 +28,11 @@ export async function middleware(request: NextRequest) {
   // Unconfigured project: nothing to refresh, and nothing to protect either.
   if (!url || !anonKey) return response;
 
+  const hasSupabaseSessionCookie = request.cookies
+    .getAll()
+    .some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name));
+  if (!hasSupabaseSessionCookie) return response;
+
   const supabase = createServerClient(url, anonKey, {
     cookies: {
       getAll() {

@@ -25,7 +25,9 @@ export default function AdminNotificationMenu({
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const loadRecent = async () => {
-    if (loaded || loading || unavailable) return;
+    // Refetch on every open so the menu always reflects the latest unread
+    // state (e.g. after the notifications page clears them).
+    if (loading || unavailable) return;
     setLoading(true);
     try {
       const result = await getRecentAdminNotifications();

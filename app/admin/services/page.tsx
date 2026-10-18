@@ -6,9 +6,8 @@ import { FilterNav } from '@/components/admin/FilterNav';
 import { AdminEmpty, AdminError } from '@/components/admin/States';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { StatCard, StatusPill } from '@/components/admin/StatCard';
-import { TablePager } from '@/components/admin/TablePager';
 import StaffProfileActions from '@/components/admin/StaffProfileActions';
-import { fetchAdminStaffPage, parseListParams, type AdminStaffListRow } from '@/lib/admin/queries';
+import { fetchAdminStaffDirectory, parseListParams, type AdminStaffListRow } from '@/lib/admin/queries';
 import { STAFF_SERVICE_UI, STAFF_AVAILABILITY_LABELS } from '@/lib/staff-types';
 import { getAllMCCAreas, getAreaById } from '@/lib/locations';
 
@@ -80,7 +79,7 @@ export default async function AdminServicesPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const params = parseListParams(resolvedSearchParams, { pageSize: 20 });
-  const result = await fetchAdminStaffPage(params);
+  const result = await fetchAdminStaffDirectory(params);
 
   if (result.unavailable) {
     return (
@@ -97,7 +96,7 @@ export default async function AdminServicesPage({
       <PageHeader
         title="কর্মী ব্যবস্থাপনা"
         description="কাজের বুয়া, ইলেকট্রিশিয়ান, প্লাম্বার ও এসি/ফ্রিজ মেরামত প্রোফাইল পরিচালনা করুন। কর্মীদের ব্যক্তিগত ফোন নম্বর শুধু এই অ্যাডমিন তালিকায় ও সুরক্ষিত ব্যবস্থাপনায় দেখা যায়।"
-        count={`ফিল্টার করা ${result.total} টি প্রোফাইল`}
+        count={`তালিকায় ${result.total} জন কর্মী`}
         actions={
           <Link href="/admin/services/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white hover:bg-admin-navy/90">
             <Plus className="h-4 w-4" aria-hidden="true" />
@@ -129,7 +128,6 @@ export default async function AdminServicesPage({
         caption="কর্মী প্রোফাইল তালিকা"
         empty={<AdminEmpty title="কোনো কর্মী পাওয়া যায়নি" description="সার্চ বা ফিল্টার পরিবর্তন করুন, অথবা নতুন কর্মী যোগ করুন।" />}
       />
-      <TablePager page={result.page} pageSize={result.pageSize} total={result.total} searchParams={resolvedSearchParams} />
     </>
   );
 }

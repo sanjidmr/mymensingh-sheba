@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ADMIN_HOME } from '@/lib/auth-routes';
 import AccountShell from '@/components/account/AccountShell';
+import SplashScreen from '@/components/site/SplashScreen';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
@@ -23,11 +24,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   }, [isLoading, user, router]);
 
   if (isLoading || !user || user.role === 'admin') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-mist-50 text-sm text-slate-500">
-        লোড হচ্ছে...
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   return <AccountShell>{children}</AccountShell>;

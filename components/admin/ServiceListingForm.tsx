@@ -101,6 +101,7 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     modelYear: row?.model_year ?? undefined,
     hasAc: row?.has_ac ?? undefined,
     driverIncluded: row?.driver_included ?? undefined,
+    driverNameBn: row?.driver_name_bn ?? '',
     availableTimeBn: row?.available_time_bn ?? '',
     priceNoteBn: row?.price_note_bn ?? '',
     ratePerKm: row?.rate_per_km ?? undefined,
@@ -443,6 +444,17 @@ export default function ServiceListingForm({
                   'আসন সংখ্যা *',
                   <input required type="number" min={1} max={100} value={seatText} onChange={(e) => setSeatText(e.target.value)} className={inputClass} />,
                   'সর্বোচ্চ কতজন যাত্রী বহন করা যাবে। কার্ডে “কত সিট” হিসেবে দেখা যায়।',
+                )}
+                {field(
+                  'ড্রাইভারের নাম',
+                  <input
+                    value={values.driverNameBn ?? ''}
+                    maxLength={120}
+                    onChange={(e) => set('driverNameBn', e.target.value)}
+                    className={inputClass}
+                    placeholder="যেমন: মো. রহিম"
+                  />,
+                  'চালকের তথ্য জানা থাকলে দিন; এটি যানবাহনের বিস্তারিত পাতায় দেখানো হবে।',
                 )}
               </div>
             </Panel>

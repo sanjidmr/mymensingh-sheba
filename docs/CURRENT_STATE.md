@@ -500,7 +500,9 @@ and staff-services systems use their in-memory mock stores in that mode.
 
 ## 13. Known limitations
 
-- Remaining Step 5 business logic (payments, chat, AI) is **not implemented**.
+- Payment processing, chat, and AI are **not implemented**. Admins can record
+  manual income and dues in the financial ledger; those entries do not verify
+  or process a payment.
   Search/filter against the DB for all implemented services (staff,
   home-moving, home-tutor, tolet, blood-donor) now works through the
   mock/real facades.

@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import { cache } from 'react';
 import type { SiteContentOverrides } from './site-content';
 
 const OVERRIDE_KEYS = new Set([
@@ -12,7 +13,7 @@ const OVERRIDE_KEYS = new Set([
   'seo',
 ]);
 
-export async function getSiteContentOverrides(): Promise<SiteContentOverrides> {
+export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverrides> => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return {};
@@ -30,7 +31,14 @@ export async function getSiteContentOverrides(): Promise<SiteContentOverrides> {
     .select('key, value')
     .in('key', Array.from(OVERRIDE_KEYS));
 
-  if (error || !Array.isArray(data)) return {};
+  if (error) {
+    console.error('Site content overrides could not be loaded.', error.message);
+    return {};
+  }
+  if (!Array.isArray(data)) {
+    console.error('Site content overrides returned an invalid response.');
+    return {};
+  }
 
   const overrides: SiteContentOverrides = {};
   for (const row of data) {
@@ -143,4 +151,4 @@ export async function getSiteContentOverrides(): Promise<SiteContentOverrides> {
   }
 
   return overrides;
-}
+});

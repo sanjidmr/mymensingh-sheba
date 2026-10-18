@@ -30,8 +30,18 @@ The aggregates use these existing sources:
   `admin_audit_log`: support status, admin notification read state, and logged
   admin actions for the selected time range.
 
-The schema contains no payment or transaction ledger. The UI explicitly says
-revenue is not tracked and does not infer it from listing prices, fee rules, or
+`/admin/approvals` combines pending community posts, To-Let listings and owner
+profiles, tutor and donor profiles, and customer-owned WiFi/coaching listings.
+It calls existing moderation actions; its admin-only queue RPC is defined in
+`20261018000900_admin_approvals_and_financial_records.sql`. `/admin/users`
+links to a server-side detail view of each account's service profiles, posts,
+listings, and submitted requests. The same migration creates the RLS-protected
+manual financial ledger and its service-level aggregate function.
+
+The admin financial-management page stores manual income and due entries in
+`admin_financial_records`, with an admin-only RLS policy and service-level
+aggregates. These are bookkeeping records, not payment processing or verified
+transactions; revenue is never inferred from listing prices, fee rules, or
 requests.
 
 ## Security and auditability
@@ -64,9 +74,11 @@ state changes are retained.
 Apply migrations in timestamp order, including
 `20261012000000_public_cms_content_policy.sql` and
 `20261012100000_admin_analytics.sql`, before relying on the new RPC, support
-reply audit trigger, or public CMS reads. The migrations were inspected but
-could not be applied against the production Supabase project in this
-environment.
+reply audit trigger, or public CMS reads. Apply
+`20261018000900_admin_approvals_and_financial_records.sql` after the preceding
+timestamped migrations before using the unified approval queue or financial
+ledger. The migrations were inspected but could not be applied against the
+production Supabase project in this environment.
 
 Local validation performed for this step:
 

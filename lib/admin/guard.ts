@@ -1,4 +1,5 @@
 import { redirect } from 'next/navigation';
+import { cookies } from 'next/headers';
 import { createServerSideClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 // ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
@@ -30,8 +31,16 @@ export interface AdminSession {
   fullName: string;
 }
 
+async function hasSupabaseSessionCookie(): Promise<boolean> {
+  const cookieStore = await cookies();
+  return cookieStore
+    .getAll()
+    .some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name));
+}
+
 /** The signed-in user id, or null. Never throws. */
 export async function getAuthenticatedUserId(): Promise<string | null> {
+  if (!(await hasSupabaseSessionCookie())) return null;
   const supabase = await createServerSideClient();
   if (!supabase) return null;
 
@@ -65,6 +74,7 @@ export async function getAdminSession(): Promise<AdminSession | null> {
     return resolveDevAdminIdentity();
   }
 
+  if (!(await hasSupabaseSessionCookie())) return null;
   const supabase = await createServerSideClient();
   if (!supabase) return null;
 

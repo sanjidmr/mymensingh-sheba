@@ -5,6 +5,7 @@ import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
 import { FilterNav } from '@/components/admin/FilterNav';
 import { TablePager } from '@/components/admin/TablePager';
 import AdminNotificationList from '@/components/admin/AdminNotificationList';
+import AdminNotificationsSeen from '@/components/admin/AdminNotificationsSeen';
 
 export const dynamic = 'force-dynamic';
 
@@ -14,6 +15,7 @@ const CATEGORIES = [
   { value: 'contact_message', label: 'গ্রাহক সহায়তা' },
   { value: 'community_post', label: 'কমিউনিটি পোস্ট' },
   { value: 'community_post_report', label: 'পোস্ট রিপোর্ট' },
+  { value: 'tolet_listing_deleted', label: 'বাসাভাড়ার পোস্ট ডিলিট' },
   { value: 'listing_reports', label: 'লিস্টিং রিপোর্ট' },
   { value: 'staff_profile_reports', label: 'কর্মী রিপোর্ট' },
   { value: 'tutor_reports', label: 'টিউটর রিপোর্ট' },
@@ -40,9 +42,11 @@ export default async function AdminNotificationsPage({
     <>
       <PageHeader
         title="অ্যাডমিন নোটিফিকেশন"
-        description="ডাটাবেজে সংরক্ষিত প্রকৃত জমা, সাপোর্ট বার্তা ও মডারেশন আপডেট।"
+        description="ডাটাবেজে সংরক্ষিত পোস্ট জমা ও অপসারণ, সাপোর্ট বার্তা এবং মডারেশন আপডেট।"
         count={result.unavailable ? undefined : `${result.total}টি নোটিফিকেশন · ${unreadCount ?? '—'}টি অপঠিত`}
       />
+
+      <AdminNotificationsSeen hasUnread={(unreadCount ?? 0) > 0} />
 
       {result.unavailable ? (
         <AdminError

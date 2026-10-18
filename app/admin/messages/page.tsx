@@ -1,4 +1,4 @@
-import { fetchMessages } from '@/lib/admin/queries';
+import { fetchMessages, markContactMessagesSeen } from '@/lib/admin/queries';
 import { parseListParams } from '@/lib/admin/queries';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
@@ -10,6 +10,7 @@ import { StatusPill } from '@/components/admin/StatCard';
 import { formatDateTime, lookupStatus, STATUS_OPTIONS } from '@/lib/admin/format';
 import type { AdminMessageRow } from '@/lib/admin/queries';
 import MessageActions from '@/components/admin/MessageActions';
+import AdminBadgeRefresh from '@/components/admin/AdminBadgeRefresh';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,7 @@ export default async function AdminMessagesPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const params = parseListParams(resolvedSearchParams, { pageSize: 20 });
+  await markContactMessagesSeen();
   const result = await fetchMessages(params);
 
   if (result.unavailable) {
@@ -106,9 +108,10 @@ export default async function AdminMessagesPage({
 
   return (
     <>
+      <AdminBadgeRefresh />
       <PageHeader
         title="মেসেজ"
-        description="যোগাযোগ ফর্মে পাঠানো সব বার্তা। নতুন বার্তা উল্লেখযোগ্যভাবে চিহ্নিত থাকে।"
+        description="যোগাযোগ ফর্মে পাঠানো সব বার্তা। খোলার সাথে সাথে নতুন বার্তাগুলো পর্যালোচনায় চিহ্নিত হয়।"
         count={`মোট ${result.total} টি বার্তা`}
       />
 

@@ -84,6 +84,7 @@ export default function VehicleDetail({ slug }: { slug: string }) {
     kind,
     listing.seatCount ? `${listing.seatCount} জনের গাড়ি` : null,
     listing.driverIncluded === true ? 'চালকসহ' : listing.driverIncluded === false ? 'সেলফ ড্রাইভ' : null,
+    listing.driverNameBn,
   ]
     .filter(Boolean)
     .join(' · ');

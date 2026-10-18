@@ -47,7 +47,12 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
     columns.push({
       key: 'vehicle',
       header: 'গাড়ির তথ্য',
-      render: (row) => `${row.model_name_bn || 'মডেল উল্লেখ নেই'} · ${row.seat_count ?? '—'} আসন`,
+      render: (row) => (
+        <span className="block min-w-0">
+          <span className="block">{row.model_name_bn || 'মডেল উল্লেখ নেই'} · {row.seat_count ?? '—'} আসন</span>
+          {row.driver_name_bn && <span className="block text-xs text-admin-muted">চালক: {row.driver_name_bn}</span>}
+        </span>
+      ),
     });
     columns.push({
       key: 'price',

@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { Settings, CheckCircle2, Save, Search, ShieldCheck, Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Settings, CheckCircle2, Save, Search, ShieldCheck, Plus, ChevronLeft, ChevronRight, Eye, Phone } from 'lucide-react';
 import { getToletFeeRules, loadToletFeeRules, setToletFeeRules } from '@/lib/tolet-fees';
 import { saveToletFeeRules } from '@/app/admin/actions/settings';
 import { PageHeader } from '@/components/admin/PageHeader';
@@ -12,6 +12,7 @@ import { AdminError, AdminLoading } from '@/components/admin/States';
 import type { ToletFeeRules } from '@/lib/tolet-fees';
 import { adminFetchListingsPage } from '@/lib/tolet-service';
 import type { ToletListing, ToletListingStatus } from '@/lib/tolet-types';
+import { adminFetchToletListingMetrics } from '@/lib/tolet-tracking';
 import { TOLET_LISTING_STATUS_INFO, TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletAnalyticsTable } from '@/components/tolet/admin/ToletAnalytics';
@@ -43,7 +44,7 @@ export default function AdminToletPage() {
   const [savingFee, setSavingFee] = useState(false);
   const [tab, setTab] = useState<ToletListingStatus | 'all'>(() => {
     const requestedStatus = searchParams.get('status');
-    return STATUS_TABS.find((option) => option.key === requestedStatus)?.key ?? 'pending_review';
+    return STATUS_TABS.find((option) => option.key === requestedStatus)?.key ?? 'all';
   });
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -53,6 +54,19 @@ export default function AdminToletPage() {
   const [toDate, setToDate] = useState('');
   const [page, setPage] = useState(1);
   const [refreshTick, setRefreshTick] = useState(0);
+  const listingIds = listings.map((item) => item.id);
+  const listingKey = listingIds.join(',');
+  const statsRequestKey = `${listingKey}:${refreshTick}`;
+  const [statsResult, setStatsResult] = useState<{
+    key: string;
+    metrics: Record<string, { views: number; callClicks: number }>;
+  } | null>(null);
+  const [statsFailure, setStatsFailure] = useState<{ key: string; message: string } | null>(null);
+  const listingStats = statsResult?.key === statsRequestKey ? statsResult.metrics : {};
+  const statsError = statsFailure?.key === statsRequestKey ? statsFailure.message : '';
+  const statsLoading = Boolean(listingKey) &&
+    statsResult?.key !== statsRequestKey &&
+    statsFailure?.key !== statsRequestKey;
   const pageSize = 20;
 
   useEffect(() => {
@@ -128,6 +142,30 @@ export default function AdminToletPage() {
     };
   }, [tab, debouncedSearch, propertyType, areaId, fromDate, toDate, page, refreshTick]);
 
+  useEffect(() => {
+    let active = true;
+    const requestedIds = statsRequestKey.slice(0, statsRequestKey.lastIndexOf(':'));
+    if (!requestedIds) return () => {
+      active = false;
+    };
+    adminFetchToletListingMetrics(requestedIds.split(','))
+      .then((metrics) => {
+        if (!active) return;
+        setStatsResult({ key: statsRequestKey, metrics });
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setStatsFailure({
+            key: statsRequestKey,
+            message: err instanceof Error ? err.message : 'বাসাভাড়ার পরিসংখ্যান লোড করা যায়নি।',
+          });
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, [statsRequestKey]);
+
   const handleSaveFee = async (e: React.FormEvent) => {
     e.preventDefault();
     setFeeError('');
@@ -177,6 +215,7 @@ export default function AdminToletPage() {
         </>}
       />
       {listError && <AdminError title="বাসা ভাড়ার তালিকায় সমস্যা" message={listError} className="mb-4" />}
+      {statsError && <AdminError title="ভিজিট ও কলের সংখ্যা লোড করা যায়নি" message={statsError} className="mb-4" />}
 
         <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
           {/* Fee config */}
@@ -328,6 +367,9 @@ export default function AdminToletPage() {
             {(propertyType || areaId || fromDate || toDate || search) && (
               <button type="button" onClick={clearListingFilters} className="min-h-9 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-600 hover:bg-slate-50">ফিল্টার মুছুন</button>
             )}
+            <p className="text-[11px] leading-relaxed text-slate-500">
+              ভিজিট ও কল বাটনের সংখ্যা সবসময়ের। কল বাটন চাপা হয়েছে—এটি সম্পন্ন ফোনকলের সংখ্যা নয়।
+            </p>
 
             {loading ? (
               <AdminLoading label="বিজ্ঞাপন লোড হচ্ছে..." />
@@ -364,6 +406,16 @@ export default function AdminToletPage() {
                         <p className="text-[11px] text-slate-600 mt-0.5">
                           ভাড়া: ৳{item.rentPrice.toLocaleString('bn-BD')}/মাস • বিছানা: {item.bedrooms} • বাথ: {item.bathrooms}
                         </p>
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-medium text-slate-600" aria-label="বিজ্ঞাপনের মোট এনগেজমেন্ট">
+                          <span className="inline-flex items-center gap-1">
+                            <Eye className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
+                            {statsLoading ? 'লোড হচ্ছে…' : statsError ? 'ভিজিট —' : `${(listingStats[item.id]?.views ?? 0).toLocaleString('bn-BD')} মোট ভিজিট`}
+                          </span>
+                          <span className="inline-flex items-center gap-1">
+                            <Phone className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" />
+                            {statsLoading ? 'লোড হচ্ছে…' : statsError ? 'কল বাটনে চাপ —' : `${(listingStats[item.id]?.callClicks ?? 0).toLocaleString('bn-BD')} বার কল বাটন চাপ`}
+                          </span>
+                        </div>
                         <div className="flex flex-wrap gap-2 mt-3">
                           <Link
                             href={`/admin/tolet/${item.id}`}

@@ -36,7 +36,6 @@ export interface HomePreviewCard {
   };
   verified?: boolean;
   footer?: string;
-  footerLabel?: string;
 }
 
 const STAFF_AVAILABILITY_TONE: Record<string, 'green' | 'amber' | 'slate'> = {
@@ -78,7 +77,6 @@ export function toletToPreviewCard(listing: ToletListing): HomePreviewCard {
         ? { label: 'সরাসরি মালিকের সাথে যোগাযোগ', tone: 'green' }
         : { label: 'অনুপলব্ধ', tone: 'slate' },
     verified: listing.isVerified || listing.ownerVerified,
-    footerLabel: 'বিস্তারিত দেখুন',
   };
 }
 
@@ -111,7 +109,6 @@ export function staffToPreviewCard(profile: StaffProfile): HomePreviewCard {
     },
     verified: profile.isVerified,
     footer: rate,
-    footerLabel: 'বিস্তারিত দেখুন',
   };
 }
 
@@ -143,7 +140,6 @@ export function tutorToPreviewCard(tutor: HomeTutorProfile): HomePreviewCard {
     },
     verified: tutor.isVerified,
     footer: formatTutorFee(tutor.expectedSalaryMin, tutor.expectedSalaryMax),
-    footerLabel: 'বিস্তারিত দেখুন',
   };
 }
 
@@ -172,7 +168,6 @@ export function donorToPreviewCard(donor: BloodDonorProfile): HomePreviewCard {
     },
     verified: donor.isVerified,
     footer: 'রক্তদানে প্রস্তুত',
-    footerLabel: 'বিস্তারিত দেখুন',
   };
 }
 
@@ -216,7 +211,6 @@ export function vehicleToPreviewCard(listing: ServiceListing): HomePreviewCard {
       ? { label: 'চলমান', tone: 'green' }
       : { label: 'অনুপলব্ধ', tone: 'slate' },
     footer: price || 'সরাসরি যোগাযোগ',
-    footerLabel: 'বিস্তারিত দেখুন',
   };
 }
 
@@ -260,6 +254,5 @@ export function postToPreviewCard(post: CommunityPost): HomePreviewCard {
         : post.kind === 'job'
           ? post.organizationBn || 'পূর্ণ বিজ্ঞাপন দেখুন'
           : 'পূর্ণ খবর পড়ুন',
-    footerLabel: 'বিস্তারিত দেখুন',
   };
 }

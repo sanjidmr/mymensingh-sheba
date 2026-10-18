@@ -25,6 +25,7 @@ import {
   Gauge,
   KeyRound,
   MapPin,
+  UserRound,
   Users,
   Wind,
 } from 'lucide-react';
@@ -154,6 +155,10 @@ export function VehicleSpecGrid({ listing }: { listing: ServiceListing }) {
     specs.push({ icon: KeyRound, labelBn: 'চালক', value: 'চালক ছাড়া (সেলফ ড্রাইভ)' });
   } else {
     specs.push({ icon: KeyRound, labelBn: 'চালক', value: UNKNOWN, unknown: true });
+  }
+
+  if (listing.driverNameBn) {
+    specs.push({ icon: UserRound, labelBn: 'ড্রাইভারের নাম', value: listing.driverNameBn });
   }
 
   if (listing.availableTimeBn) {

@@ -36,6 +36,7 @@ import {
 } from '@/lib/tolet-types';
 import { ListingStatusBadge, RequestStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletListingStatsPanel } from '@/components/tolet/admin/ToletAnalytics';
+import ToletRequestActions from '@/components/admin/ToletRequestActions';
 import { getAreaById } from '@/lib/locations';
 
 interface AdminToletDetailProps {
@@ -501,6 +502,23 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
                           {req.message}
                         </p>
                       )}
+                      <div className="mt-3">
+                        <ToletRequestActions
+                          request={req}
+                          onUpdated={(requestId, status) =>
+                            setRequests((previous) =>
+                              previous.map((item) =>
+                                item.id === requestId ? { ...item, status } : item
+                              )
+                            )
+                          }
+                          onDeleted={(requestId) =>
+                            setRequests((previous) =>
+                              previous.filter((item) => item.id !== requestId)
+                            )
+                          }
+                        />
+                      </div>
                     </div>
                   ))}
                 </div>

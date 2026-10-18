@@ -10,6 +10,7 @@ import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
 import { isSafeInternalPath, resolveAuthRedirect } from '@/lib/auth-routes';
+import SplashScreen from '@/components/site/SplashScreen';
 
 function LoginForm() {
   const router = useRouter();
@@ -39,13 +40,7 @@ function LoginForm() {
   // signed-out form: that flashes a login screen to a returning admin and risks
   // treating them as a customer before their role is known.
   if (authLoading) {
-    return (
-      <main className="flex-1 bg-mist-50 px-4 py-8 sm:px-6">
-        <div className="mx-auto w-full max-w-md rounded-2xl border border-brand-100 bg-white px-5 py-12 shadow-sm">
-          <p className="text-sm text-ink-500">লোড হচ্ছে…</p>
-        </div>
-      </main>
-    );
+    return <SplashScreen />;
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -162,15 +157,7 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen flex-col bg-mist-50">
       <Navbar />
-      <Suspense
-        fallback={
-          <main className="flex-1 bg-mist-50 px-4 py-8 sm:px-6">
-            <div className="mx-auto w-full max-w-md rounded-2xl border border-brand-100 bg-white px-5 py-12 shadow-sm">
-              <p className="text-sm text-ink-500">লোড হচ্ছে…</p>
-            </div>
-          </main>
-        }
-      >
+      <Suspense fallback={<SplashScreen />}>
         <LoginForm />
       </Suspense>
       <Footer />

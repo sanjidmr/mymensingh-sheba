@@ -328,7 +328,11 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     posts,
     reports,
     requests,
-    verifications,
+    tutorApprovals,
+    toletApprovals,
+    donorApprovals,
+    ownerApprovals,
+    serviceApprovals,
     notifications,
   ] = await Promise.all([
     client.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'new'),
@@ -341,10 +345,11 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
       .from('service_requests')
       .select('id', { count: 'exact', head: true })
       .not('status', 'in', '("completed","cancelled","rejected")'),
-    client
-      .from('home_tutor_profiles')
-      .select('id', { count: 'exact', head: true })
-      .eq('status', 'pending_approval'),
+    client.from('home_tutor_profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
+    client.from('tolet_listings').select('id', { count: 'exact', head: true }).eq('status', 'pending_review'),
+    client.from('blood_donor_profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
+    client.from('tolet_profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
+    client.from('service_listings').select('id', { count: 'exact', head: true }).eq('status', 'pending').not('owner_id', 'is', null),
     client
       .from('notifications')
       .select('id', { count: 'exact', head: true })
@@ -357,7 +362,11 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     posts,
     reports,
     requests,
-    verifications,
+    tutorApprovals,
+    toletApprovals,
+    donorApprovals,
+    ownerApprovals,
+    serviceApprovals,
     notifications,
   ].find((result) => result.error);
   if (failedQuery?.error) {
@@ -378,7 +387,12 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     posts: posts.count ?? 0,
     reports: reports.count ?? 0,
     requests: requests.count ?? 0,
-    verifications: verifications.count ?? 0,
+    verifications:
+      (tutorApprovals.count ?? 0) +
+      (toletApprovals.count ?? 0) +
+      (donorApprovals.count ?? 0) +
+      (ownerApprovals.count ?? 0) +
+      (serviceApprovals.count ?? 0),
     notifications: notifications.count ?? 0,
     unavailable: false,
   };
@@ -1834,6 +1848,44 @@ export async function fetchAdminStaffPage(params: ListParams): Promise<AdminStaf
   };
 }
 
+export async function fetchAdminStaffDirectory(params: ListParams): Promise<AdminStaffPage> {
+  const pageSize = 1000;
+  const firstPage = await fetchAdminStaffPage({ ...params, page: 1, pageSize });
+  if (firstPage.unavailable || firstPage.total <= firstPage.rows.length) {
+    return { ...firstPage, page: 1, pageSize: firstPage.total };
+  }
+
+  const pageCount = Math.ceil(firstPage.total / pageSize);
+  const remainingPages = await Promise.all(
+    Array.from({ length: pageCount - 1 }, (_, index) =>
+      fetchAdminStaffPage({ ...params, page: index + 2, pageSize })
+    )
+  );
+  const failedPageResult = remainingPages.find((result) => result.unavailable);
+  if (failedPageResult) {
+    return {
+      ...failedPageResult,
+      rows: [],
+      page: 1,
+      pageSize: firstPage.total,
+    };
+  }
+
+  const rows = [...firstPage.rows, ...remainingPages.flatMap((result) => result.rows)];
+  if (rows.length !== firstPage.total) {
+    return {
+      ...firstPage,
+      rows: [],
+      page: 1,
+      pageSize: firstPage.total,
+      unavailable: true,
+      error: 'কর্মী তালিকার সব রেকর্ড একসঙ্গে লোড করা যায়নি; তালিকা পরিবর্তন করে আবার চেষ্টা করুন।',
+    };
+  }
+
+  return { ...firstPage, rows, page: 1, pageSize: firstPage.total };
+}
+
 export async function fetchAdminStaffProfile(id: string): Promise<{
   profile: StaffProfile | null;
   error?: string;
@@ -2116,6 +2168,24 @@ export interface AdminMessageRow {
   latest_at?: string;
 }
 
+/**
+ * Marks every still-new contact message as under review.
+ *
+ * The sidebar badge counts `contact_messages` rows with `status = 'new'`, so
+ * the number above "যোগাযোগ বার্তা" kept following the admin around even after
+ * they opened the inbox. Visiting the list page means the queue has been
+ * seen — flip it to `reviewing`. Best-effort: the inbox still renders if the
+ * update fails.
+ */
+export async function markContactMessagesSeen(): Promise<void> {
+  const admin = await getAdminDataClient();
+  if (!admin) return;
+  await admin.client
+    .from('contact_messages')
+    .update({ status: 'reviewing' })
+    .eq('status', 'new');
+}
+
 export async function fetchMessages(params: ListParams): Promise<Paged<AdminMessageRow>> {
   const admin = await getAdminDataClient();
   if (!admin) return { rows: [], total: 0, page: 1, pageSize: params.pageSize, unavailable: true };
@@ -2200,6 +2270,7 @@ export function notificationTargetLink(relatedType: string | null, relatedId: st
     case 'vehicle_request': return id ? `/admin/vehicle-requests/${id}` : '/admin/vehicle-requests';
     case 'contact_message': return id ? `/admin/messages/${id}` : '/admin/messages';
     case 'community_post': return id ? `/admin/posts/${id}` : '/admin/posts';
+    case 'tolet_listing_deleted': return '/admin/tolet';
     case 'community_post_report':
     case 'listing_reports':
     case 'staff_profile_reports':
@@ -2396,6 +2467,7 @@ export interface AdminServiceListingRow {
   model_year: number | null;
   has_ac: boolean | null;
   driver_included: boolean | null;
+  driver_name_bn: string | null;
   available_time_bn: string | null;
   price_note_bn: string | null;
   rate_per_km: number | null;
@@ -2416,7 +2488,7 @@ export interface AdminServiceListingPage extends Paged<AdminServiceListingRow> {
 }
 
 const SERVICE_LISTING_SELECT =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
 
 export async function fetchServiceListings(params: ListParams, category?: string): Promise<AdminServiceListingPage> {
   const admin = await getAdminDataClient();
@@ -2457,7 +2529,7 @@ export async function fetchServiceListings(params: ListParams, category?: string
 
   const term = searchFilter(params.search, [
     'title_bn', 'slug', 'subtitle_bn', 'summary_bn', 'description_bn',
-    'origin_bn', 'destination_bn', 'operator_bn', 'address_bn', 'model_name_bn',
+    'origin_bn', 'destination_bn', 'operator_bn', 'address_bn', 'model_name_bn', 'driver_name_bn',
   ]);
   if (term) query = query.or(term);
   if (params.status === 'active') query = query.eq('is_active', true);
@@ -2862,6 +2934,238 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     };
   }
 
+  return fetchPlatformSettingsWithClient(admin);
+}
+
+// ---------------------------------------------------------------------------
+// Unified approval queue and financial management
+// ---------------------------------------------------------------------------
+
+  export type AdminApprovalKind =
+    | 'post'
+    | 'tolet_listing'
+    | 'tutor_profile'
+    | 'donor_profile'
+    | 'service_listing'
+    | 'tolet_profile';
+
+  export interface AdminApprovalRow {
+    id: string;
+    approval_kind: AdminApprovalKind;
+    service_key: string;
+    title: string;
+    summary: string | null;
+    owner_id: string | null;
+    owner_name: string | null;
+    owner_phone: string | null;
+    created_at: string;
+  }
+
+  export async function fetchAdminApprovalQueue(
+    page: number,
+    pageSize = 25
+  ): Promise<Paged<AdminApprovalRow>> {
+    const admin = await getAdminDataClient();
+    const safePage = clampPage(page);
+    const safePageSize = clampPageSize(pageSize);
+    if (!admin) {
+      return {
+        ...failedPage({ page: safePage, pageSize: safePageSize }, 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।'),
+      };
+    }
+
+    const { data, error } = await admin.client.rpc('fn_admin_approval_queue', {
+      p_limit: safePageSize,
+      p_offset: (safePage - 1) * safePageSize,
+    });
+    if (error || !Array.isArray(data)) {
+      return failedPage(
+        { page: safePage, pageSize: safePageSize },
+        error?.message ?? 'অনুমোদনের তালিকা সঠিকভাবে পাওয়া যায়নি।'
+      );
+    }
+
+    const first = data[0] as (AdminApprovalRow & { total_count: number }) | undefined;
+    return {
+      rows: data.map((row) => {
+        const value = row as AdminApprovalRow & { total_count: number };
+        return {
+          id: value.id,
+          approval_kind: value.approval_kind,
+          service_key: value.service_key,
+          title: value.title,
+          summary: value.summary,
+          owner_id: value.owner_id,
+          owner_name: value.owner_name,
+          owner_phone: value.owner_phone,
+          created_at: value.created_at,
+        };
+      }),
+      total: typeof first?.total_count === 'number' ? first.total_count : 0,
+      page: safePage,
+      pageSize: safePageSize,
+      unavailable: false,
+    };
+  }
+
+  export interface AdminUserDetail {
+    profile: Record<string, unknown>;
+    toletProfile: Record<string, unknown> | null;
+    tutorProfile: Record<string, unknown> | null;
+    donorProfile: Record<string, unknown> | null;
+    toletListings: Record<string, unknown>[];
+    communityPosts: Record<string, unknown>[];
+    serviceListings: Record<string, unknown>[];
+    serviceRequests: Record<string, unknown>[];
+    toletRequests: Record<string, unknown>[];
+    vehicleRequests: Record<string, unknown>[];
+  }
+
+  export async function fetchAdminUserDetail(
+    userId: string
+  ): Promise<{ data: AdminUserDetail | null; error?: string }> {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId)) {
+      return { data: null, error: 'ইউজার আইডি সঠিক নয়।' };
+    }
+    const admin = await getAdminDataClient();
+    if (!admin) return { data: null, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
+    const client = admin.client;
+    const [profile, toletProfile, tutorProfile, donorProfile, toletListings, communityPosts,
+      serviceListings, serviceRequests, toletRequests, vehicleRequests] = await Promise.all([
+      client.from('profiles')
+        .select('id,full_name,phone,email,avatar_url,bio,primary_area_id,role,status,is_verified,emergency_contact,created_at,updated_at')
+        .eq('id', userId).maybeSingle(),
+      client.from('tolet_profiles')
+        .select('id,status,rejection_reason,owner_name,phone,primary_area_id,address_line,total_listings_count,is_verified,created_at')
+        .eq('user_id', userId).maybeSingle(),
+      client.from('home_tutor_profiles')
+        .select('id,status,full_name,gender,institution,department,qualification,experience_years,preferred_areas,preferred_classes,preferred_subjects,expected_salary_min,expected_salary_max,days_per_week,bio,teaching_mode,availability,profile_photo_url,educations,current_activity,class_duration_minutes,preferred_student_type,created_at')
+        .eq('user_id', userId).maybeSingle(),
+      client.from('blood_donor_profiles')
+        .select('id,status,full_name,blood_group,area_id,gender,birth_year,weight_kg,is_available,last_donation_date,donation_count,intro,profile_photo_url,show_readiness,created_at')
+        .eq('user_id', userId).maybeSingle(),
+      client.from('tolet_listings')
+        .select('id,title,status,property_type,area_id,specific_address,rent_price,bedrooms,bathrooms,facilities,unavailable_facilities,available_from,description,created_at,published_at')
+        .eq('owner_id', userId).order('created_at', { ascending: false }),
+      client.from('community_posts')
+        .select('id,kind,status,title_bn,summary_bn,body_bn,category,area_id,price,salary_min,salary_max,job_type,organization_bn,deadline,condition_label,created_at,slug')
+        .eq('author_id', userId).order('created_at', { ascending: false }),
+      client.from('service_listings')
+        .select('id,category,status,title_bn,subtitle_bn,slug,summary_bn,description_bn,area_ids,address_bn,is_active,rejection_reason,created_at')
+        .eq('owner_id', userId).order('created_at', { ascending: false }),
+      client.from('service_requests')
+        .select('id,status,service_slug,service_type,profile_title,area_id,address_line,details,preferred_date,preferred_time,quotation,admin_notes,service_meta,pickup_area_id,destination_area_id,pickup_address,destination_address,created_at')
+        .eq('customer_id', userId).order('created_at', { ascending: false }),
+      client.from('tolet_requests')
+        .select('id,listing_id,status,area_id,preferred_time,message,created_at')
+        .eq('customer_id', userId).order('created_at', { ascending: false }),
+      client.from('vehicle_requests')
+        .select('id,status,contact_name,pickup_area_id,destination_area_id,travel_date,travel_time,passenger_count,trip_duration,budget,notes,created_at')
+        .eq('customer_id', userId).order('created_at', { ascending: false }),
+    ]);
+    const failed = [
+      profile, toletProfile, tutorProfile, donorProfile, toletListings, communityPosts,
+      serviceListings, serviceRequests, toletRequests, vehicleRequests,
+    ].find((result) => result.error);
+    if (failed?.error) return { data: null, error: failed.error.message };
+    if (!profile.data) return { data: null };
+
+    return {
+      data: {
+        profile: profile.data as unknown as Record<string, unknown>,
+        toletProfile: (toletProfile.data as unknown as Record<string, unknown> | null) ?? null,
+        tutorProfile: (tutorProfile.data as unknown as Record<string, unknown> | null) ?? null,
+        donorProfile: (donorProfile.data as unknown as Record<string, unknown> | null) ?? null,
+        toletListings: (toletListings.data ?? []) as unknown as Record<string, unknown>[],
+        communityPosts: (communityPosts.data ?? []) as unknown as Record<string, unknown>[],
+        serviceListings: (serviceListings.data ?? []) as unknown as Record<string, unknown>[],
+        serviceRequests: (serviceRequests.data ?? []) as unknown as Record<string, unknown>[],
+        toletRequests: (toletRequests.data ?? []) as unknown as Record<string, unknown>[],
+        vehicleRequests: (vehicleRequests.data ?? []) as unknown as Record<string, unknown>[],
+      },
+    };
+  }
+
+  export type AdminFinancialService =
+    | 'tolet'
+    | 'tutor'
+    | 'blood_donor'
+    | 'wifi'
+    | 'coaching'
+    | 'vehicle'
+    | 'staff'
+    | 'other';
+
+  export interface AdminFinancialRecord {
+    id: string;
+    service_key: AdminFinancialService;
+    income_amount: number;
+    due_amount: number;
+    record_date: string;
+    notes: string;
+    created_at: string;
+    updated_at: string;
+  }
+
+  export interface AdminFinancialSummary {
+    service_key: AdminFinancialService;
+    income_total: number;
+    due_total: number;
+    record_count: number;
+  }
+
+  export async function fetchAdminFinancialManagement(
+    page: number,
+    pageSize = 20
+  ): Promise<{
+    records: AdminFinancialRecord[];
+    total: number;
+    summary: AdminFinancialSummary[];
+    page: number;
+    pageSize: number;
+    unavailable: boolean;
+    error?: string;
+  }> {
+    const safePage = clampPage(page);
+    const safePageSize = clampPageSize(pageSize);
+    const empty = {
+      records: [],
+      total: 0,
+      summary: [],
+      page: safePage,
+      pageSize: safePageSize,
+      unavailable: true,
+    };
+    const admin = await getAdminDataClient();
+    if (!admin) return { ...empty, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
+
+    const from = (safePage - 1) * safePageSize;
+    const [records, summary] = await Promise.all([
+      admin.client
+        .from('admin_financial_records')
+        .select('id,service_key,income_amount,due_amount,record_date,notes,created_at,updated_at', { count: 'exact' })
+        .order('record_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .range(from, from + safePageSize - 1),
+      admin.client.rpc('fn_admin_financial_summary'),
+    ]);
+    if (records.error || summary.error || !records.data || !summary.data) {
+      return {
+        ...empty,
+        error: records.error?.message ?? summary.error?.message ?? 'আর্থিক হিসাব লোড করা যায়নি।',
+      };
+    }
+    return {
+      records: records.data as AdminFinancialRecord[],
+      total: records.count ?? 0,
+      summary: summary.data as AdminFinancialSummary[],
+      page: safePage,
+      pageSize: safePageSize,
+      unavailable: false,
+    };
+  }
+
+async function fetchPlatformSettingsWithClient(admin: AdminClient): Promise<PlatformSettings> {
   const { data, error } = await admin.client
     .from('platform_settings')
     .select('key, value');

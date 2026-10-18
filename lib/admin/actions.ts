@@ -65,6 +65,7 @@ export async function runAdminAction(
 export function toActionError(error: unknown): string {
   const code = (error as { code?: string } | null)?.code;
   const message = (error as { message?: string } | null)?.message ?? '';
+  const checkConstraint = message.match(/violates check constraint "([^"]+)"/i)?.[1];
 
   switch (code) {
     case '23505':
@@ -72,6 +73,15 @@ export function toActionError(error: unknown): string {
     case '23503':
       return 'এই রেকর্ডটি মুছে ফেলা যাবে না কারণ অন্য কোনো তথ্য এর ওপর নির্ভর করছে।';
     case '23514':
+      if (checkConstraint === 'community_posts_status_check') {
+        return 'পোস্ট অনুমোদনের ডাটাবেস নিয়মটি পুরোনো। Supabase-এ 20261018000700_community_posts_status_constraint migration চালান।';
+      }
+      if (checkConstraint === 'community_posts_category_check') {
+        return 'পোস্ট অনুমোদনে ডাটাবেসের পুরোনো ক্যাটাগরি সীমা বাধা দিচ্ছে। Supabase-এ সর্বশেষ community posts migration চালান।';
+      }
+      if (checkConstraint) {
+        return `ডাটাবেসের “${checkConstraint}” নিয়মে মানটি আটকে গেছে।`;
+      }
       return 'দেওয়া মানটি গ্রহণযোগ্য নয়। ঘরগুলো ঠিক করে আবার চেষ্টা করুন।';
     case '42501':
       return 'এই কাজের জন্য আপনার অনুমতি নেই।';

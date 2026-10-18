@@ -78,7 +78,9 @@ export default function AdminNotificationList({
               <div className="flex flex-wrap items-center gap-2">
                 <h2 className="text-sm font-bold text-admin-text">{row.title}</h2>
                 <span className="rounded bg-admin-page px-2 py-0.5 text-[10px] font-semibold text-admin-muted">
-                  {row.related_type ?? row.type}
+                  {row.related_type === 'tolet_listing_deleted'
+                    ? 'বাসাভাড়ার পোস্ট ডিলিট'
+                    : row.related_type ?? row.type}
                 </span>
               </div>
               <p className="mt-1 break-words text-sm leading-relaxed text-admin-muted">{row.body}</p>

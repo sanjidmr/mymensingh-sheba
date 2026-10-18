@@ -125,38 +125,49 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
   const client = createClient();
   if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   try {
-    const profilesRes = await client.from('profiles').select('*').order('created_at', { ascending: false });
-    if (profilesRes.error) throw new Error(profilesRes.error.message);
-    const toletRes = await client.from('tolet_profiles').select('id, user_id, status, owner_name');
-    const tutorsRes = await client.from('home_tutor_profiles').select('id, user_id, status, full_name');
-    const donorsRes = await client.from('blood_donor_profiles').select('id, user_id, status, full_name');
-    const relatedError = [toletRes, tutorsRes, donorsRes].find((result) => result.error)?.error;
-    if (relatedError) throw new Error(relatedError.message);
-    
-    const profiles = profilesRes.data || [];
-    const tolet = toletRes.data || [];
-    const tutors = tutorsRes.data || [];
-    const donors = donorsRes.data || [];
-    
-    return profiles.map((p) => {
-      const tp = tolet.find((x) => x.user_id === p.id);
-      const tt = tutors.find((x) => x.user_id === p.id);
-      const td = donors.find((x) => x.user_id === p.id);
-      const base = toCamelObject(p as Record<string, unknown>) as unknown as UserProfile;
-      return {
-        id: base.id,
-        fullName: base.fullName || '—',
-        phone: base.phone || '—',
-        email: base.email,
-        role: base.role,
-        status: base.status,
-        isVerified: base.isVerified,
-        createdAt: base.createdAt,
-        toletStatus: tp?.status ?? null,
-        tutorStatus: tt?.status ?? null,
-        donorStatus: td?.status ?? null,
-      };
-    });
+    const rows: AdminUserRow[] = [];
+    const pageSize = 500;
+    for (let offset = 0; ; offset += pageSize) {
+      const profilesRes = await client
+        .from('profiles')
+        .select('id,full_name,phone,email,role,status,is_verified,created_at')
+        .order('created_at', { ascending: false })
+        .range(offset, offset + pageSize - 1);
+      if (profilesRes.error) throw new Error(profilesRes.error.message);
+      const profiles = profilesRes.data ?? [];
+      if (profiles.length === 0) break;
+
+      const ids = profiles.map((profile) => profile.id);
+      const [toletRes, tutorsRes, donorsRes] = await Promise.all([
+        client.from('tolet_profiles').select('user_id, status').in('user_id', ids),
+        client.from('home_tutor_profiles').select('user_id, status').in('user_id', ids),
+        client.from('blood_donor_profiles').select('user_id, status').in('user_id', ids),
+      ]);
+      const relatedError = [toletRes, tutorsRes, donorsRes].find((result) => result.error)?.error;
+      if (relatedError) throw new Error(relatedError.message);
+      const tolet = toletRes.data ?? [];
+      const tutors = tutorsRes.data ?? [];
+      const donors = donorsRes.data ?? [];
+
+      rows.push(...profiles.map((profile) => {
+        const base = toCamelObject(profile as Record<string, unknown>) as unknown as UserProfile;
+        return {
+          id: base.id,
+          fullName: base.fullName || '—',
+          phone: base.phone || '—',
+          email: base.email,
+          role: base.role,
+          status: base.status,
+          isVerified: base.isVerified,
+          createdAt: base.createdAt,
+          toletStatus: tolet.find((row) => row.user_id === profile.id)?.status ?? null,
+          tutorStatus: tutors.find((row) => row.user_id === profile.id)?.status ?? null,
+          donorStatus: donors.find((row) => row.user_id === profile.id)?.status ?? null,
+        };
+      }));
+      if (profiles.length < pageSize) break;
+    }
+    return rows;
   } catch (err) {
     throw new Error(
       `ইউজার তালিকা লোড ব্যর্থ হয়েছে: ${err instanceof Error ? err.message : 'অজানা ত্রুটি'}`

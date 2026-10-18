@@ -118,6 +118,19 @@ export interface ToletListingInput {
   photos: string[];
 }
 
+export type ToletRequestStatus = 'submitted' | 'contacted' | 'completed' | 'cancelled';
+
+export interface ToletRequest {
+  id: string;
+  listingId: string;
+  customerId: string;
+  customerName: string;
+  customerPhone: string;
+  message: string | null;
+  status: ToletRequestStatus;
+  createdAt: string;
+}
+
 // ---------------------------------------------------------------------------
 // Contact / engagement tracking
 // ---------------------------------------------------------------------------

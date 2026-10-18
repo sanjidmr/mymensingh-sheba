@@ -103,6 +103,16 @@ function isExcludedPath(path: string): boolean {
   );
 }
 
+function isPostCreationPath(path: string): boolean {
+  const [root, action] = path.split('/').filter(Boolean);
+  return (root === 'jobs' || root === 'buy-sell' || root === 'news') && action === 'create';
+}
+
+function isToletDetailPath(path: string): boolean {
+  const segments = path.split('/').filter(Boolean);
+  return segments[0] === 'tolet' && segments.length === 2;
+}
+
 export function shouldTrackPath(path: string): boolean {
   return Boolean(path) && path.startsWith('/') && !isExcludedPath(path);
 }
@@ -162,6 +172,9 @@ export function classifyPath(path: string): {
   const segments = path.split('/').filter(Boolean);
   const first = segments[0] ?? '';
 
+  if ((first === 'news' || first === 'jobs' || first === 'buy-sell') && segments[1] === 'create') {
+    return { routeKind: 'other', contentId: null, category: null };
+  }
   if (first === 'tolet' && segments[1]) {
     return { routeKind: 'tolet', contentId: segments[1], category: 'tolet' };
   }
@@ -169,11 +182,12 @@ export function classifyPath(path: string): {
     const category = first === 'buy-sell' ? 'buy_sell' : first === 'jobs' ? 'job' : 'news';
     return { routeKind: 'post', contentId: segments[1], category };
   }
-  if (SERVICE_SLUGS.has(first) && segments.length === 1) {
-    return { routeKind: 'service', contentId: first, category: first };
+  if (SERVICE_SLUGS.has(first)) {
+    if (segments.length === 1) return { routeKind: 'service', contentId: first, category: first };
+    return { routeKind: 'directory', contentId: segments[1] ?? first, category: first };
   }
   if (DIRECTORY_ROOTS.has(first)) {
-    return { routeKind: 'directory', contentId: segments[1] ?? null, category: null };
+    return { routeKind: 'directory', contentId: segments[1] ?? first, category: null };
   }
   if (first === 'profile' || first === 'dashboard') {
     return { routeKind: 'other', contentId: null, category: null };
@@ -276,9 +290,10 @@ async function writeEvent(payload: EventPayload): Promise<void> {
       session_id: getSessionId(),
     };
 
-    await client.from('site_events').insert(row);
-  } catch {
-    // Fire-and-forget by design. See the failure policy at the top of the file.
+    const { error } = await client.from('site_events').insert(row);
+    if (error) console.warn('Website analytics event could not be recorded.', error.message);
+  } catch (error) {
+    console.warn('Website analytics event could not be recorded.', error);
   }
 }
 
@@ -294,6 +309,7 @@ async function writeEvent(payload: EventPayload): Promise<void> {
  */
 const PAGE_VIEW_DEDUPE_MS = 700;
 const recentPageViews = new Map<string, number>();
+let lastActiveVisitorAt = 0;
 
 /**
  * Records a page view, and — once per session — a session_start carrying the
@@ -303,6 +319,8 @@ const recentPageViews = new Map<string, number>();
 export function trackPageView(path: string): void {
   if (typeof window === 'undefined') return;
   if (!shouldTrackPath(path)) return;
+  const isCreationPage = isPostCreationPath(path);
+  const isToletDetail = isToletDetailPath(path);
 
   const now = Date.now();
   const last = recentPageViews.get(path);
@@ -312,31 +330,47 @@ export function trackPageView(path: string): void {
   if (recentPageViews.size > 50) recentPageViews.clear();
 
   let firstInSession = false;
-  try {
-    firstInSession = !window.sessionStorage.getItem(SESSION_STARTED_KEY);
-    if (firstInSession) window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
-  } catch {
-    firstInSession = true;
+  if (!isCreationPage) {
+    try {
+      firstInSession = !window.sessionStorage.getItem(SESSION_STARTED_KEY);
+      if (firstInSession) window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
+    } catch {
+      firstInSession = true;
+    }
   }
 
-  if (firstInSession) {
+  if (firstInSession && !isCreationPage) {
     void writeEvent({ eventType: 'session_start', path });
   }
-  void writeEvent({ eventType: 'page_view', path });
+  if (!isCreationPage && !isToletDetail) {
+    void writeEvent({ eventType: 'page_view', path });
+  }
 }
 
 /** Records a lightweight heartbeat for the opaque browser visitor id. */
 export function trackActiveVisitor(path: string): void {
   if (typeof window === 'undefined' || !shouldTrackPath(path)) return;
   if (!isSupabaseConfigured) return;
+  const now = Date.now();
+  if (now - lastActiveVisitorAt < 20_000) return;
+  lastActiveVisitorAt = now;
 
   const client = getClient();
-  if (!client) return;
+  if (!client) {
+    lastActiveVisitorAt = 0;
+    return;
+  }
 
-  void client.rpc('fn_record_active_visitor', {
+  void Promise.resolve(client.rpc('fn_record_active_visitor', {
     p_visitor_id: getVisitorId(),
-  }).then(({ error }) => {
-    if (error) console.warn('Active visitor heartbeat could not be recorded.', error);
+  })).then(({ error }) => {
+    if (error) {
+      lastActiveVisitorAt = 0;
+      console.warn('Active visitor heartbeat could not be recorded.', error.message);
+    }
+  }).catch((error: unknown) => {
+    lastActiveVisitorAt = 0;
+    console.warn('Active visitor heartbeat could not be recorded.', error);
   });
 }
 

@@ -253,6 +253,49 @@ export async function adminFetchToletAnalytics(
   return (data as RawRollup[]).map(normalizeRollup);
 }
 
+export async function adminFetchToletListingMetrics(
+  listingIds: string[]
+): Promise<Record<string, Pick<ToletListingStats, 'views' | 'callClicks'>>> {
+  const uniqueIds = [...new Set(listingIds)];
+  if (uniqueIds.length > 100) throw new Error('একবারে সর্বোচ্চ ১০০টি বাসাভাড়ার পরিসংখ্যান চাওয়া যাবে।');
+  if (uniqueIds.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
+    throw new Error('বাসাভাড়ার তালিকার আইডি সঠিক নয়।');
+  }
+  if (uniqueIds.length === 0) return {};
+  if (!isSupabaseConfigured) throw new Error('Supabase সংযুক্ত নেই; প্রকৃত পরিসংখ্যান লোড করা যায়নি।');
+  const client = createClient();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি।');
+
+  const { data, error } = await client.rpc('fn_admin_tolet_listing_metrics', {
+    p_listing_ids: uniqueIds,
+  });
+  if (error) throw new Error(`বাসাভাড়ার পরিসংখ্যান লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!Array.isArray(data)) throw new Error('বাসাভাড়ার পরিসংখ্যানের উত্তর সঠিক নয়।');
+
+  const metrics: Record<string, Pick<ToletListingStats, 'views' | 'callClicks'>> = {};
+  for (const row of data as Array<Record<string, unknown>>) {
+    const listingId = row.listing_id;
+    const views = Number(row.views);
+    const callClicks = Number(row.call_clicks);
+    if (
+      typeof listingId !== 'string' ||
+      row.views == null ||
+      !Number.isSafeInteger(views) ||
+      views < 0 ||
+      row.call_clicks == null ||
+      !Number.isSafeInteger(callClicks) ||
+      callClicks < 0
+    ) {
+      throw new Error('বাসাভাড়ার পরিসংখ্যানের উত্তর সঠিক নয়।');
+    }
+    metrics[listingId] = { views, callClicks };
+  }
+  if (uniqueIds.some((id) => !metrics[id])) {
+    throw new Error('সব বাসাভাড়ার পরিসংখ্যানের রেকর্ড পাওয়া যায়নি।');
+  }
+  return metrics;
+}
+
 interface RawAnalyticsListing {
   listingId?: string | null;
   title?: string | null;

@@ -20,10 +20,14 @@ import {
   Briefcase,
   Package,
   GraduationCap,
+  Home,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import { TUTOR_SUBJECTS } from '@/lib/filter-definitions';
+import { createClient } from '@/lib/supabase/client';
+import { fetchToletRequestsAsCustomer } from '@/lib/tolet-service';
+import type { ToletRequest } from '@/lib/tolet-types';
 
 const STATUS_CONFIGS = {
   new: { label: 'নতুন', badgeClass: 'bg-sky-50 text-sky-900 border-sky-200', icon: FileText },
@@ -39,6 +43,8 @@ const STATUS_CONFIGS = {
 
 export default function RequestsPage() {
   const { requests, user } = useAuth();
+  const [toletRequests, setToletRequests] = useState<ToletRequest[]>([]);
+  const [loadingTolet, setLoadingTolet] = useState(true);
   const [supportRequested, setSupportRequested] = useState<string | null>(null);
   const [cancellingServiceId, setCancellingServiceId] = useState<string | null>(null);
   const [cancelledServiceIds, setCancelledServiceIds] = useState<Set<string>>(() => new Set());
@@ -93,7 +99,7 @@ export default function RequestsPage() {
     }
   };
 
-  const allEmpty = requests.length === 0;
+  const allEmpty = requests.length === 0 && toletRequests.length === 0;
 
   return (
     <div className="space-y-5">
@@ -150,6 +156,41 @@ export default function RequestsPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {toletRequests.length > 0 && (
+              <>
+                <h2 className="text-sm font-bold text-ink-900 pt-3">বাসা দেখার অনুরোধ</h2>
+                {toletRequests.map((req) => {
+                  const statusConf = STATUS_CONFIGS[req.status] || STATUS_CONFIGS.submitted;
+                  const StatusIcon = statusConf.icon;
+                  return (
+                    <div key={req.id} className="bg-white rounded-2xl border border-brand-100 p-5 sm:p-6">
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                        <div>
+                          <span className="text-[11px] font-semibold text-brand-700">
+                            অনুরোধ আইডি: #{req.id}
+                          </span>
+                          <h3 className="text-base font-bold text-ink-900 mt-1">বাসা দেখার অনুরোধ</h3>
+                          <p className="text-xs text-ink-500 mt-1">
+                            বিজ্ঞাপন: #{req.listingId}
+                          </p>
+                        </div>
+                        <div className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${statusConf.badgeClass}`}>
+                          <StatusIcon className="w-3.5 h-3.5" />
+                          <span>{statusConf.label}</span>
+                        </div>
+                      </div>
+                      {req.message && (
+                        <p className="mt-3 text-xs text-ink-700">{req.message}</p>
+                      )}
+                      <p className="mt-3 pt-3 border-t border-brand-100 text-xs text-ink-500">
+                        জমার তারিখ: {new Date(req.createdAt).toLocaleDateString('bn-BD')}
+                      </p>
+                    </div>
+                  );
+                })}
+              </>
+            )}
+
             {/* GENERIC SERVICE REQUESTS */}
             {requests.length > 0 && (
               <>

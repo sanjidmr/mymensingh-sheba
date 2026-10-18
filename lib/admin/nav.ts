@@ -9,12 +9,13 @@ import {
   BusFront,
   Router,
   ClipboardList,
+  ClipboardCheck,
   Home,
   Car,
+  Coins,
   MessageSquare,
   Flag,
   Users,
-  ShieldCheck,
   Star,
   Bell,
   Activity,
@@ -77,6 +78,13 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     title: 'Marketplace Management',
     items: [
       {
+        href: '/admin/approvals',
+        label: 'সকল অনুমোদন',
+        icon: ClipboardCheck,
+        badgeKey: 'verifications',
+        description: 'সব ধরনের অপেক্ষমাণ পোস্ট ও প্রোফাইল এক জায়গায় অনুমোদন করুন',
+      },
+      {
         href: '/admin/posts',
         label: 'পোস্ট ও অনুমোদন',
         icon: FileText,
@@ -100,6 +108,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         label: 'রক্তদাতা প্রোফাইল',
         icon: Droplet,
         description: 'প্রোফাইল, উপলভ্যতা ও মডারেশন',
+      },
+      {
+        href: '/admin/verifications',
+        label: 'গৃহশিক্ষক প্রোফাইল',
+        icon: GraduationCap,
+        description: 'সব গৃহশিক্ষক প্রোফাইল, তথ্য ও প্রকাশনার অবস্থা',
       },
       {
         href: '/admin/emergency-contacts',
@@ -167,6 +181,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: MousePointerClick,
         description: 'পেজ ভিউ, ভিজিটর, ট্রাফিক সোর্স ও CTA ক্লিক',
       },
+      {
+        href: '/admin/finance',
+        label: 'আর্থিক হিসাব',
+        icon: Coins,
+        description: 'সার্ভিসভিত্তিক আয়, বকেয়া ও হিসাবের রেকর্ড',
+      },
     ],
   },
   {
@@ -185,13 +205,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: Flag,
         badgeKey: 'reports',
         description: 'অভিযোগ পর্যালোচনা ও সমাধান',
-      },
-      {
-        href: '/admin/verifications',
-        label: 'ভেরিফিকেশন',
-        icon: ShieldCheck,
-        badgeKey: 'verifications',
-        description: 'শিক্ষক ও বাসা মালিকের প্রোফাইল যাচাই',
       },
       {
         href: '/admin/reviews',

@@ -282,4 +282,136 @@
       animation: none;
     }
   }
+
+  /* ------------------------------------------------------------------ */
+  /* Site preloader — the first-paint splash for the public site.        */
+  /* Pure CSS: one rotating conic ring, a soft landscape silhouette and  */
+  /* a plain white field. No images beyond the existing logo.            */
+  /* ------------------------------------------------------------------ */
+  @keyframes mms-splash-spin {
+    to { transform: rotate(1turn); }
+  }
+
+  @keyframes mms-splash-out {
+    to { opacity: 0; visibility: hidden; }
+  }
+
+  /* Safety net: if the client bundle never hydrates, the splash must     */
+  /* still step aside so the server-rendered page underneath is usable.   */
+  @keyframes mms-splash-failsafe {
+    0%, 90% { opacity: 1; }
+    100% { opacity: 0; visibility: hidden; }
+  }
+
+  .mms-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    background-color: #ffffff;
+  }
+
+  /* Only the boot splash self-dismisses. An inline loading state (e.g. while a
+     session is restored) stays on screen until the thing it awaits resolves. */
+  .mms-splash-failsafe {
+    animation: mms-splash-failsafe 6s ease forwards;
+  }
+
+  .mms-splash-exit {
+    animation: mms-splash-out 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    pointer-events: none;
+  }
+
+  .mms-splash-center {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.375rem;
+    padding: 1.5rem 1.5rem 5.5rem;
+    text-align: center;
+  }
+
+  /* The logo PNG carries transparent padding. This frame crops to the inked
+     wordmark (its bounding box inside the 1536×1024 file) so the mark sits on
+     the optical centre instead of floating inside the file's blank box. */
+  .mms-splash-logo {
+    position: relative;
+    display: block;
+    width: 10.5rem;
+    aspect-ratio: 1204 / 660;
+    overflow: hidden;
+  }
+
+  .mms-splash-logo img {
+    position: absolute;
+    top: -29.7%;
+    left: -13.95%;
+    width: 127.57%;
+    max-width: none;
+    height: auto;
+  }
+
+  .mms-splash-tagline {
+    font-size: 0.9375rem;
+    font-weight: 500;
+    letter-spacing: 0.015em;
+    line-height: 1.6;
+    color: var(--color-ink-500);
+  }
+
+  /* A thin ring: brand green sweeping almost the full circle, closed by a
+     single subtle red notch that echoes the red সেবা in the logo. */
+  .mms-splash-spinner {
+    --mms-spinner-size: 2.125rem;
+    --mms-spinner-ring: 3px;
+    width: var(--mms-spinner-size);
+    height: var(--mms-spinner-size);
+    border-radius: 9999px;
+    background:
+      conic-gradient(
+        from 0turn,
+        transparent 0turn 0.28turn,
+        var(--color-brand-600) 0.28turn 0.95turn,
+        #e0242c 0.95turn 1turn
+      ),
+      conic-gradient(var(--color-brand-100) 0 1turn);
+    -webkit-mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - var(--mms-spinner-ring)),
+      #000 calc(100% - var(--mms-spinner-ring))
+    );
+    mask: radial-gradient(
+      farthest-side,
+      transparent calc(100% - var(--mms-spinner-ring)),
+      #000 calc(100% - var(--mms-spinner-ring))
+    );
+    animation: mms-splash-spin 0.85s linear infinite;
+  }
+
+  .mms-splash-landscape {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: 5.5rem;
+    pointer-events: none;
+  }
+
+  @media (min-width: 640px) {
+    .mms-splash-center { gap: 1.75rem; padding-bottom: 7rem; }
+    .mms-splash-logo { width: 13rem; }
+    .mms-splash-tagline { font-size: 1.0625rem; }
+    .mms-splash-spinner { --mms-spinner-size: 2.5rem; }
+    .mms-splash-landscape { height: 8.5rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Reduced motion gets the content, not the splash choreography. */
+    .mms-splash-failsafe { animation-duration: 0.001s; }
+    .mms-splash-exit { animation-duration: 0.001s; }
+  }
 }

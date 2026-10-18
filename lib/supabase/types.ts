@@ -2,7 +2,7 @@ export type UserRole = 'customer' | 'admin';
 
 export type UserAccountStatus = 'active' | 'suspended' | 'blocked';
 
-export type ServiceProfileStatus = 'draft' | 'pending_approval' | 'approved' | 'paused' | 'suspended';
+export type ServiceProfileStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'paused' | 'suspended';
 
 export type TutorProfileStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'paused' | 'suspended';
 export type TutorTeachingMode = 'home' | 'online' | 'both';

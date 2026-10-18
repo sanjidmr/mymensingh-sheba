@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   Users,
@@ -33,6 +34,7 @@ const SERVICE_STATUS_LABELS: Record<ServiceProfileStatus, string> = {
   draft: 'খসড়া',
   pending_approval: 'পর্যালোচনায়',
   approved: 'সক্রিয়',
+  rejected: 'প্রত্যাখ্যাত',
   paused: 'বিরতি',
   suspended: 'নিষ্ক্রিয়',
 };
@@ -151,7 +153,11 @@ export default function AdminUsersPage() {
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2 mb-1">
-                      <h3 className="font-bold text-slate-900 text-base">{u.fullName}</h3>
+                      <h3 className="font-bold text-slate-900 text-base">
+                        <Link href={`/admin/users/${u.id}`} className="hover:text-brand-800 hover:underline">
+                          {u.fullName}
+                        </Link>
+                      </h3>
                       <span className="text-xs text-slate-500">ফোন: {u.phone}</span>
                       {u.email && <span className="text-xs text-slate-500">ইমেইল: {u.email}</span>}
                       <span className="text-[11px] text-slate-500">যোগদান: {new Date(u.createdAt).toLocaleDateString('bn-BD')}</span>

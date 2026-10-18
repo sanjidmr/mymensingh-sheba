@@ -1,4 +1,5 @@
-import { createServerSideClient } from '@/lib/supabase/server';
+import { createClient } from '@supabase/supabase-js';
+import { cache } from 'react';
 
 /**
  * Public read of the hero carousel.
@@ -18,9 +19,17 @@ export interface PublicHeroSlide {
   caption: string;
 }
 
-export async function fetchPublicHeroSlides(): Promise<PublicHeroSlide[] | null> {
-  const client = await createServerSideClient();
-  if (!client) return null;
+export const fetchPublicHeroSlides = cache(async (): Promise<PublicHeroSlide[] | null> => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  const client = createClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
 
   const { data, error } = await client
     .from('hero_slides')
@@ -29,10 +38,14 @@ export async function fetchPublicHeroSlides(): Promise<PublicHeroSlide[] | null>
     .order('sort_order', { ascending: true })
     .limit(20);
 
-  if (error || !Array.isArray(data) || data.length === 0) return null;
+  if (error) {
+    console.error('Public hero slides could not be loaded; using built-in slides.', error.message);
+    return null;
+  }
+  if (!Array.isArray(data) || data.length === 0) return null;
 
   return data.map((row) => ({
     image: row.image_url,
     caption: row.caption_bn,
   }));
-}
+});

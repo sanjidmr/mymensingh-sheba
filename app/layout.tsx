@@ -4,6 +4,7 @@ import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
 import PageViewTracker from '@/components/analytics/PageViewTracker';
 import MobileBottomNav from '@/components/home/MobileBottomNav';
+import SitePreloader from '@/components/site/SitePreloader';
 import { getSiteContentOverrides } from '@/lib/site-content-server';
 
 export const viewport: Viewport = {
@@ -61,6 +62,7 @@ export default function RootLayout({
   return (
     <html lang="bn" translate="no" className={`${notoBengali.variable} scroll-smooth`}>
       <body className="min-h-screen bg-mist-50 text-ink-900 antialiased font-sans selection:bg-accent-200 selection:text-brand-800">
+        <SitePreloader />
         <PageViewTracker />
         <ClientProviders>
           {children}

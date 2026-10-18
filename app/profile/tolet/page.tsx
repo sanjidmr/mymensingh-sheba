@@ -25,6 +25,7 @@ import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import {
   fetchMyListings,
+  fetchRequestsForListing,
   archiveOwnListing,
   restoreOwnListing,
   permanentlyDeleteOwnListing,
@@ -107,7 +108,13 @@ export default function MyToletListingsPage() {
   };
 
   const handlePermanentDelete = async (listing: ToletListing) => {
-    const linkedRequests = requests.filter((request) => request.listingId === listing.id).length;
+    let linkedRequests: number;
+    try {
+      linkedRequests = (await fetchRequestsForListing(listing.id)).length;
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'সংযুক্ত অনুরোধ যাচাই করা যায়নি।');
+      return;
+    }
     const relatedDataNotice = linkedRequests
       ? `\n\nএর সঙ্গে যুক্ত ${linkedRequests}টি ভাড়াটিয়ার অনুরোধ ও সংশ্লিষ্ট রিপোর্টও মুছে যাবে।`
       : '\n\nএর সঙ্গে যুক্ত ভাড়াটিয়ার অনুরোধ ও রিপোর্টও মুছে যাবে।';

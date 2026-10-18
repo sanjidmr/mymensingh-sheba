@@ -36,9 +36,11 @@ import { fetchPublicHeroSlides } from '@/lib/hero-service';
  * rendering. With no overrides saved it renders exactly the built-in layout.
  */
 export default async function HomePage() {
-  const overrides = await getSiteContentOverrides();
+  const [overrides, heroSlides] = await Promise.all([
+    getSiteContentOverrides(),
+    fetchPublicHeroSlides(),
+  ]);
   const categories = mergeHomepageCategories(overrides);
-  const heroSlides = await fetchPublicHeroSlides();
   const visible = (key: Parameters<typeof isHomepageSectionVisible>[0]) =>
     isHomepageSectionVisible(key, overrides);
 

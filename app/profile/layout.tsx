@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ADMIN_HOME } from '@/lib/auth-routes';
+import SplashScreen from '@/components/site/SplashScreen';
 // ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
 import { DEV_AUTH_BYPASS } from '@/lib/dev-auth-bypass';
 
@@ -35,11 +36,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
   }
 
   if (isLoading || !user || user.role === 'admin') {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-mist-50 text-sm text-slate-500">
-        লোড হচ্ছে...
-      </div>
-    );
+    return <SplashScreen />;
   }
 
   return <>{children}</>;

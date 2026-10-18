@@ -110,6 +110,7 @@ export interface ServiceListing {
   /** null = unknown, which is different from false ("definitely not air-con"). */
   hasAc?: boolean;
   driverIncluded?: boolean;
+  driverNameBn?: string;
   /** "সকাল ৭টা – বিকাল ৬টা", "শুধু রাত্রি". */
   availableTimeBn?: string;
   /** Explicit rate used only for an estimated vehicle booking fare. */

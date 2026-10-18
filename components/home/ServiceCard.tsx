@@ -114,11 +114,8 @@ export default function ServiceCard({
           </div>
         )}
 
-        <div className={`mt-auto flex items-center justify-between gap-1 border-t border-brand-100 sm:gap-3 ${compact ? 'pt-1.5 sm:pt-2' : 'pt-3'}`}>
+        <div className={`mt-auto flex items-center border-t border-brand-100 ${compact ? 'pt-1.5 sm:pt-2' : 'pt-3'}`}>
           <span className={`truncate font-bold ${red ? 'text-red-700' : 'text-brand-800'} ${compact ? 'text-[10.5px] sm:text-xs' : 'text-sm'}`}>{card.footer}</span>
-          <span className={`hidden shrink-0 items-center gap-1 text-xs font-semibold opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:inline-flex ${red ? 'text-red-600' : 'text-brand-600'} ${compact ? 'text-[11px]' : ''}`}>
-            {card.footerLabel}
-          </span>
         </div>
       </div>
     </Link>

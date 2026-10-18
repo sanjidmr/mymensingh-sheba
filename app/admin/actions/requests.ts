@@ -300,6 +300,52 @@ export async function updateVehicleRequestManagement(input: {
   });
 }
 
+export async function setToletRequestStatus(
+  requestId: string,
+  status: string
+): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      return { ok: false, error: 'রিকোয়েস্ট আইডি সঠিক নয়।' };
+    }
+    if (!['submitted', 'contacted', 'completed', 'cancelled'].includes(status)) {
+      return { ok: false, error: 'অবৈধ রিকোয়েস্ট অবস্থা।' };
+    }
+
+    const { data, error } = await client
+      .from('tolet_requests')
+      .update({ status })
+      .eq('id', requestId)
+      .select('id')
+      .maybeSingle();
+    if (error) return { ok: false, error: `রিকোয়েস্টের স্ট্যাটাস সংরক্ষণ ব্যর্থ হয়েছে: ${error.message}` };
+    if (!data) return { ok: false, error: 'রিকোয়েস্টটি পাওয়া যায়নি।' };
+
+    revalidatePath('/admin/tolet');
+    return { ok: true, message: 'রিকোয়েস্টের স্ট্যাটাস আপডেট হয়েছে।' };
+  });
+}
+
+export async function deleteToletRequest(requestId: string): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      return { ok: false, error: 'রিকোয়েস্ট আইডি সঠিক নয়।' };
+    }
+
+    const { data, error } = await client
+      .from('tolet_requests')
+      .delete()
+      .eq('id', requestId)
+      .select('id')
+      .maybeSingle();
+    if (error) return { ok: false, error: `রিকোয়েস্ট মুছে ফেলা ব্যর্থ হয়েছে: ${error.message}` };
+    if (!data) return { ok: false, error: 'রিকোয়েস্টটি পাওয়া যায়নি।' };
+
+    revalidatePath('/admin/tolet');
+    return { ok: true, message: 'রিকোয়েস্টটি মুছে ফেলা হয়েছে।' };
+  });
+}
+
 export async function deleteServiceRequest(requestId: string): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     const { error } = await client.from('service_requests').delete().eq('id', requestId);

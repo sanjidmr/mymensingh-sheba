@@ -23,6 +23,7 @@ function validate(category: ServiceCategory, input: ServiceListingInput): string
   }
   if ((input.operatorBn?.length ?? 0) > 160) return 'অপারেটরের নাম সর্বোচ্চ ১৬০ অক্ষরের মধ্যে লিখুন।';
   if ((input.addressBn?.length ?? 0) > 400) return 'ঠিকানা সর্বোচ্চ ৪০০ অক্ষরের মধ্যে লিখুন।';
+  if ((input.driverNameBn?.trim().length ?? 0) > 120) return 'চালকের নাম সর্বোচ্চ ১২০ অক্ষরের মধ্যে লিখুন।';
   if (!input.isActive && input.isFeatured) return 'নিষ্ক্রিয় তালিকাকে ফিচার করা যাবে না।';
   if (!Array.isArray(input.areaIds) || input.areaIds.length > 100 || input.areaIds.some((id) => typeof id !== 'string' || id.length > 100)) return 'এলাকার তালিকা সঠিক নয়।';
   if (!Array.isArray(input.tags) || input.tags.length > 60 || input.tags.some((tag) => typeof tag !== 'string' || !tag.trim() || tag.length > 120)) return 'সেবা/প্যাকেজ/সুবিধার তালিকা সঠিক নয়।';
@@ -102,6 +103,7 @@ function databaseInput(input: ServiceListingInput) {
     model_year: input.modelYear ?? null,
     has_ac: input.hasAc ?? null,
     driver_included: input.driverIncluded ?? null,
+    driver_name_bn: input.category === 'vehicle' ? input.driverNameBn?.trim() || null : null,
     available_time_bn: input.availableTimeBn?.trim() || null,
     price_note_bn: input.priceNoteBn?.trim() || null,
     rate_per_km: input.category === 'vehicle' ? input.ratePerKm ?? null : null,
@@ -245,7 +247,23 @@ export async function moderateAdminServiceListing(
       .maybeSingle();
     if (error) return { ok: false, error: `Մডারেশন সংরক্ষণ ব্যর্থ হয়েছে: ${error.message}` };
     if (!data) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    const { error: notificationError } = await client.from('notifications').insert({
+      user_id: data.owner_id,
+      target_role: 'customer',
+      title: status === 'approved' ? 'সার্ভিস তালিকা অনুমোদিত' : 'সার্ভিস তালিকা প্রত্যাখ্যাত',
+      body: status === 'rejected' ? reason : 'আপনার সার্ভিস তালিকার পর্যালোচনা সম্পন্ন হয়েছে।',
+      type: status === 'approved' ? 'success' : 'warning',
+      related_type: 'service_listing',
+      related_id: data.id,
+    });
     revalidateCategory(data.category as ServiceCategory, data.slug);
-    return { ok: true, message: status === 'approved' ? 'তালিকাটি অনুমোদিত ও প্রকাশিত হয়েছে।' : 'তালিকাটি প্রত্যাখ্যান করা হয়েছে।' };
+    return {
+      ok: true,
+      message: notificationError
+        ? 'তালিকার অবস্থা সংরক্ষিত হয়েছে, তবে ব্যবহারকারীকে নোটিফিকেশন পাঠানো যায়নি।'
+        : status === 'approved'
+          ? 'তালিকাটি অনুমোদিত ও প্রকাশিত হয়েছে এবং ব্যবহারকারীকে জানানো হয়েছে।'
+          : 'তালিকাটি প্রত্যাখ্যান করা হয়েছে এবং ব্যবহারকারীকে কারণ জানানো হয়েছে।',
+    };
   });
 }

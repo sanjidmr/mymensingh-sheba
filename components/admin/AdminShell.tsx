@@ -76,6 +76,21 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
     });
   }, [pathname]);
 
+  // A <details> menu only closes when its own <summary> is clicked. Tapping
+  // anywhere else on the page should dismiss it too, so close every open
+  // admin menu whenever a pointer lands outside it.
+  useEffect(() => {
+    const closeMenusOnOutsideTap = (event: PointerEvent) => {
+      const target = event.target as Node | null;
+      if (!target) return;
+      document.querySelectorAll<HTMLDetailsElement>('[data-admin-menu][open]').forEach((menu) => {
+        if (!menu.contains(target)) menu.open = false;
+      });
+    };
+    document.addEventListener('pointerdown', closeMenusOnOutsideTap);
+    return () => document.removeEventListener('pointerdown', closeMenusOnOutsideTap);
+  }, []);
+
   const handleSignOut = useCallback(async () => {
     if (!isSupabaseConfigured || signingOut) return;
     setSigningOut(true);

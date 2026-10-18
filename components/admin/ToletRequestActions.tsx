@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 import { Check, ChevronDown, Trash2 } from 'lucide-react'
-import type { AdminToletRequestRow } from '@/lib/admin/queries'
+import type { ToletRequest, ToletRequestStatus } from '@/lib/tolet-types'
 import {
   setToletRequestStatus,
   deleteToletRequest,
@@ -14,11 +14,19 @@ import { Button } from '@/components/ui/Button'
 import { cn } from '@/lib/utils'
 import { STATUS_OPTIONS } from '@/lib/admin/format'
 
-export default function ToletRequestActions({ request }: { request: AdminToletRequestRow }) {
+export default function ToletRequestActions({
+  request,
+  onUpdated,
+  onDeleted,
+}: {
+  request: ToletRequest
+  onUpdated?: (requestId: string, status: ToletRequestStatus) => void
+  onDeleted?: (requestId: string) => void
+}) {
   const router = useRouter()
   const { notify } = useToast()
   const [statusOpen, setStatusOpen] = useState(false)
-  const [status, setStatus] = useState(request.status)
+  const [status, setStatus] = useState<ToletRequestStatus>(request.status)
   const [deleting, setDeleting] = useState(false)
   const [busy, setBusy] = useState(false)
 
@@ -40,16 +48,22 @@ export default function ToletRequestActions({ request }: { request: AdminToletRe
 
   const saveStatus = async () => {
     const ok = await run(() => setToletRequestStatus(request.id, status))
-    if (ok) setStatusOpen(false)
+    if (ok) {
+      setStatusOpen(false)
+      onUpdated?.(request.id, status)
+    }
   }
 
   const confirmDelete = async () => {
     const ok = await run(() => deleteToletRequest(request.id))
-    if (ok) setDeleting(false)
+    if (ok) {
+      setDeleting(false)
+      onDeleted?.(request.id)
+    }
   }
 
   const statusOptions = STATUS_OPTIONS.tolet_requests
-  const currentStatus = statusOptions.find((o) => o.value === request.status)
+  const currentStatus = statusOptions.find((o) => o.value === status)
 
   return (
     <>
@@ -105,7 +119,10 @@ export default function ToletRequestActions({ request }: { request: AdminToletRe
               <select
                 id="tolet-request-status"
                 value={status}
-                onChange={(e) => setStatus(e.target.value)}
+                onChange={(e) => {
+                  const nextStatus = statusOptions.find((option) => option.value === e.target.value)
+                  if (nextStatus) setStatus(nextStatus.value as ToletRequestStatus)
+                }}
                 className="h-11 w-full rounded-lg border border-mist-200 bg-white px-3 text-sm text-ink-900"
               >
                 {statusOptions.map((o) => (
@@ -130,7 +147,7 @@ export default function ToletRequestActions({ request }: { request: AdminToletRe
         title="অনুসন্ধানটি মুছে ফেলবেন?"
         description={
           <>
-            <span className="font-semibold">{request.customer_name}</span> এর অনুসন্ধানটি
+            <span className="font-semibold">{request.customerName}</span> এর অনুসন্ধানটি
             স্থায়ীভাবে মুছে যাবে।
           </>
         }

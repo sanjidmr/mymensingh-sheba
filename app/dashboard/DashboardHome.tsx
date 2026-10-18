@@ -1,12 +1,14 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { BookOpen, Briefcase, Camera, CheckCircle2, CircleAlert, ClipboardList, Clock, Eye, FileText, GraduationCap, Heart, Home, Loader2, MapPin, Mail, Newspaper, Phone, PhoneCall, PlusCircle, ShieldCheck, ShoppingBag, Wifi, XCircle } from 'lucide-react';
+import { BookOpen, Camera, CheckCircle2, CircleAlert, Clock, Eye, FileText, GraduationCap, Heart, Home, Loader2, MapPin, Mail, Phone, PhoneCall, PlusCircle, Settings, ShieldCheck, UserRound, Wifi, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { fetchMyPostViewCounts, fetchMyPosts } from '@/lib/catalog-service';
+import { fetchMyPostViewCounts, fetchMyPosts, fetchMyProfileViewCounts, fetchMyServiceListings } from '@/lib/catalog-service';
 import { fetchMyListings } from '@/lib/tolet-service';
-import { bnRelativeTime, type CommunityPost } from '@/lib/catalog-types';
+import { bnRelativeTime, SERVICE_LISTING_STATUS_META, type CommunityPost, type ServiceListing } from '@/lib/catalog-types';
 import type { ToletListing, ToletListingStats } from '@/lib/tolet-types';
+import { TUTOR_STATUS_META } from '@/lib/home-tutor-types';
+import { DONOR_STATUS_META } from '@/lib/blood-donor-types';
 import { fetchOwnListingStats } from '@/lib/tolet-tracking';
 import type { ServiceRequestStatus } from '@/lib/supabase/types';
 import { mergeRows } from '@/lib/dashboard';
@@ -27,11 +29,13 @@ const REQUEST_STATUS_LABEL: Record<ServiceRequestStatus, string> = {
 };
 
 export default function DashboardHome() {
-  const { user, requests, notifications, isLoading: authLoading, uploadAvatar } = useAuth();
+  const { user, requests, notifications, isLoading: authLoading, uploadAvatar, homeTutorProfile, bloodDonorProfile } = useAuth();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [listings, setListings] = useState<ToletListing[]>([]);
+  const [serviceListings, setServiceListings] = useState<ServiceListing[]>([]);
   const [listingStats, setListingStats] = useState<Record<string, ToletListingStats>>({});
   const [postViews, setPostViews] = useState<Record<string, number>>({});
+  const [profileViews, setProfileViews] = useState<Record<string, number>>({});
   const [analyticsError, setAnalyticsError] = useState('');
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -67,12 +71,21 @@ export default function DashboardHome() {
         }
         const views = await fetchMyPostViewCounts();
         if (active) setPostViews(views);
+        const profViews = await fetchMyProfileViewCounts();
+        if (active) setProfileViews(profViews);
       } catch (error) {
         if (active) {
           setLoadError(error instanceof Error ? error.message : 'আপনার পোস্ট লোড করা যায়নি।');
         }
       } finally {
         if (active) setLoaded(true);
+      }
+      // WiFi / coaching ids are best-effort; a failure must never block the overview.
+      try {
+        const myServices = await fetchMyServiceListings(true);
+        if (active) setServiceListings(myServices);
+      } catch {
+        if (active) setServiceListings([]);
       }
     })();
     return () => { active = false; };
@@ -109,6 +122,59 @@ export default function DashboardHome() {
     }
     return { total: rows.length, pending, approved, rejected, active };
   }, [rows]);
+
+  const profileIds = useMemo(() => {
+    type IdRow = {
+      key: string;
+      icon: typeof FileText;
+      typeLabel: string;
+      title: string;
+      href: string;
+      statusLabel: string;
+      statusClass: string;
+      views?: number;
+    };
+    const idRows: IdRow[] = [];
+    if (homeTutorProfile) {
+      const meta = TUTOR_STATUS_META[homeTutorProfile.status];
+      idRows.push({
+        key: 'tutor',
+        icon: GraduationCap,
+        typeLabel: 'গৃহশিক্ষক প্রোফাইল',
+        title: homeTutorProfile.fullName,
+        href: '/profile/home-tutor',
+        statusLabel: meta.labelBn,
+        statusClass: meta.badge,
+        views: profileViews[homeTutorProfile.id],
+      });
+    }
+    if (bloodDonorProfile) {
+      const meta = DONOR_STATUS_META[bloodDonorProfile.status];
+      idRows.push({
+        key: 'donor',
+        icon: Heart,
+        typeLabel: `রক্তদাতা প্রোফাইল · ${bloodDonorProfile.bloodGroup}`,
+        title: bloodDonorProfile.fullName,
+        href: '/profile/blood-donor',
+        statusLabel: meta.labelBn,
+        statusClass: meta.badge,
+      });
+    }
+    for (const sl of serviceListings) {
+      const meta = SERVICE_LISTING_STATUS_META[sl.status ?? 'pending'];
+      idRows.push({
+        key: `service-${sl.id}`,
+        icon: sl.category === 'wifi' ? Wifi : BookOpen,
+        typeLabel: sl.category === 'wifi' ? 'WiFi আইডি' : 'কোচিং আইডি',
+        title: sl.titleBn,
+        href: '/dashboard/service-listings',
+        statusLabel: meta.labelBn,
+        statusClass: meta.className,
+        views: profileViews[sl.slug],
+      });
+    }
+    return idRows;
+  }, [homeTutorProfile, bloodDonorProfile, serviceListings, profileViews]);
   const activity = [
     ...rows.map((row) => ({
       id: `post-${row.source}-${row.id}`,
@@ -212,12 +278,51 @@ export default function DashboardHome() {
         {loadError ? (
           <p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-3.5 py-3 text-[12.5px] leading-relaxed text-rose-800">{loadError}</p>
         ) : (
-          <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
             <Stat href="/dashboard/posts" icon={FileText} label="মোট পোস্ট" v={stats.total} ic="text-brand-600" />
             <Stat href="/dashboard/posts?status=approved" icon={CheckCircle2} label="প্রকাশিত" v={stats.approved} ic="text-brand-600" />
             <Stat href="/dashboard/posts?status=pending" icon={Clock} label="অনুমোদনের অপেক্ষায়" v={stats.pending} ic="text-amber-600" />
             <Stat href="/dashboard/posts?status=rejected" icon={XCircle} label="সম্পাদনা প্রয়োজন" v={stats.rejected} ic="text-red-600" />
+            <Stat href="/dashboard/profiles" icon={UserRound} label="খোলা প্রোফাইল" v={profileIds.length} ic="text-brand-600" />
           </div>
+        )}
+      </section>
+      <section aria-labelledby="ids-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
+        <div className="flex items-center justify-between gap-2">
+          <h2 id="ids-h" className="text-[13px] font-extrabold text-ink-900">আমার প্রোফাইল ও আইডি</h2>
+          <Link href="/dashboard/profiles" className={`text-[11px] font-bold text-brand-700 hover:underline ${LIGHT_FOCUS}`}>প্রোফাইল ব্যবস্থাপনা</Link>
+        </div>
+        {profileIds.length === 0 ? (
+          <div className="mt-3 rounded-xl border border-dashed border-brand-200 bg-mist-50 px-4 py-5 text-center">
+            <p className="text-[12.5px] font-bold text-ink-900">এখনো কোনো প্রোফাইল বা আইডি খোলা হয়নি</p>
+            <p className="mx-auto mt-1 max-w-sm text-[11.5px] leading-relaxed text-ink-500">গৃহশিক্ষক, রক্তদাতা, WiFi বা কোচিং প্রোফাইল খুললে এখানে অবস্থা ও দেখার সংখ্যা দেখা যাবে।</p>
+            <Link href="/dashboard/profiles" className={`mt-3 inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-brand-700 px-4 text-[12px] font-bold text-white hover:bg-brand-800 ${LIGHT_FOCUS}`}>প্রোফাইল খুলুন</Link>
+          </div>
+        ) : (
+          <ul className="mt-2 divide-y divide-brand-100/70">
+            {profileIds.map((row) => {
+              const Icon = row.icon;
+              return (
+                <li key={row.key}>
+                  <Link href={row.href} className={`flex items-center gap-3 py-2.5 ${LIGHT_FOCUS}`}>
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="flex items-center gap-1.5">
+                        <span className="shrink-0 text-[10px] font-extrabold text-brand-600">{row.typeLabel}</span>
+                        <span className="truncate text-[12.5px] font-bold text-ink-900">{row.title}</span>
+                      </span>
+                      {typeof row.views === 'number' && (
+                        <span className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
+                          <span className="inline-flex items-center gap-0.5 text-[10.5px] font-semibold text-brand-600"><Eye className="h-3 w-3" aria-hidden="true" />দেখা {row.views}</span>
+                        </span>
+                      )}
+                    </span>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-extrabold ${row.statusClass}`}>{row.statusLabel}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
         )}
       </section>
       <section aria-labelledby="recent-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
@@ -268,17 +373,14 @@ export default function DashboardHome() {
           </ul>
         )}
       </section>
-      <section aria-labelledby="quick-h">
-        <h2 id="quick-h" className="mb-2 text-[13px] font-extrabold text-ink-900">দ্রুত মেনু</h2>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <Quick href="/profile/tolet/new" icon={Home} label="বাসা ভাড়া" />
-          <Quick href="/buy-sell/create" icon={ShoppingBag} label="কেনাবেচা" />
-          <Quick href="/jobs/create" icon={Briefcase} label="চাকরি" />
-          <Quick href="/news/create" icon={Newspaper} label="সংবাদ" />
-          <Quick href="/profile/home-tutor/setup" icon={GraduationCap} label="গৃহশিক্ষক" />
-          <Quick href="/profile/blood-donor/setup" icon={Heart} label="রক্তদাতা" />
-          <Quick href="/dashboard/wifi/new" icon={Wifi} label="WiFi" />
-          <Quick href="/dashboard/coaching/new" icon={BookOpen} label="কোচিং সেন্টার" />
+      <section aria-labelledby="quick-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
+        <h2 id="quick-h" className="text-[13px] font-extrabold text-ink-900">দ্রুত মেনু</h2>
+        <div className="mt-3 grid grid-cols-3 gap-1.5 sm:grid-cols-5 sm:gap-2">
+          <QuickSmall href="/dashboard/posts" icon={FileText} label="আমার পোস্ট" />
+          <QuickSmall href="/dashboard/profiles" icon={UserRound} label="প্রোফাইল ব্যবস্থাপনা" />
+          <QuickSmall href="/dashboard/messages" icon={Mail} label="বার্তা" />
+          <QuickSmall href="/dashboard/complaints" icon={CircleAlert} label="অভিযোগ" />
+          <QuickSmall href="/dashboard/profile" icon={Settings} label="প্রোফাইল সেটিংস" />
         </div>
       </section>
       <section aria-labelledby="activity-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
@@ -313,11 +415,13 @@ function Stat({ href, icon: Icon, label, v, ic }: { href: string; icon: typeof F
     </Link>
   );
 }
-function Quick({ href, icon: Icon, label }: { href: string; icon: typeof FileText; label: string }) {
+function QuickSmall({ href, icon: Icon, label }: { href: string; icon: typeof FileText; label: string }) {
   return (
-    <Link href={href} className={`flex min-h-20 items-center gap-2 rounded-xl border border-brand-100 bg-white p-3 transition-colors hover:border-brand-300 hover:bg-brand-50/40 ${LIGHT_FOCUS}`}>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><Icon className="h-4 w-4" aria-hidden="true" /></span>
-      <span className="line-clamp-2 text-[12.5px] font-extrabold leading-snug text-ink-900">{label}</span>
+    <Link href={href} className={`group flex min-h-[74px] flex-col items-center justify-center gap-1.5 rounded-xl border border-brand-100 bg-mist-50/50 px-1.5 py-2.5 text-center transition-colors hover:border-brand-300 hover:bg-brand-50 ${LIGHT_FOCUS}`}>
+      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-brand-700 shadow-sm ring-1 ring-brand-100 transition-colors group-hover:bg-brand-100/60">
+        <Icon className="h-4 w-4" aria-hidden="true" />
+      </span>
+      <span className="line-clamp-2 text-[10px] font-bold leading-tight text-ink-800 sm:text-[10.5px]">{label}</span>
     </Link>
   );
 }
