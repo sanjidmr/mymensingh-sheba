@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Phone, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Phone, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/lib/auth-context';
@@ -59,7 +59,6 @@ export default function ForgotPasswordPage() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-xs shadow-xs"
                   >
                     <span>লগইন পেজে ফিরে যান</span>
-                    <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               </div>
@@ -99,7 +98,6 @@ export default function ForgotPasswordPage() {
                   className="w-full py-3 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-sm transition-all shadow-xs flex items-center justify-center gap-2"
                 >
                   <span>{loading ? 'প্রক্রিয়াধীন...' : 'রিসেট কোড পাঠান'}</span>
-                  <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <div className="pt-2 text-center">

@@ -1,16 +1,15 @@
-# Admin Step 7: Curated Catalogs and Vehicle Requests
+# Admin Step 7: Service Directories and Vehicle Requests
 
 ## Routes
 
-- `/admin/catalog` is the overview for the four admin-managed directories.
-- `/admin/catalog/vehicle`, `/admin/catalog/bus`, `/admin/catalog/wifi`, and `/admin/catalog/coaching` provide category-specific search, filters, counts, pagination, create/edit, publication controls, and guarded deletion.
+- `/admin/directories/bus`, `/admin/directories/wifi`, and `/admin/directories/coaching` are the separate admin directory pages.
+- `/admin/directories/vehicle` remains available for the existing vehicle listings.
+- Each category page provides category-specific search, filters, counts, pagination, create/edit, publication controls, and guarded deletion.
 - `/admin/vehicle-requests` and `/admin/vehicle-requests/[id]` provide the request inbox and details.
 
 ## Existing schema reused
 
-No migration or table was added.
-
-`service_listings` is the existing admin-managed directory table. Its category values are `vehicle`, `bus`, `wifi`, and `coaching`. The UI uses its existing identifiers, slugs, titles, descriptions, image/logo URLs, `area_ids`, `tags`, price/fee/speed/fare fields, route fields, vehicle capacity/specification fields, private contact, `is_active`, `is_featured`, and timestamps. Admin listing reads use the existing `fn_admin_service_listings` and `fn_admin_service_listing` RPCs; public listing visibility remains governed by the existing active-row RLS policy. `contact_phone_private` remains excluded from public reads and available to authorized admins through the admin RPC.
+`service_listings` remains the shared table for the four categories: `vehicle`, `bus`, `wifi`, and `coaching`. The directory migration reconciles existing vehicle-price fields and adds bus travel-day, stop, and journey-duration fields where missing; it does not create a separate catalog table or invent a replacement price field. It also requests a PostgREST schema-cache reload to address stale composite results such as the `additional_fee` RPC error. Admin directory reads query `service_listings` directly; the unrelated media library continues to use its storage RPC. `contact_phone_private` remains excluded from public reads and available to authorized admins.
 
 The schema has no dedicated vehicle-kind column, so the admin form stores exactly one selected kind (`গাড়ি`, `অটো`, or `CNG`) in the existing `tags` array. That value drives the existing public kind filter and is validated on the server.
 
@@ -18,7 +17,9 @@ The schema has no dedicated vehicle-kind column, so the admin form stores exactl
 
 ## Workflows and limits
 
-- Directory records are created and edited per category; the form validates shared and category-specific values on the server. Images can use an existing HTTPS/site path or upload to the existing admin-managed `site` storage bucket.
+- Admins create and manage bus listings; customer policies and server-side guards restrict customer-created listings to coaching and WiFi. Coaching/WiFi submissions are owner-linked and enter moderation before public display. Customers can view their listing status and edit their own records; owner edits and coaching/WiFi child-record changes return the listing to pending review.
+- Admins can review, edit, approve/reject, publish/unpublish, and delete directory records, subject to the existing references guard for vehicles. Shared and category-specific form values are validated on the server. Admin images upload to the existing `site` storage bucket.
+- Public directory reads require approved, active listings. Reviews remain separate from listing submissions and retain their existing per-author uniqueness and rating validation.
 - `is_active` controls publication only; there is no verification field. A listing being published does not mean its claims, coverage, pricing, or availability were independently verified.
 - The public directory cards no longer display a verification mark for these records; detail pages explicitly say the information is admin-managed but has no separate verification state.
 - The bus directory displays the stored route, schedule, operator-provided fare, and service type only. There is no seat inventory, reservation, payment, or ticket-booking integration.
@@ -29,4 +30,4 @@ The schema has no dedicated vehicle-kind column, so the admin form stores exactl
 
 ## Validation
 
-Focused TypeScript and ESLint checks cover the Step 7 routes, actions, components, query layer, and bus detail. Live Supabase CRUD/RLS checks require a configured authenticated environment and were not run as part of local validation.
+Focused TypeScript and ESLint checks cover the directory routes, actions, components, query layer, and bus detail. Live Supabase migration, CRUD/RLS, and end-to-end checks require a configured authenticated environment and were not run as part of local validation.

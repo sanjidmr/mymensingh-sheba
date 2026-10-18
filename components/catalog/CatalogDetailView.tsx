@@ -63,7 +63,7 @@ export default function CatalogDetailView({
   const { isAdmin } = useAuth();
   const adminNote = isAdmin ? (
     <Link
-      href={`/admin/catalog/${listing.category}/${listing.id}/edit`}
+      href={`/admin/directories/${listing.category}/${listing.id}/edit`}
       className={`inline-flex min-h-[40px] items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[13px] font-bold text-brand-700 transition-colors hover:bg-mist-50 ${LIGHT_FOCUS}`}
     >
       সম্পাদনা
@@ -124,7 +124,7 @@ export default function CatalogDetailView({
                     <dt className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-400">
                       {fact.label}
                     </dt>
-                    <dd className="mt-0.5 truncate text-[13px] font-bold text-ink-900 sm:text-sm">
+                    <dd className="mt-0.5 break-words text-[13px] font-bold text-ink-900 sm:text-sm">
                       {fact.value}
                     </dd>
                   </div>
@@ -137,6 +137,18 @@ export default function CatalogDetailView({
                 {listing.summaryBn}
               </p>
             )}
+
+            {listing.photos?.filter((photo) => photo && photo !== listing.imageUrl).length ? (
+              <section className="mt-5" aria-label="তালিকার আরও ছবি">
+                <h2 className="mb-2 text-sm font-extrabold text-ink-900">আরও ছবি</h2>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {listing.photos.filter((photo) => photo && photo !== listing.imageUrl).map((photo, index) => (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img key={`${photo}-${index}`} src={photo} alt={`${listing.titleBn} — ছবি ${index + 1}`} className="aspect-[4/3] w-full rounded-lg border border-brand-100 object-cover" loading="lazy" />
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
             {listing.descriptionBn && (
               <div className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-ink-600 sm:text-[15px]">

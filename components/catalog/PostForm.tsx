@@ -36,6 +36,7 @@ import { normalizeBdPhone } from '@/lib/contact-types';
 import {
   JOB_EXPERIENCE,
   JOB_TYPES,
+  MARKET_CATEGORIES,
   MARKET_CONDITIONS,
   NEWS_CATEGORIES,
   tagLabels,
@@ -117,6 +118,14 @@ const MAX_PHOTOS = 5;
 const DRAFT_VERSION = 1;
 
 type PostDraft = CommunityPostDraft;
+
+function normalizeMarketplaceCategory(value: string): string {
+  const category = MARKET_CATEGORIES.find(
+    (item) => item.id === value || item.labelBn === value
+  );
+  if (category) return category.id;
+  return value === 'যানবাহন' ? 'vehicle' : value;
+}
 
 function isPostDraft(value: unknown): value is PostDraft {
   if (typeof value !== 'object' || value === null || !('version' in value) || value.version !== DRAFT_VERSION) {
@@ -317,15 +326,18 @@ export default function PostForm({
         let savedAt: string | null = null;
         if (userId) {
           const result = await loadCommunityPostDraft(kind);
-          if (!result.success) throw new Error('খসড়া লোড করা যায়নি।');
-          parsed = result.data.draft;
-          savedAt = result.data.updatedAt;
+          // A missing or unreadable draft is not the member's problem; the form
+          // simply opens empty. Draft storage is a convenience and must never
+          // block posting.
+          if (result.success) {
+            parsed = result.data.draft;
+            savedAt = result.data.updatedAt;
+          }
         } else {
           const raw = window.localStorage.getItem(draftKey);
           if (raw) parsed = JSON.parse(raw);
         }
-        if (parsed !== null) {
-          if (!isPostDraft(parsed)) throw new Error('খসড়াটি পড়া যায়নি।');
+        if (parsed !== null && isPostDraft(parsed)) {
           if (active && !hasInteractedRef.current) {
             const storedValues = { ...EMPTY };
             for (const key of Object.keys(EMPTY) as (keyof FormValues)[]) {
@@ -349,8 +361,8 @@ export default function PostForm({
             }
           }
         }
-      } catch {
-        if (active) setFormError('খসড়াটি পড়া যায়নি। আবার চেষ্টা করুন।');
+      } catch (error) {
+        console.warn('Post draft load failed', error);
       } finally {
         if (active) setDraftLoadedFor(draftKey);
       }
@@ -376,8 +388,7 @@ export default function PostForm({
           photos.length > 0;
         if (!hasContent) {
           if (userId) {
-            const result = await deleteCommunityPostDraft(kind);
-            if (!result.success) throw new Error('খসড়া মুছে ফেলা যায়নি।');
+            await deleteCommunityPostDraft(kind);
           } else {
             window.localStorage.removeItem(draftKey);
           }
@@ -400,8 +411,11 @@ export default function PostForm({
         };
         if (userId) {
           const result = await saveCommunityPostDraft(kind, draft);
-          if (!result.success) throw new Error('খসড়া সংরক্ষণ করা যায়নি।');
-          setDraftSavedAt(result.data);
+          if (result.success) {
+            setDraftSavedAt(result.data);
+          } else {
+            console.warn('Post draft autosave skipped', result.error);
+          }
         } else {
           window.localStorage.setItem(draftKey, JSON.stringify(draft));
           setDraftSavedAt(savedAt);
@@ -413,8 +427,7 @@ export default function PostForm({
         );
         saved = true;
       } catch (error) {
-        console.error('Post draft autosave failed', error);
-        setFormError('খসড়া সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+        console.warn('Post draft autosave failed', error);
       } finally {
         autosavingRef.current = false;
         setAutosaving(false);
@@ -444,17 +457,25 @@ export default function PostForm({
   function validate(): Errors {
     const next: Errors = {};
     const title = values.title.trim();
-    if (title.length < 8) next.title = 'শিরোনাম কমপক্ষে ৮ অক্ষরের হতে হবে।';
+    if (!title) next.title = 'শিরোনাম লিখুন।';
 
-    if (values.summary.trim().length > 0 && values.summary.trim().length < 20) {
-      next.summary = 'সংক্ষিপ্ত বিবরণ কমপক্ষে ২০ অক্ষরের হলে ভালো হয়।';
+    if (kind !== 'news' && !values.summary.trim()) {
+      next.summary = kind === 'job'
+        ? 'চাকরির সংক্ষিপ্ত বিবরণ লিখুন।'
+        : 'পণ্যের সংক্ষিপ্ত বিবরণ লিখুন।';
     }
-
     if (kind === 'news' && values.body.trim().length < 40) {
       next.body = 'সংবাদের মূল বিষয়বস্তু কমপক্ষে ৪০ অক্ষরের হতে হবে।';
     }
     if (kind === 'buy_sell') {
       if (!values.category.trim()) next.category = 'ক্যাটাগরি লিখুন।';
+      else if (
+        !MARKET_CATEGORIES.some((category) => category.id === values.category) &&
+        values.category !== 'vehicle' &&
+        values.category !== editing?.category
+      ) {
+        next.category = 'তালিকা থেকে সঠিক পণ্যের ক্যাটাগরি বেছে নিন।';
+      }
       if (!values.condition) next.condition = 'পণ্যের অবস্থা বেছে নিন।';
       const price = Number(values.price);
       if (!values.price.trim()) next.price = 'দাম লিখুন।';
@@ -580,7 +601,7 @@ export default function PostForm({
         const result = await updateCommunityPost(editing.id, content);
         if (!result.success) {
           console.error('Post update failed', result.error);
-          setFormError('পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+          setFormError(result.error || 'পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
           return;
         }
         router.push(`${KIND_ROUTE[editing.kind]}/${result.data.slug}`);
@@ -588,7 +609,7 @@ export default function PostForm({
         const result = await createCommunityPost(content);
         if (!result.success) {
           console.error('Post creation failed', result.error);
-          setFormError('পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+          setFormError(result.error || 'পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
           return;
         }
         submittedRef.current = true;
@@ -710,16 +731,20 @@ export default function PostForm({
       };
       if (userId) {
         const result = await saveCommunityPostDraft(kind, draft);
-        if (!result.success) throw new Error('খসড়া সংরক্ষণ করা যায়নি।');
+        if (!result.success) {
+          console.warn('Post draft save failed', result.error);
+          setDraftNotice('জমা দেওয়া হয়নি হিসেবে সংরক্ষণ করা যায়নি।');
+          return;
+        }
         setDraftSavedAt(result.data);
-        setDraftNotice('খসড়া ও ছবিগুলো সংরক্ষিত হয়েছে।');
+        setDraftNotice('জমা দেওয়া হয়নি হিসেবে ছবিসহ সংরক্ষিত হয়েছে।');
       } else {
         window.localStorage.setItem(draftKey, JSON.stringify(draft));
         setDraftSavedAt(savedAt);
         setDraftNotice(
           photos.some((photo) => photo.file)
-            ? 'খসড়াটি এই ব্রাউজারে সংরক্ষিত হয়েছে; ছবিগুলো সংরক্ষণ করতে লগইন করুন।'
-            : 'খসড়া এই ব্রাউজারে সংরক্ষিত হয়েছে।'
+            ? 'জমা দেওয়া হয়নি হিসেবে এটি এই ব্রাউজারে সংরক্ষিত হয়েছে; ছবিগুলো সংরক্ষণ করতে লগইন করুন।'
+            : 'জমা দেওয়া হয়নি হিসেবে এটি এই ব্রাউজারে সংরক্ষিত হয়েছে।'
         );
       }
       lastSavedDraftRef.current = draftSignature(
@@ -728,8 +753,8 @@ export default function PostForm({
         userId ? persistedPhotos : photos
       );
     } catch (error) {
-      console.error('Post draft save failed', error);
-      setFormError('খসড়া সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+      console.warn('Post draft save failed', error);
+      setDraftNotice('জমা দেওয়া হয়নি হিসেবে সংরক্ষণ করা যায়নি।');
     } finally {
       setDraftBusy(false);
     }
@@ -739,25 +764,31 @@ export default function PostForm({
   function restorePendingDraft() {
     if (!pendingDraft) return;
     hasInteractedRef.current = true;
+    const restoredValues = {
+      ...pendingDraft.values,
+      category: kind === 'buy_sell'
+        ? normalizeMarketplaceCategory(pendingDraft.values.category)
+        : pendingDraft.values.category,
+    };
     const restoredPhotos: PhotoSlot[] = pendingDraft.photos.map((url, index) => ({
       key: `draft-${index}`,
       file: null,
       url,
     }));
-    setValues(pendingDraft.values);
+    setValues(restoredValues);
     setTags(pendingDraft.tags);
     setPhotos(restoredPhotos);
     setErrors({});
     setFormError('');
     lastSavedDraftRef.current = draftSignature(
-      pendingDraft.values,
+      restoredValues,
       pendingDraft.tags,
       restoredPhotos
     );
     setDraftNotice(
       pendingDraft.photos.length
-        ? 'খসড়া ও ছবিগুলো ফিরিয়ে আনা হয়েছে।'
-        : 'খসড়া ফিরিয়ে আনা হয়েছে।'
+        ? 'জমা দেওয়া হয়নি হিসেবে ছবিসহ ফিরিয়ে আনা হয়েছে।'
+        : 'জমা দেওয়া হয়নি হিসেবে ফিরিয়ে আনা হয়েছে।'
     );
     setPendingDraft(null);
   }
@@ -777,7 +808,7 @@ export default function PostForm({
       // The draft is gone from this screen either way; a retry is not useful to
       // the member, so this stays silent.
     }
-    setDraftNotice('খসড়া মুছে ফেলা হয়েছে।');
+    setDraftNotice('জমা দেওয়া হয়নি সংরক্ষণ মুছে ফেলা হয়েছে।');
   }
 
   return (
@@ -802,12 +833,12 @@ export default function PostForm({
         </p>
         {!editing && (
           <p className="mt-1 text-[11px] text-ink-400">
-            {user ? 'খসড়া স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে' : 'খসড়া শুধু এই ব্রাউজারে সংরক্ষিত হবে'}
+            {user ? 'জমা দেওয়া হয়নি অবস্থায় স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে' : 'জমা দেওয়া হয়নি অবস্থায় শুধু এই ব্রাউজারে সংরক্ষিত হবে'}
             {' · '}
             {user
-              ? 'ছবিসহ সংরক্ষণ করতে “খসড়া সংরক্ষণ” চাপুন'
+              ? 'ছবিসহ সংরক্ষণ করতে “জমা দেওয়া হয়নি সংরক্ষণ” চাপুন'
               : 'ছবি সংরক্ষণ করতে লগইন করুন'}
-            {autosaving ? ' · খসড়া সংরক্ষণ হচ্ছে…' : ''}
+            {autosaving ? ' · জমা দেওয়া হয়নি সংরক্ষণ হচ্ছে…' : ''}
             {draftSavedAt ? ` · সর্বশেষ সংরক্ষণ ${new Date(draftSavedAt).toLocaleTimeString('bn-BD')}` : ''}।
           </p>
         )}
@@ -815,7 +846,7 @@ export default function PostForm({
         {pendingDraft && !editing && (
           <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
             <p className="text-[12.5px] font-semibold text-amber-900">
-              আপনি আগে লেখা একটি খসড়া রেখে গেছেন
+              আপনি আগে লেখা একটি জমা দেওয়া হয়নি পোস্ট রেখে গেছেন
               {pendingDraft.savedAt
                 ? ` (${new Date(pendingDraft.savedAt).toLocaleString('bn-BD')})`
                 : ''}
@@ -831,14 +862,14 @@ export default function PostForm({
                 onClick={restorePendingDraft}
                 className={`inline-flex min-h-[40px] items-center justify-center rounded-lg bg-brand-700 px-3 text-[12px] font-bold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
               >
-                খসড়া ফিরিয়ে আনুন
+                জমা দেওয়া হয়নি পোস্ট ফিরিয়ে আনুন
               </button>
               <button
                 type="button"
                 onClick={discardPendingDraft}
                 className={`inline-flex min-h-[40px] items-center justify-center rounded-lg border border-amber-300 bg-white px-3 text-[12px] font-bold text-amber-900 transition-colors hover:bg-amber-100 ${LIGHT_FOCUS}`}
               >
-                খসড়া মুছে ফেলুন
+                জমা দেওয়া হয়নি পোস্ট মুছে ফেলুন
               </button>
             </div>
           </div>
@@ -871,13 +902,20 @@ export default function PostForm({
             />
           </Field>
 
-          <Field id="summary" label="সংক্ষিপ্ত বিবরণ" error={errors.summary}>
+          <Field
+            id="summary"
+            label="সংক্ষিপ্ত বিবরণ"
+            required={kind !== 'news'}
+            error={errors.summary}
+            hint={kind !== 'news' ? 'পোস্টের বিবরণ লিখুন।' : undefined}
+          >
             <textarea
               id="field-summary"
               value={values.summary}
               onChange={(e) => set('summary', e.target.value)}
               rows={2}
               maxLength={300}
+              required={kind !== 'news'}
               aria-invalid={Boolean(errors.summary)}
               className={inputClass(Boolean(errors.summary))}
             />
@@ -903,12 +941,7 @@ export default function PostForm({
             </Field>
           )}
 
-          {/*
-            Category is typed, not chosen. Only the news desk keeps a list,
-            because the newsroom filter is a fixed set of desks; a job's category
-            and a marketplace item's category are whatever the writer calls them,
-            so a dropdown there only ever meant "your option is missing".
-          */}
+          {/* News and marketplace categories use the same identifiers as their directory filters. */}
           <Field
             id="category"
             label={kind === 'news' ? 'বিভাগ' : 'ক্যাটাগরি'}
@@ -924,9 +957,34 @@ export default function PostForm({
                 className={inputClass(Boolean(errors.category))}
               >
                 <option value="">বেছে নিন</option>
+                {values.category &&
+                  !NEWS_CATEGORIES.some((category) => category.id === values.category) && (
+                    <option value={values.category}>{values.category} (বর্তমান)</option>
+                  )}
                 {NEWS_CATEGORIES.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.labelBn}
+                  </option>
+                ))}
+              </select>
+            ) : kind === 'buy_sell' ? (
+              <select
+                id="field-category"
+                value={values.category}
+                onChange={(e) => set('category', e.target.value)}
+                aria-invalid={Boolean(errors.category)}
+                className={inputClass(Boolean(errors.category))}
+              >
+                <option value="">ক্যাটাগরি বেছে নিন</option>
+                {values.category &&
+                  !MARKET_CATEGORIES.some((category) => category.id === values.category) &&
+                  values.category !== 'vehicle' && (
+                    <option value={values.category}>{values.category} (বর্তমান)</option>
+                  )}
+                {values.category === 'vehicle' && <option value="vehicle">যানবাহন (পুরোনো ক্যাটাগরি)</option>}
+                {MARKET_CATEGORIES.map((category) => (
+                  <option key={category.id} value={category.id}>
+                    {category.labelBn}
                   </option>
                 ))}
               </select>
@@ -937,7 +995,7 @@ export default function PostForm({
                 value={values.category}
                 onChange={(e) => set('category', e.target.value)}
                 maxLength={60}
-                placeholder={kind === 'job' ? 'যেমন: শিক্ষক, বিক্রয় প্রতিনিধি' : 'যেমন: মোবাইল, আসবাবপত্র'}
+                placeholder="যেমন: শিক্ষক, বিক্রয় প্রতিনিধি"
                 aria-invalid={Boolean(errors.category)}
                 className={inputClass(Boolean(errors.category))}
               />
@@ -1307,7 +1365,7 @@ export default function PostForm({
                 className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[12px] font-bold text-brand-700 hover:bg-mist-50 disabled:opacity-60 ${LIGHT_FOCUS}`}
               >
                 <Save className="h-4 w-4" aria-hidden="true" />
-                {draftBusy ? 'সংরক্ষণ হচ্ছে…' : 'খসড়া সংরক্ষণ'}
+                {draftBusy ? 'সংরক্ষণ হচ্ছে…' : 'জমা দেওয়া হয়নি সংরক্ষণ'}
               </button>
             )}
             <button

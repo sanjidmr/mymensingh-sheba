@@ -73,6 +73,8 @@ export default function MarketDetail({ slug }: { slug: string }) {
   const { user, savedListings, toggleSaveItem } = useAuth();
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [similarError, setSimilarError] = useState('');
   const [contact, setContact] = useState<Contact>(null);
   const [phase, setPhase] = useState<Phase>('idle');
   const [similar, setSimilar] = useState<CommunityPost[]>([]);
@@ -99,6 +101,11 @@ export default function MarketDetail({ slug }: { slug: string }) {
           setContact(c);
           setPhase(c ? 'ready' : 'none');
         }
+      } catch (cause) {
+        if (active) {
+          setLoadError(cause instanceof Error ? cause.message : 'বিজ্ঞাপন লোড করা যায়নি।');
+          setPhase('none');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -113,12 +120,19 @@ export default function MarketDetail({ slug }: { slug: string }) {
   useEffect(() => {
     let active = true;
     (async () => {
-      const rows = await fetchApprovedPosts('buy_sell');
-      if (!active) return;
-      const pool = rows.filter((p) => p.slug !== slug);
-      const sameCategory = pool.filter((p) => p.category && p.category === post?.category);
-      const rest = pool.filter((p) => !sameCategory.includes(p));
-      setSimilar([...sameCategory, ...rest].slice(0, 5));
+      try {
+        const rows = await fetchApprovedPosts('buy_sell');
+        if (!active) return;
+        const pool = rows.filter((p) => p.slug !== slug);
+        const sameCategory = pool.filter((p) => p.category && p.category === post?.category);
+        const rest = pool.filter((p) => !sameCategory.includes(p));
+        setSimilar([...sameCategory, ...rest].slice(0, 5));
+        setSimilarError('');
+      } catch (cause) {
+        if (active) {
+          setSimilarError(cause instanceof Error ? cause.message : 'অনুরূপ বিজ্ঞাপন লোড করা যায়নি।');
+        }
+      }
     })();
     return () => {
       active = false;
@@ -212,11 +226,22 @@ export default function MarketDetail({ slug }: { slug: string }) {
       <Frame>
         <div className="mx-auto max-w-2xl py-10 text-center">
           <Package className="mx-auto mb-3 h-10 w-10 text-ink-300" aria-hidden="true" />
-          <h1 className="text-lg font-extrabold text-ink-900">বিজ্ঞাপনটি পাওয়া যায়নি</h1>
-          <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-500">
-            বিজ্ঞাপনটি হয় অনুমোদনের অপেক্ষায় আছে, অথবা আর প্রকাশিত নেই। অন্য কোনো পণ্য
-            দেখুন।
-          </p>
+          {loadError ? (
+            <>
+              <h1 className="text-lg font-extrabold text-rose-800">বিজ্ঞাপন লোড করা যায়নি</h1>
+              <p role="alert" className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-rose-700">
+                {loadError}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-lg font-extrabold text-ink-900">বিজ্ঞাপনটি পাওয়া যায়নি</h1>
+              <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-500">
+                বিজ্ঞাপনটি হয় অনুমোদনের অপেক্ষায় আছে, অথবা আর প্রকাশিত নেই। অন্য কোনো পণ্য
+                দেখুন।
+              </p>
+            </>
+          )}
           <Link
             href="/buy-sell"
             className={`mt-4 inline-flex min-h-11 items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-5 text-[13.5px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
@@ -263,6 +288,12 @@ export default function MarketDetail({ slug }: { slug: string }) {
               এটি একটি <strong className="font-bold">নমুনা বিজ্ঞাপন</strong>। বিক্রেতার
               নম্বর দেওয়া হয়নি, তাই কল করা যাবে না। প্রকৃত বিজ্ঞাপনে সরাসরি কল করা যায়।
             </span>
+          </p>
+        )}
+
+        {loadError && (
+          <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 px-3.5 py-2.5 text-[12.5px] text-rose-800">
+            {loadError}
           </p>
         )}
 
@@ -377,6 +408,9 @@ export default function MarketDetail({ slug }: { slug: string }) {
                   ))}
                 </div>
               </section>
+            )}
+            {similarError && (
+              <p role="alert" className="mt-3 text-xs text-rose-700">{similarError}</p>
             )}
           </div>
 

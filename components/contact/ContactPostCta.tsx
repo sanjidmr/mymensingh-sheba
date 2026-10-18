@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, PenSquare, MessageCircle } from 'lucide-react';
+import { PenSquare, MessageCircle } from 'lucide-react';
 import { AboutSection, DARK_FOCUS } from '@/components/about/AboutSectionBits';
 import Reveal from '@/components/home/Reveal';
 
@@ -70,7 +70,6 @@ export default function ContactPostCta() {
               className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-brand-600 bg-white/[0.04] px-5 text-sm font-bold text-white transition-colors hover:border-brand-400 hover:bg-brand-800 sm:w-auto ${DARK_FOCUS}`}
             >
               আমাদের সাথে যোগাযোগ করুন
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
 

@@ -17,7 +17,7 @@ type Education = { institution?: string; department?: string; degree?: string; s
 type Activity = { roleLabelBn?: string; studyingAt?: string; teachingAt?: string; workingAt?: string; note?: string };
 
 const statusLabel: Record<TutorProfileStatus, string> = {
-  draft: 'খসড়া',
+  draft: 'জমা দেওয়া হয়নি',
   pending_approval: 'পর্যালোচনায়',
   approved: 'প্রকাশিত',
   rejected: 'প্রত্যাখ্যাত',

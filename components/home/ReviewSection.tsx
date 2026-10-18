@@ -3,17 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { MessageSquarePlus, Star, X, CheckCircle2, PenLine, Tag } from 'lucide-react';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
-
-interface HomeReview {
-  id: string;
-  name: string;
-  service: string;
-  rating: number;
-  text: string;
-  date: string;
-}
-
-const STORAGE_KEY = 'mms_home_reviews_v1';
+import {
+  fetchPublishedSiteReviews,
+  submitSiteReview,
+  type SiteReview,
+} from '@/lib/review-service';
 
 /** যেসব সেবার রিভিউ দেওয়া যায় — তালিকা থেকে নাম সিঙ্ক রাখতে নির্বাচিত স্লাগ */
 const REVIEWABLE_SLUGS = [
@@ -35,18 +29,6 @@ const SERVICE_OPTIONS = REVIEWABLE_SLUGS.map((slug) => {
   const service = LAUNCH_SERVICES.find((s) => s.slug === slug);
   return { slug, nameBn: service?.nameBn ?? slug };
 });
-
-function loadReviews(): HomeReview[] {
-  if (typeof window === 'undefined') return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as HomeReview[];
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 function StarSelector({ value, onChange }: { value: number; onChange: (n: number) => void }) {
   const [hover, setHover] = useState(0);
@@ -74,20 +56,31 @@ function StarSelector({ value, onChange }: { value: number; onChange: (n: number
 /**
  * রিভিউ মোডাল — হোমপেজের শেষ CTA-র "আপনার রিভিউ দিন" বাটন থেকে
  * `mms:open-review` ইভেন্টে খোলে। স্ট্যান্ডঅ্যালোন সেকশন হিসেবে আর দেখা যায় না।
+ *
+ * রিভিউগুলো `site_reviews` টেবিলে জমা হয় (আগে শুধু localStorage-এ থাকতো),
+ * তাই প্রতিটি রিভিউ সত্যিই প্ল্যাটফর্মে সংরক্ষিত হয়।
  */
 export default function ReviewSection() {
   const [open, setOpen] = useState(false);
-  const [reviews, setReviews] = useState<HomeReview[]>([]);
+  const [reviews, setReviews] = useState<SiteReview[]>([]);
   const [name, setName] = useState('');
   const [service, setService] = useState('');
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const t = setTimeout(() => setReviews(loadReviews()), 0);
-    return () => clearTimeout(t);
+    let alive = true;
+    fetchPublishedSiteReviews()
+      .then((list) => {
+        if (alive) setReviews(list);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -124,8 +117,9 @@ export default function ReviewSection() {
     setError('');
   };
 
-  const submitReview = (e: React.FormEvent) => {
+  const submitReview = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitting) return;
     if (rating === 0) {
       setError('দয়া করে স্টার দিয়ে রেটিং দিন।');
       return;
@@ -143,24 +137,25 @@ export default function ReviewSection() {
       return;
     }
 
-    const review: HomeReview = {
-      id: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    setSubmitting(true);
+    const result = await submitSiteReview({
       name: name.trim(),
       service,
       rating,
-      text: text.trim(),
-      date: new Date().toISOString(),
-    };
+      body: text.trim(),
+    });
+    setSubmitting(false);
 
-    let next = [review, ...loadReviews()].slice(0, 24);
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-    } catch {
-      next = [review];
+    if (!result.ok) {
+      setError(result.errorBn);
+      return;
     }
-    setReviews(next);
+
     resetForm();
     setSuccess(true);
+    fetchPublishedSiteReviews()
+      .then((list) => setReviews(list))
+      .catch(() => {});
   };
 
   const average = reviews.length
@@ -287,10 +282,11 @@ export default function ReviewSection() {
               </button>
               <button
                 type="submit"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600"
+                disabled={submitting}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-800 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <PenLine className="h-4 w-4" />
-                রিভিউ জমা দিন
+                {submitting ? 'জমা হচ্ছে…' : 'রিভিউ জমা দিন'}
               </button>
             </div>
           </form>
@@ -315,7 +311,7 @@ export default function ReviewSection() {
                           />
                         ))}
                       </span>
-                      <time className="text-[11px] text-ink-400">{relativeDate(r.date)}</time>
+                      <time className="text-[11px] text-ink-400">{relativeDate(r.createdAt)}</time>
                     </div>
                     {r.service && (
                       <p className="mt-3 inline-flex items-center gap-1.5 rounded-md border border-brand-100 bg-brand-50 px-2 py-1 text-[11px] font-bold text-brand-800">
@@ -324,7 +320,7 @@ export default function ReviewSection() {
                       </p>
                     )}
                     <blockquote className="mt-3 flex-1 text-[14px] leading-relaxed text-ink-700">
-                      “{r.text}”
+                      “{r.body}”
                     </blockquote>
                     <figcaption className="mt-4 flex items-center gap-2.5 border-t border-brand-100 pt-3">
                       <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-700 text-[13px] font-bold text-white">

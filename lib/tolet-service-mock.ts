@@ -12,9 +12,6 @@ import { DEMO_TOLET_LISTINGS } from './tolet-demo-data';
 import type {
   ToletListing,
   ToletListingInput,
-  ToletRequest,
-  ToletRequestInput,
-  ToletRequestStatus,
   ListingReport,
   ListingReportStatus,
 } from './tolet-types';
@@ -36,9 +33,7 @@ let listings: ToletListing[] = DEMO_TOLET_LISTINGS.map((seed) => ({
   photos: [...seed.photos],
 }));
 
-let requests: ToletRequest[] = [];
 let reports: ListingReport[] = [];
-let requestSeq = 0;
 let reportSeq = 0;
 
 // ---- Listings ----
@@ -126,8 +121,7 @@ export function mockSetOwnListingVisibility(
     listing.rentPrice < 100 ||
     listing.rentPrice > 500000 ||
     (['mess', 'hostel', 'seat'].includes(listing.propertyType) && (listing.totalRooms ?? 0) < 1) ||
-    (!['mess', 'hostel', 'seat'].includes(listing.propertyType) && listing.bedrooms < 1) ||
-    listing.description.trim().length < 20
+    (!['mess', 'hostel', 'seat'].includes(listing.propertyType) && listing.bedrooms < 1)
   ) {
     return null;
   }
@@ -145,7 +139,6 @@ export function mockDeleteOwnListing(listingId: string, ownerId: string): boolea
   const index = listings.findIndex((item) => item.id === listingId && item.ownerId === ownerId);
   if (index < 0) return false;
   listings.splice(index, 1);
-  requests = requests.filter((request) => request.listingId !== listingId);
   reports = reports.filter((report) => report.listingId !== listingId);
   return true;
 }
@@ -183,49 +176,6 @@ export function mockAdminUpdateListing(
   };
   listings[idx] = updated;
   return updated;
-}
-
-// ---- Requests ----
-
-export function mockCreateToletRequest(
-  input: ToletRequestInput,
-  listingTitle?: string
-): ToletRequest {
-  const now = new Date().toISOString();
-  const req: ToletRequest = {
-    id: `rq-${++requestSeq}`,
-    ...input,
-    listingTitle: listingTitle || '',
-    status: 'submitted',
-    createdAt: now,
-  };
-  requests.unshift(req);
-  return req;
-}
-
-export function mockFetchToletRequestsAsCustomer(customerId: string): ToletRequest[] {
-  return requests.filter((r) => r.customerId === customerId);
-}
-
-export function mockFetchToletRequestsAsOwner(ownerId: string): ToletRequest[] {
-  const ownerListingIds = new Set(listings.filter((l) => l.ownerId === ownerId).map((l) => l.id));
-  return requests
-    .filter((r) => ownerListingIds.has(r.listingId))
-    .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-}
-
-export function mockFetchRequestsForListing(listingId: string): ToletRequest[] {
-  return requests.filter((r) => r.listingId === listingId);
-}
-
-export function mockUpdateToletRequestStatus(
-  requestId: string,
-  newStatus: ToletRequestStatus
-): ToletRequest | null {
-  const idx = requests.findIndex((r) => r.id === requestId);
-  if (idx === -1) return null;
-  requests[idx] = { ...requests[idx], status: newStatus };
-  return requests[idx];
 }
 
 // ---- Reports ----

@@ -87,7 +87,7 @@ export default async function AdminVehicleRequestDetailPage({
                   {booking.vehicle_is_active
                     ? <Link className="text-brand-700 hover:underline" href={`/gari-auto-cng/${booking.vehicle_slug}`}>{booking.vehicle_title}</Link>
                     : <span>{booking.vehicle_title} (অপ্রকাশিত)</span>}
-                  <Link className="text-brand-700 hover:underline" href={`/admin/catalog/vehicle/${booking.vehicle_listing_id}/edit`}>অ্যাডমিন তালিকা</Link>
+                  <Link className="text-brand-700 hover:underline" href={`/admin/directories/vehicle/${booking.vehicle_listing_id}/edit`}>অ্যাডমিন তালিকা</Link>
                 </span>
               ) : (
                 <span>বর্তমান তালিকা সংযুক্ত নেই। রিকোয়েস্টের সংরক্ষিত নাম উপরে দেখানো হয়েছে।</span>

@@ -1,5 +1,4 @@
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import type { HomepageCategory } from '@/lib/homepage-catalog';
 import CategoryHeader from '@/components/home/CategoryHeader';
 import CategoryTile from '@/components/home/CategoryTile';
@@ -56,7 +55,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
             nothing is dropped on small screens. */}
         <div
           className={`grid ${
-            emergency ? 'mt-2 gap-x-1.5 gap-y-1.5 sm:mt-2 sm:gap-x-2 sm:gap-y-2 lg:gap-x-3 lg:gap-y-2' : 'mt-4 gap-x-2 gap-y-3 sm:mt-5 sm:gap-x-3 sm:gap-y-4 lg:gap-x-4 lg:gap-y-5'
+            emergency ? 'mt-2 gap-x-1 gap-y-1.5 sm:mt-2.5 sm:gap-x-1.5 sm:gap-y-2 lg:gap-x-2 lg:gap-y-2 lg:mx-auto lg:w-full lg:max-w-[44rem]' : 'mt-3 gap-x-2 gap-y-2.5 sm:mt-4 sm:gap-x-2.5 sm:gap-y-3 lg:gap-x-3 lg:gap-y-4'
           } ${
             category.grid ?? 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-7'
           }`}
@@ -84,7 +83,6 @@ export default function CategorySection({ category }: CategorySectionProps) {
               }`}
             >
               {category.viewAll.label}
-              <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
             </Link>
           </div>
         )}

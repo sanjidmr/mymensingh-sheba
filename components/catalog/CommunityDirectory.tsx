@@ -158,13 +158,19 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
           loadingText="তালিকা লোড হচ্ছে…"
           onReset={controller.resetAll}
           unpopulated={
-            <CommunityEmpty
-              title={title}
-              hasAnyData={posts.items.length > 0}
-              createHref={createHref}
-              createLabel={createLabel}
-              needsLogin={needsLogin}
-            />
+            posts.error ? (
+              <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                {posts.error}
+              </p>
+            ) : (
+              <CommunityEmpty
+                title={title}
+                hasAnyData={posts.items.length > 0}
+                createHref={createHref}
+                createLabel={createLabel}
+                needsLogin={needsLogin}
+              />
+            )
           }
         >
           <div className={gridClass}>
@@ -227,6 +233,7 @@ function CommunityEmpty({
 function usePosts(kind: PostKind) {
   const [items, setItems] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -241,6 +248,12 @@ function usePosts(kind: PostKind) {
           (p) => p.kind === kind && p.status !== 'approved'
         );
         setItems([...approved, ...ownUnpublished]);
+        setError('');
+      } catch (cause) {
+        if (active) {
+          setItems([]);
+          setError(cause instanceof Error ? cause.message : 'পোস্ট লোড করা যায়নি।');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -250,5 +263,5 @@ function usePosts(kind: PostKind) {
     };
   }, [kind]);
 
-  return { items, loading };
+  return { items, loading, error };
 }

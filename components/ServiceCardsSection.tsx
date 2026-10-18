@@ -10,7 +10,6 @@ import {
   Truck,
   GraduationCap,
   HeartHandshake,
-  ArrowRight,
   ShieldCheck,
   CheckCircle,
 } from 'lucide-react';
@@ -112,7 +111,6 @@ export default function ServiceCardsSection() {
 
                   <span className="inline-flex items-center gap-1 font-semibold text-emerald-800 group-hover:translate-x-0.5 transition-transform">
                     <span>দেখুন</span>
-                    <ArrowRight className="w-4 h-4" />
                   </span>
                 </div>
               </Link>

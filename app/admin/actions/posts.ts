@@ -321,6 +321,18 @@ export async function createAdminPost(input: AdminPostInput): Promise<ActionResu
     const validated = normalizePostInput(input);
     if (!validated.ok) return validated;
     const value = validated.value;
+    const { data: adminProfile, error: profileError } = await client
+      .from('profiles')
+      .select('full_name')
+      .eq('id', adminId)
+      .maybeSingle();
+    if (profileError) return { ok: false, error: toActionError(profileError) };
+    const adminName = typeof adminProfile?.full_name === 'string'
+      ? adminProfile.full_name.trim()
+      : '';
+    if (adminName.length < 2) {
+      return { ok: false, error: 'অ্যাডমিন প্রোফাইলে সঠিক নাম নেই; পোস্ট তৈরি করা যায়নি।' };
+    }
     const { data, error } = await client
       .from('community_posts')
       .insert({
@@ -328,6 +340,7 @@ export async function createAdminPost(input: AdminPostInput): Promise<ActionResu
         kind: value.kind,
         slug: uniqueSlug(value.titleBn, value.kind),
         author_id: adminId,
+        author_name: value.authorName || adminName,
         status: 'pending',
         is_featured: false,
         published_at: null,

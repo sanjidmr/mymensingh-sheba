@@ -75,7 +75,7 @@ export async function saveEmergencyContact(
     if (write.error) return { ok: false, error: write.error.message };
     if (!write.data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
-    revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctors');
     revalidatePath('/doctor');

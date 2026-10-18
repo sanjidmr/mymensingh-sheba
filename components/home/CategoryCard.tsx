@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ArrowRight, PhoneCall } from 'lucide-react';
+import { PhoneCall } from 'lucide-react';
 import type { HomepageService } from '@/lib/homepage-catalog';
 
 /**
@@ -117,7 +117,6 @@ export default function CategoryCard({
         ) : (
           <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold transition-colors duration-300 sm:gap-1 sm:text-[11px] ${red ? 'text-red-600 group-hover:text-red-700' : 'text-brand-700 group-hover:text-brand-800'}`}>
             {item.cta}
-            <ArrowRight className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 sm:h-3 sm:w-3" />
           </span>
         )}
       </div>
@@ -143,7 +142,6 @@ export default function CategoryCard({
         ) : (
           <span className={`inline-flex items-center gap-0.5 text-[10px] font-bold transition-colors duration-300 sm:gap-1 sm:text-xs ${red ? 'text-red-600 group-hover:text-red-700' : 'text-brand-700 group-hover:text-brand-800'}`}>
             {item.cta}
-            <ArrowRight className="h-2.5 w-2.5 shrink-0 transition-transform duration-300 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
           </span>
         )}
       </div>
@@ -183,7 +181,6 @@ export default function CategoryCard({
         ) : (
           <span className={`inline-flex items-center gap-1.5 text-sm font-bold transition-colors duration-300 ${red ? 'text-red-600 group-hover:text-red-700' : 'text-brand-700 group-hover:text-brand-800'}`}>
             {item.cta}
-            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
           </span>
         )}
       </div>

@@ -17,7 +17,7 @@
  */
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, MapPin, Phone, Star } from 'lucide-react';
+import { BadgeCheck, MapPin, Phone, Star } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { toBn } from '@/lib/catalog-types';
 
@@ -159,6 +159,10 @@ export interface BannerCardProps {
   /** The loudest line, e.g. "৳৫০০ – ১০০০ / মাস". */
   priceLabel?: string;
   priceSuffix?: string;
+  /** Full saved WiFi speed / price rows, when available. */
+  packageLines?: string[];
+  /** Additional customer-entered facts such as connection fees and terms. */
+  details?: string[];
   areaLabel?: string;
   chips?: (string | undefined | false)[];
   description?: string;
@@ -189,6 +193,8 @@ export function BannerCard({
   imageUrl,
   priceLabel,
   priceSuffix,
+  packageLines,
+  details,
   areaLabel,
   chips,
   description,
@@ -256,6 +262,18 @@ export function BannerCard({
           </p>
         )}
 
+        {packageLines && packageLines.length > 0 && (
+          <ul className="mt-1.5 space-y-0.5 text-[10.5px] font-semibold leading-snug text-brand-800 sm:text-xs">
+            {packageLines.map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}
+          </ul>
+        )}
+
+        {details && details.length > 0 && (
+          <ul className="mt-1 space-y-0.5 text-[10.5px] leading-snug text-ink-500 sm:text-xs">
+            {details.map((line, index) => <li key={`${line}-${index}`} className="break-words">{line}</li>)}
+          </ul>
+        )}
+
         <RatingSummary avg={ratingAvg} count={ratingCount} className="mt-1" />
 
         {description && (
@@ -278,10 +296,6 @@ export function BannerCard({
             className={`flex min-w-0 items-center gap-1 text-[11px] font-bold sm:text-xs ${accent}`}
           >
             <span className="truncate">{actionLabel}</span>
-            <ArrowRight
-              className="h-3 w-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
           </span>
         </div>
       </div>
@@ -385,10 +399,6 @@ export function TileCard({
         <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-brand-100 pt-2 sm:pt-2.5">
           <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
             <span className="truncate">{actionLabel}</span>
-            <ArrowRight
-              className="h-3 w-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
           </span>
         </div>
       </div>

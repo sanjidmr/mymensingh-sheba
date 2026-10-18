@@ -162,7 +162,7 @@ function listingRow(listing: ToletListing, analytics?: ToletListingStats): Dashb
 function profileRow(profile: HomeTutorProfile | BloodDonorProfile, kind: 'tutor' | 'donor'): DashboardRow {
   const status = profile.status;
   const labels: Record<string, string> = {
-    draft: 'খসড়া',
+    draft: 'জমা দেওয়া হয়নি',
     pending_approval: 'অনুমোদনের অপেক্ষায়',
     approved: 'প্রকাশিত',
     rejected: 'সংশোধন প্রয়োজন',
@@ -209,12 +209,12 @@ export function communityDraftRow(
   return {
     source: 'draft',
     id: `draft-${kind}`,
-    title: values.title || labels[kind] + ' খসড়া',
+    title: values.title || labels[kind] + ' (জমা দেওয়া হয়নি)',
     image,
     typeLabel: labels[kind],
     categoryFilter: kind,
     date,
-    statusLabel: 'খসড়া',
+    statusLabel: 'জমা দেওয়া হয়নি',
     statusClass: 'bg-mist-100 text-ink-700',
     bucket: 'other',
     statusFilter: 'draft',

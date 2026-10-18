@@ -17,7 +17,7 @@ import type { TutorProfileStatus } from '@/lib/supabase/types';
 export const dynamic = 'force-dynamic';
 
 const TUTOR_STATUSES: Array<{ value: TutorProfileStatus; label: string; tone: 'success' | 'warning' | 'danger' | 'info' | 'neutral' }> = [
-  { value: 'draft', label: 'খসড়া', tone: 'neutral' },
+  { value: 'draft', label: 'জমা দেওয়া হয়নি', tone: 'neutral' },
   { value: 'pending_approval', label: 'পর্যালোচনায়', tone: 'warning' },
   { value: 'approved', label: 'প্রকাশিত', tone: 'success' },
   { value: 'rejected', label: 'প্রত্যাখ্যাত', tone: 'danger' },

@@ -78,7 +78,6 @@ export function toletToPreviewCard(listing: ToletListing): HomePreviewCard {
         ? { label: 'সরাসরি মালিকের সাথে যোগাযোগ', tone: 'green' }
         : { label: 'অনুপলব্ধ', tone: 'slate' },
     verified: listing.isVerified || listing.ownerVerified,
-    footer: listing.ownerName,
     footerLabel: 'বিস্তারিত দেখুন',
   };
 }

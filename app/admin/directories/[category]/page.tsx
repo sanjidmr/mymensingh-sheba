@@ -81,9 +81,24 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
     columns.push({ key: 'programs', header: 'বিষয়/ক্লাস', render: (row) => row.tags.slice(0, 4).join(', ') || 'উল্লেখ নেই' });
   }
   columns.push({
+    key: 'review',
+    header: 'অনুমোদন',
+    render: (row) => row.owner_id
+      ? <StatusPill label={{
+          draft: 'জমা দেওয়া হয়নি',
+          pending: 'অনুমোদন অপেক্ষমাণ',
+          approved: 'অনুমোদিত',
+          rejected: 'প্রত্যাখ্যাত',
+        }[row.status]} tone={row.status === 'approved' ? 'success' : row.status === 'rejected' ? 'danger' : 'neutral'} />
+      : <StatusPill label="অ্যাডমিন-তৈরি" tone="neutral" />,
+  });
+  columns.push({
     key: 'active',
     header: 'প্রকাশনা',
-    render: (row) => <StatusPill label={row.is_active ? 'প্রকাশিত' : 'অপ্রকাশিত'} tone={row.is_active ? 'success' : 'neutral'} />,
+    render: (row) => {
+      const published = row.is_active && row.status === 'approved';
+      return <StatusPill label={published ? 'প্রকাশিত' : row.owner_id && row.status === 'pending' ? 'অনুমোদন অপেক্ষমাণ' : 'অপ্রকাশিত'} tone={published ? 'success' : 'neutral'} />;
+    },
   });
   columns.push({
     key: 'actions',
@@ -109,7 +124,7 @@ export default async function AdminServiceListingsByCategoryPage({
   if (result.unavailable) {
     return (
       <>
-        <PageHeader title={LABELS[category]} breadcrumb={{ href: '/admin/catalog', label: 'ডিরেক্টরি মডিউল' }} />
+        <PageHeader title={LABELS[category]} breadcrumb={{ href: '/admin', label: 'অ্যাডমিন' }} />
         <AdminError title="তালিকা লোড করা যায়নি" message={result.error} />
       </>
     );
@@ -135,12 +150,12 @@ export default async function AdminServiceListingsByCategoryPage({
         description={category === 'bus'
           ? 'এটি অপারেটরের তথ্য ডিরেক্টরি—টিকিট বুকিং, আসন, পেমেন্ট বা রিজার্ভেশন এই মডিউল পরিচালনা করে না।'
           : 'প্রকৃত সরবরাহকৃত তথ্য পরিচালনা করুন। সক্রিয় অবস্থা প্রকাশনা বোঝায়; আলাদা যাচাইকরণ ক্ষেত্র এই স্কিমায় নেই।'}
-        breadcrumb={{ href: '/admin/catalog', label: 'ডিরেক্টরি মডিউল' }}
+        breadcrumb={{ href: '/admin', label: 'অ্যাডমিন' }}
         count={`ফিল্টার করা ${result.total} টি তালিকা`}
         actions={
           <>
             {category === 'vehicle' && <Link href="/admin/vehicle-requests" className="inline-flex min-h-11 items-center rounded-md border border-admin-border px-3 text-sm font-semibold">যানবাহন রিকোয়েস্ট</Link>}
-            <Link href={`/admin/catalog/${category}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white">
+            <Link href={`/admin/directories/${category}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white">
               <Plus className="h-4 w-4" aria-hidden="true" />নতুন তালিকা
             </Link>
           </>
@@ -153,7 +168,14 @@ export default async function AdminServiceListingsByCategoryPage({
       </div>
       <div className="mb-4 grid grid-cols-1 gap-2 rounded-admin-card border border-admin-border bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
         <AdminSearch placeholder="নাম, বিবরণ বা রুট খুঁজুন…" />
-        <FilterNav id={`${category}-status`} label="প্রকাশনা" value={typeof params.status === 'string' ? params.status : ''} placeholder="সব অবস্থা" options={[{ value: 'active', label: 'প্রকাশিত' }, { value: 'inactive', label: 'অপ্রকাশিত' }]} param="status" searchParams={resolvedSearchParams} />
+        <FilterNav id={`${category}-status`} label="অবস্থা" value={typeof params.status === 'string' ? params.status : ''} placeholder="সব অবস্থা" options={[
+          { value: 'pending', label: 'অনুমোদন অপেক্ষমাণ' },
+          { value: 'approved', label: 'অনুমোদিত' },
+          { value: 'rejected', label: 'প্রত্যাখ্যাত' },
+          { value: 'draft', label: 'জমা দেওয়া হয়নি' },
+          { value: 'active', label: 'প্রকাশিত' },
+          { value: 'inactive', label: 'অপ্রকাশিত' },
+        ]} param="status" searchParams={resolvedSearchParams} />
         <FilterNav id={`${category}-area`} label="এলাকা" value={typeof params.area === 'string' ? params.area : ''} placeholder="সব এলাকা" options={areaOptions} param="area" searchParams={resolvedSearchParams} />
         {taxonomies.length > 0 && <FilterNav id={`${category}-type`} label={category === 'bus' ? 'বাসের ধরন' : 'ক্লাস/বিষয়'} value={typeof params.kind === 'string' ? params.kind : ''} placeholder="সব ধরন" options={taxonomies.map(({ id, labelBn }) => ({ value: id, label: labelBn }))} param="kind" searchParams={resolvedSearchParams} />}
         <div className="sm:col-span-2 lg:col-span-4"><ClearFilters searchParams={resolvedSearchParams} /></div>

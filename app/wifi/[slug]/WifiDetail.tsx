@@ -52,9 +52,6 @@ export default function WifiDetail({ slug }: { slug: string }) {
     ...(listing.speedMbps != null
       ? [{ label: 'স্পিড', value: `${toBn(listing.speedMbps)} Mbps` }]
       : []),
-    ...(listing.connectionFee != null
-      ? [{ label: 'সংযোগ ফি', value: `${bnTaka(listing.connectionFee)} টাকা` }]
-      : []),
     ...(listing.addressBn ? [{ label: 'কভারেজ', value: listing.addressBn }] : []),
     ...(listing.areaIds.length > 0
       ? [{ label: 'সার্ভিস এলাকা', value: areaNames(listing.areaIds) }]
@@ -62,7 +59,6 @@ export default function WifiDetail({ slug }: { slug: string }) {
     ...(listing.ratingCount && listing.ratingCount > 0
       ? [{ label: 'রেটিং', value: `${toBn((listing.ratingAvg ?? 0).toFixed(1))} / ৫ (${toBn(listing.ratingCount)})` }]
       : []),
-    ...(listing.termsBn ? [{ label: 'সংযোগের শর্ত', value: listing.termsBn }] : []),
   ];
 
   return (
@@ -75,6 +71,8 @@ export default function WifiDetail({ slug }: { slug: string }) {
           listingId={listing.id}
           ratingAvg={listing.ratingAvg}
           ratingCount={listing.ratingCount}
+          connectionFee={listing.connectionFee}
+          termsBn={listing.termsBn}
         />
       }
       action={<ContactBlock phone={contactPhone} hideRequestFallback />}

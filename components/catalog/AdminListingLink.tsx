@@ -26,7 +26,7 @@ export default function AdminListingLink({
 
   return (
     <Link
-      href={`/admin/catalog?category=${category}`}
+      href={`/admin/directories/${category}`}
       className={`inline-flex min-h-[40px] shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[13px] font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50 ${LIGHT_FOCUS}`}
     >
       <Plus className="h-4 w-4" aria-hidden="true" />

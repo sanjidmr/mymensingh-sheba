@@ -9,7 +9,6 @@ import {
   Phone,
   FileText,
   ShieldCheck,
-  ArrowRight,
   ArrowLeft,
   CheckCircle2,
   Building,
@@ -237,7 +236,6 @@ export default function ToletSetupPage() {
                 className="px-6 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold  flex items-center gap-1.5 cursor-pointer"
               >
                 <span>{loading ? 'সংরক্ষণ হচ্ছে...' : 'প্রোফাইল সংরক্ষণ ও সক্রিয় করুন'}</span>
-                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </form>

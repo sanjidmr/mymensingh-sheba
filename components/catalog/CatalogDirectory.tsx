@@ -37,6 +37,7 @@ export interface CatalogDirectoryProps {
   ui: CategoryUiConfig;
   listings: ServiceListing[];
   loading: boolean;
+  loadError?: string;
   /** Facet declarations for this category. */
   filterGroups: FilterGroup[];
   sortOptions: { id: string; labelBn: string }[];
@@ -67,6 +68,7 @@ export default function CatalogDirectory({
   ui,
   listings,
   loading,
+  loadError,
   filterGroups,
   sortOptions,
   sorters,
@@ -174,7 +176,11 @@ export default function CatalogDirectory({
 
       {renderTools ? <div className="mt-2.5">{renderTools(controller)}</div> : null}
 
-      <div className="mt-2.5">
+      {loadError ? (
+        <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+          তালিকা লোড করা যায়নি: {loadError}
+        </p>
+      ) : <div className="mt-2.5">
         <DirectoryResults
           loading={loading}
           empty={controller.results.length === 0}
@@ -190,7 +196,7 @@ export default function CatalogDirectory({
             ))}
           </div>
         </DirectoryResults>
-      </div>
+      </div>}
     </DirectoryShell>
   );
 }

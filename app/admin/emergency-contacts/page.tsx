@@ -90,7 +90,7 @@ export default async function AdminEmergencyContactsPage({
       <PageHeader
         title="জরুরি সেবা ডিরেক্টরি"
         description="ডাক্তার, পুলিশ, অ্যাম্বুলেন্স ও ফায়ার সার্ভিসের বিদ্যমান যোগাযোগ এন্ট্রি। নতুন এন্ট্রি প্রথমে বন্ধ থাকে; নম্বর ও উৎস পর্যালোচনা করে চালু করুন।"
-        actions={<Link href="/admin/catalog" className="inline-flex min-h-10 items-center rounded-lg border border-admin-border bg-white px-3 text-sm font-semibold text-ink-700">ক্যাটালগে ফিরুন</Link>}
+        actions={<Link href="/admin" className="inline-flex min-h-10 items-center rounded-lg border border-admin-border bg-white px-3 text-sm font-semibold text-ink-700">অ্যাডমিনে ফিরুন</Link>}
       />
 
       <div className="mb-4 flex flex-col gap-3">

@@ -10,7 +10,6 @@ import {
   Calendar,
   Heart,
   ShieldCheck,
-  ArrowRight,
   Sparkles,
   Info,
 } from 'lucide-react';
@@ -200,7 +199,7 @@ export default function ToletPreviewSection() {
                         মালিকের ফোন নম্বর সুরক্ষিত
                       </span>
                       <span className="text-emerald-800 font-medium group-hover:underline flex items-center gap-0.5">
-                        বিস্তারিত দেখুন <ArrowRight className="w-3 h-3" />
+                        বিস্তারিত দেখুন
                       </span>
                     </div>
                   </div>
@@ -217,7 +216,6 @@ export default function ToletPreviewSection() {
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-medium text-sm sm:text-base transition-colors shadow-xs"
           >
             <span>সকল বাসা ভাড়া দেখুন (ময়মনসিংহ সিটি)</span>
-            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>

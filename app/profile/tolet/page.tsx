@@ -20,21 +20,18 @@ import {
   Clock,
   MapPin,
   MessageSquareText,
-  Inbox,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import {
   fetchMyListings,
-  fetchToletRequestsAsOwner,
   archiveOwnListing,
   restoreOwnListing,
   permanentlyDeleteOwnListing,
-  updateToletRequestStatus,
 } from '@/lib/tolet-service';
-import type { ToletListing, ToletRequest, ToletRequestStatus } from '@/lib/tolet-types';
+import type { ToletListing } from '@/lib/tolet-types';
 import { TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
-import { ListingStatusBadge, RequestStatusBadge } from '@/components/tolet/ListingStatusBadge';
+import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { cn } from '@/lib/utils';
@@ -44,7 +41,6 @@ export default function MyToletListingsPage() {
   const { user } = useAuth();
 
   const [listings, setListings] = useState<ToletListing[]>([]);
-  const [requests, setRequests] = useState<ToletRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState(
@@ -62,13 +58,9 @@ export default function MyToletListingsPage() {
     if (!user) return;
     let active = true;
     (async () => {
-      const [mine, inbox] = await Promise.all([
-        fetchMyListings(user.id, true),
-        fetchToletRequestsAsOwner(user.id),
-      ]);
+      const mine = await fetchMyListings(user.id, true);
       if (!active) return;
       setListings(mine);
-      setRequests(inbox);
       setLoading(false);
     })().catch(() => {
       if (!active) return;
@@ -126,26 +118,12 @@ export default function MyToletListingsPage() {
     setBusyId(null);
     if (result.success) {
       setListings((prev) => prev.filter((item) => item.id !== listing.id));
-      setRequests((prev) => prev.filter((request) => request.listingId !== listing.id));
       setNotice(result.warning || 'বিজ্ঞাপন, এর সংযুক্ত অনুরোধ এবং ছবি স্থায়ীভাবে মুছে ফেলা হয়েছে।');
     } else {
       setError(result.error || 'বিজ্ঞাপন স্থায়ীভাবে ডিলিট করা যায়নি।');
     }
   };
 
-  const handleRequestStatus = async (reqId: string, status: ToletRequestStatus) => {
-    setBusyId(reqId);
-    const result = await updateToletRequestStatus(reqId, status);
-    setBusyId(null);
-    if (result.success) {
-      setRequests((prev) => prev.map((r) => (r.id === reqId ? { ...r, status } : r)));
-    }
-  };
-
-  const activeRequests = useMemo(
-    () => requests.filter((r) => r.status === 'submitted' || r.status === 'contacted'),
-    [requests]
-  );
   const displayedListings = listings.filter((listing) => listing.status !== 'archived');
   const archivedListings = listings.filter((listing) => listing.status === 'archived');
 
@@ -248,7 +226,7 @@ export default function MyToletListingsPage() {
               : notice === 'updated'
                 ? 'বিজ্ঞাপনের পরিবর্তন সংরক্ষণ করা হয়েছে।'
                 : notice === 'draft'
-                  ? 'আপনার খসড়া সংরক্ষণ করা হয়েছে। চাইলে পরে সম্পাদনা করে প্রকাশ করতে পারবেন।'
+                  ? 'আপনার জমা দেওয়া হয়নি সংরক্ষণ করা হয়েছে। চাইলে পরে সম্পাদনা করে প্রকাশ করতে পারবেন।'
                   : notice}
           </div>
         )}
@@ -296,107 +274,6 @@ export default function MyToletListingsPage() {
                 <div className="space-y-3">{archivedListings.map((listing) => renderListingCard(listing, true))}</div>
               </section>
             )}
-
-            {/* REQUEST INBOX (owner authorized view) */}
-            <div className="mt-10">
-              <h2 className="text-base font-bold text-ink-900 mb-1 flex items-center gap-2">
-                <Inbox className="w-4 h-4 text-brand-600" />
-                ভাড়াটিয়ার অনুরোধ
-              </h2>
-              <p className="text-xs text-ink-400 mb-4">
-                বাসা দেখতে ইচ্ছুকদের অনুরোধগুলো এখানে পাবেন। যোগাযোগের পর অবস্থা আপডেট করুন।
-              </p>
-
-              {requests.length === 0 ? (
-                <div className="bg-white rounded-2xl border border-dashed border-brand-200 p-8 text-center text-xs text-ink-400">
-                  এখনও কোনো অনুরোধ আসেনি। বিজ্ঞাপন প্রকাশিত হলে অনুরোধগুলো এখানে দেখা যাবে।
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {requests.map((req) => {
-                    const area = req.areaId ? getAreaById(req.areaId) : undefined;
-                    return (
-                      <div key={req.id} className="bg-white rounded-2xl border border-brand-100 p-4 sm:p-5">
-                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs font-bold text-ink-900">{req.customerName}</span>
-                            </div>
-                            <p className="text-[11px] text-ink-400 mt-0.5 line-clamp-1">{req.listingTitle}</p>
-                          </div>
-                          <RequestStatusBadge status={req.status} />
-                        </div>
-
-                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink-500 pt-3 border-t border-brand-100">
-                          <div className="flex items-center gap-2">
-                            <Phone className="w-4 h-4 text-ink-400 shrink-0" />
-                            <span>{req.customerPhone}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
-                            <span>{area?.nameBn || req.areaId || 'এলাকা নেই'}</span>
-                          </div>
-                          {req.preferredTime && (
-                            <div className="flex items-center gap-2">
-                              <Clock className="w-4 h-4 text-ink-400 shrink-0" />
-                              <span>{req.preferredTime}</span>
-                            </div>
-                          )}
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-ink-400 shrink-0" />
-                            <span>{new Date(req.createdAt).toLocaleString('bn-BD', { dateStyle: 'short', timeStyle: 'short' } as Intl.DateTimeFormatOptions)}</span>
-                          </div>
-                        </div>
-
-                        {req.message && (
-                          <div className="mt-3 p-3 bg-mist-50 rounded-xl text-xs text-ink-700 flex items-start gap-2">
-                            <MessageSquareText className="w-4 h-4 text-ink-400 shrink-0 mt-0.5" />
-                            {req.message}
-                          </div>
-                        )}
-
-                        {req.status !== 'completed' && req.status !== 'cancelled' && (
-                          <div className="mt-4 pt-3 border-t border-brand-100 flex flex-wrap gap-2">
-                            {req.status === 'submitted' && (
-                              <button
-                                type="button"
-                                disabled={busyId === req.id}
-                                onClick={() => handleRequestStatus(req.id, 'contacted')}
-                                className="px-3.5 py-2 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 text-xs font-semibold hover:bg-indigo-100 disabled:opacity-50"
-                              >
-                                যোগাযোগ হয়েছে
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              disabled={busyId === req.id}
-                              onClick={() => handleRequestStatus(req.id, 'completed')}
-                              className="px-3.5 py-2 rounded-xl bg-brand-50 border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-100 disabled:opacity-50"
-                            >
-                              সম্পন্ন
-                            </button>
-                            <button
-                              type="button"
-                              disabled={busyId === req.id}
-                              onClick={() => handleRequestStatus(req.id, 'cancelled')}
-                              className="px-3.5 py-2 rounded-xl bg-white border border-brand-100 text-ink-500 text-xs font-semibold hover:bg-mist-50 disabled:opacity-50"
-                            >
-                              বাতিল
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-
-              {activeRequests.length === 0 && requests.length > 0 && (
-                <p className="mt-3 text-center text-[11px] text-ink-400">
-                  সব অনুরোধ প্রক্রিয়া করা হয়েছে।
-                </p>
-              )}
-            </div>
           </>
         )}
       </main>

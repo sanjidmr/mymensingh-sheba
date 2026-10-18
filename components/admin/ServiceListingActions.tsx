@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Edit3, Loader2, Power, Trash2 } from 'lucide-react';
+import { Check, Edit3, Loader2, Power, Trash2, X } from 'lucide-react';
 import type { AdminServiceListingRow } from '@/lib/admin/queries';
-import { deleteAdminServiceListing, setAdminServiceListingActive } from '@/app/admin/actions/service-listings';
+import { deleteAdminServiceListing, moderateAdminServiceListing, setAdminServiceListingActive } from '@/app/admin/actions/service-listings';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 
 export default function ServiceListingActions({ row }: { row: AdminServiceListingRow }) {
@@ -32,12 +32,39 @@ export default function ServiceListingActions({ row }: { row: AdminServiceListin
     router.refresh();
   };
 
+  const moderate = async (status: 'approved' | 'rejected') => {
+    const rejectionReason = status === 'rejected'
+      ? window.prompt('প্রত্যাখ্যানের কারণ লিখুন (গ্রাহক এটি দেখতে পাবেন):')?.trim()
+      : undefined;
+    if (status === 'rejected' && !rejectionReason) return;
+    setBusy(true);
+    setMessage('');
+    const result = await moderateAdminServiceListing(row.id, status, rejectionReason);
+    setBusy(false);
+    if (!result.ok) {
+      setMessage(result.error);
+      return;
+    }
+    setMessage(result.message ?? 'পরিবর্তন সংরক্ষিত হয়েছে।');
+    router.refresh();
+  };
+
   return (
     <div className="flex min-w-36 flex-col items-start gap-1.5">
-      <Link href={`/admin/catalog/${category}/${row.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-navy hover:bg-admin-page">
+      <Link href={`/admin/directories/${category}/${row.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-navy hover:bg-admin-page">
         <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
         সম্পাদনা
       </Link>
+      {row.owner_id && row.status !== 'approved' && (
+        <div className="flex gap-1">
+          <button type="button" onClick={() => void moderate('approved')} disabled={busy} className="inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60">
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />অনুমোদন
+          </button>
+          {row.status !== 'rejected' && <button type="button" onClick={() => void moderate('rejected')} disabled={busy} className="inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60">
+            <X className="h-3.5 w-3.5" aria-hidden="true" />প্রত্যাখ্যান
+          </button>}
+        </div>
+      )}
       <button type="button" onClick={() => setDialog('publish')} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-text hover:bg-admin-page disabled:opacity-60">
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Power className="h-3.5 w-3.5" aria-hidden="true" />}
         {row.is_active ? 'অপ্রকাশিত করুন' : 'প্রকাশ করুন'}

@@ -24,13 +24,22 @@ function typeIcon(type: string) {
  * its target link when one exists.
  */
 export default function NotificationBell() {
-  const { notifications, notificationsError, markNotificationRead } = useAuth();
+  const { notifications, notificationsError, markNotificationRead, markNotificationsReadAll } =
+    useAuth();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const unreadCount = notifications.filter((notification) => !notification.isRead).length;
   const unreadLabel = unreadCount > 9 ? '9+' : String(unreadCount);
   const recent = notifications.slice(0, RECENT_LIMIT);
+
+  // Opening the bell counts as "seen": clear the unread badge so it does not
+  // keep showing after the owner has looked at the list.
+  const toggleOpen = () => {
+    const next = !open;
+    setOpen(next);
+    if (next && unreadCount > 0) void markNotificationsReadAll();
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -54,7 +63,7 @@ export default function NotificationBell() {
     <div ref={containerRef} className="relative shrink-0">
       <button
         type="button"
-        onClick={() => setOpen((previous) => !previous)}
+        onClick={toggleOpen}
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={

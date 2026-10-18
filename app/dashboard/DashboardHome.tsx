@@ -1,7 +1,7 @@
 'use client';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Bell, Bookmark, Camera, CheckCircle2, CircleAlert, ClipboardList, Clock, Eye, FileText, Home, Loader2, MapPin, Mail, Phone, PhoneCall, PlusCircle, ShieldCheck, UserRound, XCircle } from 'lucide-react';
+import { BookOpen, Briefcase, Camera, CheckCircle2, CircleAlert, ClipboardList, Clock, Eye, FileText, GraduationCap, Heart, Home, Loader2, MapPin, Mail, Newspaper, Phone, PhoneCall, PlusCircle, ShieldCheck, ShoppingBag, Wifi, XCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { fetchMyPostViewCounts, fetchMyPosts } from '@/lib/catalog-service';
 import { fetchMyListings } from '@/lib/tolet-service';
@@ -27,7 +27,7 @@ const REQUEST_STATUS_LABEL: Record<ServiceRequestStatus, string> = {
 };
 
 export default function DashboardHome() {
-  const { user, toletProfile, homeTutorProfile, bloodDonorProfile, savedListings, requests, notifications, isLoading: authLoading, uploadAvatar } = useAuth();
+  const { user, requests, notifications, isLoading: authLoading, uploadAvatar } = useAuth();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [listings, setListings] = useState<ToletListing[]>([]);
   const [listingStats, setListingStats] = useState<Record<string, ToletListingStats>>({});
@@ -109,9 +109,6 @@ export default function DashboardHome() {
     }
     return { total: rows.length, pending, approved, rejected, active };
   }, [rows]);
-  const unread = notifications.filter((n) => !n.isRead);
-  const unreadMessages = unread.filter((notification) => notification.relatedType === 'contact_message').length;
-  const svcCount = [toletProfile, homeTutorProfile, bloodDonorProfile].filter(Boolean).length;
   const activity = [
     ...rows.map((row) => ({
       id: `post-${row.source}-${row.id}`,
@@ -207,7 +204,6 @@ export default function DashboardHome() {
           </Link>
           <Link href="/dashboard/new" className={`flex min-h-[50px] items-center justify-between gap-3 rounded-lg bg-brand-800 px-4 text-white hover:bg-brand-900 sm:min-w-64 ${LIGHT_FOCUS}`}>
             <span className="flex items-center gap-2.5"><PlusCircle className="h-5 w-5" /><span className="text-[14px] font-extrabold">নতুন পোস্ট তৈরি করুন</span></span>
-            <ArrowRight className="h-4 w-4 opacity-80" />
           </Link>
         </div>
       </section>
@@ -227,7 +223,7 @@ export default function DashboardHome() {
       <section aria-labelledby="recent-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
         <div className="flex items-center justify-between gap-2">
           <h2 id="recent-h" className="text-[13px] font-extrabold text-ink-900">সাম্প্রতিক পোস্ট</h2>
-          {rows.length > 0 && (<Link href="/dashboard/posts" className={`inline-flex items-center gap-1 text-[12px] font-bold text-brand-700 hover:underline ${LIGHT_FOCUS}`}>সব দেখুন<ArrowRight className="h-3.5 w-3.5" /></Link>)}
+          {rows.length > 0 && (<Link href="/dashboard/posts" className={`inline-flex items-center gap-1 text-[12px] font-bold text-brand-700 hover:underline ${LIGHT_FOCUS}`}>সব দেখুন</Link>)}
         </div>
         {analyticsError && (
           <p role="alert" className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-[11.5px] leading-relaxed text-amber-900">{analyticsError}</p>
@@ -266,7 +262,6 @@ export default function DashboardHome() {
                       )}
                     </div>
                   </div>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-brand-300" />
                 </Link>
               </li>
             ))}
@@ -275,14 +270,15 @@ export default function DashboardHome() {
       </section>
       <section aria-labelledby="quick-h">
         <h2 id="quick-h" className="mb-2 text-[13px] font-extrabold text-ink-900">দ্রুত মেনু</h2>
-        <div className="grid grid-cols-2 gap-3">
-          <Quick href="/dashboard/posts?status=approved" icon={CheckCircle2} label="সক্রিয় পোস্ট" hint="অনুমোদিত ও প্রকাশিত" v={stats.active} />
-          <Quick href="/profile/saved" icon={Bookmark} label="সেভ করা" hint="পছন্দের তালিকা" v={savedListings.length} />
-          <Quick href="/profile/requests" icon={ClipboardList} label="আমার রিকোয়েস্ট" hint="সেবার আবেদন" v={requests.length} />
-          <Quick href="/dashboard/messages" icon={Mail} label="সাপোর্ট বার্তা" hint={unreadMessages ? 'নতুন উত্তর এসেছে' : 'সাপোর্টের সাথে কথা বলুন'} v={unreadMessages} />
-          <Quick href="/dashboard/complaints" icon={CircleAlert} label="অভিযোগ" hint="সাপোর্টে অভিযোগ জানান" />
-          <Quick href="/dashboard/notifications" icon={Bell} label="নোটিফিকেশন" hint={unread.length > 0 ? 'নতুন বার্তা আছে' : 'সব পড়া হয়েছে'} v={unread.length} />
-          <Quick href="/dashboard/profile" icon={UserRound} label="আমার প্রোফাইল" hint={svcCount > 0 ? 'টি সার্ভিস প্রোফাইল' : 'তথ্য হালনাগাদ করুন'} v={svcCount > 0 ? svcCount : undefined} />
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <Quick href="/profile/tolet/new" icon={Home} label="বাসা ভাড়া" />
+          <Quick href="/buy-sell/create" icon={ShoppingBag} label="কেনাবেচা" />
+          <Quick href="/jobs/create" icon={Briefcase} label="চাকরি" />
+          <Quick href="/news/create" icon={Newspaper} label="সংবাদ" />
+          <Quick href="/profile/home-tutor/setup" icon={GraduationCap} label="গৃহশিক্ষক" />
+          <Quick href="/profile/blood-donor/setup" icon={Heart} label="রক্তদাতা" />
+          <Quick href="/dashboard/wifi/new" icon={Wifi} label="WiFi" />
+          <Quick href="/dashboard/coaching/new" icon={BookOpen} label="কোচিং সেন্টার" />
         </div>
       </section>
       <section aria-labelledby="activity-h" className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-5">
@@ -317,11 +313,11 @@ function Stat({ href, icon: Icon, label, v, ic }: { href: string; icon: typeof F
     </Link>
   );
 }
-function Quick({ href, icon: Icon, label, hint, v }: { href: string; icon: typeof Bell; label: string; hint: string; v?: number }) {
+function Quick({ href, icon: Icon, label }: { href: string; icon: typeof FileText; label: string }) {
   return (
-    <Link href={href} className={`flex items-center gap-2.5 rounded-xl border border-brand-100 bg-white p-3 hover:border-brand-200 ${LIGHT_FOCUS}`}>
-      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><Icon className="h-4 w-4" /></span>
-      <span className="min-w-0"><span className="block truncate text-[12.5px] font-extrabold text-ink-900">{label}{typeof v === 'number' ? ` (${v})` : ''}</span><span className="mt-0.5 block truncate text-[11px] text-ink-400">{hint}</span></span>
+    <Link href={href} className={`flex min-h-20 items-center gap-2 rounded-xl border border-brand-100 bg-white p-3 transition-colors hover:border-brand-300 hover:bg-brand-50/40 ${LIGHT_FOCUS}`}>
+      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700"><Icon className="h-4 w-4" aria-hidden="true" /></span>
+      <span className="line-clamp-2 text-[12.5px] font-extrabold leading-snug text-ink-900">{label}</span>
     </Link>
   );
 }

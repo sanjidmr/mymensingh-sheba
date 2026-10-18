@@ -9,7 +9,6 @@ import {
   Phone,
   BookOpen,
   ShieldCheck,
-  ArrowRight,
   ArrowLeft,
   CheckCircle2,
   Video,
@@ -175,7 +174,7 @@ export default function HomeTutorSetupPage() {
         homeTutorProfile?.status === 'approved'
           ? 'পরিবর্তন সংরক্ষিত হয়েছে। আপনার প্রোফাইল প্রকাশিত অবস্থায় আছে।'
           : mode === 'draft'
-            ? 'খসড়া সংরক্ষণ হয়েছে। পরে সম্পাদনা করে জমা দিতে পারবেন।'
+            ? 'জমা দেওয়া হয়নি হিসেবে সংরক্ষণ হয়েছে। পরে সম্পাদনা করে জমা দিতে পারবেন।'
             : 'গৃহশিক্ষক প্রোফাইল জমা হয়েছে! অ্যাডমিন অনুমোদনের পরে সক্রিয় হবে।'
       );
       setTimeout(() => {
@@ -605,7 +604,7 @@ export default function HomeTutorSetupPage() {
                   disabled={loading || photoUploading}
                   className="px-4 py-2.5 rounded-xl border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-50 disabled:opacity-50"
                 >
-                  {loading ? 'সংরক্ষণ হচ্ছে...' : 'খসড়া সংরক্ষণ'}
+                  {loading ? 'সংরক্ষণ হচ্ছে...' : 'জমা দেওয়া হয়নি সংরক্ষণ'}
                 </button>
               )}
               <Link
@@ -626,7 +625,6 @@ export default function HomeTutorSetupPage() {
                       ? 'পরিবর্তন সংরক্ষণ'
                       : 'শিক্ষক প্রোফাইল সক্রিয় করুন'}
                 </span>
-                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </form>

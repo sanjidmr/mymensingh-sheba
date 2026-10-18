@@ -118,12 +118,6 @@ export const STATUS_OPTIONS: Record<string, StatusOption[]> = {
     { value: 'cancelled', label: 'বাতিল', tone: 'neutral' },
     { value: 'rejected', label: 'প্রত্যাখ্যাত', tone: 'danger' },
   ],
-  tolet_requests: [
-    { value: 'submitted', label: 'জমা হয়েছে', tone: 'warning' },
-    { value: 'contacted', label: 'যোগাযোগ হয়েছে', tone: 'info' },
-    { value: 'completed', label: 'সম্পন্ন', tone: 'success' },
-    { value: 'cancelled', label: 'বাতিল', tone: 'neutral' },
-  ],
   blood_requests: [
     { value: 'pending_review', label: 'অপেক্ষমাণ', tone: 'warning' },
     { value: 'approved', label: 'অনুমোদিত', tone: 'success' },
@@ -158,7 +152,7 @@ export const STATUS_OPTIONS: Record<string, StatusOption[]> = {
     { value: 'rejected', label: 'প্রত্যাখ্যাত', tone: 'danger' },
     { value: 'suspended', label: 'স্থগিত', tone: 'danger' },
     { value: 'paused', label: 'বিরতি', tone: 'neutral' },
-    { value: 'draft', label: 'খসড়া', tone: 'neutral' },
+    { value: 'draft', label: 'জমা দেওয়া হয়নি', tone: 'neutral' },
   ],
   users: [
     { value: 'active', label: 'সক্রিয়', tone: 'success' },

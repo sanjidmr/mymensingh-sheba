@@ -71,7 +71,7 @@ export default function CategoryTile({
 
   const rootClass =
     `group flex w-full flex-col items-center rounded-2xl outline-none transition-transform motion-safe:duration-150 active:scale-[0.97] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-brand-600 ${
-      compact ? 'max-w-[4.5rem] sm:max-w-[7rem] lg:max-w-[8rem]' : 'lg:max-w-[10rem]'
+      compact ? '' : 'lg:max-w-[10rem]'
     }`;
 
   return (

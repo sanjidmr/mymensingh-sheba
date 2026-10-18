@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   FileText,
   Lock,
-  ArrowRight,
   AlertCircle,
 } from 'lucide-react';
 
@@ -69,7 +68,6 @@ export default function EmergencyBloodSection() {
               >
                 <Heart className="w-5 h-5 fill-white" />
                 <span>রক্তদাতা খুঁজুন</span>
-                <ArrowRight className="w-4 h-4" />
               </Link>
 
               <Link

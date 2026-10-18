@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { MapPin, BadgeCheck, ArrowRight, Star } from 'lucide-react';
+import { MapPin, BadgeCheck, Star } from 'lucide-react';
 
 export type ListingCardVariant =
   /** To-Let: price-led rental listing. */
@@ -222,10 +222,6 @@ export default function ListingCard({
           ) : (
             <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
               <span className="truncate">{item.actionLabel || 'বিস্তারিত'}</span>
-              <ArrowRight
-                className="h-3 w-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
-                aria-hidden="true"
-              />
             </span>
           )}
 

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Check, ChevronDown, MapPin } from 'lucide-react';
+import { Check, ChevronDown, MapPin } from 'lucide-react';
 import { DARK_FOCUS } from './AboutSectionBits';
 
 const HERO_POINTS = [
@@ -78,7 +78,6 @@ export default function AboutHero({
             className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-accent-300 sm:w-auto ${DARK_FOCUS}`}
           >
             সেবা খুঁজুন
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
             href="/how-it-works"

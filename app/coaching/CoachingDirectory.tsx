@@ -43,13 +43,16 @@ const SORTERS = {
 export default function CoachingDirectory() {
   const [listings, setListings] = useState<ServiceListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const data = await fetchServiceListings('coaching');
+        const data = await fetchServiceListings('coaching', true);
         if (active) setListings(data);
+      } catch (cause) {
+        if (active) setLoadError(cause instanceof Error ? cause.message : 'তালিকা লোড করা যায়নি।');
       } finally {
         if (active) setLoading(false);
       }
@@ -99,6 +102,7 @@ export default function CoachingDirectory() {
       ui={ui}
       listings={listings}
       loading={loading}
+      loadError={loadError}
       filterGroups={filterGroups}
       sortOptions={SORT_OPTIONS}
       sorters={SORTERS}

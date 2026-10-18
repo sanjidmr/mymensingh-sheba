@@ -14,7 +14,7 @@
  */
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, MapPin } from 'lucide-react';
+import { BadgeCheck, MapPin } from 'lucide-react';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { bnTaka, tagLabel, tagLabels } from '@/lib/catalog-types';
 import type { CommunityPost, PostStatus } from '@/lib/catalog-types';
@@ -106,10 +106,6 @@ export function NewsCard({ post }: { post: CommunityPost }) {
 
         <span className="mt-auto flex items-center gap-1 pt-2 text-[11px] font-bold text-brand-700 sm:text-xs">
           <span className="truncate">বিস্তারিত পড়ুন</span>
-          <ArrowRight
-            className="h-3 w-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
         </span>
       </div>
     </Link>
@@ -200,10 +196,6 @@ export function JobCard({ post }: { post: CommunityPost }) {
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-brand-100 pt-2.5">
           <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
             <span className="truncate">বিস্তারিত</span>
-            <ArrowRight
-              className="h-3 w-3 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
           </span>
         </div>
       </div>
@@ -250,10 +242,6 @@ export function MyPostRow({
           {post.kind === 'job' ? 'চাকরির পোস্ট' : post.kind === 'news' ? 'সংবাদ' : 'বিক্রয়ের পোস্ট'}
         </p>
       </div>
-      <ArrowRight
-        className="h-4 w-4 shrink-0 text-brand-300 transition-transform duration-200 group-hover:translate-x-0.5"
-        aria-hidden="true"
-      />
     </Link>
   );
 }

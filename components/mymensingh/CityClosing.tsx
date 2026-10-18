@@ -1,4 +1,4 @@
-import { ArrowRight, Compass } from 'lucide-react';
+import { Compass } from 'lucide-react';
 import { CityHeading } from './CityBits';
 
 const LINKS = [
@@ -46,10 +46,6 @@ export default function CityClosing() {
                 </span>
                 <span className="block text-[12px] text-brand-300">{link.note}</span>
               </span>
-              <ArrowRight
-                className="h-4 w-4 shrink-0 text-accent-400 transition-transform group-hover:translate-x-0.5"
-                aria-hidden="true"
-              />
             </a>
           ))}
         </nav>

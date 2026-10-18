@@ -9,9 +9,6 @@ import { toCamelObject, toSnakeObject } from './supabase/transform';
 import type {
   ToletListing,
   ToletListingInput,
-  ToletRequest,
-  ToletRequestInput,
-  ToletRequestStatus,
   ListingReport,
   ListingReportStatus,
 } from './tolet-types';
@@ -26,11 +23,6 @@ import {
   mockAdminFetchListings,
   mockAdminFetchListingById,
   mockAdminUpdateListing,
-  mockCreateToletRequest,
-  mockFetchToletRequestsAsCustomer,
-  mockFetchToletRequestsAsOwner,
-  mockFetchRequestsForListing,
-  mockUpdateToletRequestStatus,
   mockCreateListingReport,
   mockAdminFetchReports,
   mockAdminUpdateReportStatus,
@@ -95,6 +87,16 @@ function mapListingRow(row: RawListingRow): ToletListing {
   };
 }
 
+/**
+ * Best-effort phone lookup for approved listings.
+ *
+ * The phone numbers are a convenience layered on top of the listing rows, not
+ * the rows themselves: if the RPC is unavailable (migration not yet applied,
+ * PostgREST schema cache stale, transient outage) the listings still render and
+ * the contact buttons fall back to the tracked "যোগাযোগের অনুরোধ" flow instead of
+ * the directory going blank. Failures are logged so the missing RPC stays
+ * visible in the console.
+ */
 async function attachApprovedListingPhones(
   client: NonNullable<ReturnType<typeof createClient>>,
   listings: ToletListing[]
@@ -107,7 +109,13 @@ async function attachApprovedListingPhones(
   const { data, error } = await client.rpc('fn_public_tolet_listing_contacts', {
     p_listing_ids: ids,
   });
-  if (error) throw new Error(`মালিকের যোগাযোগের তথ্য লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (error) {
+    console.error(
+      'Owner contact lookup failed; showing listings without phone numbers.',
+      error.message
+    );
+    return listings;
+  }
 
   const phoneByListing = new Map<string, string>(
     (data ?? []).map(
@@ -118,23 +126,6 @@ async function attachApprovedListingPhones(
     ...listing,
     ownerPhone: phoneByListing.get(listing.id) || undefined,
   }));
-}
-
-function mapRequestRow(row: Record<string, unknown>, listingTitle = ''): ToletRequest {
-  const c = toCamelObject(row) as Record<string, unknown>;
-  return {
-    id: (c.id as string) || '',
-    listingId: (c.listingId as string) || '',
-    listingTitle: (c.listingTitle as string) || listingTitle,
-    customerId: (c.customerId as string) || '',
-    customerName: (c.customerName as string) || '',
-    customerPhone: (c.customerPhone as string) || '',
-    areaId: (c.areaId as string) || undefined,
-    message: (c.message as string) || undefined,
-    preferredTime: (c.preferredTime as string) || undefined,
-    status: (c.status as ToletRequest['status']) || 'submitted',
-    createdAt: (c.createdAt as string) || '',
-  };
 }
 
 function mapReportRow(row: Record<string, unknown>, reporterName = ''): ListingReport {
@@ -703,105 +694,7 @@ export async function adminUpdateListing(
   return { success: true, listing: mapListingRow(data as RawListingRow) };
 }
 
-// ---------------------------------------------------------------------------
-// Requests
-// ---------------------------------------------------------------------------
 
-export async function createToletRequest(
-  input: ToletRequestInput
-): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) {
-    const listing = mockFetchListingById(input.listingId);
-    mockCreateToletRequest(input, listing?.title);
-    return { success: true };
-  }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { error } = await client.from('tolet_requests').insert({
-    listing_id: input.listingId,
-    customer_id: input.customerId,
-    customer_name: input.customerName,
-    customer_phone: input.customerPhone,
-    area_id: input.areaId || null,
-    message: input.message || null,
-    preferred_time: input.preferredTime || null,
-  });
-  if (error) return { success: false, error: error.message };
-  return { success: true };
-}
-
-export async function fetchToletRequestsAsCustomer(customerId: string): Promise<ToletRequest[]> {
-  if (!isSupabaseConfigured) return mockFetchToletRequestsAsCustomer(customerId);
-  const client = createClient();
-  if (!client) return [];
-  const { data, error } = await client
-    .from('tolet_requests')
-    .select('*, listing:listing_id(title)')
-    .eq('customer_id', customerId)
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return (data || []).map((row) =>
-    mapRequestRow(row as Record<string, unknown>, ((row as Record<string, unknown>).listing as { title?: string } | null)?.title || '')
-  );
-}
-
-export async function fetchToletRequestsAsOwner(ownerId: string): Promise<ToletRequest[]> {
-  if (!isSupabaseConfigured) return mockFetchToletRequestsAsOwner(ownerId);
-  const client = createClient();
-  if (!client) return [];
-  const { data, error } = await client
-    .from('tolet_requests')
-    .select('*, listing:listing_id(title)')
-    .in(
-      'listing_id',
-      (
-        await fetchMyListings(ownerId)
-      ).map((l) => l.id)
-    )
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return (data || []).map((row) =>
-    mapRequestRow(row as Record<string, unknown>, ((row as Record<string, unknown>).listing as { title?: string } | null)?.title || '')
-  );
-}
-
-export async function fetchRequestsForListing(
-  listingId: string
-): Promise<ToletRequest[]> {
-  if (!isSupabaseConfigured) {
-    throw new Error('Supabase সংযুক্ত নেই; বিজ্ঞাপনের অনুরোধগুলো লোড করা যায়নি।');
-  }
-  const client = createClient();
-  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
-  const { data, error } = await client
-    .from('tolet_requests')
-    .select('*, listing:listing_id(title)')
-    .eq('listing_id', listingId)
-    .order('created_at', { ascending: false });
-  if (error) throw new Error(`বিজ্ঞাপনের অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) =>
-    mapRequestRow(row as Record<string, unknown>, ((row as Record<string, unknown>).listing as { title?: string } | null)?.title || '')
-  );
-}
-
-export async function updateToletRequestStatus(
-  requestId: string,
-  newStatus: ToletRequestStatus
-): Promise<{ success: boolean; error?: string }> {
-  if (!isSupabaseConfigured) {
-    const updated = mockUpdateToletRequestStatus(requestId, newStatus);
-    if (!updated) return { success: false, error: 'অনুরোধ পাওয়া যায়নি' };
-    return { success: true };
-  }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const { error } = await client
-    .from('tolet_requests')
-    .update({ status: newStatus })
-    .eq('id', requestId);
-  if (error) return { success: false, error: error.message };
-  return { success: true };
-}
 
 // ---------------------------------------------------------------------------
 // Reports

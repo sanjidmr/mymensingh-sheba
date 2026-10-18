@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, ArrowRight } from 'lucide-react';
+import { Search } from 'lucide-react';
 
 const QUICK_SUGGESTIONS = [
   'বাসা ভাড়া',
@@ -53,7 +53,6 @@ export default function ServiceSearchBox() {
             className="inline-flex h-11 shrink-0 items-center gap-1 rounded-lg bg-accent-400 px-3 text-sm font-bold text-brand-900 transition-colors hover:bg-accent-500 active:scale-[0.98] sm:h-12 sm:gap-1.5 sm:px-5 sm:text-[15px]"
           >
             খুঁজুন
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </button>
         </form>
       </div>

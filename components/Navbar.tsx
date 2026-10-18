@@ -14,7 +14,6 @@ import {
   Info,
   Phone,
   ChevronRight,
-  ArrowRight,
   Search,
   Landmark,
   Newspaper,
@@ -275,7 +274,6 @@ export default function Navbar() {
               className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-[15px] font-bold text-white shadow-sm hover:bg-brand-800"
             >
               সেবা সমূহ দেখুন
-              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
 

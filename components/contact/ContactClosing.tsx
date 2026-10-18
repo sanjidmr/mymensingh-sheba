@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, MessageCircle, PenSquare, Search } from 'lucide-react';
+import { MessageCircle, PenSquare, Search } from 'lucide-react';
 import { AboutSection, LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import Reveal from '@/components/home/Reveal';
 
@@ -58,7 +58,6 @@ export default function ContactClosing() {
               className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl px-5 text-sm font-bold text-ink-700 transition-colors hover:bg-bronze-100 sm:w-auto ${LIGHT_FOCUS}`}
             >
               যোগাযোগ করুন
-              <ArrowRight className="h-4 w-4" aria-hidden="true" />
             </Link>
           </div>
 

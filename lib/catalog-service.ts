@@ -28,6 +28,12 @@
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
+import {
+  JOB_TYPES,
+  MARKET_CATEGORIES,
+  MARKET_CONDITIONS,
+  NEWS_CATEGORIES,
+} from './catalog-types';
 import type {
   CoachingBatch,
   CoachingBatchInput,
@@ -62,6 +68,71 @@ const NOT_CONFIGURED =
 const NOT_ALLOWED = 'এই কাজটি করতে অ্যাডমিন অনুমতি প্রয়োজন।';
 const NOT_SIGNED_IN = 'এই কাজটি করতে আগে লগইন করুন।';
 
+function communityPostWriteError(
+  input: Partial<CommunityPostInput> & { kind?: PostKind },
+  requireComplete = false,
+  existingCategory?: string | null
+): string | null {
+  if ((requireComplete || input.titleBn !== undefined) && !input.titleBn?.trim()) return 'শিরোনাম লিখুন।';
+  if ((input.titleBn?.length ?? 0) > 120) return 'শিরোনাম ১২০ অক্ষরের মধ্যে লিখুন।';
+  const category = input.category?.trim() ?? '';
+  if (category.length > 100) return 'ক্যাটাগরি ১০০ অক্ষরের মধ্যে লিখুন।';
+  if (input.kind === 'news') {
+    if (category && !NEWS_CATEGORIES.some((item) => item.id === category) && category !== existingCategory) {
+      return 'সংবাদের সঠিক বিভাগ বেছে নিন।';
+    }
+    if ((requireComplete || input.bodyBn !== undefined) && (input.bodyBn?.trim().length ?? 0) < 40) {
+      return 'সংবাদের মূল বিষয়বস্তু কমপক্ষে ৪০ অক্ষরের হতে হবে।';
+    }
+  } else if (input.kind === 'job') {
+    if ((requireComplete || input.category !== undefined) && !category) return 'চাকরির ক্যাটাগরি লিখুন।';
+    if ((requireComplete || input.summaryBn !== undefined) && !input.summaryBn?.trim()) return 'চাকরির সংক্ষিপ্ত বিবরণ লিখুন।';
+    if ((requireComplete || input.organizationBn !== undefined) && !input.organizationBn?.trim()) return 'প্রতিষ্ঠানের নাম লিখুন।';
+    if ((requireComplete || input.jobType !== undefined) &&
+      (!input.jobType || !JOB_TYPES.some((item) => item.id === input.jobType))) {
+      return 'চাকরির ধরন বেছে নিন।';
+    }
+    if (input.salaryMin != null && (!Number.isSafeInteger(input.salaryMin) || input.salaryMin < 0)) {
+      return 'সর্বনিম্ন বেতন শূন্য বা তার বেশি পূর্ণসংখ্যা হতে হবে।';
+    }
+    if (input.salaryMax != null && (!Number.isSafeInteger(input.salaryMax) || input.salaryMax < 0)) {
+      return 'সর্বোচ্চ বেতন শূন্য বা তার বেশি পূর্ণসংখ্যা হতে হবে।';
+    }
+    if (requireComplete && input.salaryMin == null && input.salaryMax == null) {
+      return 'বেতনের অন্তত একটি সীমা লিখুন।';
+    }
+    if (input.salaryMin != null && input.salaryMax != null && input.salaryMax < input.salaryMin) {
+      return 'সর্বোচ্চ বেতন সর্বনিম্ন বেতনের চেয়ে কম হতে পারবে না।';
+    }
+  } else if (input.kind === 'buy_sell') {
+    if ((requireComplete || input.category !== undefined) &&
+      !MARKET_CATEGORIES.some((item) => item.id === category) &&
+      category !== 'vehicle' && category !== existingCategory) {
+      return 'তালিকা থেকে সঠিক পণ্যের ক্যাটাগরি বেছে নিন।';
+    }
+    if ((requireComplete || input.summaryBn !== undefined) && !input.summaryBn?.trim()) {
+      return 'পণ্যের সংক্ষিপ্ত বিবরণ লিখুন।';
+    }
+    if ((requireComplete || input.price !== undefined) &&
+      (input.price == null || !Number.isSafeInteger(input.price) || input.price < 0)) {
+      return 'পণ্যের সঠিক দাম লিখুন।';
+    }
+    if ((requireComplete || input.conditionLabel !== undefined) &&
+      (!input.conditionLabel || !MARKET_CONDITIONS.some((item) => item.id === input.conditionLabel))) {
+      return 'পণ্যের অবস্থা বেছে নিন।';
+    }
+    if ((requireComplete || input.authorPhone !== undefined) &&
+      !/^01[3-9]\d{8}$/.test(normalizeBdPhone(input.authorPhone ?? '') ?? '')) {
+      return 'সঠিক বিক্রেতার মোবাইল নম্বর দিন।';
+    }
+    if (input.whatsappNumber &&
+      !/^01[3-9]\d{8}$/.test(normalizeBdPhone(input.whatsappNumber) ?? '')) {
+      return 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন।';
+    }
+  }
+  return null;
+}
+
 // ---------------------------------------------------------------------------
 // Row mapping
 // ---------------------------------------------------------------------------
@@ -79,14 +150,14 @@ const NOT_SIGNED_IN = 'এই কাজটি করতে আগে লগই�
  * errors on an unknown column rather than ignoring it.
  *
  * `owner_id` and the customer-owned columns (`contact_phone_public`,
- * `admission_info_bn`, `connection_fee`, `terms_bn`) are public: the first is
+ * `admission_info_bn`, `admission_fee`, `connection_fee`, `terms_bn`) are public: the first is
  * how the detail page tells a member submission from an admin one, the rest are
  * exactly what the public card/detail must show. `status` is deliberately NOT
  * here — the public policy already guarantees `approved`, so the reader never
  * needs the field, and the owner path reads it through `fn_my_service_listings`.
  */
 const PUBLIC_LISTING_COLUMNS =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
 
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
@@ -146,6 +217,9 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     ratingAvg: optNum(c.ratingAvg),
     ratingCount: optNum(c.ratingCount),
     seatCount: optNum(c.seatCount),
+    travelDays: strArray(c.travelDays),
+    stops: strArray(c.stopsBn),
+    journeyDurationBn: optStr(c.journeyDurationBn),
     // --- vehicle only; absent on every other category and on pre-migration
     // rows, where they arrive as null and `optStr`/`optNum` drop them.
     photos: c.photos ? strArray(c.photos) : undefined,
@@ -172,6 +246,7 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     publishedAt: optStr(c.publishedAt),
     contactPhonePublic: optStr(c.contactPhonePublic),
     admissionInfoBn: optStr(c.admissionInfoBn),
+    admissionFee: optNum(c.admissionFee),
     connectionFee: optNum(c.connectionFee),
     termsBn: optStr(c.termsBn),
     // Admin-only column: only populated on the authenticated admin path.
@@ -438,7 +513,7 @@ export async function saveCommunityPostDraft(
     .select('updated_at')
     .single();
   if (error || !data) {
-    return { success: false, error: error?.message || 'খসড়া সংরক্ষণ ব্যর্থ হয়েছে।' };
+    return { success: false, error: error?.message || 'জমা দেওয়া হয়নি হিসেবে সংরক্ষণ ব্যর্থ হয়েছে।' };
   }
   return { success: true, data: data.updated_at };
 }
@@ -486,11 +561,18 @@ export type AckResult = { success: true } | { success: false; error: string };
 
 /** Active listings for a public category page. */
 export async function fetchServiceListings(
-  category: ServiceCategory
+  category: ServiceCategory,
+  strict = false,
 ): Promise<ServiceListing[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
   const { data, error } = await client
     .from('service_listings')
     .select(PUBLIC_LISTING_COLUMNS)
@@ -503,7 +585,10 @@ export async function fetchServiceListings(
     .order('created_at', { ascending: false });
   // With Supabase configured the page shows real curated listings only; a
   // query error or an empty category is an honest empty state, not a sample.
-  if (error || !data) return [];
+  if (error || !data) {
+    if (strict) throw new Error(error?.message ?? 'ডিরেক্টরি লোড করা যায়নি।');
+    return [];
+  }
   return (data as Record<string, unknown>[]).map((row) => mapListing(row, false));
 }
 
@@ -718,6 +803,7 @@ function customerListingPayload(
     summary_bn: input.summaryBn?.trim() || null,
     description_bn: input.descriptionBn?.trim() || null,
     image_url: input.imageUrl?.trim() || null,
+    photos: input.photos ?? [],
     logo_url: input.logoUrl?.trim() || null,
     area_ids: input.areaIds ?? [],
     tags: input.tags ?? [],
@@ -726,6 +812,7 @@ function customerListingPayload(
     monthly_fee_min: input.monthlyFeeMin ?? null,
     monthly_fee_max: input.monthlyFeeMax ?? null,
     admission_info_bn: input.admissionInfoBn?.trim() || null,
+    admission_fee: input.admissionFee ?? null,
     price_min: input.priceMin ?? null,
     price_max: input.priceMax ?? null,
     speed_mbps: input.speedMbps ?? null,
@@ -743,13 +830,40 @@ function validateCustomerListing(
   input: CustomerServiceListingInput,
   mode: 'draft' | 'submit'
 ): string | null {
-  if (input.titleBn.trim().length < 2) return 'প্রতিষ্ঠানের নাম লিখুন।';
+  if (input.category !== 'coaching' && input.category !== 'wifi') return 'ক্যাটাগরি সঠিক নয়।';
+  if (input.titleBn.trim().length < 2 || input.titleBn.trim().length > 160) return 'প্রতিষ্ঠানের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।';
+  if ((input.subtitleBn?.length ?? 0) > 240 || (input.summaryBn?.length ?? 0) > 800 ||
+      (input.descriptionBn?.length ?? 0) > 10_000 || (input.addressBn?.length ?? 0) > 400 ||
+      (input.admissionInfoBn?.length ?? 0) > 2000 || (input.termsBn?.length ?? 0) > 2000) {
+    return 'বিবরণ, ঠিকানা বা শর্ত অনুমোদিত অক্ষরসীমার মধ্যে লিখুন।';
+  }
+  if (!Array.isArray(input.areaIds) || input.areaIds.length > 100 ||
+      input.areaIds.some((area) => typeof area !== 'string' || !area.trim() || area.length > 100)) {
+    return 'এলাকার তালিকা সঠিক নয়।';
+  }
+  if (!Array.isArray(input.tags) || input.tags.length > 60 ||
+      input.tags.some((tag) => typeof tag !== 'string' || !tag.trim() || tag.length > 120)) {
+    return 'বিষয়, ক্লাস বা সুবিধার তালিকা সঠিক নয়।';
+  }
+  const amounts = [input.monthlyFeeMin, input.monthlyFeeMax, input.admissionFee, input.priceMin, input.priceMax, input.connectionFee];
+  if (amounts.some((amount) => amount !== undefined &&
+      (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000))) {
+    return 'ফি ও মূল্য পূর্ণসংখ্যা এবং ০ থেকে ১০ কোটি টাকার মধ্যে হতে হবে।';
+  }
+  if (input.monthlyFeeMin != null && input.monthlyFeeMax != null && input.monthlyFeeMax < input.monthlyFeeMin) return 'সর্বোচ্চ মাসিক ফি সর্বনিম্ন ফির চেয়ে কম হতে পারে না।';
+  if (input.priceMin != null && input.priceMax != null && input.priceMax < input.priceMin) return 'সর্বোচ্চ মূল্য সর্বনিম্ন মূল্যের চেয়ে কম হতে পারে না।';
+  if (input.speedMbps !== undefined && (!Number.isInteger(input.speedMbps) || input.speedMbps < 1 || input.speedMbps > 100_000)) return 'স্পিড ১ থেকে ১,০০,০০০ Mbps-এর মধ্যে পূর্ণসংখ্যা হতে হবে।';
+  if ((input.photos?.length ?? 0) > 5 || (input.photos ?? []).some((url) =>
+    typeof url !== 'string' || url.length > 2000 || !(url.startsWith('/') || /^https:\/\//i.test(url))
+  )) return 'সর্বোচ্চ ৫টি সঠিক HTTPS বা সাইটের ছবি যোগ করুন।';
   if (mode === 'submit') {
     if (!normalizeBdPhone(input.contactPhonePublic ?? '')) {
       return 'সঠিক ১১-ডিজিটের মোবাইল নম্বর লিখুন (যেমন ০১৭xxxxxxxx)।';
     }
-    if (!input.areaIds || input.areaIds.length === 0) {
-      return 'অন্তত একটি এলাকা নির্বাচন করুন।';
+    if (!input.addressBn?.trim()) return 'প্রতিষ্ঠানের সম্পূর্ণ ঠিকানা লিখুন।';
+    if (input.category === 'coaching' && input.monthlyFeeMin == null) return 'মাসিক ফি লিখুন।';
+    if (input.category === 'coaching' && input.monthlyFeeMin !== input.monthlyFeeMax) {
+      return 'একটি নির্দিষ্ট মাসিক ফি লিখুন।';
     }
   }
   return null;
@@ -789,7 +903,8 @@ export async function fetchMyServiceListing(id: string): Promise<ServiceListing 
   const { data, error } = await client
     .rpc('fn_my_service_listing', { p_id: id })
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`তালিকার তথ্য লোড করা যায়নি: ${error.message}`);
+  if (!data) return null;
   return mapListing(data as Record<string, unknown>, false);
 }
 
@@ -915,17 +1030,26 @@ export async function uploadServiceListingImage(
 
 // --- owner: coaching teachers ---------------------------------------------
 
-export async function fetchOwnCoachingTeachers(listingId: string): Promise<CoachingTeacher[]> {
-  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+export async function fetchOwnCoachingTeachers(listingId: string, strict = false): Promise<CoachingTeacher[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) {
+    if (strict) throw new Error(!isSupabaseConfigured ? NOT_CONFIGURED : 'তালিকাটি সঠিক নয়।');
+    return [];
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
   const { data, error } = await client
     .from('coaching_teachers')
     .select('*')
     .eq('listing_id', listingId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
-  if (error || !data) return [];
+  if (error || !data) {
+    if (strict) throw new Error(error?.message ?? 'শিক্ষকের তালিকা লোড করা যায়নি।');
+    return [];
+  }
   return (data as Record<string, unknown>[]).map(mapTeacher);
 }
 
@@ -939,7 +1063,9 @@ export async function createOwnCoachingTeacher(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const name = input.nameBn.trim();
-  if (name.length < 2) return { success: false, error: 'শিক্ষকের নাম লিখুন।' };
+  if (name.length < 2 || name.length > 160) return { success: false, error: 'শিক্ষকের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।' };
+  if (input.subjects.length > 30 || input.subjects.some((subject) => !subject.trim() || subject.length > 100)) return { success: false, error: 'শিক্ষকের বিষয়ের তালিকা সঠিক নয়।' };
+  if ((input.qualificationBn?.length ?? 0) > 200 || (input.experienceBn?.length ?? 0) > 200) return { success: false, error: 'যোগ্যতা ও অভিজ্ঞতা সর্বোচ্চ ২০০ অক্ষরের মধ্যে লিখুন।' };
   const { data, error } = await client
     .from('coaching_teachers')
     .insert({
@@ -969,12 +1095,21 @@ export async function updateOwnCoachingTeacher(
   const payload: Record<string, unknown> = {};
   if (patch.nameBn !== undefined) {
     const name = patch.nameBn.trim();
-    if (name.length < 2) return { success: false, error: 'শিক্ষকের নাম লিখুন।' };
+    if (name.length < 2 || name.length > 160) return { success: false, error: 'শিক্ষকের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।' };
     payload.name_bn = name;
   }
-  if (patch.subjects !== undefined) payload.subjects = patch.subjects;
-  if (patch.qualificationBn !== undefined) payload.qualification_bn = patch.qualificationBn?.trim() || null;
-  if (patch.experienceBn !== undefined) payload.experience_bn = patch.experienceBn?.trim() || null;
+  if (patch.subjects !== undefined) {
+    if (patch.subjects.length > 30 || patch.subjects.some((subject) => !subject.trim() || subject.length > 100)) return { success: false, error: 'শিক্ষকের বিষয়ের তালিকা সঠিক নয়।' };
+    payload.subjects = patch.subjects;
+  }
+  if (patch.qualificationBn !== undefined) {
+    if ((patch.qualificationBn?.length ?? 0) > 200) return { success: false, error: 'যোগ্যতা সর্বোচ্চ ২০০ অক্ষরের মধ্যে লিখুন।' };
+    payload.qualification_bn = patch.qualificationBn?.trim() || null;
+  }
+  if (patch.experienceBn !== undefined) {
+    if ((patch.experienceBn?.length ?? 0) > 200) return { success: false, error: 'অভিজ্ঞতা সর্বোচ্চ ২০০ অক্ষরের মধ্যে লিখুন।' };
+    payload.experience_bn = patch.experienceBn?.trim() || null;
+  }
   if (patch.sortOrder !== undefined) payload.sort_order = patch.sortOrder;
   const { data, error } = await client
     .from('coaching_teachers')
@@ -1001,17 +1136,26 @@ export async function deleteOwnCoachingTeacher(id: string): Promise<WriteResult>
 
 // --- owner: coaching batches ----------------------------------------------
 
-export async function fetchOwnCoachingBatches(listingId: string): Promise<CoachingBatch[]> {
-  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+export async function fetchOwnCoachingBatches(listingId: string, strict = false): Promise<CoachingBatch[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) {
+    if (strict) throw new Error(!isSupabaseConfigured ? NOT_CONFIGURED : 'তালিকাটি সঠিক নয়।');
+    return [];
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
   const { data, error } = await client
     .from('coaching_batches')
     .select('*')
     .eq('listing_id', listingId)
     .order('start_date', { ascending: true, nullsFirst: false })
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
+  if (error || !data) {
+    if (strict) throw new Error(error?.message ?? 'ব্যাচের তালিকা লোড করা যায়নি।');
+    return [];
+  }
   return (data as Record<string, unknown>[]).map(mapBatch);
 }
 
@@ -1025,7 +1169,8 @@ export async function createOwnCoachingBatch(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const title = input.titleBn.trim();
-  if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };
+  if (title.length < 2 || title.length > 160) return { success: false, error: 'ব্যাচের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।' };
+  if ((input.noteBn?.length ?? 0) > 1000 || (input.startTime?.length ?? 0) > 80) return { success: false, error: 'ব্যাচের নোট বা সময়ের দৈর্ঘ্য অনুমোদিত সীমা ছাড়িয়েছে।' };
   const { data, error } = await client
     .from('coaching_batches')
     .insert({
@@ -1055,12 +1200,15 @@ export async function updateOwnCoachingBatch(
   const payload: Record<string, unknown> = {};
   if (patch.titleBn !== undefined) {
     const title = patch.titleBn.trim();
-    if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };
+    if (title.length < 2 || title.length > 160) return { success: false, error: 'ব্যাচের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।' };
     payload.title_bn = title;
   }
   if (patch.startDate !== undefined) payload.start_date = patch.startDate?.trim() || null;
   if (patch.startTime !== undefined) payload.start_time = patch.startTime?.trim() || null;
-  if (patch.noteBn !== undefined) payload.note_bn = patch.noteBn?.trim() || null;
+  if (patch.noteBn !== undefined) {
+    if ((patch.noteBn?.length ?? 0) > 1000) return { success: false, error: 'ব্যাচের নোট সর্বোচ্চ ১০০০ অক্ষরের মধ্যে লিখুন।' };
+    payload.note_bn = patch.noteBn?.trim() || null;
+  }
   if (patch.isActive !== undefined) payload.is_active = patch.isActive;
   const { data, error } = await client
     .from('coaching_batches')
@@ -1087,18 +1235,57 @@ export async function deleteOwnCoachingBatch(id: string): Promise<WriteResult> {
 
 // --- owner: wifi packages --------------------------------------------------
 
-export async function fetchOwnWifiPackages(listingId: string): Promise<WifiPackage[]> {
-  if (!isSupabaseConfigured || !isUuid(listingId)) return [];
+export async function fetchOwnWifiPackages(listingId: string, strict = false): Promise<WifiPackage[]> {
+  if (!isSupabaseConfigured || !isUuid(listingId)) {
+    if (strict) throw new Error(!isSupabaseConfigured ? NOT_CONFIGURED : 'তালিকাটি সঠিক নয়।');
+    return [];
+  }
   const client = createClient();
-  if (!client) return [];
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return [];
+  }
   const { data, error } = await client
     .from('wifi_packages')
     .select('*')
     .eq('listing_id', listingId)
     .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
-  if (error || !data) return [];
+  if (error || !data) {
+    if (strict) throw new Error(error?.message ?? 'WiFi প্যাকেজ লোড করা যায়নি।');
+    return [];
+  }
   return (data as Record<string, unknown>[]).map(mapPackage);
+}
+
+export async function saveOwnWifiPricingPackages(
+  listingId: string,
+  packages: { id?: string; speedMbps: number; price: number }[]
+): Promise<WriteResult<WifiPackage[]>> {
+  if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(listingId)) return { success: false, error: 'তালিকাটি সঠিক নয়।' };
+  if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
+  const client = createClient();
+  if (!client) return { success: false, error: NOT_CONFIGURED };
+  if (packages.length > 30 || packages.some((item) =>
+    (item.id !== undefined && !isUuid(item.id)) ||
+    !Number.isInteger(item.speedMbps) || item.speedMbps < 1 || item.speedMbps > 100_000 ||
+    !Number.isInteger(item.price) || item.price < 0 || item.price > 100_000_000
+  )) {
+    return { success: false, error: 'প্রতিটি প্যাকেজে ১–১,০০,০০০ Mbps স্পিড ও ০–১০ কোটি টাকার বৈধ পূর্ণসংখ্যা দিন।' };
+  }
+  if (new Set(packages.flatMap((item) => item.id ? [item.id] : [])).size !== packages.filter((item) => item.id).length) {
+    return { success: false, error: 'একই WiFi প্যাকেজ একাধিকবার নির্বাচন করা হয়েছে।' };
+  }
+
+  const { data, error } = await client.rpc('fn_save_my_wifi_pricing_packages', {
+    p_listing_id: listingId,
+    p_packages: packages,
+  });
+  if (error || !Array.isArray(data)) {
+    return { success: false, error: error?.message || 'WiFi প্যাকেজ সংরক্ষণ ব্যর্থ হয়েছে।' };
+  }
+  return { success: true, data: (data as Record<string, unknown>[]).map(mapPackage) };
 }
 
 export async function createOwnWifiPackage(
@@ -1111,16 +1298,8 @@ export async function createOwnWifiPackage(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const name = input.nameBn.trim();
-  if (name.length < 2) return { success: false, error: 'প্যাকেজের নাম লিখুন।' };
-  if (input.speedMbps != null && input.speedMbps <= 0) {
-    return { success: false, error: 'স্পিড শূন্যের বেশি হতে হবে।' };
-  }
-  if (input.price != null && input.price < 0) {
-    return { success: false, error: 'দাম ঋণাত্মক হতে পারে না।' };
-  }
-  if (input.connectionFee != null && input.connectionFee < 0) {
-    return { success: false, error: 'সংযোগ ফি ঋণাত্মক হতে পারে না।' };
-  }
+  const invalid = validateWifiPackageInput(input);
+  if (invalid) return { success: false, error: invalid };
   const { data, error } = await client
     .from('wifi_packages')
     .insert({
@@ -1151,6 +1330,8 @@ export async function updateOwnWifiPackage(
   if (!(await currentUserId())) return { success: false, error: NOT_SIGNED_IN };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
+  const invalid = validateWifiPackageInput(patch);
+  if (invalid) return { success: false, error: invalid };
   const payload: Record<string, unknown> = {};
   if (patch.nameBn !== undefined) {
     const name = patch.nameBn.trim();
@@ -1253,6 +1434,50 @@ export async function fetchCoachingBatches(listingId: string): Promise<CoachingB
     .order('created_at', { ascending: false });
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map(mapBatch);
+}
+
+export async function fetchWifiPackagesForListings(
+  listingIds: string[],
+  strict = false
+): Promise<Record<string, WifiPackage[]>> {
+  const result: Record<string, WifiPackage[]> = {};
+  const ids = Array.from(new Set(listingIds));
+  if (ids.length === 0) return result;
+  if (!isSupabaseConfigured) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return result;
+  }
+  if (ids.some((id) => !isUuid(id))) {
+    if (strict) throw new Error('WiFi তালিকার আইডি সঠিক নয়।');
+    return result;
+  }
+  const client = createClient();
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return result;
+  }
+  let offset = 0;
+  while (true) {
+    const { data, error } = await client
+      .from('wifi_packages')
+      .select(PUBLIC_PACKAGE_COLUMNS)
+      .in('listing_id', ids)
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
+      .range(offset, offset + 999);
+    if (error || !data) {
+      if (strict) throw new Error(error?.message ?? 'WiFi প্যাকেজ লোড করা যায়নি।');
+      return {};
+    }
+    for (const row of data as Record<string, unknown>[]) {
+      const item = mapPackage(row);
+      (result[item.listingId] ??= []).push(item);
+    }
+    if (data.length < 1000) break;
+    offset += data.length;
+  }
+  return result;
 }
 
 export async function fetchWifiPackages(listingId: string): Promise<WifiPackage[]> {
@@ -1550,6 +1775,34 @@ type PackagePatch = {
   sortOrder?: number;
 };
 
+function validateWifiPackageInput(input: PackagePatch | WifiPackageInput): string | null {
+  if ('nameBn' in input && input.nameBn !== undefined) {
+    const name = input.nameBn.trim();
+    if (name.length < 2 || name.length > 160) return 'প্যাকেজের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।';
+  }
+  if (input.speedMbps != null && (!Number.isInteger(input.speedMbps) || input.speedMbps < 1 || input.speedMbps > 100_000)) {
+    return 'স্পিড ১ থেকে ১,০০,০০০ Mbps-এর মধ্যে পূর্ণসংখ্যা হতে হবে।';
+  }
+  for (const amount of [input.price, input.connectionFee]) {
+    if (amount != null && (!Number.isInteger(amount) || amount < 0 || amount > 100_000_000)) {
+      return 'মূল্য ও সংযোগ ফি ০ থেকে ১০ কোটি টাকার পূর্ণসংখ্যা হতে হবে।';
+    }
+  }
+  if ((input.offerLabelBn?.length ?? 0) > 240 || (input.offerConditionsBn?.length ?? 0) > 1000) {
+    return 'অফার ও শর্তের লেখা অনুমোদিত অক্ষরসীমার মধ্যে লিখুন।';
+  }
+  if (input.offerExpiresOn) {
+    const date = new Date(`${input.offerExpiresOn}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.offerExpiresOn) || Number.isNaN(date.getTime()) || date.toISOString().slice(0, 10) !== input.offerExpiresOn) {
+      return 'অফারের শেষ তারিখ সঠিক নয়।';
+    }
+  }
+  if (input.sortOrder != null && (!Number.isInteger(input.sortOrder) || input.sortOrder < 0 || input.sortOrder > 10_000)) {
+    return 'প্যাকেজের ক্রম ০ থেকে ১০,০০০-এর মধ্যে পূর্ণসংখ্যা হতে হবে।';
+  }
+  return null;
+}
+
 function dbWriteError(error: { message: string } | null, fallback: string) {
   return error ? { success: false as const, error: error.message || fallback } : null;
 }
@@ -1842,7 +2095,7 @@ export async function fetchApprovedPosts(kind: PostKind): Promise<CommunityPost[
     return kind === 'buy_sell' ? [...DEMO_MARKET_POSTS] : [];
   }
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error(NOT_CONFIGURED);
   const { data, error } = await client
     .from('community_posts')
     .select(PUBLIC_POST_COLUMNS)
@@ -1850,7 +2103,8 @@ export async function fetchApprovedPosts(kind: PostKind): Promise<CommunityPost[
     .eq('status', 'approved')
     .order('published_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
+  if (error) throw new Error(`অনুমোদিত পোস্ট লোড করা যায়নি: ${error.message}`);
+  if (!data) return [];
   return (data as Record<string, unknown>[]).map(mapPost);
 }
 
@@ -1860,7 +2114,7 @@ export async function fetchApprovedPostsByKind(
 ): Promise<CommunityPost[]> {
   if (!isSupabaseConfigured) return [];
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error(NOT_CONFIGURED);
   const { data, error } = await client
     .from('community_posts')
     .select(PUBLIC_POST_COLUMNS)
@@ -1868,7 +2122,8 @@ export async function fetchApprovedPostsByKind(
     .eq('status', 'approved')
     .order('published_at', { ascending: false, nullsFirst: false })
     .order('created_at', { ascending: false });
-  if (error || !data) return [];
+  if (error) throw new Error(`অনুমোদিত পোস্ট লোড করা যায়নি: ${error.message}`);
+  if (!data) return [];
   return (data as Record<string, unknown>[]).map(mapPost);
 }
 
@@ -1882,7 +2137,7 @@ export async function fetchApprovedPostBySlug(
     return null;
   }
   const client = createClient();
-  if (!client) return null;
+  if (!client) throw new Error(NOT_CONFIGURED);
   const { data, error } = await client
     .from('community_posts')
     .select(PUBLIC_POST_COLUMNS)
@@ -1890,7 +2145,8 @@ export async function fetchApprovedPostBySlug(
     .eq('slug', slug)
     .eq('status', 'approved')
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`পোস্ট লোড করা যায়নি: ${error.message}`);
+  if (!data) return null;
   return mapPost(data as Record<string, unknown>);
 }
 
@@ -1913,22 +2169,18 @@ export async function fetchApprovedPostBySlug(
  * is not reachable by any future role that has not been thought about.
  *
  * It returns `null` — never a fabricated number — when the row is absent, the
- * post is still in moderation, the post is news or a job, or the function has
- * not been deployed yet (the migration has to be applied). Each of those is a
- * normal, expected state for the caller to handle, which is why this is a
- * nullable result rather than an error.
+ * post is still in moderation, or the post is news or a job. Database/RPC
+ * failures are thrown so a missing migration cannot masquerade as no contact.
  */
 export async function fetchMarketContact(
   slug: string
 ): Promise<{ authorName?: string; authorPhone?: string; whatsappNumber?: string } | null> {
   if (!isSupabaseConfigured) return null;
   const client = createClient();
-  if (!client) return null;
+  if (!client) throw new Error(NOT_CONFIGURED);
   const { data, error } = await client.rpc('fetch_market_contact', { p_slug: slug });
-  // `PGRST116` / an undefined function both mean the same thing to this caller:
-  // there is no contact to show. Swallowing the error keeps the marketplace
-  // working on a database that has not been migrated yet.
-  if (error || !Array.isArray(data) || data.length === 0) return null;
+  if (error) throw new Error(`বিক্রেতার যোগাযোগের তথ্য লোড করা যায়নি: ${error.message}`);
+  if (!Array.isArray(data) || data.length === 0) return null;
   const row = (data[0] as Record<string, unknown>) ?? {};
   const c = toCamelObject(row) as Record<string, unknown>;
   const authorPhone = optStr(c.authorPhone);
@@ -1993,14 +2245,15 @@ export async function fetchPostForViewer(
   const userId = await currentUserId();
   if (!userId) return null;
   const client = createClient();
-  if (!client) return null;
+  if (!client) throw new Error(NOT_CONFIGURED);
   // `fn_my_post_by_slug` is the author-only path (author_id = auth.uid()) and is
   // the only place a rejected post's rejection_reason can be read since the
   // column REVOKEs.
   const { data, error } = await client
     .rpc('fn_my_post_by_slug', { p_kind: kind, p_slug: slug })
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`পোস্ট লোড করা যায়নি: ${error.message}`);
+  if (!data) return null;
   return mapPost(data as Record<string, unknown>);
 }
 
@@ -2018,11 +2271,12 @@ export async function fetchMyPostForEdit(id: string): Promise<CommunityPost | nu
   const userId = await currentUserId();
   if (!userId) return null;
   const client = createClient();
-  if (!client) return null;
+  if (!client) throw new Error(NOT_CONFIGURED);
   const { data, error } = await client
     .rpc('fn_my_post_by_id', { p_id: id })
     .maybeSingle();
-  if (error || !data) return null;
+  if (error) throw new Error(`পোস্ট সম্পাদনার তথ্য লোড করা যায়নি: ${error.message}`);
+  if (!data) return null;
   const post = mapPost(data as Record<string, unknown>);
   // An already-approved post is not editable from the draft/edit screen.
   if (post.status === 'approved') return null;
@@ -2047,8 +2301,7 @@ export async function fetchMyPosts(strict = false): Promise<CommunityPost[]> {
   }
   const { data, error } = await client.rpc('fn_my_posts');
   if (error) {
-    if (strict) throw new Error(`আপনার পোস্ট লোড করা যায়নি: ${error.message}`);
-    return [];
+    throw new Error(`আপনার পোস্ট লোড করা যায়নি: ${error.message}`);
   }
   if (!data) return [];
   return (data as Record<string, unknown>[]).map(mapPost);
@@ -2093,10 +2346,26 @@ export async function createCommunityPost(
   input: CommunityPostInput
 ): Promise<WriteResult<CommunityPost>> {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  const validationError = communityPostWriteError(input, true);
+  if (validationError) return { success: false, error: validationError };
   const userId = await currentUserId();
   if (!userId) return { success: false, error: NOT_SIGNED_IN };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
+  // Resolve the display name from the authenticated profile instead of trusting
+  // the optional authorName supplied by a specific form.
+  const { data: profile, error: profileError } = await client
+    .from('profiles')
+    .select('full_name')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profileError) {
+    return { success: false, error: `আপনার প্রোফাইলের নাম যাচাই করা যায়নি: ${profileError.message}` };
+  }
+  const authorName = typeof profile?.full_name === 'string' ? profile.full_name.trim() : '';
+  if (authorName.length < 2) {
+    return { success: false, error: 'পোস্ট করার আগে প্রোফাইলে আপনার সঠিক নাম যোগ করুন।' };
+  }
 
   // `rejectionReason` is stripped as well: only a moderator may write it, so
   // an author craftily sending one along must land on nothing.
@@ -2105,6 +2374,7 @@ export async function createCommunityPost(
     marketplaceStatus: _ignoredMarketplaceStatus,
     isFeatured: _ignoredFeature,
     authorId: _ignoredAuthor,
+    authorName: _ignoredAuthorName,
     rejectionReason: _ignoredReason,
     ...rest
   } = input;
@@ -2112,6 +2382,7 @@ export async function createCommunityPost(
   const payload = {
     ...toSnakeObject(rest as Record<string, unknown>),
     author_id: userId,
+    author_name: authorName,
     // Moderation is never client-controlled.
     status: 'pending',
   };
@@ -2138,17 +2409,47 @@ export async function updateCommunityPost(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
 
+  const { data: current, error: currentError } = await client
+    .from('community_posts')
+    .select('kind, category')
+    .eq('id', id)
+    .eq('author_id', userId)
+    .maybeSingle();
+  if (currentError) return { success: false, error: currentError.message };
+  if (!current) return { success: false, error: 'পোস্টটি পাওয়া যায়নি অথবা এটি আপনার নয়।' };
+  const validationError = communityPostWriteError(
+    { ...patch, kind: current.kind as PostKind },
+    false,
+    current.category
+  );
+  if (validationError) return { success: false, error: validationError };
+
+  const { data: profile, error: profileError } = await client
+    .from('profiles')
+    .select('full_name')
+    .eq('id', userId)
+    .maybeSingle();
+  if (profileError) {
+    return { success: false, error: `আপনার প্রোফাইলের নাম যাচাই করা যায়নি: ${profileError.message}` };
+  }
+  const authorName = typeof profile?.full_name === 'string' ? profile.full_name.trim() : '';
+  if (authorName.length < 2) {
+    return { success: false, error: 'পোস্ট সম্পাদনার আগে প্রোফাইলে আপনার সঠিক নাম যোগ করুন।' };
+  }
+
   const {
     status: _s,
     marketplaceStatus: _marketplaceStatus,
     isFeatured: _f,
     authorId: _a,
+    authorName: _authorName,
     slug: _slug,
     rejectionReason: _r,
     ...rest
   } = patch;
   const payload = {
     ...toSnakeObject(rest as Record<string, unknown>),
+    author_name: authorName,
     // An edit re-enters moderation.
     status: 'pending',
   };
@@ -2212,13 +2513,14 @@ export async function adminFetchPosts(kind?: PostKind): Promise<CommunityPost[]>
   if (!isSupabaseConfigured) return [];
   if (!(await currentUserIsAdmin())) return [];
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error(NOT_CONFIGURED);
   // `fn_admin_posts` is the only path that may read author_phone /
   // whatsapp_number / rejection_reason after the column REVOKEs.
   let q = client.rpc('fn_admin_posts');
   if (kind) q = q.eq('kind', kind);
   const { data, error } = await q;
-  if (error || !data) return [];
+  if (error) throw new Error(`অ্যাডমিন পোস্ট লোড করা যায়নি: ${error.message}`);
+  if (!data) return [];
   return (data as Record<string, unknown>[]).map(mapPost);
 }
 

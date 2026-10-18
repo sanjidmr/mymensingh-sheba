@@ -20,13 +20,14 @@
  * area picker is a searchable checkbox list rather than a multi-select that
  * mobile browsers render badly.
  */
-import React, { useMemo, useRef, useState } from 'react';
-import { CheckCircle2, ImagePlus, Loader2, Search, X } from 'lucide-react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { CheckCircle2, ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getAllMCCAreas, getPopularMCCAreas, searchMCCAreas } from '@/lib/locations';
 import {
   createCustomerServiceListing,
+  fetchOwnWifiPackages,
   normalizeBdPhone,
+  saveOwnWifiPricingPackages,
   updateCustomerServiceListing,
   uploadServiceListingImage,
 } from '@/lib/catalog-service';
@@ -57,20 +58,16 @@ const CATEGORY_TITLE: Record<CustomerServiceCategory, string> = {
 interface FormState {
   titleBn: string;
   subtitleBn: string;
-  summaryBn: string;
   descriptionBn: string;
   imageUrl: string;
+  photos: string[];
   addressBn: string;
-  areaIds: string[];
   contactPhonePublic: string;
   /** coaching */
-  monthlyFeeMin: string;
-  monthlyFeeMax: string;
-  admissionInfoBn: string;
+  monthlyFee: string;
+  admissionFee: string;
   /** wifi */
-  priceMin: string;
-  priceMax: string;
-  speedMbps: string;
+  wifiPricingRows: { id?: string; speedMbps: string; price: string }[];
   connectionFee: string;
   termsBn: string;
   /** coaching taxonomy slugs */
@@ -87,7 +84,7 @@ function textToNum(v: string): number | undefined {
   const t = v.trim();
   if (t === '') return undefined;
   const n = Number(t);
-  return Number.isFinite(n) ? n : undefined;
+  return Number.isFinite(n) ? n : Number.NaN;
 }
 
 function textToTags(text: string): string[] {
@@ -105,22 +102,25 @@ function tagsToText(tags: string[]): string {
   return tags.join(', ');
 }
 
+function emptyWifiPricingRow() {
+  return { speedMbps: '', price: '' };
+}
+
 function initialForm(category: CustomerServiceCategory, listing?: ServiceListing | null): FormState {
   return {
     titleBn: listing?.titleBn ?? '',
     subtitleBn: listing?.subtitleBn ?? '',
-    summaryBn: listing?.summaryBn ?? '',
     descriptionBn: listing?.descriptionBn ?? '',
     imageUrl: listing?.imageUrl ?? '',
+    photos: listing?.photos ?? [],
     addressBn: listing?.addressBn ?? '',
-    areaIds: listing?.areaIds ?? [],
     contactPhonePublic: listing?.contactPhonePublic ?? '',
-    monthlyFeeMin: numToText(listing?.monthlyFeeMin),
-    monthlyFeeMax: numToText(listing?.monthlyFeeMax),
-    admissionInfoBn: listing?.admissionInfoBn ?? '',
-    priceMin: numToText(listing?.priceMin),
-    priceMax: numToText(listing?.priceMax),
-    speedMbps: numToText(listing?.speedMbps),
+    monthlyFee:
+      listing?.monthlyFeeMin === listing?.monthlyFeeMax
+        ? numToText(listing?.monthlyFeeMin)
+        : '',
+    admissionFee: numToText(listing?.admissionFee),
+    wifiPricingRows: category === 'wifi' ? [emptyWifiPricingRow()] : [],
     connectionFee: numToText(listing?.connectionFee),
     termsBn: listing?.termsBn ?? '',
     tags: listing?.tags ?? [],
@@ -169,38 +169,76 @@ export default function CustomerListingForm({
 }: CustomerListingFormProps) {
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>(() => initialForm(category, initialListing));
+  const [currentListing, setCurrentListing] = useState(initialListing ?? null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [areaQuery, setAreaQuery] = useState('');
+  const [wifiPackagesLoading, setWifiPackagesLoading] = useState(category === 'wifi' && Boolean(initialListing));
+  const [wifiPackagesReady, setWifiPackagesReady] = useState(category !== 'wifi' || !initialListing);
+  const [wifiPackagesError, setWifiPackagesError] = useState('');
   const submittingRef = useRef(false);
 
-  const isEditing = Boolean(initialListing);
-  const busy = submitting || uploading;
+  const isEditing = Boolean(currentListing);
+  const busy = submitting || uploading || wifiPackagesLoading;
 
-  const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
-  const areaResults = useMemo(() => {
-    const q = areaQuery.trim();
-    if (!q) return getPopularMCCAreas().slice(0, 24);
-    const hits = searchMCCAreas(q);
-    return (hits.length > 0 ? hits : areas.filter((a) => a.nameBn.includes(q))).slice(0, 40);
-  }, [areaQuery, areas]);
+  const loadWifiPackages = useCallback(async () => {
+    if (category !== 'wifi' || !initialListing) return;
+    setWifiPackagesLoading(true);
+    setWifiPackagesError('');
+    try {
+      const packages = await fetchOwnWifiPackages(initialListing.id, true);
+      setForm((prev) => ({
+        ...prev,
+        wifiPricingRows: packages.length > 0
+          ? packages.map((item) => ({
+              id: item.id,
+              speedMbps: numToText(item.speedMbps),
+              price: numToText(item.price),
+            }))
+          : [],
+      }));
+      setWifiPackagesReady(true);
+    } catch (cause) {
+      setWifiPackagesError(cause instanceof Error ? cause.message : 'WiFi প্যাকেজ লোড করা যায়নি।');
+      setWifiPackagesReady(false);
+    } finally {
+      setWifiPackagesLoading(false);
+    }
+  }, [category, initialListing]);
+
+  useEffect(() => {
+    if (category !== 'wifi' || !initialListing) return;
+    let active = true;
+    void (async () => {
+      try {
+        const packages = await fetchOwnWifiPackages(initialListing.id, true);
+        if (!active) return;
+        setForm((prev) => ({
+          ...prev,
+          wifiPricingRows: packages.map((item) => ({
+            id: item.id,
+            speedMbps: numToText(item.speedMbps),
+            price: numToText(item.price),
+          })),
+        }));
+        setWifiPackagesReady(true);
+      } catch (cause) {
+        if (active) {
+          setWifiPackagesError(cause instanceof Error ? cause.message : 'WiFi প্যাকেজ লোড করা যায়নি।');
+          setWifiPackagesReady(false);
+        }
+      } finally {
+        if (active) setWifiPackagesLoading(false);
+      }
+    })();
+    return () => { active = false; };
+  }, [category, initialListing]);
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
     setError('');
     setNotice('');
-  };
-
-  const toggleArea = (id: string) => {
-    setForm((prev) => ({
-      ...prev,
-      areaIds: prev.areaIds.includes(id)
-        ? prev.areaIds.filter((a) => a !== id)
-        : [...prev.areaIds, id],
-    }));
-    setError('');
   };
 
   const toggleTag = (id: string) => {
@@ -219,40 +257,117 @@ export default function CustomerListingForm({
     }
     setUploading(true);
     setError('');
-    const result = await uploadServiceListingImage(user.id, file);
-    setUploading(false);
-    if (!result.success) {
-      setError(result.error);
-      return;
+    try {
+      const result = await uploadServiceListingImage(user.id, file);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setForm((prev) => ({ ...prev, imageUrl: result.data }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
+    } finally {
+      setUploading(false);
     }
-    setForm((prev) => ({ ...prev, imageUrl: result.data }));
   };
 
-  const buildInput = (): CustomerServiceListingInput => ({
-    category,
-    titleBn: form.titleBn.trim(),
-    subtitleBn: form.subtitleBn.trim() || undefined,
-    summaryBn: form.summaryBn.trim() || undefined,
-    descriptionBn: form.descriptionBn.trim() || undefined,
-    imageUrl: form.imageUrl.trim() || undefined,
-    addressBn: form.addressBn.trim() || undefined,
-    areaIds: form.areaIds,
-    contactPhonePublic: form.contactPhonePublic.trim(),
-    monthlyFeeMin: textToNum(form.monthlyFeeMin),
-    monthlyFeeMax: textToNum(form.monthlyFeeMax),
-    admissionInfoBn: form.admissionInfoBn.trim() || undefined,
-    priceMin: textToNum(form.priceMin),
-    priceMax: textToNum(form.priceMax),
-    speedMbps: textToNum(form.speedMbps),
-    connectionFee: textToNum(form.connectionFee),
-    termsBn: form.termsBn.trim() || undefined,
-    tags: category === 'coaching' ? form.tags : textToTags(form.facilitiesText),
-  });
+  const onPickGallery = async (files: File[]) => {
+    if (!user) {
+      setError('ছবি আপলোড করতে আগে লগইন করুন।');
+      return;
+    }
+    const remaining = 5 - form.photos.length;
+    if (remaining <= 0) {
+      setError('সর্বোচ্চ ৫টি অতিরিক্ত ছবি যোগ করা যাবে।');
+      return;
+    }
+    setUploading(true);
+    setError('');
+    try {
+      const uploaded: string[] = [];
+      for (const file of files.slice(0, remaining)) {
+        const result = await uploadServiceListingImage(user.id, file);
+        if (!result.success) {
+          setError(result.error);
+          break;
+        }
+        uploaded.push(result.data);
+      }
+      setForm((prev) => ({ ...prev, photos: [...prev.photos, ...uploaded] }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const parseWifiPricingRows = () => {
+    const rows: { id?: string; speedMbps: number; price: number }[] = [];
+    for (const row of form.wifiPricingRows) {
+      const speedText = row.speedMbps.trim();
+      const priceText = row.price.trim();
+      if (!speedText && !priceText) continue;
+      const speedMbps = Number(speedText);
+      const price = Number(priceText);
+      if (
+        !speedText || !priceText ||
+        !Number.isInteger(speedMbps) || speedMbps < 1 || speedMbps > 100_000 ||
+        !Number.isInteger(price) || price < 0 || price > 100_000_000
+      ) return null;
+      rows.push({ id: row.id, speedMbps, price });
+    }
+    return rows;
+  };
+
+  const buildInput = (
+    wifiPricingRows: { id?: string; speedMbps: number; price: number }[]
+  ): CustomerServiceListingInput => {
+    const monthlyFee = textToNum(form.monthlyFee);
+    const prices = wifiPricingRows.map((row) => row.price);
+    return {
+      category,
+      titleBn: form.titleBn.trim(),
+      subtitleBn: form.subtitleBn.trim() || undefined,
+      summaryBn: currentListing?.summaryBn,
+      descriptionBn: form.descriptionBn.trim() || undefined,
+      imageUrl: form.imageUrl.trim() || undefined,
+      photos: form.photos,
+      addressBn: form.addressBn.trim() || undefined,
+      areaIds: currentListing?.areaIds.length
+        ? currentListing.areaIds
+        : user?.primaryAreaId ? [user.primaryAreaId] : [],
+      contactPhonePublic: form.contactPhonePublic.trim(),
+      monthlyFeeMin: category === 'coaching' ? monthlyFee ?? currentListing?.monthlyFeeMin : undefined,
+      monthlyFeeMax: category === 'coaching' ? monthlyFee ?? currentListing?.monthlyFeeMax : undefined,
+      admissionInfoBn: currentListing?.admissionInfoBn,
+      admissionFee: category === 'coaching'
+        ? textToNum(form.admissionFee)
+        : undefined,
+      priceMin: category === 'wifi'
+        ? prices.length ? Math.min(...prices) : currentListing?.priceMin
+        : undefined,
+      priceMax: category === 'wifi'
+        ? prices.length ? Math.max(...prices) : currentListing?.priceMax
+        : undefined,
+      speedMbps: category === 'wifi'
+        ? wifiPricingRows.length
+          ? Math.max(...wifiPricingRows.map((row) => row.speedMbps))
+          : currentListing?.speedMbps
+        : undefined,
+      connectionFee: textToNum(form.connectionFee),
+      termsBn: form.termsBn.trim() || undefined,
+      tags: category === 'coaching' ? form.tags : textToTags(form.facilitiesText),
+    };
+  };
 
   const submit = async (mode: 'draft' | 'submit') => {
     if (submittingRef.current) return;
     if (!user) {
       setError('এই কাজটি করতে আগে লগইন করুন।');
+      return;
+    }
+    if (category === 'wifi' && !wifiPackagesReady) {
+      setError('আগের WiFi প্যাকেজ লোড না হওয়া পর্যন্ত সংরক্ষণ করা যাবে না।');
       return;
     }
 
@@ -262,13 +377,26 @@ export default function CustomerListingForm({
       setError('প্রতিষ্ঠানের নাম লিখুন।');
       return;
     }
+    if (!form.addressBn.trim()) {
+      setError('প্রতিষ্ঠানের সম্পূর্ণ ঠিকানা লিখুন।');
+      return;
+    }
+    const wifiPricingRows = category === 'wifi' ? parseWifiPricingRows() : [];
+    if (wifiPricingRows === null) {
+      setError('প্রতিটি WiFi প্যাকেজে সঠিক Mbps স্পিড ও মাসিক দাম লিখুন।');
+      return;
+    }
+    if (mode === 'submit' && category === 'wifi' && wifiPricingRows.length === 0) {
+      setError('অন্তত একটি WiFi স্পিড ও দামের প্যাকেজ যোগ করুন।');
+      return;
+    }
+    if (mode === 'submit' && category === 'coaching' && textToNum(form.monthlyFee) == null) {
+      setError('মাসিক ফি লিখুন।');
+      return;
+    }
     if (mode === 'submit') {
       if (!normalizeBdPhone(form.contactPhonePublic)) {
         setError('সঠিক ১১-ডিজিটের মোবাইল নম্বর লিখুন (যেমন ০১৭xxxxxxxx)।');
-        return;
-      }
-      if (form.areaIds.length === 0) {
-        setError('অন্তত একটি এলাকা নির্বাচন করুন।');
         return;
       }
     }
@@ -278,9 +406,9 @@ export default function CustomerListingForm({
     setError('');
     setNotice('');
     try {
-      const input = buildInput();
-      const result = isEditing && initialListing
-        ? await updateCustomerServiceListing(initialListing.id, input, mode)
+      const input = buildInput(wifiPricingRows);
+      const result = isEditing && currentListing
+        ? await updateCustomerServiceListing(currentListing.id, input, mode)
         : await createCustomerServiceListing(input, mode);
       if (!result.success) {
         setError(
@@ -290,14 +418,35 @@ export default function CustomerListingForm({
         );
         return;
       }
+      const savedListing = result.data ?? currentListing;
+      if (!savedListing) {
+        setError('তথ্য সংরক্ষিত হয়েছে, কিন্তু তালিকার আইডি পাওয়া যায়নি। আবার তালিকা দেখুন।');
+        return;
+      }
+      setCurrentListing(savedListing);
+      if (category === 'wifi') {
+        const packageResult = await saveOwnWifiPricingPackages(savedListing.id, wifiPricingRows);
+        if (!packageResult.success) {
+          setError(`প্রতিষ্ঠানের তথ্য সংরক্ষিত হয়েছে, কিন্তু WiFi প্যাকেজ সংরক্ষণ হয়নি: ${packageResult.error}`);
+          return;
+        }
+        setForm((prev) => ({
+          ...prev,
+          wifiPricingRows: packageResult.data.map((item) => ({
+            id: item.id,
+            speedMbps: numToText(item.speedMbps),
+            price: numToText(item.price),
+          })),
+        }));
+      }
       setNotice(
         mode === 'draft'
-          ? 'খসড়া সংরক্ষণ হয়েছে।'
+          ? 'জমা দেওয়া হয়নি হিসেবে সংরক্ষণ হয়েছে।'
           : isEditing
             ? 'তথ্য হালনাগাদ হয়েছে। অনুমোদনের পর প্রকাশিত হবে।'
             : 'জমা দেওয়া হয়েছে। অনুমোদনের পর সবার জন্য প্রকাশিত হবে।'
       );
-      onSaved?.(result.data, mode);
+      onSaved?.(savedListing, mode);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'সংরক্ষণ ব্যর্থ হয়েছে।');
     } finally {
@@ -306,10 +455,6 @@ export default function CustomerListingForm({
     }
   };
 
-  const selectedAreaNames = form.areaIds
-    .map((id) => areas.find((a) => a.id === id)?.nameBn)
-    .filter((n): n is string => Boolean(n));
-
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
@@ -317,8 +462,8 @@ export default function CustomerListingForm({
           {isEditing ? 'তথ্য সম্পাদনা' : 'নতুন যোগ করুন'} — {CATEGORY_TITLE[category]}
         </h1>
         <p className="mt-1 text-[12.5px] leading-relaxed text-ink-500">
-          প্রতিষ্ঠানের তথ্য দিন। সংরক্ষণের পর শিক্ষক/ব্যাচ (কোচিং) বা প্যাকেজ (WiFi) যোগ
-          করতে পারবেন। অ্যাডমিন অনুমোদনের পরই এটি সবার জন্য প্রকাশিত হবে।
+          প্রতিষ্ঠানের সম্পূর্ণ ঠিকানা, ফি এবং প্রযোজ্য সেবা-তথ্য দিন। অ্যাডমিন অনুমোদনের পরই
+          তালিকাটি সবার জন্য প্রকাশিত হবে।
         </p>
       </div>
 
@@ -367,6 +512,25 @@ export default function CustomerListingForm({
             <p className="text-[11.5px] text-ink-400">সর্বোচ্চ ৫MB, JPG/PNG।</p>
           </div>
         </div>
+        <div className="mt-3">
+          <p className="text-xs font-bold text-ink-700">আরও ছবি (সর্বোচ্চ ৫টি)</p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {form.photos.map((url, index) => (
+              <div key={`${url}-${index}`} className="relative h-20 w-24 overflow-hidden rounded-lg border border-brand-100">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={url} alt={`অতিরিক্ত ছবি ${index + 1}`} className="h-full w-full object-cover" />
+                <button type="button" onClick={() => set('photos', form.photos.filter((_, i) => i !== index))} className="absolute right-1 top-1 rounded bg-white px-1 text-xs font-bold text-rose-700" aria-label={`অতিরিক্ত ছবি ${index + 1} সরান`}>×</button>
+              </div>
+            ))}
+            {form.photos.length < 5 && (
+              <label className={`${ghostBtn} cursor-pointer`}>
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
+                আরও ছবি
+                <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void onPickGallery(files); }} />
+              </label>
+            )}
+          </div>
+        </div>
       </section>
 
       {/* Basic info */}
@@ -388,15 +552,6 @@ export default function CustomerListingForm({
             placeholder="এক লাইনে প্রতিষ্ঠান সম্পর্কে"
           />
         </Field>
-        <Field label="সারসংক্ষেপ">
-          <textarea
-            rows={2}
-            value={form.summaryBn}
-            onChange={(e) => set('summaryBn', e.target.value)}
-            className={textAreaClass}
-            placeholder="কার্ডে দেখানো ছোট বিবরণ"
-          />
-        </Field>
         <Field label="বিস্তারিত বর্ণনা">
           <textarea
             rows={4}
@@ -411,72 +566,17 @@ export default function CustomerListingForm({
       {/* Location + contact */}
       <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
         <h2 className="text-[14px] font-extrabold text-ink-900">ঠিকানা ও যোগাযোগ</h2>
-        <Field label="ঠিকানা">
-          <input
+        <Field label="সম্পূর্ণ ঠিকানা" required hint="বাড়ি/প্রতিষ্ঠান, সড়ক, এলাকা ও প্রয়োজনীয় পরিচিতিসহ ঠিকানা লিখুন।">
+          <textarea
+            rows={3}
+            maxLength={400}
+            required
             value={form.addressBn}
             onChange={(e) => set('addressBn', e.target.value)}
-            className={inputClass}
-            placeholder="যেমন: চরপাড়া মোড়, ময়মনসিংহ"
+            className={textAreaClass}
+            placeholder="যেমন: বাড়ি ১২, ৩য় তলা, চরপাড়া মোড়, ময়মনসিংহ"
           />
         </Field>
-
-        <div>
-          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">
-            এলাকা <span className="text-rose-600">*</span>
-          </span>
-          {selectedAreaNames.length > 0 && (
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {form.areaIds.map((id) => {
-                const name = areas.find((a) => a.id === id)?.nameBn ?? id;
-                return (
-                  <button
-                    key={id}
-                    type="button"
-                    onClick={() => toggleArea(id)}
-                    className="inline-flex items-center gap-1 rounded-full bg-brand-700 px-2.5 py-1 text-[11.5px] font-bold text-white"
-                  >
-                    {name}
-                    <X className="h-3 w-3" aria-hidden="true" />
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
-            <input
-              value={areaQuery}
-              onChange={(e) => setAreaQuery(e.target.value)}
-              className={`${inputClass} pl-9`}
-              placeholder="এলাকা খুঁজুন…"
-            />
-          </div>
-          <div className="mt-2 max-h-48 overflow-y-auto rounded-lg border border-brand-100 p-1">
-            {areaResults.length === 0 ? (
-              <p className="px-2 py-1.5 text-[12.5px] text-ink-500">কোনো এলাকা পাওয়া যায়নি।</p>
-            ) : (
-              <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-                {areaResults.map((area) => {
-                  const checked = form.areaIds.includes(area.id);
-                  return (
-                    <button
-                      key={area.id}
-                      type="button"
-                      onClick={() => toggleArea(area.id)}
-                      aria-pressed={checked}
-                      className={`min-h-9 rounded-md px-2 text-left text-[12px] font-semibold transition-colors ${
-                        checked ? 'bg-brand-50 text-brand-800' : 'text-ink-600 hover:bg-mist-50'
-                      }`}
-                    >
-                      {checked ? '✓ ' : ''}
-                      {area.nameBn}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
 
         <Field label="যোগাযোগের মোবাইল নম্বর" required hint="এই নম্বরেই পাঠকরা “কল করুন” চাপবেন।">
           <input
@@ -494,81 +594,104 @@ export default function CustomerListingForm({
       {category === 'coaching' ? (
         <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
           <h2 className="text-[14px] font-extrabold text-ink-900">ফি ও ভর্তি তথ্য</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="মাসিক ফি (সর্বনিম্ন)">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="মাসিক ফি (টাকা)" required>
               <input
                 type="number"
                 inputMode="numeric"
+                step={1}
                 min={0}
-                value={form.monthlyFeeMin}
-                onChange={(e) => set('monthlyFeeMin', e.target.value)}
+                required
+                value={form.monthlyFee}
+                onChange={(e) => set('monthlyFee', e.target.value)}
                 className={inputClass}
-                placeholder="৫০০"
+                placeholder="৮০০"
               />
             </Field>
-            <Field label="মাসিক ফি (সর্বোচ্চ)">
+            <Field label="ভর্তি ফি (টাকা)" hint="ভর্তি ফি না থাকলে ফাঁকা রাখুন।">
               <input
                 type="number"
                 inputMode="numeric"
+                step={1}
                 min={0}
-                value={form.monthlyFeeMax}
-                onChange={(e) => set('monthlyFeeMax', e.target.value)}
+                value={form.admissionFee}
+                onChange={(e) => set('admissionFee', e.target.value)}
                 className={inputClass}
-                placeholder="১৫০০"
+                placeholder="ঐচ্ছিক"
               />
             </Field>
           </div>
-          <Field label="ভর্তি ও ফি সংক্রান্ত তথ্য">
-            <textarea
-              rows={2}
-              value={form.admissionInfoBn}
-              onChange={(e) => set('admissionInfoBn', e.target.value)}
-              className={textAreaClass}
-              placeholder="যেমন: ভর্তি ফি ২০০ টাকা, মাসিক ফি ৮০০ টাকা"
-            />
-          </Field>
         </section>
       ) : (
         <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
           <h2 className="text-[14px] font-extrabold text-ink-900">দাম, স্পিড ও সংযোগ</h2>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="মাসিক দাম (সর্বনিম্ন)">
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={form.priceMin}
-                onChange={(e) => set('priceMin', e.target.value)}
-                className={inputClass}
-                placeholder="৫০০"
-              />
-            </Field>
-            <Field label="মাসিক দাম (সর্বোচ্চ)">
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={form.priceMax}
-                onChange={(e) => set('priceMax', e.target.value)}
-                className={inputClass}
-                placeholder="১০০০"
-              />
-            </Field>
-            <Field label="স্পিড (Mbps)">
-              <input
-                type="number"
-                inputMode="numeric"
-                min={0}
-                value={form.speedMbps}
-                onChange={(e) => set('speedMbps', e.target.value)}
-                className={inputClass}
-                placeholder="২০"
-              />
-            </Field>
+          {wifiPackagesLoading && <p className="text-sm text-ink-500">আগের প্যাকেজ লোড হচ্ছে…</p>}
+          {wifiPackagesError && (
+            <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">
+              <p>{wifiPackagesError}</p>
+              <button type="button" onClick={() => void loadWifiPackages()} className="mt-2 min-h-10 font-bold underline">
+                প্যাকেজ আবার লোড করুন
+              </button>
+            </div>
+          )}
+          <div className="space-y-2">
+            {form.wifiPricingRows.map((row, index) => (
+              <div key={row.id ?? `new-${index}`} className="grid grid-cols-[1fr_1fr_auto] items-end gap-2 rounded-lg border border-brand-100 p-2">
+                <Field label={`স্পিড (Mbps) · প্যাকেজ ${toBn(index + 1)}`}>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    step={1}
+                    min={1}
+                    max={100000}
+                    value={row.speedMbps}
+                    onChange={(event) => set('wifiPricingRows', form.wifiPricingRows.map((item, i) =>
+                      i === index ? { ...item, speedMbps: event.target.value } : item
+                    ))}
+                    className={inputClass}
+                    placeholder="২০"
+                  />
+                </Field>
+                <Field label="মাসিক দাম (টাকা)">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    step={1}
+                    min={0}
+                    value={row.price}
+                    onChange={(event) => set('wifiPricingRows', form.wifiPricingRows.map((item, i) =>
+                      i === index ? { ...item, price: event.target.value } : item
+                    ))}
+                    className={inputClass}
+                    placeholder="৮০০"
+                  />
+                </Field>
+                <button
+                  type="button"
+                  onClick={() => set('wifiPricingRows', form.wifiPricingRows.filter((_, i) => i !== index))}
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg border border-rose-200 text-rose-700"
+                  aria-label={`প্যাকেজ ${toBn(index + 1)} সরান`}
+                >
+                  <Trash2 className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+            ))}
+          </div>
+          <button
+            type="button"
+            disabled={form.wifiPricingRows.length >= 30}
+            onClick={() => set('wifiPricingRows', [...form.wifiPricingRows, emptyWifiPricingRow()])}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-brand-200 px-3 text-sm font-bold text-brand-800 disabled:opacity-50"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            {form.wifiPricingRows.length >= 30 ? 'সর্বোচ্চ ৩০টি প্যাকেজ' : 'আরও প্যাকেজ যোগ করুন'}
+          </button>
+          <div className="grid gap-3 sm:grid-cols-2">
             <Field label="সংযোগ ফি">
               <input
                 type="number"
                 inputMode="numeric"
+                step={1}
                 min={0}
                 value={form.connectionFee}
                 onChange={(e) => set('connectionFee', e.target.value)}
@@ -650,12 +773,12 @@ export default function CustomerListingForm({
           {isEditing ? 'হালনাগাদ করে জমা দিন' : 'অনুমোদনের জন্য জমা দিন'}
         </button>
         <button type="button" onClick={() => void submit('draft')} disabled={busy} className={ghostBtn}>
-          খসড়া সংরক্ষণ করুন
+          জমা দেওয়া হয়নি হিসেবে সংরক্ষণ করুন
         </button>
       </div>
       <p className="text-[11.5px] leading-relaxed text-ink-400">
-        খসড়া শুধু আপনি দেখতে পাবেন। অনুমোদনের জন্য জমা দিলে অ্যাডমিন যাচাই করে প্রকাশ
-        করবেন। {toBn(form.areaIds.length)}টি এলাকা নির্বাচিত।
+        জমা দেওয়া হয়নি অবস্থায় এটি শুধু আপনি দেখতে পাবেন। অনুমোদনের জন্য জমা দিলে অ্যাডমিন যাচাই করে প্রকাশ
+        করবেন।
       </p>
     </div>
   );

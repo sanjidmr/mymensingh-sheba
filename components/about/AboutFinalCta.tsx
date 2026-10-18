@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, MessageCircle, PenSquare, Search } from 'lucide-react';
+import { MessageCircle, PenSquare, Search } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 import { AboutSection, SectionLabel, LIGHT_FOCUS } from './AboutSectionBits';
 
@@ -46,7 +46,6 @@ export default function AboutFinalCta() {
           >
             <MessageCircle className="h-4 w-4" aria-hidden="true" />
             যোগাযোগ করুন
-            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
       </Reveal>

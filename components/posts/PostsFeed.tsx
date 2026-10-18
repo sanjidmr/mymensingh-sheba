@@ -31,7 +31,7 @@
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, MapPin, Plus } from 'lucide-react';
+import { MapPin, Plus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { fetchApprovedPosts } from '@/lib/catalog-service';
@@ -206,10 +206,6 @@ function FeedCard({ post }: { post: CommunityPost }) {
 
           <span className="mt-3 inline-flex items-center gap-1 text-[12px] font-bold text-brand-700">
             বিস্তারিত পড়ুন
-            <ArrowRight
-              className="h-3.5 w-3.5 shrink-0 transition-transform duration-200 group-hover:translate-x-0.5"
-              aria-hidden="true"
-            />
           </span>
         </div>
       </Link>
@@ -239,29 +235,35 @@ function CardSkeleton() {
 export default function PostsFeed() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   const [active, setActive] = useState<FeedChip>('all');
 
   useEffect(() => {
     let cancelled = false;
 
     async function load() {
-      // Three kinds, three reads — exactly what the three directory pages
-      // already do, so the feed and those pages can never disagree about what
-      // "approved" means. Each read returns [] on failure rather than throwing,
-      // so one broken surface cannot take the feed down with it.
-      const [news, jobs, market] = await Promise.all([
-        fetchApprovedPosts('news'),
-        fetchApprovedPosts('job'),
-        fetchApprovedPosts('buy_sell'),
-      ]);
-      if (cancelled) return;
-      const merged = [...news, ...jobs, ...market].sort(
-        (a, b) =>
-          new Date(b.publishedAt || b.createdAt).getTime() -
-          new Date(a.publishedAt || a.createdAt).getTime()
-      );
-      setPosts(merged);
-      setLoading(false);
+      try {
+        const [news, jobs, market] = await Promise.all([
+          fetchApprovedPosts('news'),
+          fetchApprovedPosts('job'),
+          fetchApprovedPosts('buy_sell'),
+        ]);
+        if (cancelled) return;
+        const merged = [...news, ...jobs, ...market].sort(
+          (a, b) =>
+            new Date(b.publishedAt || b.createdAt).getTime() -
+            new Date(a.publishedAt || a.createdAt).getTime()
+        );
+        setPosts(merged);
+        setLoadError('');
+      } catch (cause) {
+        if (!cancelled) {
+          setPosts([]);
+          setLoadError(cause instanceof Error ? cause.message : 'কমিউনিটি পোস্ট লোড করা যায়নি।');
+        }
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
     }
 
     void load();
@@ -366,6 +368,10 @@ export default function PostsFeed() {
             <CardSkeleton />
             <CardSkeleton />
           </div>
+        ) : loadError ? (
+          <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            {loadError}
+          </p>
         ) : visible.length === 0 ? (
           <div className="rounded-xl border border-dashed border-brand-200 bg-white px-4 py-10 text-center">
             <p className="text-sm font-bold text-ink-900">

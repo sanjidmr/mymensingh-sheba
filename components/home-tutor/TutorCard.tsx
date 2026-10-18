@@ -19,7 +19,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, GraduationCap, BadgeCheck, ArrowRight, Star, Clock, Landmark } from 'lucide-react';
+import { MapPin, GraduationCap, BadgeCheck, Star, Clock, Landmark } from 'lucide-react';
 import type { HomeTutorProfile } from '@/lib/supabase/types';
 import {
   TUTOR_TEACHING_MODE_LABELS,
@@ -197,7 +197,6 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
           </span>
           <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-brand-700 px-2.5 py-1.5 text-[11.5px] font-bold text-white transition-colors group-hover:bg-brand-800">
             বিস্তারিত
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
           </span>
         </div>
       </div>

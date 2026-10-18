@@ -3,7 +3,7 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowRight, MapPin, Search } from 'lucide-react';
+import { MapPin, Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import CommunityBandSection from '@/components/services/CommunityBandSection';
 import { getAllMCCAreas } from '@/lib/locations';
@@ -140,7 +140,6 @@ export default function ServicesContent({ services }: { services: ServiceCategor
                 <div className="mt-auto flex pt-1.5 sm:pt-2">
                   <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-brand-700 transition-colors duration-300 group-hover:text-brand-800 sm:gap-1 sm:text-xs">
                     বিস্তারিত দেখুন
-                    <ArrowRight className="h-2.5 w-2.5 transition-transform duration-300 group-hover:translate-x-0.5 sm:h-3.5 sm:w-3.5" />
                   </span>
                 </div>
               </div>

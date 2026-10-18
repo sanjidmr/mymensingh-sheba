@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRight, Building2, Landmark, MapPin, Sprout, Users } from 'lucide-react';
+import { Building2, Landmark, MapPin, Sprout, Users } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 import ArchivePhoto from './ArchivePhoto';
 import { CityHeading, CitySection } from './CityBits';
@@ -153,12 +153,6 @@ export default function TodayDashboard() {
                     {district.role}
                   </span>
                 </span>
-                <ArrowRight
-                  className={`h-4 w-4 shrink-0 text-brand-600 transition-transform ${
-                    expanded ? 'rotate-90' : ''
-                  }`}
-                  aria-hidden="true"
-                />
               </button>
               {expanded ? (
                 <p

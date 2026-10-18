@@ -7,7 +7,6 @@ import {
   Heart,
   MapPin,
   Phone,
-  ArrowRight,
   ArrowLeft,
   CheckCircle2,
   Lock,
@@ -106,7 +105,7 @@ export default function BloodDonorSetupPage() {
         bloodDonorProfile?.status === 'approved'
           ? 'পরিবর্তন সংরক্ষিত হয়েছে। আপনার প্রোফাইল প্রকাশিত অবস্থায় আছে।'
           : mode === 'draft'
-            ? 'খসড়া সংরক্ষণ হয়েছে। পরে সম্পাদনা করে জমা দিতে পারবেন।'
+            ? 'জমা দেওয়া হয়নি হিসেবে সংরক্ষণ হয়েছে। পরে সম্পাদনা করে জমা দিতে পারবেন।'
             : 'রক্তদাতা প্রোফাইল জমা হয়েছে! অ্যাডমিন অনুমোদনের পরে সক্রিয় হবে।'
       );
       setTimeout(() => {
@@ -441,7 +440,7 @@ export default function BloodDonorSetupPage() {
                   disabled={loading || photoUploading}
                   className="px-4 py-2.5 rounded-xl border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-50 disabled:opacity-50"
                 >
-                  {loading ? 'সংরক্ষণ হচ্ছে...' : 'খসড়া সংরক্ষণ'}
+                  {loading ? 'সংরক্ষণ হচ্ছে...' : 'জমা দেওয়া হয়নি সংরক্ষণ'}
                 </button>
               )}
               <Link
@@ -462,7 +461,6 @@ export default function BloodDonorSetupPage() {
                       ? 'পরিবর্তন সংরক্ষণ'
                       : 'রক্তদাতা হিসেবে নিবন্ধন সম্পন্ন করুন'}
                 </span>
-                <ArrowRight className="w-4 h-4" />
               </button>
             </div>
           </form>

@@ -28,7 +28,7 @@ import type { ToletListing } from '@/lib/tolet-types';
 export function OwnerProfileCard({ listing }: { listing: ToletListing }) {
   const meta = listing.ownerMeta;
   const initials = meta?.initials ?? listing.ownerName?.slice(0, 2) ?? 'উ';
-  const roleLabel = meta?.roleLabelBn ?? 'বিজ্ঞাপনদাতা';
+  const roleLabel = 'বিজ্ঞাপনদাতা';
   const verified = Boolean(listing.ownerVerified || listing.isVerified);
 
   return (

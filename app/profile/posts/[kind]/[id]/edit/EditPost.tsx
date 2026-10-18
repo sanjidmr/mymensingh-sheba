@@ -22,6 +22,7 @@ import type { CommunityPost } from '@/lib/catalog-types';
 export default function EditPost({ postId }: { postId: string }) {
   const { user, isLoading: authLoading } = useAuth();
   const [post, setPost] = useState<CommunityPost | null>(null);
+  const [loadError, setLoadError] = useState('');
   // Same reasoning as `MyPosts`: "no user to fetch for" and "fetch finished"
   // are one state, so tracking `loaded` lets the spinner be derived instead of
   // forcing the effect to synchronously setState "not loading" and cascade a
@@ -35,6 +36,10 @@ export default function EditPost({ postId }: { postId: string }) {
       try {
         const data = await fetchMyPostForEdit(postId);
         if (active) setPost(data);
+      } catch (cause) {
+        if (active) {
+          setLoadError(cause instanceof Error ? cause.message : 'পোস্ট সম্পাদনার তথ্য লোড করা যায়নি।');
+        }
       } finally {
         if (active) setLoaded(true);
       }
@@ -58,11 +63,22 @@ export default function EditPost({ postId }: { postId: string }) {
     return (
       <Frame>
         <div className="mx-auto max-w-2xl py-10 text-center">
-          <h1 className="text-lg font-extrabold text-ink-900">পোস্টটি পাওয়া যায়নি</h1>
-          <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-500">
-            এই পোস্টটি সম্পাদনার জন্য উপলব্ধ নয় — এটি হয়তো ইতিমধ্যে প্রকাশিত হয়েছে, অথবা
-            অন্য কারো পোস্ট। লিংকটি ভুল হলে আমার পোস্ট তালিকা দেখুন।
-          </p>
+          {loadError ? (
+            <>
+              <h1 className="text-lg font-extrabold text-rose-800">পোস্ট সম্পাদনা লোড করা যায়নি</h1>
+              <p role="alert" className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-rose-700">
+                {loadError}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-lg font-extrabold text-ink-900">পোস্টটি পাওয়া যায়নি</h1>
+              <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-500">
+                এই পোস্টটি সম্পাদনার জন্য উপলব্ধ নয় — এটি হয়তো ইতিমধ্যে প্রকাশিত হয়েছে, অথবা
+                অন্য কারো পোস্ট। লিংকটি ভুল হলে আমার পোস্ট তালিকা দেখুন।
+              </p>
+            </>
+          )}
           <Link
             href="/profile/posts"
             className={`mt-3 inline-flex min-h-[44px] items-center justify-center rounded-lg border border-brand-200 bg-white px-4 text-sm font-bold text-brand-700 transition-colors hover:bg-mist-50 ${LIGHT_FOCUS}`}

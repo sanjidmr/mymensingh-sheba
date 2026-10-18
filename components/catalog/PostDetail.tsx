@@ -59,6 +59,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
   const { user } = useAuth();
   const [post, setPost] = useState<CommunityPost | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -66,6 +67,10 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
       try {
         const data = await fetchPostForViewer(kind, slug);
         if (active) setPost(data);
+      } catch (cause) {
+        if (active) {
+          setLoadError(cause instanceof Error ? cause.message : 'পোস্ট লোড করা যায়নি।');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -90,13 +95,24 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
     return (
       <Frame>
         <div className="mx-auto max-w-2xl py-10 text-center">
-          <h1 className="text-lg font-extrabold text-ink-900">
-            {meta.title} পোস্টটি পাওয়া যায়নি
-          </h1>
-          <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-500">
-            পোস্টটি হয় অনুমোদনের অপেক্ষায় আছে, অথবা আর প্রকাশিত নেই। অন্য কোনো
-            তালিকা দেখুন।
-          </p>
+          {loadError ? (
+            <>
+              <h1 className="text-lg font-extrabold text-rose-800">পোস্ট লোড করা যায়নি</h1>
+              <p role="alert" className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-rose-700">
+                {loadError}
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-lg font-extrabold text-ink-900">
+                {meta.title} পোস্টটি পাওয়া যায়নি
+              </h1>
+              <p className="mx-auto mt-2 max-w-md text-[13px] leading-relaxed text-ink-500">
+                পোস্টটি হয় অনুমোদনের অপেক্ষায় আছে, অথবা আর প্রকাশিত নেই। অন্য কোনো
+                তালিকা দেখুন।
+              </p>
+            </>
+          )}
           <Link
             href={meta.route}
             className={`mt-4 inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}

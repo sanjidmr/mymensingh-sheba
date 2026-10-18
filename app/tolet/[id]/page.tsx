@@ -22,7 +22,6 @@ import {
   StickyContactBarSpacer,
 } from '@/components/tolet/detail/StickyContactBar';
 import { SimilarProperties } from '@/components/tolet/detail/SimilarProperties';
-import { RequestSection } from '@/components/tolet/RequestSection';
 import { ReportSheet } from '@/components/tolet/ReportSheet';
 
 import { fetchListingById, fetchSimilarListings } from '@/lib/tolet-service';
@@ -93,7 +92,6 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
   const [reportOpen, setReportOpen] = useState(false);
   const [guestFavorite, setGuestFavorite] = useState(false);
   const [favoriteError, setFavoriteError] = useState('');
-  const [requestAnchor, setRequestAnchor] = useState<HTMLElement | null>(null);
 
   // ---- Load the listing, then the related ones -----------------------------
   useEffect(() => {
@@ -210,11 +208,6 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
       });
     }
   }, [listing, isFavorite, user, toggleSaveItem]);
-
-  // ---- Contact fallback: jump to the request form --------------------------
-  const scrollToRequest = useCallback(() => {
-    requestAnchor?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [requestAnchor]);
 
   if (!isForCurrentId) return <ListingSkeleton />;
   if (load?.id === id && load.status === 'error') {
@@ -348,15 +341,10 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
                 listing={listing}
                 userId={user?.id ?? null}
                 isLoggedIn={Boolean(user)}
-                onRequestFallback={scrollToRequest}
               />
             )}
 
             <OwnerProfileCard listing={listing} />
-
-            <div ref={setRequestAnchor} className="scroll-mt-24">
-              <RequestSection listingId={listing.id} user={user} />
-            </div>
 
             {listing.status === 'approved' && (
               <div className="flex justify-center pt-0.5">
@@ -382,7 +370,6 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
         <StickyContactBar
           listing={listing}
           userId={user?.id ?? null}
-          onRequestFallback={scrollToRequest}
         />
       )}
 

@@ -8,6 +8,7 @@ import { useToast } from '@/components/admin/ToastProvider';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 import {
   DEFAULT_ABOUT_CONTENT,
   DEFAULT_FAQ_CONTENT,
@@ -159,7 +160,13 @@ export default function WebsiteEditorial({
         </div>
         <Input label="SEO শিরোনাম" maxLength={120} value={seo.title} onChange={(event) => setSeo((item) => ({ ...item, title: event.target.value }))} />
         <Textarea label="SEO বিবরণ" maxLength={320} rows={3} value={seo.description} onChange={(event) => setSeo((item) => ({ ...item, description: event.target.value }))} />
-        <Input label="শেয়ারিং ছবির URL" value={seo.ogImage ?? ''} onChange={(event) => setSeo((item) => ({ ...item, ogImage: event.target.value || null }))} placeholder="/og-image.png অথবা https://..." />
+        <ImageUpload
+          label="শেয়ারিং ছবি"
+          value={seo.ogImage ?? ''}
+          onChange={(url) => setSeo((item) => ({ ...item, ogImage: url || null }))}
+          folder="website/seo"
+          helperText="সোশ্যাল শেয়ারে দেখানো ছবি আপলোড করুন। খালি রাখলে বর্তমান ব্র্যান্ড ডিফল্ট থাকবে।"
+        />
         <Button onClick={() => void save('seo', seo)} isLoading={saving} leftIcon={<Save className="h-4 w-4" />}>SEO সংরক্ষণ</Button>
       </section>
     </div>

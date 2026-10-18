@@ -306,9 +306,6 @@ export function ToletListingForm({
     if (form.title.trim().length < 8) {
       return { field: 'title', message: 'বিজ্ঞাপনের শিরোনাম অন্তত ৮ অক্ষর লিখুন।' };
     }
-    if (form.description.trim().length < 20) {
-      return { field: 'description', message: 'বিবরণ অন্তত ২০ অক্ষর লিখুন।' };
-    }
     // A draft only needs to be identifiable; the rest can wait.
     if (forDraft) return null;
     if (!form.areaId) return { field: 'areaId', message: 'এলাকা নির্বাচন করুন।' };
@@ -440,7 +437,7 @@ export function ToletListingForm({
           label="বিবরণ"
           required
           error={errors.description}
-          hint="অন্তত ২০ অক্ষর — বাসার আকার, পরিবেশ, বিদ্যুৎ-পানি, যাতায়াত ইত্যাদি।"
+          hint="বাসার আকার, পরিবেশ, বিদ্যুৎ-পানি, যাতায়াত ইত্যাদি লিখুন।"
         >
           <textarea
             id="tolet-description"
@@ -695,7 +692,7 @@ export function ToletListingForm({
             className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
           >
             <Save className="h-3.5 w-3.5" aria-hidden="true" />
-            খসড়া হিসেবে সংরক্ষণ
+            জমা দেওয়া হয়নি হিসেবে সংরক্ষণ
           </button>
         )}
 

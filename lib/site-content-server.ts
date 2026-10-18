@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import type { SiteContentOverrides } from './site-content';
 
 const OVERRIDE_KEYS = new Set([
@@ -12,9 +13,17 @@ const OVERRIDE_KEYS = new Set([
 ]);
 
 export async function getSiteContentOverrides(): Promise<SiteContentOverrides> {
-  const { createServerSideClient } = await import('@/lib/supabase/server');
-  const client = await createServerSideClient();
-  if (!client) return {};
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return {};
+
+  const client = createClient(url, anonKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+    },
+  });
 
   const { data, error } = await client
     .from('platform_settings')

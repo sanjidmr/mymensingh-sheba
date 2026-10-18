@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Clock, MapPin, Calendar, CheckCircle2, AlertCircle, ChevronRight } from 'lucide-react';
+import { Clock, MapPin, Calendar, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 
@@ -134,7 +134,6 @@ export function ServiceRequestCard({
               className="px-3.5 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white text-xs font-semibold inline-flex items-center gap-1 shadow-2xs"
             >
               <span>বিস্তারিত</span>
-              <ChevronRight className="w-3.5 h-3.5" />
             </Link>
           ) : (
             <span className="text-xs text-emerald-800 font-semibold bg-emerald-50 px-2.5 py-1 rounded-lg">

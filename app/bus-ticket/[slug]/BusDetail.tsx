@@ -49,6 +49,18 @@ export default function BusDetail({ slug }: { slug: string }) {
     ...(listing.availableTimeBn
       ? [{ label: 'সরবরাহকৃত সময়সূচি', value: listing.availableTimeBn }]
       : []),
+    ...(listing.travelDays?.length
+      ? [{ label: 'যাত্রার দিন', value: listing.travelDays.join(', ') }]
+      : []),
+    ...(listing.journeyDurationBn
+      ? [{ label: 'যাত্রার সময়কাল', value: listing.journeyDurationBn }]
+      : []),
+    ...(listing.stops?.length
+      ? [{ label: 'পথের স্টপ', value: listing.stops.join(' → ') }]
+      : []),
+    ...(listing.availableFacilities?.length
+      ? [{ label: 'সুবিধা', value: listing.availableFacilities.join(', ') }]
+      : []),
     ...(listing.fareMin != null
       ? [
           {

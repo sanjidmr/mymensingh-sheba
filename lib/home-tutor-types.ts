@@ -23,7 +23,7 @@ export const TUTOR_STATUS_META: Record<
   { labelBn: string; badge: string; chip: string; note: string }
 > = {
   draft: {
-    labelBn: 'খসড়া',
+    labelBn: 'জমা দেওয়া হয়নি',
     badge: 'bg-slate-100 text-slate-600',
     chip: 'border-slate-200 text-slate-500',
     note: 'প্রোফাইলটি এখনও জমা দেওয়া হয়নি।',

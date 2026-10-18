@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import {
-  ArrowRight,
   BadgeCheck,
   Bus,
   Car,
@@ -347,7 +346,6 @@ export default function HowItWorksPage() {
                       }`}
                     >
                       {item.cta}
-                      <ArrowRight className={item.compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} />
                     </Link>
                   </div>
                 </div>
@@ -385,7 +383,6 @@ export default function HowItWorksPage() {
               className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-brand-700 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-800"
             >
               সেবা সমূহ দেখুন
-              <ArrowRight className="h-4 w-4" />
             </Link>
             <Link
               href="/profile/requests"
@@ -414,7 +411,6 @@ export default function HowItWorksPage() {
                 <span className="text-xs font-semibold text-ink-700">{item.name}</span>
                 <span className="inline-flex items-center gap-1 text-[11px] font-bold text-brand-700">
                   কল করুন
-                  <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
                 </span>
               </Link>
             ))}

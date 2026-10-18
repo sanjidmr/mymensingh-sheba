@@ -47,7 +47,7 @@ export const SERVICE_LISTING_STATUS_META: Record<
   { labelBn: string; className: string; descriptionBn: string }
 > = {
   draft: {
-    labelBn: 'খসড়া',
+    labelBn: 'জমা দেওয়া হয়নি',
     className: 'bg-slate-100 text-slate-700',
     descriptionBn: 'এখনো জমা দেওয়া হয়নি। শুধু আপনি দেখতে পাচ্ছেন।',
   },
@@ -90,14 +90,16 @@ export interface ServiceListing {
   originBn?: string;
   destinationBn?: string;
   seatCount?: number;
+  travelDays?: string[];
+  stops?: string[];
+  journeyDurationBn?: string;
   contactPhonePrivate?: string;
   isActive: boolean;
   isFeatured: boolean;
   createdAt: string;
   updatedAt: string;
-  // --- vehicle only -------------------------------------------------------
-  // A vehicle is the one curated category where a single photo sells the
-  // listing, so it carries a gallery and the specs a renter actually asks about.
+  // --- vehicle / bus directory fields -----------------------------------
+  // Curated listings may carry a cover plus a small gallery.
   // All of it is optional: every field below is printed only when stored, so a
   // row written by an older admin stays honest instead of showing invented
   // zeroes.
@@ -156,6 +158,8 @@ export interface ServiceListing {
   contactPhonePublic?: string;
   /** কোচিং: ভর্তি ও ফি সংক্রান্ত তথ্য. WiFi: —. */
   admissionInfoBn?: string;
+  /** কোচিং: এককালীন ভর্তি ফি. */
+  admissionFee?: number;
   /** WiFi: এককালীন সংযোগ/ইনস্টলেশন ফি. Coaching: —. */
   connectionFee?: number;
   /** WiFi: সংযোগের শর্ত / শর্তাবলি. Coaching: —. */
@@ -260,6 +264,7 @@ export interface CustomerServiceListingInput {
   summaryBn?: string;
   descriptionBn?: string;
   imageUrl?: string;
+  photos?: string[];
   logoUrl?: string;
   areaIds: string[];
   /** Free-form highlight chips (coaching: classes/subjects/সুবিধা). */
@@ -270,6 +275,7 @@ export interface CustomerServiceListingInput {
   monthlyFeeMin?: number;
   monthlyFeeMax?: number;
   admissionInfoBn?: string;
+  admissionFee?: number;
   // wifi
   priceMin?: number;
   priceMax?: number;

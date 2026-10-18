@@ -39,7 +39,7 @@ export const TOLET_LISTING_STATUS_INFO: Record<
   ToletListingStatus,
   { labelBn: string; badgeClass: string }
 > = {
-  draft: { labelBn: 'খসড়া', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200' },
+  draft: { labelBn: 'জমা দেওয়া হয়নি', badgeClass: 'bg-slate-100 text-slate-700 border-slate-200' },
   pending_review: {
     labelBn: 'যাচাইয়ের অপেক্ষায়',
     badgeClass: 'bg-amber-50 text-amber-900 border-amber-200',
@@ -196,50 +196,6 @@ export interface ToletAnalyticsReport {
   };
   listings: ToletAnalyticsListing[];
   trends: ToletAnalyticsTrend[];
-}
-
-export const TOLET_EVENT_TYPE_INFO: Record<ToletEventType, { labelBn: string }> = {
-  view: { labelBn: 'বিজ্ঞাপন দেখা হয়েছে' },
-  call_click: { labelBn: 'কল বাটন চাপা হয়েছে' },
-  whatsapp_click: { labelBn: 'হোয়াটসঅ্যাপ বাটন চাপা হয়েছে' },
-  favorite: { labelBn: 'পছন্দ তালিকায় যুক্ত হয়েছে' },
-  share: { labelBn: 'শেয়ার করা হয়েছে' },
-};
-
-export type ToletRequestStatus = 'submitted' | 'contacted' | 'completed' | 'cancelled';
-
-export const TOLET_REQUEST_STATUS_INFO: Record<
-  ToletRequestStatus,
-  { labelBn: string; badgeClass: string }
-> = {
-  submitted: { labelBn: 'অপেক্ষমাণ', badgeClass: 'bg-sky-50 text-sky-900 border-sky-200' },
-  contacted: { labelBn: 'যোগাযোগ হয়েছে', badgeClass: 'bg-indigo-50 text-indigo-900 border-indigo-200' },
-  completed: { labelBn: 'সম্পন্ন হয়েছে', badgeClass: 'bg-emerald-50 text-emerald-900 border-emerald-200' },
-  cancelled: { labelBn: 'বাতিল করা হয়েছে', badgeClass: 'bg-slate-100 text-slate-600 border-slate-200' },
-};
-
-export interface ToletRequest {
-  id: string;
-  listingId: string;
-  listingTitle: string;
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
-  areaId?: string;
-  message?: string;
-  preferredTime?: string;
-  status: ToletRequestStatus;
-  createdAt: string;
-}
-
-export interface ToletRequestInput {
-  listingId: string;
-  customerId: string;
-  customerName: string;
-  customerPhone: string;
-  areaId?: string;
-  message?: string;
-  preferredTime?: string;
 }
 
 // Must match the listing_reports status CHECK constraint in the schema.

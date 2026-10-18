@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Bell, ArrowLeft, CheckCircle2, Info, AlertTriangle, ShieldAlert, MoveRight } from 'lucide-react';
+import { Bell, ArrowLeft, CheckCircle2, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -143,7 +143,6 @@ export default function NotificationsPage() {
                         className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
                       >
                         বিস্তারিত দেখুন
-                        <MoveRight className="w-3 h-3" />
                       </Link>
                     )}
                   </div>

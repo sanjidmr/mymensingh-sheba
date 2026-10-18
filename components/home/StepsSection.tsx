@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowRight, MousePointerClick, PhoneCall, BadgeCheck } from 'lucide-react';
+import { MousePointerClick, PhoneCall, BadgeCheck } from 'lucide-react';
 import Link from 'next/link';
 import Reveal from '@/components/home/Reveal';
 
@@ -83,7 +83,6 @@ export default function StepsSection() {
               className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-brand-700 px-6 py-3 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-50"
             >
               কোন সেবায় পোস্ট করা যায়?
-              <ArrowRight className="h-4 w-4" />
             </Link>
           </div>
         </Reveal>

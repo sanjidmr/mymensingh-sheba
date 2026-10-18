@@ -13,7 +13,6 @@ import {
   ArrowLeft,
   Search,
   Plus,
-  Home,
   Loader2,
   X,
   UserCheck,
@@ -25,13 +24,6 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import { TUTOR_SUBJECTS } from '@/lib/filter-definitions';
-import {
-  fetchToletRequestsAsCustomer,
-  updateToletRequestStatus,
-} from '@/lib/tolet-service';
-import type { ToletRequest } from '@/lib/tolet-types';
-import { RequestStatusBadge } from '@/components/tolet/ListingStatusBadge';
-import { createClient } from '@/lib/supabase/client';
 
 const STATUS_CONFIGS = {
   new: { label: 'নতুন', badgeClass: 'bg-sky-50 text-sky-900 border-sky-200', icon: FileText },
@@ -48,9 +40,6 @@ const STATUS_CONFIGS = {
 export default function RequestsPage() {
   const { requests, user } = useAuth();
   const [supportRequested, setSupportRequested] = useState<string | null>(null);
-  const [toletRequests, setToletRequests] = useState<ToletRequest[]>([]);
-  const [loadingTolet, setLoadingTolet] = useState(true);
-  const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [cancellingServiceId, setCancellingServiceId] = useState<string | null>(null);
   const [cancelledServiceIds, setCancelledServiceIds] = useState<Set<string>>(() => new Set());
   const [requestError, setRequestError] = useState('');
@@ -75,24 +64,6 @@ export default function RequestsPage() {
       active = false;
     };
   }, [user]);
-
-  const handleCancelTolet = async (id: string) => {
-    if (!window.confirm('এই বাসা দেখার অনুরোধটি বাতিল করবেন?')) return;
-    setCancellingId(id);
-    setRequestError('');
-    try {
-      const result = await updateToletRequestStatus(id, 'cancelled');
-      if (result.success) {
-        setToletRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'cancelled' as const } : r)));
-      } else {
-        setRequestError(result.error || 'অনুরোধ বাতিল করা যায়নি।');
-      }
-    } catch (error) {
-      setRequestError(error instanceof Error ? error.message : 'অনুরোধ বাতিল করা যায়নি।');
-    } finally {
-      setCancellingId(null);
-    }
-  };
 
   const handleCancelServiceRequest = async (id: string) => {
     if (!user || !window.confirm('এই সার্ভিস রিকোয়েস্টটি বাতিল করবেন?')) return;
@@ -122,12 +93,7 @@ export default function RequestsPage() {
     }
   };
 
-  const allEmpty = requests.length === 0 && toletRequests.length === 0;
-
-  const sortedTolet = useMemo(
-    () => [...toletRequests].sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || '')),
-    [toletRequests]
-  );
+  const allEmpty = requests.length === 0;
 
   return (
     <div className="space-y-5">
@@ -162,7 +128,7 @@ export default function RequestsPage() {
           </Link>
         </div>
 
-        {loadingTolet ? (
+{loadingTolet ? (
           <div className="py-16 flex flex-col items-center gap-2 text-ink-400 text-sm">
             <Loader2 className="w-5 h-5 animate-spin text-brand-600" />
             <span>রিকোয়েস্ট লোড হচ্ছে...</span>
@@ -172,86 +138,18 @@ export default function RequestsPage() {
             <FileText className="w-12 h-12 text-brand-200 mx-auto mb-3" />
             <h3 className="text-base font-bold text-ink-900">এখনও কোনো রিকোয়েস্ট নেই</h3>
             <p className="text-xs text-ink-400 mt-1 max-w-sm mx-auto mb-5">
-              বাসা দেখার অনুরোধ, কাজের বুয়া, ইলেক্ট্রিশিয়ান জাতীয় সেবা রিকোয়েস্ট করলে তা এখানে দেখা যাবে।
+              কাজের বুয়া, ইলেক্ট্রিশিয়ান জাতীয় সেবা রিকোয়েস্ট করলে তা এখানে দেখা যাবে।
             </p>
             <Link
-              href="/tolet"
+              href="/services"
               className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-brand-700 text-white text-xs font-semibold"
             >
-              <Search className="w-4 h-4" />
-              <span>বাসা খুঁজুন</span>
+              <Search className="w-4 w-4" />
+              <span>নতুন রিকোয়েস্ট করুন</span>
             </Link>
           </div>
         ) : (
           <div className="space-y-4">
-            {/* TO-LET REQUESTS */}
-            {sortedTolet.length > 0 && (
-              <>
-                <h2 className="text-sm font-bold text-ink-900 pt-2">বাসা দেখার অনুরোধ</h2>
-                {sortedTolet.map((req) => {
-                  const area = req.areaId ? getAreaById(req.areaId) : undefined;
-                  return (
-                    <div key={req.id} className="bg-white rounded-2xl border border-brand-100 p-5 sm:p-6  hover:border-brand-200 transition-all">
-                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
-                        <div className="min-w-0">
-                          <span className="text-[11px] font-semibold text-brand-700 uppercase tracking-wider inline-flex items-center gap-1">
-                            <Home className="w-3.5 h-3.5" /> To-Let অনুরোধ
-                          </span>
-                          <h3 className="text-base font-bold text-ink-900 mt-0.5 line-clamp-1">
-                            {req.listingTitle || 'বাসা দেখার অনুরোধ'}
-                          </h3>
-                          <Link
-                            href={`/tolet/${req.listingId}`}
-                            className="text-xs text-brand-700 font-semibold hover:underline"
-                          >
-                            বিজ্ঞাপনটি দেখুন
-                          </Link>
-                        </div>
-                        <RequestStatusBadge status={req.status} />
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs text-ink-500 mt-3 pt-3 border-t border-brand-100">
-                        <div className="flex items-center gap-2">
-                          <MapPin className="w-4 h-4 text-ink-400 shrink-0" />
-                          <span>{area?.nameBn || req.areaId || 'এলাকা নির্ধারিত নয়'}</span>
-                        </div>
-                        {req.preferredTime && (
-                          <div className="flex items-center gap-2">
-                            <Calendar className="w-4 h-4 text-ink-400 shrink-0" />
-                            <span>পছন্দের সময়: {req.preferredTime}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Clock className="w-4 h-4 text-ink-400 shrink-0" />
-                          <span>জমার তারিখ: {new Date(req.createdAt).toLocaleDateString('bn-BD')}</span>
-                        </div>
-                      </div>
-
-                      {req.message && (
-                        <div className="mt-3 p-3 bg-mist-50 rounded-xl text-xs text-ink-700">
-                          <strong>নোট:</strong> {req.message}
-                        </div>
-                      )}
-
-                      {req.status === 'submitted' && (
-                        <div className="mt-4 pt-3 border-t border-brand-100 flex justify-end">
-                          <button
-                            type="button"
-                            disabled={cancellingId === req.id}
-                            onClick={() => handleCancelTolet(req.id)}
-                            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl border border-brand-200 text-ink-500 text-xs font-semibold hover:bg-mist-50 disabled:opacity-50"
-                          >
-                            {cancellingId === req.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <X className="w-3.5 h-3.5" />}
-                            অনুরোধ বাতিল করুন
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-
             {/* GENERIC SERVICE REQUESTS */}
             {requests.length > 0 && (
               <>

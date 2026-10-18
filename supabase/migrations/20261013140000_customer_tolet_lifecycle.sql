@@ -86,9 +86,8 @@ BEGIN
        OR listing.rent_price NOT BETWEEN 100 AND 500000
        OR (listing.property_type IN ('mess', 'hostel', 'seat') AND COALESCE(listing.total_rooms, 0) < 1)
        OR (listing.property_type NOT IN ('mess', 'hostel', 'seat') AND listing.bedrooms < 1)
-       OR listing.bathrooms < 0
-       OR listing.balconies < 0
-       OR length(btrim(COALESCE(listing.description, ''))) < 20 THEN
+        OR listing.bathrooms < 0
+        OR listing.balconies < 0 THEN
         RAISE EXCEPTION 'listing details are incomplete; edit and save the listing before restoring';
     END IF;
 

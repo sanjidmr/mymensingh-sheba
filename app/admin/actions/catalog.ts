@@ -10,7 +10,8 @@ import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
  * Both tables already had complete admin CRUD in `lib/catalog-service.ts` and
  * full `USING (public.is_admin())` policies — but no screen ever called them,
  * and the "edit" link on every public curated detail page pointed at
- * `/admin/catalog`, a route that did not exist. This is the missing UI.
+ * Separate directory screens own service-listing management; this module
+ * retains the emergency-contact actions used by its dedicated screen.
  *
  * `is_active` is the only publish switch: the public reads filter on it, so
  * hiding a listing here removes it from the directory immediately.
@@ -30,7 +31,7 @@ export async function setServiceListingActive(
 
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath('/admin/catalog');
+    revalidatePath('/admin/directories/[category]', 'page');
     revalidatePath('/coaching');
     revalidatePath('/wifi');
     revalidatePath('/bus-ticket');
@@ -51,7 +52,7 @@ export async function setServiceListingFeatured(
 
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath('/admin/catalog');
+    revalidatePath('/admin/directories/[category]', 'page');
     return { ok: true, message: isFeatured ? 'ফিচার করা হয়েছে।' : 'ফিচার থেকে সরানো হয়েছে।' };
   });
 }
@@ -80,7 +81,7 @@ export async function deleteServiceListing(listingId: string): Promise<ActionRes
     const { error } = await client.from('service_listings').delete().eq('id', listingId);
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath('/admin/catalog');
+    revalidatePath('/admin/directories/[category]', 'page');
     return { ok: true, message: 'তালিকাটি মুছে ফেলা হয়েছে।' };
   });
 }
@@ -114,7 +115,7 @@ export async function setEmergencyContactActive(
     if (error) return { ok: false, error: error.message };
     if (!data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
-    revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctor');
     revalidatePath('/doctors');
@@ -145,7 +146,7 @@ export async function setEmergencyContactOrder(
     if (error) return { ok: false, error: error.message };
     if (!data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
-    revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctors');
     revalidatePath('/doctor');
@@ -168,7 +169,7 @@ export async function deleteEmergencyContact(contactId: string): Promise<ActionR
     if (error) return { ok: false, error: error.message };
     if (!data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
-    revalidatePath('/admin/catalog');
+    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctor');
     revalidatePath('/doctors');

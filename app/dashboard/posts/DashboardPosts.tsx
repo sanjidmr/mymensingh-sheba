@@ -27,7 +27,7 @@ import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 
 const STATUS_FILTERS = [
   { id: 'all', label: 'সব অবস্থা' },
-  { id: 'draft', label: 'খসড়া' },
+  { id: 'draft', label: 'জমা দেওয়া হয়নি' },
   { id: 'pending', label: 'অপেক্ষমাণ' },
   { id: 'published', label: 'প্রকাশিত' },
   { id: 'needs_edit', label: 'সংশোধন প্রয়োজন' },
@@ -118,7 +118,7 @@ export default function DashboardPosts() {
         ]);
         if (!active) return;
         const drafts = draftResults.flatMap((result, index) => {
-          if (!result.success) throw new Error(`খসড়া লোড করা যায়নি: ${result.error}`);
+          if (!result.success) throw new Error(`জমা দেওয়া হয়নি পোস্ট লোড করা যায়নি: ${result.error}`);
           const values = draftValues(result.data.draft);
           if (!values || !result.data.updatedAt) return [];
           return [
@@ -192,7 +192,7 @@ export default function DashboardPosts() {
       setCleanupComplete(true);
       setDraftRows((current) => current.filter((row) => row.draftKind !== draftCleanupKind));
     } catch (cause) {
-      setCleanupError(cause instanceof Error ? cause.message : 'খসড়া মুছতে সমস্যা হয়েছে।');
+      setCleanupError(cause instanceof Error ? cause.message : 'জমা দেওয়া হয়নি পোস্ট মুছতে সমস্যা হয়েছে।');
     } finally {
       setCleanupBusy(false);
     }
@@ -325,17 +325,17 @@ export default function DashboardPosts() {
           className={`rounded-xl border px-3 py-2.5 text-[12px] ${cleanupError ? 'border-rose-200 bg-rose-50 text-rose-800' : 'border-amber-200 bg-amber-50 text-amber-900'}`}
         >
           {cleanupComplete ? (
-            'খসড়াটি মুছে ফেলা হয়েছে।'
+            'জমা দেওয়া হয়নি পোস্টটি মুছে ফেলা হয়েছে।'
           ) : (
             <>
-              পোস্ট জমা হয়েছে, তবে খসড়াটি রয়ে গেছে।{' '}
+              পোস্ট জমা হয়েছে, তবে জমা দেওয়া হয়নি পোস্টটি রয়ে গেছে।{' '}
               <button
                 type="button"
                 onClick={() => void removeRemainingDraft()}
                 disabled={cleanupBusy}
                 className="font-bold underline disabled:opacity-50"
               >
-                {cleanupBusy ? 'মুছছে…' : 'খসড়া মুছুন'}
+                {cleanupBusy ? 'মুছছে…' : 'জমা দেওয়া হয়নি পোস্ট মুছুন'}
               </button>
               {cleanupError && <span className="ml-2">{cleanupError}</span>}
             </>
@@ -530,7 +530,7 @@ export default function DashboardPosts() {
                       className={`col-span-2 flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-red-200 text-[12px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:col-span-1 ${LIGHT_FOCUS}`}
                     >
                       {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                      {row.source === 'draft' ? 'খসড়া মুছুন' : 'স্থায়ীভাবে মুছুন'}
+                      {row.source === 'draft' ? 'জমা দেওয়া হয়নি পোস্ট মুছুন' : 'স্থায়ীভাবে মুছুন'}
                     </button>
                   )
                 )}

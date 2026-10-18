@@ -38,7 +38,7 @@ import { cn } from '@/lib/utils';
  * awaited; the link navigates in parallel.
  */
 export interface ContactHandlers {
-  mode: 'direct' | 'request';
+  mode: 'direct' | 'unavailable';
   /** Populated in `direct` mode; undefined otherwise. */
   whatsappHref?: string;
   telHref?: string;
@@ -81,13 +81,10 @@ export function useListingContact({
   listing,
   userId,
   source,
-  onRequestFallback,
 }: {
   listing: ToletListing;
   userId?: string | null;
   source: ToletEventSource;
-  /** Invoked in `request` mode instead of a tel:/wa.me navigation. */
-  onRequestFallback?: () => void;
 }): ContactHandlers {
   const phone = useMemo(
     () => (listing.ownerPhone ? normalizeBdPhone(listing.ownerPhone) : null),
@@ -111,17 +108,11 @@ export function useListingContact({
 
   if (!phone) {
     return {
-      mode: 'request',
-      whatsappLabelBn: 'বার্তা পাঠান',
-      callLabelBn: 'যোগাযোগের অনুরোধ',
-      onWhatsApp: () => {
-        track('whatsapp_click');
-        onRequestFallback?.();
-      },
-      onCall: () => {
-        track('call_click');
-        onRequestFallback?.();
-      },
+      mode: 'unavailable',
+      whatsappLabelBn: 'যোগাযোগ অনুপলব্ধ',
+      callLabelBn: 'নম্বর নেই',
+      onWhatsApp: () => {},
+      onCall: () => {},
     };
   }
 
@@ -206,26 +197,23 @@ function ContactButton({
  * ContactActionsPanel — the sidebar contact block on the detail page.
  *
  * Explains the contact route before offering the buttons, because on a listing
- * whose owner has not released their number the buttons are a REQUEST, not a
- * call — and a tenant who assumes otherwise will be confused when no dialer
- * opens. Being explicit about that is worth one short line.
+ * whose owner has not released their number the buttons are disabled and
+ * show "নম্বর নেই" — and a tenant who assumes otherwise will be confused when
+ * no dialer opens. Being explicit about that is worth one short line.
  */
 export function ContactActionsPanel({
   listing,
   userId,
   isLoggedIn,
-  onRequestFallback,
 }: {
   listing: ToletListing;
   userId?: string | null;
   isLoggedIn: boolean;
-  onRequestFallback?: () => void;
 }) {
   const contact = useListingContact({
     listing,
     userId,
     source: 'detail_page',
-    onRequestFallback,
   });
 
   return (
@@ -244,9 +232,7 @@ export function ContactActionsPanel({
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-500">
         {contact.mode === 'direct'
           ? 'সরাসরি মালিকের নম্বরে কল করুন বা হোয়াটসঅ্যাপে বিজ্ঞাপনটি পাঠিয়ে দিন।'
-          : isLoggedIn
-            ? 'অনুরোধ পাঠালে মালিক আপনার নম্বরে সরাসরি যোগাযোগ করবেন।'
-            : 'লগইন করে অনুরোধ পাঠালে মালিক আপনার নম্বরে সরাসরি যোগাযোগ করবেন।'}
+          : 'মালিকের ফোন নম্বর এখনো প্রকাশ করা হয়নি।'}
       </p>
 
       <div className="mt-3 space-y-2">
@@ -266,16 +252,10 @@ export function ContactActionsPanel({
         />
       </div>
 
-      {contact.mode === 'request' && !isLoggedIn && (
-        <Link
-          href="/login"
-          className="mt-2.5 flex items-start gap-1.5 rounded-lg bg-mist-50 px-2.5 py-2 text-[11px] leading-relaxed text-ink-500 transition-colors hover:bg-mist-100"
-        >
-          <Lock className="mt-px h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
-          <span>
-            যোগাযোগের অনুরোধ পাঠাতে অ্যাকাউন্টে লগইন করুন। আপনার তথ্য গোপন থাকবে।
-          </span>
-        </Link>
+      {contact.mode === 'unavailable' && (
+        <p className="mt-2.5 flex items-start gap-1.5 px-0.5 text-[10.5px] leading-relaxed text-ink-400">
+          <span>নম্বর প্রদান করা হলে সরাসরি কল বা হোয়াটসঅ্যাপ করার অপশন দেখাবে।</span>
+        </p>
       )}
 
       {contact.mode === 'direct' && (

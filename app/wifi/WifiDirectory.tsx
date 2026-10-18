@@ -6,7 +6,7 @@ import { BannerCard } from '@/components/catalog/CatalogCards';
 import AdminListingLink from '@/components/catalog/AdminListingLink';
 import OwnerListingCta from '@/components/catalog/OwnerListingCta';
 import { areaFilterGroupMulti, type FilterGroup } from '@/lib/directory-filters';
-import { fetchServiceListings } from '@/lib/catalog-service';
+import { fetchServiceListings, fetchWifiPackagesForListings } from '@/lib/catalog-service';
 import {
   areaNames,
   bnTaka,
@@ -15,6 +15,7 @@ import {
   WIFI_SPEED_BANDS,
   toBn,
   type ServiceListing,
+  type WifiPackage,
 } from '@/lib/catalog-types';
 
 const ui = CATEGORY_UI.wifi;
@@ -33,14 +34,22 @@ const SORTERS = {
 
 export default function WifiDirectory() {
   const [listings, setListings] = useState<ServiceListing[]>([]);
+  const [packagesByListing, setPackagesByListing] = useState<Record<string, WifiPackage[]>>({});
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const data = await fetchServiceListings('wifi');
-        if (active) setListings(data);
+        const data = await fetchServiceListings('wifi', true);
+        const packages = await fetchWifiPackagesForListings(data.map((listing) => listing.id), true);
+        if (active) {
+          setListings(data);
+          setPackagesByListing(packages);
+        }
+      } catch (cause) {
+        if (active) setLoadError(cause instanceof Error ? cause.message : 'তালিকা লোড করা যায়নি।');
       } finally {
         if (active) setLoading(false);
       }
@@ -61,7 +70,8 @@ export default function WifiDirectory() {
   );
 
   const renderCard = useCallback((listing: ServiceListing) => {
-    const price = bnTaka(listing.priceMin);
+    const packages = packagesByListing[listing.id] ?? [];
+    const price = packages.length > 0 ? '' : bnTaka(listing.priceMin);
     return (
       <BannerCard
         href={`/wifi/${listing.slug}`}
@@ -70,9 +80,18 @@ export default function WifiDirectory() {
         imageUrl={listing.logoUrl || listing.imageUrl}
         priceLabel={price || undefined}
         priceSuffix={price ? '/মাস' : undefined}
+        packageLines={packages.map((item) =>
+          `${item.speedMbps != null ? `${toBn(item.speedMbps)} Mbps` : 'স্পিড উল্লেখ নেই'} · ${item.price != null ? `${bnTaka(item.price)}/মাস` : 'দাম উল্লেখ নেই'}`
+        )}
+        details={[
+          listing.connectionFee != null ? `সংযোগ ফি: ${bnTaka(listing.connectionFee)}` : undefined,
+          listing.termsBn ? `শর্ত: ${listing.termsBn}` : undefined,
+          ...packages.flatMap((item) =>
+            item.connectionFee != null ? [`${item.nameBn} সংযোগ ফি: ${bnTaka(item.connectionFee)}`] : []
+          ),
+        ].filter((item): item is string => Boolean(item))}
         areaLabel={areaNames(listing.areaIds)}
         chips={[
-          listing.speedMbps ? `${toBn(listing.speedMbps)} Mbps` : undefined,
           ...listing.tags,
           'যাচাইয়ের তথ্য নেই',
         ]}
@@ -83,13 +102,14 @@ export default function WifiDirectory() {
         ratingCount={listing.ratingCount}
       />
     );
-  }, []);
+  }, [packagesByListing]);
 
   return (
     <CatalogDirectory
       ui={ui}
       listings={listings}
       loading={loading}
+      loadError={loadError}
       filterGroups={filterGroups}
       sortOptions={SORT_OPTIONS}
       sorters={SORTERS}

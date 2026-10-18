@@ -69,6 +69,7 @@ export default function MyPosts() {
   // `!loaded` below means the effect never has to synchronously setState to
   // "not loading", which is what caused the cascading re-render.
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -76,7 +77,15 @@ export default function MyPosts() {
     (async () => {
       try {
         const data = await fetchMyPosts();
-        if (active) setPosts(data);
+        if (active) {
+          setPosts(data);
+          setLoadError('');
+        }
+      } catch (cause) {
+        if (active) {
+          setPosts([]);
+          setLoadError(cause instanceof Error ? cause.message : 'আপনার পোস্ট লোড করা যায়নি।');
+        }
       } finally {
         if (active) setLoaded(true);
       }
@@ -159,7 +168,11 @@ export default function MyPosts() {
           ))}
         </div>
 
-        {posts.length === 0 ? (
+        {loadError ? (
+          <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+            {loadError}
+          </p>
+        ) : posts.length === 0 ? (
           <div className="mt-4 rounded-xl border border-dashed border-brand-200 bg-white px-5 py-9 text-center">
             <h2 className="text-base font-extrabold text-ink-900">
               এখনো কোনো পোস্ট করেননি

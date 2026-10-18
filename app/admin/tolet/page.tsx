@@ -24,7 +24,7 @@ const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color
   { key: 'rejected', label: 'প্রত্যাখ্যাত', color: 'bg-rose-100 text-rose-800', active: 'bg-rose-700 text-white' },
   { key: 'suspended', label: 'স্থগিত', color: 'bg-red-100 text-red-800', active: 'bg-red-700 text-white' },
   { key: 'unavailable', label: 'অনুপলব্ধ', color: 'bg-slate-100 text-slate-600', active: 'bg-slate-700 text-white' },
-  { key: 'draft', label: 'খসড়া', color: 'bg-slate-100 text-slate-600', active: 'bg-slate-700 text-white' },
+  { key: 'draft', label: 'জমা দেওয়া হয়নি', color: 'bg-slate-100 text-slate-600', active: 'bg-slate-700 text-white' },
   { key: 'archived', label: 'আর্কাইভ', color: 'bg-slate-100 text-slate-600', active: 'bg-slate-700 text-white' },
 ];
 

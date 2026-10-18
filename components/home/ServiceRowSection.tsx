@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight } from 'lucide-react';
 import ServiceCard from '@/components/home/ServiceCard';
 import {
   loadToletCards,
@@ -74,7 +73,7 @@ export default function ServiceRowSection({
   count = 6,
 }: ServiceRowSectionProps) {
   const [items, setItems] = useState<HomePreviewCard[] | null>(cards ?? null);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState('');
   const imageMode = withImage && !hideImage;
 
   /** Stable module-level reference, so this dep never churns between renders. */
@@ -85,10 +84,15 @@ export default function ServiceRowSection({
     let alive = true;
     load()
       .then((list) => {
-        if (alive) setItems(list);
+        if (alive) {
+          setItems(list);
+          setError('');
+        }
       })
-      .catch(() => {
-        if (alive) setError(true);
+      .catch((cause: unknown) => {
+        if (alive) {
+          setError(cause instanceof Error ? cause.message : 'তথ্য লোড করা যায়নি।');
+        }
       });
     return () => {
       alive = false;
@@ -133,8 +137,12 @@ export default function ServiceRowSection({
         </div>
 
         {/* Cards */}
-        {loading ? (
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
+        {error ? (
+          <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
+            {error}
+          </p>
+        ) : loading ? (
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 lg:gap-3">
             {Array.from({ length: count }).map((_, i) => (
               <div
                 key={i}
@@ -149,7 +157,7 @@ export default function ServiceRowSection({
             ))}
           </div>
         ) : shown.length > 0 ? (
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-5 lg:gap-4">
+          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 lg:gap-3">
             {shown.map((card, index) => (
               <ServiceCard
                 key={card.id}
@@ -181,7 +189,6 @@ export default function ServiceRowSection({
             className="group inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-6 py-2.5 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50"
           >
             আরও দেখুন
-            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
           </Link>
         </div>
       </div>

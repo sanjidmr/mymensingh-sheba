@@ -1010,7 +1010,9 @@ CREATE TABLE IF NOT EXISTS public.tolet_listings (
     balconies INTEGER NOT NULL DEFAULT 0,
     total_rooms INTEGER,
     floor TEXT,
-    available_from DATE,
+    -- Free text by design: owners answer "তাৎক্ষণিক সম্ভব" / "আগামী মাস থেকে" /
+    -- a month name, rendered verbatim on the listing ("উপলব্ধ: <value>").
+    available_from TEXT,
     facilities TEXT[] NOT NULL DEFAULT '{}',
     -- Facilities the owner explicitly states are NOT included. Drives the
     -- "এই বাসায় যা নেই" panel on the detail page. Optional on purpose: it is
@@ -1923,6 +1925,7 @@ CREATE TABLE IF NOT EXISTS public.service_listings (
     --  * vehicle  -> left NULL (rental price is intentionally not shown)
     monthly_fee_min INTEGER,
     monthly_fee_max INTEGER,
+    admission_fee INTEGER CHECK (admission_fee IS NULL OR admission_fee >= 0),
     price_min INTEGER,
     price_max INTEGER,
     speed_mbps INTEGER,
@@ -1961,6 +1964,7 @@ CREATE TABLE IF NOT EXISTS public.service_listings (
 -- Idempotent upgrade for DBs created before this migration.
 ALTER TABLE public.service_listings ADD COLUMN IF NOT EXISTS seat_count INTEGER;
 ALTER TABLE public.service_listings ADD COLUMN IF NOT EXISTS is_featured BOOLEAN DEFAULT FALSE;
+ALTER TABLE public.service_listings ADD COLUMN IF NOT EXISTS admission_fee INTEGER;
 
 CREATE INDEX IF NOT EXISTS idx_service_listings_category_active
     ON public.service_listings (category, is_active);
@@ -2026,6 +2030,9 @@ CREATE TABLE IF NOT EXISTS public.community_posts (
     CONSTRAINT community_posts_marketplace_status_check CHECK (
         (kind = 'buy_sell' AND marketplace_status IN ('available', 'sold', 'closed'))
         OR (kind <> 'buy_sell' AND marketplace_status IS NULL)
+    ),
+    CONSTRAINT community_posts_category_check CHECK (
+        category IS NULL OR char_length(category) <= 100
     )
 );
 
@@ -2236,6 +2243,55 @@ DROP TRIGGER IF EXISTS trg_community_posts_moderation_guard ON public.community_
 CREATE TRIGGER trg_community_posts_moderation_guard
 BEFORE INSERT OR UPDATE ON public.community_posts
 FOR EACH ROW EXECUTE FUNCTION public.community_posts_guard_moderation();
+
+CREATE OR REPLACE FUNCTION public.community_posts_sync_legacy_content()
+RETURNS TRIGGER
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = ''
+AS $$
+DECLARE
+    post_kind TEXT;
+    submitted_content TEXT;
+    profile_name TEXT;
+BEGIN
+    post_kind := to_jsonb(NEW) ->> 'kind';
+    IF post_kind = 'news' THEN
+        submitted_content := COALESCE(
+            NULLIF(BTRIM(to_jsonb(NEW) ->> 'body_bn'), ''),
+            NULLIF(BTRIM(to_jsonb(NEW) ->> 'summary_bn'), ''),
+            NULLIF(BTRIM(to_jsonb(NEW) ->> 'content'), '')
+        );
+    ELSE
+        submitted_content := COALESCE(
+            NULLIF(BTRIM(to_jsonb(NEW) ->> 'summary_bn'), ''),
+            NULLIF(BTRIM(to_jsonb(NEW) ->> 'body_bn'), ''),
+            NULLIF(BTRIM(to_jsonb(NEW) ->> 'content'), '')
+        );
+    END IF;
+
+    IF submitted_content IS NOT NULL AND to_jsonb(NEW) ? 'content' THEN
+        NEW := jsonb_populate_record(NEW, jsonb_build_object('content', submitted_content));
+    END IF;
+
+    IF auth.uid() IS NOT NULL AND public.is_admin() IS NOT TRUE THEN
+        SELECT profiles.full_name
+          INTO profile_name
+          FROM public.profiles
+         WHERE profiles.id = auth.uid();
+
+        IF NULLIF(BTRIM(profile_name), '') IS NOT NULL THEN
+            NEW.author_name := BTRIM(profile_name);
+        END IF;
+    END IF;
+    RETURN NEW;
+END;
+$$;
+
+DROP TRIGGER IF EXISTS trg_community_posts_sync_legacy_content ON public.community_posts;
+CREATE TRIGGER trg_community_posts_sync_legacy_content
+BEFORE INSERT OR UPDATE ON public.community_posts
+FOR EACH ROW EXECUTE FUNCTION public.community_posts_sync_legacy_content();
 
 -- Seller contact for a marketplace item — the ONLY way a buyer's browser ever
 -- reads a seller's number.

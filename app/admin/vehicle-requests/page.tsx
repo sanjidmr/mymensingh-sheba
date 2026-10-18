@@ -41,7 +41,7 @@ const columns: AdminColumn<AdminVehicleRequestRow>[] = [
             {row.vehicle_title}
           </Link>
         ) : row.vehicle_title && row.vehicle_listing_id ? (
-          <Link href={`/admin/catalog/vehicle/${row.vehicle_listing_id}/edit`} className="block font-semibold text-admin-text hover:underline" onClick={(event) => event.stopPropagation()}>
+          <Link href={`/admin/directories/vehicle/${row.vehicle_listing_id}/edit`} className="block font-semibold text-admin-text hover:underline" onClick={(event) => event.stopPropagation()}>
             {row.vehicle_title} <span className="text-xs font-normal text-admin-muted">(অপ্রকাশিত)</span>
           </Link>
         ) : (
@@ -157,7 +157,7 @@ export default async function AdminVehicleRequestsPage({
         count={`মোট ${result.total} টি রিকোয়েস্ট`}
         actions={
           <Link
-            href="/admin/catalog/vehicle"
+            href="/admin/directories/vehicle"
             className="inline-flex min-h-11 items-center rounded-md border border-admin-border bg-white px-3 text-sm font-semibold"
           >
             যানবাহন ভাড়ার তালিকা

@@ -84,7 +84,6 @@ export interface ServiceOverride {
   slug: string;
   hidden?: boolean;
   nameBn?: string;
-  nameEn?: string;
   shortDesc?: string;
   coverImage?: string;
   sort_order?: number;
@@ -161,7 +160,6 @@ export function mergeLaunchServices(
       return {
         ...service,
         nameBn: override.nameBn ?? service.nameBn,
-        nameEn: override.nameEn ?? service.nameEn,
         shortDesc: override.shortDesc ?? service.shortDesc,
         coverImage: override.coverImage ?? service.coverImage,
         sortOrder:

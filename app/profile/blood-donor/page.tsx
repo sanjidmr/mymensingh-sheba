@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Heart, ShieldCheck, Lock, Edit3, ExternalLink, Info, AlertTriangle, ArrowRight } from 'lucide-react';
+import { Heart, ShieldCheck, Lock, Edit3, ExternalLink, Info, AlertTriangle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { DonorAvatar } from '@/components/blood-donor/DonorCard';
@@ -51,7 +51,6 @@ export default function ProfileBloodDonorDashboardPage() {
             className="inline-flex items-center gap-1.5 px-6 py-3 rounded-xl bg-rose-500 text-white text-sm font-semibold"
           >
             রক্তদাতা হিসেবে নিবন্ধন করুন
-            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
         <Footer />
@@ -91,7 +90,7 @@ function DonorDashboard({ donor }: { donor: BloodDonorProfile }) {
                 <p className="text-xs text-rose-50/90 mt-0.5">
                   {donor.bloodGroup} • {area?.nameBn || donor.areaId}
                 </p>
-                <span className={`mt-2 inline-flex items-center gap-1.5 text-[11px] font-bold px-2.5 py-1 rounded-full bg-white text-rose-500`}>
+                <span className={`mt-2 inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] font-bold px-2.5 py-1 rounded-full bg-white text-rose-500`}>
                   <ShieldCheck className="w-3.5 h-3.5" />
                   {status.labelBn}
                 </span>

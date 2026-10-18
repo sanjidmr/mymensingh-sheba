@@ -23,7 +23,7 @@ export default async function EditServiceListingPage({
   } catch (error) {
     return (
       <>
-        <PageHeader title="তালিকা সম্পাদনা" breadcrumb={{ href: `/admin/catalog/${category}`, label: 'তালিকা' }} />
+        <PageHeader title="তালিকা সম্পাদনা" breadcrumb={{ href: `/admin/directories/${category}`, label: 'তালিকা' }} />
         <AdminError title="তালিকা লোড করা যায়নি" message={error instanceof Error ? error.message : undefined} />
       </>
     );

@@ -9,6 +9,7 @@ import { useToast } from '@/components/admin/ToastProvider';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
 import { Textarea } from '@/components/ui/Textarea';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 import { cn } from '@/lib/utils';
 
 /**
@@ -136,14 +137,9 @@ export default function WebsiteServices({ overrides }: { overrides: ServiceOverr
 
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Input
-                label="বাংলা নাম"
+                label="সেবার নাম"
                 value={item.nameBn ?? ''}
                 onChange={(e) => update(slug, { nameBn: e.target.value })}
-              />
-              <Input
-                label="ইংরেজি নাম"
-                value={item.nameEn ?? ''}
-                onChange={(e) => update(slug, { nameEn: e.target.value })}
               />
             </div>
             <div className="mt-2">
@@ -154,12 +150,13 @@ export default function WebsiteServices({ overrides }: { overrides: ServiceOverr
                 rows={2}
               />
             </div>
-            <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
-              <Input
-                label="ছবির ঠিকানা"
+            <div className="mt-2 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <ImageUpload
+                label="সেবার ছবি"
                 value={item.coverImage ?? ''}
-                onChange={(e) => update(slug, { coverImage: e.target.value })}
-                placeholder="/image.jpg"
+                onChange={(url) => update(slug, { coverImage: url })}
+                folder="website/services"
+                helperText="সেবার কার্ডে দেখানো ছবি আপলোড করুন (JPG, PNG, WebP বা AVIF, সর্বোচ্চ ৫MB)।"
               />
               <Input
                 label="ক্রম"

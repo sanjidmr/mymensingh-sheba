@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Home, GraduationCap, ShoppingBag, Briefcase, Heart, Newspaper, ArrowRight } from 'lucide-react';
+import { Home, ShoppingBag, Briefcase, Newspaper } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 
 export const metadata: Metadata = {
@@ -10,10 +10,8 @@ export const metadata: Metadata = {
 
 const SERVICES = [
   { href: '/profile/tolet/new', icon: Home, label: 'বাসা ভাড়া', hint: 'ফ্ল্যাট, রুম, সাবলেট, মেস' },
-  { href: '/profile/home-tutor/setup', icon: GraduationCap, label: 'গৃহশিক্ষক', hint: 'টিউশন প্রোফাইল খুলুন' },
   { href: '/buy-sell/create', icon: ShoppingBag, label: 'কেনাবেচা', hint: 'পুরনো বা নতুন পণ্য' },
   { href: '/jobs/create', icon: Briefcase, label: 'চাকরি', hint: 'নিয়োগ বিজ্ঞপ্তি দিন' },
-  { href: '/profile/blood-donor/setup', icon: Heart, label: 'রক্তদাতা', hint: 'রক্তদাতা হিসেবে যুক্ত হোন' },
   { href: '/news/create', icon: Newspaper, label: 'সংবাদ', hint: 'স্থানীয় খবর জানান' },
 ];
 
@@ -37,7 +35,6 @@ export default function Page() {
                   <span className="block text-[14px] font-extrabold text-ink-900">{s.label}</span>
                   <span className="mt-0.5 block truncate text-[11.5px] text-ink-400">{s.hint}</span>
                 </span>
-                <ArrowRight className="h-4 w-4 shrink-0 text-brand-300 transition-transform group-hover:translate-x-0.5" />
               </Link>
             </li>
           );

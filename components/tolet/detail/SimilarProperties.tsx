@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { ArrowRight, MapPin } from 'lucide-react';
+import { MapPin } from 'lucide-react';
 import type { ToletListing } from '@/lib/tolet-types';
 import { TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { calculateToletFee } from '@/lib/tolet-fees';
@@ -53,10 +53,6 @@ export function SimilarProperties({ listings }: { listings: ToletListing[] }) {
           className="group -mr-2 inline-flex min-h-11 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-bold text-brand-700 transition-colors hover:bg-brand-50 hover:text-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
         >
           সব বিজ্ঞাপন
-          <ArrowRight
-            className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5"
-            aria-hidden="true"
-          />
         </Link>
       </div>
 

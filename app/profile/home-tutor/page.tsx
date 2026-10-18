@@ -5,7 +5,6 @@ import Link from 'next/link';
 import {
   GraduationCap,
   Edit3,
-  ArrowRight,
   ShieldCheck,
   PlusCircle,
   Lock,
@@ -93,7 +92,7 @@ export default function ProfileHomeTutorDashboardPage() {
                 )}
               </div>
               <p className="text-xs text-ink-400 mt-0.5">{homeTutorProfile.qualification}</p>
-              <span className={`inline-block mt-2 text-[11px] font-bold px-2.5 py-1 rounded-full ${status.badge}`}>
+              <span className={`inline-block mt-2 whitespace-nowrap text-[11px] font-bold px-2.5 py-1 rounded-full ${status.badge}`}>
                 {status.labelBn}
               </span>
             </div>
@@ -197,7 +196,6 @@ export default function ProfileHomeTutorDashboardPage() {
                 অভিভাবকদের পাঠানো টিউশন রিকোয়েস্ট দেখুন
               </span>
             </div>
-            <ArrowRight className="w-4 h-4 text-brand-700 shrink-0" />
           </Link>
 
           {homeTutorProfile.status === 'approved' ? (
@@ -211,7 +209,6 @@ export default function ProfileHomeTutorDashboardPage() {
                   অভিভাবকরা যেভাবে আপনার প্রোফাইল দেখতে পাবেন
                 </span>
               </div>
-              <ArrowRight className="w-4 h-4 text-brand-700 shrink-0" />
             </Link>
           ) : (
             <div className="bg-white rounded-2xl border border-brand-100 p-4 flex items-center gap-3">

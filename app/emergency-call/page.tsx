@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, Droplet, Flame, Phone, ShieldCheck, Stethoscope } from 'lucide-react';
+import { Droplet, Flame, Phone, ShieldCheck, Stethoscope } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 
 const EMERGENCY_CONTACTS = [
@@ -59,7 +59,6 @@ export default function EmergencyCallPage() {
               <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500">{item.note}</p>
               <span className="mt-auto inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-bold text-white transition-colors group-hover:bg-brand-800">
                 {item.number}
-                <ArrowRight className="h-4 w-4" />
               </span>
             </>
           );
@@ -94,7 +93,6 @@ export default function EmergencyCallPage() {
           className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-brand-900 transition-colors hover:bg-brand-50 sm:w-auto"
         >
           কিভাবে কাজ করে দেখুন
-          <ArrowRight className="h-4 w-4" />
         </Link>
       </div>
     </RoutePlaceholderShell>

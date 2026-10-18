@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { PenSquare, Workflow, MessageCircle, ArrowRight } from 'lucide-react';
+import { PenSquare, Workflow, MessageCircle } from 'lucide-react';
 
 const COMMUNITY_ITEMS = [
   { label: 'পোস্ট করুন', icon: PenSquare, href: '/register' },
@@ -59,7 +59,6 @@ export default function CommunityBandSection() {
                   <Icon className="h-3.5 w-3.5" />
                 </span>
                 {item.label}
-                <ArrowRight className="h-4 w-4 shrink-0" />
               </Link>
             );
           })}

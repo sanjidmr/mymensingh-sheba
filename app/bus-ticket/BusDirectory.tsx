@@ -36,13 +36,16 @@ const SORTERS = {
 export default function BusDirectory() {
   const [listings, setListings] = useState<ServiceListing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const data = await fetchServiceListings('bus');
+        const data = await fetchServiceListings('bus', true);
         if (active) setListings(data);
+      } catch (cause) {
+        if (active) setLoadError(cause instanceof Error ? cause.message : 'তালিকা লোড করা যায়নি।');
       } finally {
         if (active) setLoading(false);
       }
@@ -92,7 +95,12 @@ export default function BusDirectory() {
         priceLabel={fare || undefined}
         priceSuffix={fare ? 'ভাড়া' : undefined}
         areaLabel={route || areaNames(listing.areaIds)}
-        chips={[...tagLabels(listing.tags), 'যাচাইয়ের তথ্য নেই']}
+        chips={[
+          ...tagLabels(listing.tags),
+          ...(listing.travelDays ?? []),
+          listing.availableTimeBn,
+          'যাচাইয়ের তথ্য নেই',
+        ]}
         badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
         actionLabel="বিস্তারিত"
       />
@@ -104,6 +112,7 @@ export default function BusDirectory() {
       ui={ui}
       listings={listings}
       loading={loading}
+      loadError={loadError}
       filterGroups={filterGroups}
       sortOptions={SORT_OPTIONS}
       sorters={SORTERS}

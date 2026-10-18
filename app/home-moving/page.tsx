@@ -7,7 +7,6 @@ import {
   ShieldCheck,
   MapPin,
   CheckCircle2,
-  ArrowRight,
   Clock,
   Package,
   Phone,
@@ -43,7 +42,6 @@ export default function HomeMovingPage() {
               className="inline-flex items-center justify-center gap-2 px-7 py-3.5 rounded-xl bg-white text-emerald-900 text-sm font-bold shadow-md hover:bg-emerald-50 transition-colors w-full sm:w-auto"
             >
               Moving Request করুন
-              <ArrowRight className="w-4 h-4" />
             </Link>
             <a
               href="#how-it-works"

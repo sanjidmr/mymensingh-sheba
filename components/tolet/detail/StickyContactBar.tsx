@@ -37,19 +37,21 @@ import { useListingContact } from '@/components/tolet/detail/ContactActions';
 export function StickyContactBar({
   listing,
   userId,
-  onRequestFallback,
 }: {
   listing: ToletListing;
   userId?: string | null;
-  onRequestFallback?: () => void;
 }) {
   const source: ToletEventSource = 'sticky_bar';
   const contact = useListingContact({
     listing,
     userId,
     source,
-    onRequestFallback,
   });
+
+  // Don't render the sticky bar if phone is unavailable
+  if (contact.mode === 'unavailable') {
+    return null;
+  }
 
   return (
     <div

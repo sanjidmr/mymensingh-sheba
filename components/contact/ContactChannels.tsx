@@ -5,7 +5,6 @@ import {
   MessageCircle,
   Phone,
   Facebook,
-  ArrowUpRight,
 } from 'lucide-react';
 import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
 import type { mergeSiteContact } from '@/lib/site-content';
@@ -164,10 +163,6 @@ export default function ContactChannels({
                     }`}
                   >
                     {channel.actionLabel}
-                    <ArrowUpRight
-                      className="h-3.5 w-3.5 transition-transform duration-200 group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
-                      aria-hidden="true"
-                    />
                   </span>
                 </a>
               ) : (

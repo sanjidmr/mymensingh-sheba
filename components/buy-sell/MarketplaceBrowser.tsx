@@ -110,6 +110,7 @@ export default function MarketplaceBrowser() {
   const { user } = useAuth();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
   // Pinned once per mount so every card in one render pass agrees about "৩ দিন
   // আগে". Read on the client only; this whole view is client-fetched, so there
   // is no server render to disagree with.
@@ -131,6 +132,12 @@ export default function MarketplaceBrowser() {
           (p) => p.kind === 'buy_sell' && p.status !== 'approved'
         );
         setPosts([...approved, ...ownUnpublished]);
+        setLoadError('');
+      } catch (cause) {
+        if (active) {
+          setPosts([]);
+          setLoadError(cause instanceof Error ? cause.message : 'বিজ্ঞাপন লোড করা যায়নি।');
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -349,7 +356,15 @@ export default function MarketplaceBrowser() {
             noun="পণ্য"
             loadingText="পণ্য লোড হচ্ছে…"
             onReset={controller.resetAll}
-            unpopulated={<MarketEmpty hasAnyData={posts.length > 0} createHref={createHref} />}
+            unpopulated={
+              loadError ? (
+                <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                  {loadError}
+                </p>
+              ) : (
+                <MarketEmpty hasAnyData={posts.length > 0} createHref={createHref} />
+              )
+            }
           >
             {/* 2-up on a phone per the brief; 5-up on a wide desktop, which is
                 where five cards at 240px each still leave the price legible. */}

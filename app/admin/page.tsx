@@ -724,7 +724,7 @@ async function DashboardContent({ range }: { range: ResolvedDashboardRange }) {
           <QuickAction href="/admin/services/new" icon={Plus} label="কর্মী বা সেবা যোগ করুন" />
           <QuickAction href="/admin/posts/new" icon={FileText} label="নতুন পোস্ট/লিস্টিং" />
           <QuickAction href="/admin/analytics/website" icon={MousePointerClick} label="ওয়েবসাইট অ্যানালিটিক্স" />
-          <QuickAction href="/admin/catalog" icon={Wrench} label="ডিরেক্টরি পরিচালনা" />
+          <QuickAction href="/admin/directories/coaching" icon={Wrench} label="কোচিং ও WiFi তালিকা" />
           <QuickAction href="#pending-approvals" icon={ShieldCheck} label="অপেক্ষমাণ বিষয় দেখুন" />
           <QuickAction href="/admin/requests" icon={ClipboardList} label="সেবা অনুরোধ দেখুন" />
           <QuickAction href="/admin/users" icon={Users} label="কাস্টমার পরিচালনা" />

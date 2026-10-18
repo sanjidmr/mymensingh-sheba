@@ -1,7 +1,6 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import {
-  ArrowRight,
   Droplet,
   GraduationCap,
   Home,
@@ -155,7 +154,6 @@ export default function AboutServices() {
           className={`inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-brand-300 px-5 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-100/60 sm:w-auto ${LIGHT_FOCUS}`}
         >
           সব সেবা দেখুন
-          <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>
       </Reveal>
     </AboutSection>
@@ -181,7 +179,6 @@ function ServiceLink({
       }
     >
       {label}
-      <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
     </Link>
   );
 }

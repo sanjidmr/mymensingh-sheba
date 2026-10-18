@@ -69,21 +69,32 @@ function TeachersEditor({ listingId }: { listingId: string }) {
   const [experience, setExperience] = useState('');
 
   const load = useCallback(async () => {
-    setRows(await fetchOwnCoachingTeachers(listingId));
-    setLoading(false);
+    try {
+      setRows(await fetchOwnCoachingTeachers(listingId, true));
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'শিক্ষকের তালিকা লোড করা যায়নি।');
+    } finally {
+      setLoading(false);
+    }
   }, [listingId]);
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      const data = await fetchOwnCoachingTeachers(listingId);
-      if (!active) return;
-      setRows(data);
-      setLoading(false);
+    void (async () => {
+      try {
+        const data = await fetchOwnCoachingTeachers(listingId, true);
+        if (active) {
+          setRows(data);
+          setError('');
+        }
+      } catch (cause) {
+        if (active) setError(cause instanceof Error ? cause.message : 'শিক্ষকের তালিকা লোড করা যায়নি।');
+      } finally {
+        if (active) setLoading(false);
+      }
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [listingId]);
 
   const reset = () => {
@@ -107,7 +118,7 @@ function TeachersEditor({ listingId }: { listingId: string }) {
       setError(result.error);
       return;
     }
-    setNotice(editingId ? 'শিক্ষকের তথ্য হালনাগাদ হয়েছে।' : 'শিক্ষক যোগ করা হয়েছে।');
+    setNotice('শিক্ষকের তথ্য সংরক্ষিত হয়েছে। তালিকাটি পুনরায় অনুমোদনের জন্য জমা হয়েছে।');
     reset();
     await load();
   };
@@ -123,7 +134,7 @@ function TeachersEditor({ listingId }: { listingId: string }) {
       return;
     }
     if (editingId === id) reset();
-    setNotice('শিক্ষক মুছে ফেলা হয়েছে।');
+    setNotice('শিক্ষক মুছে ফেলা হয়েছে। তালিকাটি পুনরায় অনুমোদনের জন্য জমা হয়েছে।');
     await load();
   };
 
@@ -248,21 +259,32 @@ function BatchesEditor({ listingId }: { listingId: string }) {
   const [isActive, setIsActive] = useState(true);
 
   const load = useCallback(async () => {
-    setRows(await fetchOwnCoachingBatches(listingId));
-    setLoading(false);
+    try {
+      setRows(await fetchOwnCoachingBatches(listingId, true));
+      setError('');
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'ব্যাচের তালিকা লোড করা যায়নি।');
+    } finally {
+      setLoading(false);
+    }
   }, [listingId]);
 
   useEffect(() => {
     let active = true;
-    (async () => {
-      const data = await fetchOwnCoachingBatches(listingId);
-      if (!active) return;
-      setRows(data);
-      setLoading(false);
+    void (async () => {
+      try {
+        const data = await fetchOwnCoachingBatches(listingId, true);
+        if (active) {
+          setRows(data);
+          setError('');
+        }
+      } catch (cause) {
+        if (active) setError(cause instanceof Error ? cause.message : 'ব্যাচের তালিকা লোড করা যায়নি।');
+      } finally {
+        if (active) setLoading(false);
+      }
     })();
-    return () => {
-      active = false;
-    };
+    return () => { active = false; };
   }, [listingId]);
 
   const reset = () => {
@@ -293,7 +315,7 @@ function BatchesEditor({ listingId }: { listingId: string }) {
       setError(result.error);
       return;
     }
-    setNotice(editingId ? 'ব্যাচ হালনাগাদ হয়েছে।' : 'নতুন ব্যাচ যোগ করা হয়েছে।');
+    setNotice('ব্যাচের তথ্য সংরক্ষিত হয়েছে। তালিকাটি পুনরায় অনুমোদনের জন্য জমা হয়েছে।');
     reset();
     await load();
   };
@@ -307,7 +329,7 @@ function BatchesEditor({ listingId }: { listingId: string }) {
       setError(result.error);
       return;
     }
-    setNotice(!batch.isActive ? 'ব্যাচ প্রকাশ করা হয়েছে।' : 'ব্যাচ অপ্রকাশিত করা হয়েছে।');
+    setNotice('ব্যাচের প্রকাশনা হালনাগাদ হয়েছে। তালিকাটি পুনরায় অনুমোদনের জন্য জমা হয়েছে।');
     await load();
   };
 
@@ -322,7 +344,7 @@ function BatchesEditor({ listingId }: { listingId: string }) {
       return;
     }
     if (editingId === id) reset();
-    setNotice('ব্যাচ মুছে ফেলা হয়েছে।');
+    setNotice('ব্যাচ মুছে ফেলা হয়েছে। তালিকাটি পুনরায় অনুমোদনের জন্য জমা হয়েছে।');
     await load();
   };
 

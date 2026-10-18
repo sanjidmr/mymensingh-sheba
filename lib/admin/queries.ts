@@ -1872,62 +1872,6 @@ export async function fetchAdminStaffProfile(id: string): Promise<{
   };
 }
 
-export interface AdminToletRequestRow {
-  id: string;
-  listing_id: string;
-  customer_name: string;
-  customer_phone: string;
-  area_id: string | null;
-  preferred_time: string | null;
-  message: string | null;
-  status: string;
-  created_at: string;
-  listing_title: string | null;
-}
-
-export async function fetchToletRequests(params: ListParams): Promise<Paged<AdminToletRequestRow>> {
-  const admin = await getAdminDataClient();
-  if (!admin) return { rows: [], total: 0, page: 1, pageSize: params.pageSize, unavailable: true };
-  const { client } = admin;
-
-  const from = (params.page - 1) * params.pageSize;
-  const to = from + params.pageSize - 1;
-
-  let query = client
-    .from('tolet_requests')
-    .select(
-      'id, listing_id, customer_name, customer_phone, area_id, preferred_time, message, status, created_at',
-      { count: 'exact' }
-    )
-    .order('created_at', { ascending: false })
-    .range(from, to);
-
-  const term = searchFilter(params.search, ['customer_name', 'customer_phone', 'message']);
-  if (term) query = query.or(term);
-  if (params.status) query = query.eq('status', params.status);
-
-  const { data, count, error } = await query;
-  if (error || !data) return failedPage(params, error?.message ?? 'বাসা ভাড়ার অনুসন্ধান লোড করা যায়নি।');
-
-  const listingIds = [...new Set((data as { listing_id: string }[]).map((r) => r.listing_id))];
-  const { data: listings, error: listingsError } = listingIds.length
-    ? await client
-        .from('tolet_listings')
-        .select('id, title_bn')
-        .in('id', listingIds)
-    : { data: [], error: null };
-  if (listingsError) return failedPage(params, listingsError.message);
-
-  const titleById = new Map((listings ?? []).map((l) => [l.id, l.title_bn]));
-
-  const rows: AdminToletRequestRow[] = (data as Omit<AdminToletRequestRow, 'listing_title'>[]).map((r) => ({
-    ...r,
-    listing_title: titleById.get(r.listing_id) ?? null,
-  }));
-
-  return { rows, total: count ?? 0, page: params.page, pageSize: params.pageSize, unavailable: false };
-}
-
 export interface AdminVehicleRequestRow {
   id: string;
   vehicle_listing_id: string | null;
@@ -2417,6 +2361,9 @@ export async function fetchReports(params: ListParams): Promise<Paged<AdminRepor
 export interface AdminServiceListingRow {
   id: string;
   category: 'coaching' | 'wifi' | 'bus' | 'vehicle';
+  owner_id: string | null;
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
+  rejection_reason: string | null;
   slug: string;
   title_bn: string;
   subtitle_bn: string | null;
@@ -2428,6 +2375,7 @@ export interface AdminServiceListingRow {
   tags: string[];
   monthly_fee_min: number | null;
   monthly_fee_max: number | null;
+  admission_fee: number | null;
   price_min: number | null;
   price_max: number | null;
   speed_mbps: number | null;
@@ -2435,6 +2383,9 @@ export interface AdminServiceListingRow {
   fare_max: number | null;
   origin_bn: string | null;
   destination_bn: string | null;
+  travel_days: string[];
+  stops_bn: string[];
+  journey_duration_bn: string | null;
   operator_bn: string | null;
   address_bn: string | null;
   rating_avg: number;
@@ -2465,25 +2416,7 @@ export interface AdminServiceListingPage extends Paged<AdminServiceListingRow> {
 }
 
 const SERVICE_LISTING_SELECT =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, is_active, is_featured, created_at, updated_at';
-
-type AdminRpcResult = ReturnType<AdminClient['client']['rpc']>;
-
-function callAdminRpc(
-  client: AdminClient['client'],
-  name: string,
-  args: Record<string, string | number | null>,
-  options: { head?: boolean; get?: boolean; count?: 'exact' | 'planned' | 'estimated' } = {},
-): AdminRpcResult {
-  // The project does not generate Supabase function typings; keep this narrow
-  // adapter typed instead of weakening the shared database client.
-  const rpc = client.rpc as unknown as (
-    functionName: string,
-    functionArgs: Record<string, string | number | null>,
-    requestOptions?: { head?: boolean; get?: boolean; count?: 'exact' | 'planned' | 'estimated' },
-  ) => AdminRpcResult;
-  return rpc.call(client, name, args, options);
-}
+  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
 
 export async function fetchServiceListings(params: ListParams, category?: string): Promise<AdminServiceListingPage> {
   const admin = await getAdminDataClient();
@@ -2499,24 +2432,25 @@ export async function fetchServiceListings(params: ListParams, category?: string
     return { ...failedPage<AdminServiceListingRow>(params, 'ক্যাটাগরি সঠিক নয়।'), counts: emptyCounts };
   }
   const rpcCategory = filterCategory ?? 'vehicle';
-  const rpcQuery = () => callAdminRpc(
-    client,
-    'fn_admin_service_listings',
-    { p_category: rpcCategory },
-    { head: true, count: 'exact' },
-  );
-  const counts = await Promise.all([
-    rpcQuery(),
-    rpcQuery().eq('is_active', true),
-    rpcQuery().eq('is_active', false),
-  ]);
+  const countQuery = (kind: 'all' | 'published' | 'unpublished') => {
+    let query = client
+      .from('service_listings')
+      .select('id', { head: true, count: 'exact' })
+      .eq('category', rpcCategory);
+    if (kind === 'published') query = query.eq('is_active', true).eq('status', 'approved');
+    if (kind === 'unpublished') query = query.or('is_active.eq.false,status.neq.approved');
+    return query;
+  };
+  const counts = await Promise.all([countQuery('all'), countQuery('published'), countQuery('unpublished')]);
   const countError = counts.find((item) => item.error);
   if (countError?.error) {
     return { ...failedPage<AdminServiceListingRow>(params, countError.error.message), counts: emptyCounts };
   }
 
-  let query = callAdminRpc(client, 'fn_admin_service_listings', { p_category: rpcCategory }, { count: 'exact' })
-    .select(SERVICE_LISTING_SELECT)
+  let query = client
+    .from('service_listings')
+    .select(SERVICE_LISTING_SELECT, { count: 'exact' })
+    .eq('category', rpcCategory)
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false })
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
@@ -2528,6 +2462,9 @@ export async function fetchServiceListings(params: ListParams, category?: string
   if (term) query = query.or(term);
   if (params.status === 'active') query = query.eq('is_active', true);
   if (params.status === 'inactive') query = query.eq('is_active', false);
+  if (['draft', 'pending', 'approved', 'rejected'].includes(params.status ?? '')) {
+    query = query.eq('status', params.status);
+  }
   if (params.area) query = query.contains('area_ids', [params.area]);
   if (params.kind) query = query.contains('tags', [params.kind]);
 
@@ -2557,17 +2494,10 @@ export async function fetchAdminServiceListing(id: string): Promise<AdminService
   if (!validUuid(id)) return null;
   const admin = await getAdminDataClient();
   if (!admin) throw new Error('অ্যাডমিন অনুমতি যাচাই করা যায়নি।');
-  const { data: identity, error: identityError } = await admin.client
+  const { data, error } = await admin.client
     .from('service_listings')
-    .select('category, slug')
+    .select(SERVICE_LISTING_SELECT)
     .eq('id', id)
-    .maybeSingle();
-  if (identityError) throw new Error(`তালিকার তথ্য লোড ব্যর্থ হয়েছে: ${identityError.message}`);
-  if (!identity) return null;
-  const { data, error } = await callAdminRpc(admin.client, 'fn_admin_service_listing', {
-      p_category: identity.category,
-      p_slug: identity.slug,
-    })
     .maybeSingle();
   if (error) throw new Error(`তালিকার বিস্তারিত লোড ব্যর্থ হয়েছে: ${error.message}`);
   return data as unknown as AdminServiceListingRow | null;
@@ -2842,16 +2772,12 @@ export async function fetchMediaItems(params: ListParams): Promise<Paged<AdminMe
     return failedPage(params, 'স্টোরেজ বাকেটের মান সঠিক নয়।');
   }
 
-  const { data, error } = await callAdminRpc(
-    client,
-    'fn_admin_media_page',
-    {
-      p_bucket: params.category ?? null,
-      p_search: params.search?.trim() || null,
-      p_limit: params.pageSize,
-      p_offset: from,
-    },
-  );
+  const { data, error } = await client.rpc('fn_admin_media_page', {
+    p_bucket: params.category ?? null,
+    p_search: params.search?.trim() || null,
+    p_limit: params.pageSize,
+    p_offset: from,
+  });
   if (error || !data) {
     return failedPage(params, error?.message ?? 'মিডিয়া লাইব্রেরি লোড করা যায়নি।');
   }

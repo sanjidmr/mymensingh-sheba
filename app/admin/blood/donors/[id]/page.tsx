@@ -12,7 +12,7 @@ import { getAreaById } from '@/lib/locations';
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'খসড়া',
+  draft: 'জমা দেওয়া হয়নি',
   pending_approval: 'পর্যালোচনায়',
   approved: 'অনুমোদিত',
   rejected: 'প্রত্যাখ্যাত',

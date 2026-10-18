@@ -200,28 +200,6 @@ export async function updateHomeServiceRequest(input: {
   });
 }
 
-export async function setToletRequestStatus(
-  requestId: string,
-  status: string
-): Promise<ActionResult> {
-  return runAdminAction(async (client) => {
-    const allowed = ['submitted', 'contacted', 'completed', 'cancelled'];
-    if (!allowed.includes(status)) {
-      return { ok: false, error: 'অবৈধ স্ট্যাটাস।' };
-    }
-
-    const { error } = await client
-      .from('tolet_requests')
-      .update({ status })
-      .eq('id', requestId);
-
-    if (error) return { ok: false, error: error.message };
-
-    revalidatePath('/admin/tolet-requests');
-    return { ok: true, message: 'অনুসন্ধানের স্ট্যাটাস আপডেট হয়েছে।' };
-  });
-}
-
 export async function setVehicleRequestStatus(
   requestId: string,
   status: string
@@ -329,15 +307,5 @@ export async function deleteServiceRequest(requestId: string): Promise<ActionRes
 
     revalidatePath('/admin/requests');
     return { ok: true, message: 'রিকোয়েস্টটি মুছে ফেলা হয়েছে।' };
-  });
-}
-
-export async function deleteToletRequest(requestId: string): Promise<ActionResult> {
-  return runAdminAction(async (client) => {
-    const { error } = await client.from('tolet_requests').delete().eq('id', requestId);
-    if (error) return { ok: false, error: error.message };
-
-    revalidatePath('/admin/tolet-requests');
-    return { ok: true, message: 'অনুসন্ধানটি মুছে ফেলা হয়েছে।' };
   });
 }

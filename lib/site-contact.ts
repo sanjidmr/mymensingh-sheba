@@ -40,7 +40,7 @@ export interface SiteContact {
 }
 
 export const SITE_CONTACT: SiteContact = {
-  phone: null,
+  phone: '01408489418',
   phonePendingBn: 'সরাসরি সেবা নম্বর এখনো প্রকাশ করা হয়নি।',
   email: 'help@mymensinghsheba.com',
   socials: [

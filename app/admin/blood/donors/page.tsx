@@ -13,7 +13,7 @@ import { getAllMCCAreas, getAreaById } from '@/lib/locations';
 export const dynamic = 'force-dynamic';
 
 const STATUS_LABELS: Record<string, string> = {
-  draft: 'খসড়া',
+  draft: 'জমা দেওয়া হয়নি',
   pending_approval: 'পর্যালোচনায়',
   approved: 'অনুমোদিত',
   rejected: 'প্রত্যাখ্যাত',
@@ -151,7 +151,7 @@ export default async function AdminBloodDonorsPage({
             param="category" searchParams={resolved} />
           <FilterNav id="donor-status" label="স্ট্যাটাস" value={String(params.status ?? '')} placeholder="সব স্ট্যাটাস"
             options={[
-              { value: 'draft', label: 'খসড়া' }, { value: 'pending_approval', label: 'পর্যালোচনায়' },
+              { value: 'draft', label: 'জমা দেওয়া হয়নি' }, { value: 'pending_approval', label: 'পর্যালোচনায়' },
               { value: 'approved', label: 'অনুমোদিত' }, { value: 'rejected', label: 'প্রত্যাখ্যাত' },
               { value: 'paused', label: 'বিরতিতে' }, { value: 'suspended', label: 'স্থগিত' },
               { value: 'inactive', label: 'উপলভ্য নন / বিরতিতে' },

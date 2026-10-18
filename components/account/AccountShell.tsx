@@ -4,7 +4,6 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Bell,
   Bookmark,
   CircleAlert,
   ClipboardList,
@@ -12,8 +11,8 @@ import {
   LayoutDashboard,
   LogOut,
   Mail,
-  PlusCircle,
   Settings,
+  UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import Navbar from '@/components/Navbar';
@@ -22,9 +21,8 @@ import Footer from '@/components/Footer';
 const ACCOUNT_LINKS = [
   { href: '/dashboard', label: 'ওভারভিউ', icon: LayoutDashboard },
   { href: '/dashboard/posts', label: 'আমার পোস্ট', icon: FileText },
-  { href: '/dashboard/new', label: 'নতুন পোস্ট', icon: PlusCircle },
+  { href: '/dashboard/profiles', label: 'প্রোফাইল ব্যবস্থাপনা', icon: UserRound },
   { href: '/profile/saved', label: 'সংরক্ষিত পোস্ট', icon: Bookmark },
-  { href: '/dashboard/notifications', label: 'নোটিফিকেশন', icon: Bell },
   { href: '/dashboard/messages', label: 'বার্তা', icon: Mail },
   { href: '/dashboard/complaints', label: 'অভিযোগ', icon: CircleAlert },
   { href: '/profile/requests', label: 'আমার রিকোয়েস্ট', icon: ClipboardList },

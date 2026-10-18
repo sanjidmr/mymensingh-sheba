@@ -18,10 +18,14 @@ export default function WifiDetailSections({
   listingId,
   ratingAvg,
   ratingCount,
+  connectionFee,
+  termsBn,
 }: {
   listingId: string;
   ratingAvg?: number;
   ratingCount?: number;
+  connectionFee?: number;
+  termsBn?: string;
 }) {
   const [packages, setPackages] = useState<WifiPackage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -45,6 +49,16 @@ export default function WifiDetailSections({
         <h2 id="wifi-packages-heading" className="flex items-center gap-2 text-[15px] font-extrabold text-ink-900 sm:text-base">
           <Wifi className="h-4 w-4 text-brand-600" aria-hidden="true" /> প্যাকেজ ও অফার
         </h2>
+        {(connectionFee != null || termsBn) && (
+          <dl className="mt-2 space-y-1 rounded-lg border border-brand-100 bg-mist-50 p-3 text-[12.5px] leading-relaxed text-ink-600">
+            {connectionFee != null && (
+              <div><dt className="inline font-bold">সংযোগ ফি: </dt><dd className="inline">{bnTaka(connectionFee)} টাকা</dd></div>
+            )}
+            {termsBn && (
+              <div><dt className="inline font-bold">শর্তাবলি: </dt><dd className="inline break-words">{termsBn}</dd></div>
+            )}
+          </dl>
+        )}
         {loading ? (
           <p className="mt-2 flex items-center gap-2 text-[12.5px] text-ink-500">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> লোড হচ্ছে…

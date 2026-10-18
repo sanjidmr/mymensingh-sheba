@@ -70,6 +70,9 @@ export default function CoachingDetail({ slug }: { slug: string }) {
   const facts: DetailFact[] = [
     ...(fee ? [{ label: 'মাসিক ফি', value: `${fee} টাকা` }] : []),
     ...(listing.addressBn ? [{ label: 'ঠিকানা', value: listing.addressBn }] : []),
+    ...(listing.admissionFee != null
+      ? [{ label: 'ভর্তি ফি', value: `${bnTakaRange(listing.admissionFee, listing.admissionFee)} টাকা` }]
+      : []),
     ...(listing.areaIds.length > 0
       ? [{ label: 'এলাকা', value: areaNames(listing.areaIds) }]
       : []),
@@ -115,5 +118,4 @@ export default function CoachingDetail({ slug }: { slug: string }) {
     </CatalogDetailView>
   );
 }
-
 

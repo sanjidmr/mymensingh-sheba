@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { MapPin, Award, Clock, ShieldCheck, Zap, ArrowRight, BadgeCheck } from 'lucide-react';
+import { MapPin, Award, Clock, ShieldCheck, Zap, BadgeCheck } from 'lucide-react';
 import type { StaffProfile, StaffServiceUiConfig } from '@/lib/staff-types';
 import { STAFF_AVAILABILITY_LABELS, formatSalaryBn } from '@/lib/staff-types';
 import { staffWorkTypeLabels, STAFF_ACCENT_CLASSES } from '@/lib/staff-labels';
@@ -150,7 +150,6 @@ export function StaffProfileCard({ profile, serviceUi, imageless = false }: Staf
             </div>
             <span className={`inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-white ${accent.btn} ${accent.btnHover} shrink-0`}>
               বিস্তারিত
-              <ArrowRight className="w-3.5 h-3.5" />
             </span>
           </div>
         )}

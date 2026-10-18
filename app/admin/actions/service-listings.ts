@@ -38,6 +38,9 @@ function validate(category: ServiceCategory, input: ServiceListingInput): string
   if (input.seatCount != null && (!Number.isInteger(input.seatCount) || input.seatCount < 1 || input.seatCount > 100)) return 'আসন সংখ্যা ১ থেকে ১০০-এর মধ্যে হতে হবে।';
   if (input.modelYear != null && (!Number.isInteger(input.modelYear) || input.modelYear < 1900 || input.modelYear > new Date().getFullYear() + 1)) return 'গাড়ির মডেল বছর সঠিক নয়।';
   if (input.category === 'bus' && (!input.originBn?.trim() || !input.destinationBn?.trim())) return 'বাসের শুরুর স্থান ও গন্তব্য দিতে হবে।';
+  if (input.category === 'bus' && ((input.travelDays?.length ?? 0) > 7 || (input.stops?.length ?? 0) > 50 || (input.availableFacilities?.length ?? 0) > 40)) return 'বাসের দিন, স্টপ ও সুবিধার তালিকা সীমা ছাড়িয়েছে।';
+  if (input.category === 'bus' && [...(input.stops ?? []), ...(input.availableFacilities ?? [])].some((item) => !item.trim() || item.length > 120)) return 'স্টপ ও সুবিধার প্রতিটি তথ্য ১ থেকে ১২০ অক্ষরের মধ্যে হতে হবে।';
+  if (input.category === 'bus' && (input.journeyDurationBn?.length ?? 0) > 120) return 'যাত্রার সময়কাল সর্বোচ্চ ১২০ অক্ষরের মধ্যে লিখুন।';
   if (input.category === 'vehicle' && input.seatCount == null) return 'যানবাহনের আসন সংখ্যা দিতে হবে।';
   if (input.category === 'vehicle' && input.tags.filter((tag) => VEHICLE_KINDS.includes(tag as VehicleKind)).length !== 1) return 'যানের ধরন থেকে ঠিক একটি সঠিক ধরন বাছুন।';
   if (input.category === 'vehicle' && input.ratePerKm != null && (!Number.isFinite(input.ratePerKm) || input.ratePerKm <= 0 || input.ratePerKm > 1_000_000 || Math.round(input.ratePerKm * 100) !== input.ratePerKm * 100)) return 'প্রতি কিলোমিটারের ভাড়া ০-এর বেশি, সর্বোচ্চ ১০,০০,০০০ এবং সর্বোচ্চ ২ দশমিক ঘর পর্যন্ত হতে হবে।';
@@ -61,8 +64,7 @@ function revalidateCategory(category: ServiceCategory, slug?: string) {
     wifi: '/wifi',
     coaching: '/coaching',
   }[category];
-  revalidatePath('/admin/catalog');
-  revalidatePath(`/admin/catalog/${category}`);
+  revalidatePath(`/admin/directories/${category}`);
   revalidatePath('/admin/vehicle-requests');
   revalidatePath(publicPath);
   if (slug) revalidatePath(`${publicPath}/${slug}`);
@@ -89,10 +91,13 @@ function databaseInput(input: ServiceListingInput) {
     fare_max: input.fareMax ?? null,
     origin_bn: input.originBn?.trim() || null,
     destination_bn: input.destinationBn?.trim() || null,
+    travel_days: input.category === 'bus' ? input.travelDays ?? [] : [],
+    stops_bn: input.category === 'bus' ? input.stops ?? [] : [],
+    journey_duration_bn: input.category === 'bus' ? input.journeyDurationBn?.trim() || null : null,
     operator_bn: input.category === 'bus' ? input.operatorBn?.trim() || null : null,
     address_bn: input.category === 'coaching' || input.category === 'wifi' ? input.addressBn?.trim() || null : null,
     seat_count: input.seatCount ?? null,
-    photos: input.photos ?? [],
+    photos: input.category === 'vehicle' || input.category === 'bus' ? input.photos ?? [] : [],
     model_name_bn: input.modelNameBn?.trim() || null,
     model_year: input.modelYear ?? null,
     has_ac: input.hasAc ?? null,
@@ -103,7 +108,7 @@ function databaseInput(input: ServiceListingInput) {
     minimum_fare: input.category === 'vehicle' ? input.minimumFare ?? null : null,
     additional_fee: input.category === 'vehicle' ? input.additionalFee ?? null : null,
     additional_fee_note_bn: input.category === 'vehicle' ? input.additionalFeeNoteBn?.trim() || null : null,
-    available_facilities: input.category === 'vehicle' ? input.availableFacilities ?? [] : [],
+    available_facilities: input.category === 'vehicle' || input.category === 'bus' ? input.availableFacilities ?? [] : [],
     unavailable_facilities: input.category === 'vehicle' ? input.unavailableFacilities ?? [] : [],
     contact_phone_private: input.contactPhonePrivate?.trim() || null,
     is_active: input.isActive,
@@ -205,5 +210,42 @@ export async function setAdminServiceListingActive(id: string, active: boolean):
     if (!data) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
     revalidateCategory(data.category as ServiceCategory, data.slug);
     return { ok: true, message: active ? 'তালিকাটি প্রকাশ করা হয়েছে।' : 'তালিকাটি অপ্রকাশিত হয়েছে।' };
+  });
+}
+
+export async function moderateAdminServiceListing(
+  id: string,
+  status: 'approved' | 'rejected',
+  rejectionReason?: string,
+): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!isUuid(id)) return { ok: false, error: 'তালিকার আইডি সঠিক নয়।' };
+    const reason = rejectionReason?.trim() ?? '';
+    if (status === 'rejected' && (reason.length < 5 || reason.length > 1000)) {
+      return { ok: false, error: 'প্রত্যাখ্যানের কারণ ৫ থেকে ১০০০ অক্ষরের মধ্যে লিখুন।' };
+    }
+    const { data: existing, error: lookupError } = await client
+      .from('service_listings')
+      .select('id, category, slug, owner_id')
+      .eq('id', id)
+      .maybeSingle();
+    if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
+    if (!existing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (!existing.owner_id) return { ok: false, error: 'অ্যাডমিন-তৈরি তালিকার জন্য মডারেশন অবস্থা প্রযোজ্য নয়।' };
+    const { data, error } = await client
+      .from('service_listings')
+      .update({
+        status,
+        rejection_reason: status === 'rejected' ? reason : null,
+        is_active: status === 'approved',
+        published_at: status === 'approved' ? new Date().toISOString() : null,
+      })
+      .eq('id', id)
+      .select('id, category, slug, owner_id')
+      .maybeSingle();
+    if (error) return { ok: false, error: `Մডারেশন সংরক্ষণ ব্যর্থ হয়েছে: ${error.message}` };
+    if (!data) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    revalidateCategory(data.category as ServiceCategory, data.slug);
+    return { ok: true, message: status === 'approved' ? 'তালিকাটি অনুমোদিত ও প্রকাশিত হয়েছে।' : 'তালিকাটি প্রত্যাখ্যান করা হয়েছে।' };
   });
 }

@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { KeyRound, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
+import { KeyRound, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -103,7 +103,6 @@ export default function ResetPasswordPage() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-xs shadow-xs"
                   >
                     <span>লগইন করুন</span>
-                    <ArrowRight className="w-4 h-4" />
                   </Link>
                 </div>
               </div>
@@ -179,7 +178,6 @@ export default function ResetPasswordPage() {
                   className="w-full py-3 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-medium text-sm transition-all shadow-xs flex items-center justify-center gap-2"
                 >
                   <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'পাসওয়ার্ড আপডেট করুন'}</span>
-                  <ArrowRight className="w-4 h-4" />
                 </button>
 
                 <div className="pt-2 text-center">

@@ -11,6 +11,7 @@ import type { AdminServiceListingRow } from '@/lib/admin/queries';
 import { getAllMCCAreas } from '@/lib/locations';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { Panel } from '@/components/admin/PageHeader';
+import { ImageUpload } from '@/components/admin/ImageUpload';
 import { cn } from '@/lib/utils';
 
 const LABEL: Record<ServiceCategory, string> = {
@@ -26,6 +27,7 @@ const BUS_TYPES = [
   { id: 'sleeper', labelBn: 'স্লিপার' },
   { id: 'sitting', labelBn: 'সিটিং' },
 ];
+const BUS_DAYS = ['শনিবার', 'রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার'];
 
 const inputClass = 'h-11 w-full rounded-md border border-admin-border bg-white px-3 text-sm text-admin-text';
 const textAreaClass = 'w-full rounded-md border border-admin-border bg-white px-3 py-2.5 text-sm text-admin-text';
@@ -80,6 +82,7 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     tags: row?.tags ?? [],
     monthlyFeeMin: row?.monthly_fee_min ?? undefined,
     monthlyFeeMax: row?.monthly_fee_max ?? undefined,
+    admissionFee: row?.admission_fee ?? undefined,
     priceMin: row?.price_min ?? undefined,
     priceMax: row?.price_max ?? undefined,
     speedMbps: row?.speed_mbps ?? undefined,
@@ -87,6 +90,9 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     fareMax: row?.fare_max ?? undefined,
     originBn: row?.origin_bn ?? '',
     destinationBn: row?.destination_bn ?? '',
+    travelDays: row?.travel_days ?? [],
+    stops: row?.stops_bn ?? [],
+    journeyDurationBn: row?.journey_duration_bn ?? '',
     operatorBn: row?.operator_bn ?? '',
     addressBn: row?.address_bn ?? '',
     seatCount: row?.seat_count ?? undefined,
@@ -211,6 +217,8 @@ export default function ServiceListingForm({
     .join(', '));
   const [areaText, setAreaText] = useState('');
   const [vehicleImages, setVehicleImages] = useState<string[]>(() => initialVehicleImages(listing));
+  const [busStopsText, setBusStopsText] = useState(() => (listing?.stops_bn ?? []).join(', '));
+  const [busFacilitiesText, setBusFacilitiesText] = useState(() => (listing?.available_facilities ?? []).join(', '));
   const [priceMinText, setPriceMinText] = useState(() => String(values.priceMin ?? ''));
   const [priceMaxText, setPriceMaxText] = useState(() => String(values.priceMax ?? ''));
   const [ratePerKmText, setRatePerKmText] = useState(() => String(values.ratePerKm ?? ''));
@@ -220,13 +228,14 @@ export default function ServiceListingForm({
   const [unavailableFacilitiesText, setUnavailableFacilitiesText] = useState(() => (values.unavailableFacilities ?? []).join('\n'));
   const [feeMinText, setFeeMinText] = useState(() => String(values.monthlyFeeMin ?? ''));
   const [feeMaxText, setFeeMaxText] = useState(() => String(values.monthlyFeeMax ?? ''));
+  const [admissionFeeText, setAdmissionFeeText] = useState(() => String(values.admissionFee ?? ''));
   const [fareMinText, setFareMinText] = useState(() => String(values.fareMin ?? ''));
   const [fareMaxText, setFareMaxText] = useState(() => String(values.fareMax ?? ''));
   const [speedText, setSpeedText] = useState(() => String(values.speedMbps ?? ''));
   const [seatText, setSeatText] = useState(() => String(values.seatCount ?? ''));
   const [yearText, setYearText] = useState(() => String(values.modelYear ?? ''));
   const [busy, setBusy] = useState(false);
-  const [uploading, setUploading] = useState(false);
+  const [uploadCount, setUploadCount] = useState(0);
   const [error, setError] = useState('');
   const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
   const taxonomy = category === 'coaching'
@@ -239,35 +248,9 @@ export default function ServiceListingForm({
     setValues((current) => ({ ...current, [key]: value }));
   };
 
-  const uploadImage = async (
-    event: React.ChangeEvent<HTMLInputElement>,
-    applyUrl: (url: string) => void,
-  ) => {
-    const file = event.target.files?.[0];
-    event.target.value = '';
-    if (!file) return;
-    setUploading(true);
-    setError('');
-    try {
-      const formData = new FormData();
-      formData.set('file', file);
-      formData.set('folder', category === 'vehicle' ? 'service/vehicles' : `service/${category}`);
-      const result = await uploadMedia(formData);
-      if (!result.ok) {
-        setError(result.error);
-        return;
-      }
-      if (!result.url) {
-        setError('আপলোড সম্পন্ন হয়েছে, তবে ছবির URL পাওয়া যায়নি।');
-        return;
-      }
-      applyUrl(result.url);
-    } catch (uploadError) {
-      setError(uploadError instanceof Error ? uploadError.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
-    } finally {
-      setUploading(false);
-    }
-  };
+  const uploading = uploadCount > 0;
+  const trackUpload = (active: boolean) =>
+    setUploadCount((count) => Math.max(0, count + (active ? 1 : -1)));
 
   /** Uploads one or more chosen files, appending until the photo cap is reached. */
   const uploadVehicleImages = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -280,14 +263,14 @@ export default function ServiceListingForm({
       setError(`সর্বোচ্চ ${toBn(MAX_VEHICLE_IMAGES)}টি ছবি যোগ করা যাবে।`);
       return;
     }
-    setUploading(true);
+    trackUpload(true);
     try {
       const uploaded: string[] = [];
       let failure = '';
       for (const file of files.slice(0, room)) {
         const formData = new FormData();
         formData.set('file', file);
-        formData.set('folder', 'service/vehicles');
+        formData.set('folder', `service/${category}`);
         const result = await uploadMedia(formData);
         if (!result.ok) {
           failure = result.error;
@@ -297,13 +280,16 @@ export default function ServiceListingForm({
       }
       if (uploaded.length > 0) {
         setVehicleImages((current) => [...current, ...uploaded].slice(0, MAX_VEHICLE_IMAGES));
+        if (category === 'bus') {
+          setValues((current) => ({ ...current, imageUrl: current.imageUrl || uploaded[0] }));
+        }
       }
       if (failure) setError(failure);
       else if (files.length > room) setError(`সর্বোচ্চ ${toBn(MAX_VEHICLE_IMAGES)}টি ছবি যোগ করা যাবে; বাকি ছবিগুলো যোগ করা হয়নি।`);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
     } finally {
-      setUploading(false);
+      trackUpload(false);
     }
   };
 
@@ -336,7 +322,7 @@ export default function ServiceListingForm({
       subtitleBn: isVehicle ? '' : values.subtitleBn,
       summaryBn: isVehicle ? '' : values.summaryBn,
       imageUrl: isVehicle ? vehicleImages[0] ?? '' : values.imageUrl,
-      photos: isVehicle ? vehicleImages : [],
+      photos: isVehicle || category === 'bus' ? vehicleImages : [],
       priceMin: isVehicle ? undefined : toOptionalNumber(priceMinText),
       priceMax: isVehicle ? undefined : toOptionalNumber(priceMaxText),
       priceNoteBn: isVehicle ? '' : values.priceNoteBn,
@@ -346,12 +332,18 @@ export default function ServiceListingForm({
       additionalFeeNoteBn: isVehicle ? '' : values.additionalFeeNoteBn,
       availableFacilities: isVehicle
         ? values.availableFacilities ?? []
+        : category === 'bus'
+          ? busFacilitiesText.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean)
         : availableFacilitiesText.split(/\r?\n/).map((item) => item.trim()).filter(Boolean),
+      travelDays: category === 'bus' ? values.travelDays ?? [] : [],
+      stops: category === 'bus' ? busStopsText.split(/[,;\n]/).map((item) => item.trim()).filter(Boolean) : [],
+      journeyDurationBn: category === 'bus' ? values.journeyDurationBn : '',
       unavailableFacilities: isVehicle
         ? values.unavailableFacilities ?? []
         : unavailableFacilitiesText.split(/\r?\n/).map((item) => item.trim()).filter(Boolean),
       monthlyFeeMin: toOptionalNumber(feeMinText),
       monthlyFeeMax: toOptionalNumber(feeMaxText),
+      admissionFee: toOptionalNumber(admissionFeeText),
       fareMin: toOptionalNumber(fareMinText),
       fareMax: toOptionalNumber(fareMaxText),
       speedMbps: toOptionalNumber(speedText),
@@ -369,7 +361,7 @@ export default function ServiceListingForm({
       setError(result.ok ? 'সংরক্ষিত হয়েছে, তবে রেকর্ড আইডি পাওয়া যায়নি।' : result.error);
       return;
     }
-    router.push(`/admin/catalog/${category}`);
+    router.push(`/admin/directories/${category}`);
     router.refresh();
   };
 
@@ -403,7 +395,7 @@ export default function ServiceListingForm({
         description={isVehicle
           ? 'গাড়ির নাম, ধরন, ছবি ও প্রতি কিলোমিটার ভাড়া দিন। বিস্তারিত ও সুবিধাগুলো লিখলে ভাড়া নিতে আগ্রহীরা দ্রুত সিদ্ধান্ত নিতে পারে।'
           : 'শুধু সরবরাহ করা তথ্য লিখুন। তথ্য যাচাইয়ের আলাদা ডেটাবেস ক্ষেত্র নেই; প্রকাশনার অবস্থা তথ্য-যাচাইয়ের প্রমাণ নয়।'}
-        breadcrumb={{ href: `/admin/catalog/${category}`, label: `${LABEL[category]} তালিকা` }}
+        breadcrumb={{ href: `/admin/directories/${category}`, label: `${LABEL[category]} তালিকা` }}
       />
       <form onSubmit={submit} className="space-y-4">
         {isVehicle ? (
@@ -478,7 +470,10 @@ export default function ServiceListingForm({
                     )}
                     <button
                       type="button"
-                      onClick={() => setVehicleImages((current) => current.filter((_, i) => i !== index))}
+                      onClick={() => {
+                        const next = vehicleImages.filter((_, i) => i !== index);
+                        setVehicleImages(next);
+                      }}
                       aria-label={`ছবি ${toBn(index + 1)} সরান`}
                       className="absolute right-1.5 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-status-danger shadow-sm"
                     >
@@ -621,8 +616,28 @@ export default function ServiceListingForm({
                 {field('URL স্লাগ *', <input required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={100} value={values.slug} onChange={(e) => set('slug', e.target.value)} className={inputClass} placeholder="english-lowercase-with-hyphens" />, 'পাবলিক URL-এ ব্যবহৃত হবে; একই ক্যাটাগরিতে অবশ্যই অনন্য হতে হবে।')}
                 {field('উপশিরোনাম', <input maxLength={240} value={values.subtitleBn ?? ''} onChange={(e) => set('subtitleBn', e.target.value)} className={inputClass} />)}
                 {field('সংক্ষিপ্ত পরিচয়', <input maxLength={800} value={values.summaryBn ?? ''} onChange={(e) => set('summaryBn', e.target.value)} className={inputClass} />)}
-                {field('প্রধান ছবি URL / site path', <div className="space-y-2"><input value={values.imageUrl ?? ''} onChange={(e) => set('imageUrl', e.target.value)} className={inputClass} placeholder="/uploads/example.jpg" /><input type="file" accept="image/jpeg,image/png,image/webp,image/avif" disabled={uploading} onChange={(event) => void uploadImage(event, (url) => set('imageUrl', url))} className="block min-h-11 w-full text-sm file:mr-3 file:min-h-10 file:rounded-md file:border-0 file:bg-admin-page file:px-3 file:font-semibold" /></div>, 'নিজস্ব সাইটের path অথবা HTTPS URL দিন, অথবা site স্টোরেজে ছবি আপলোড করুন।')}
-                {category === 'coaching' && field('লোগো URL / site path', <input value={values.logoUrl ?? ''} onChange={(e) => set('logoUrl', e.target.value)} className={inputClass} />)}
+                {field(
+                  'প্রধান ছবি',
+                  <ImageUpload
+                    value={values.imageUrl ?? ''}
+                    onChange={(url) => set('imageUrl', url)}
+                    folder={`service/${category}`}
+                    disabled={busy}
+                    onBusyChange={trackUpload}
+                  />,
+                  'ছবি আপলোড করুন (JPG, PNG, WebP বা AVIF, সর্বোচ্চ ৫MB)।',
+                )}
+                {category === 'coaching' && field(
+                  'লোগো',
+                  <ImageUpload
+                    value={values.logoUrl ?? ''}
+                    onChange={(url) => set('logoUrl', url)}
+                    folder="service/coaching"
+                    disabled={busy}
+                    onBusyChange={trackUpload}
+                  />,
+                  'কোচিং সেন্টারের লোগো আপলোড করুন।',
+                )}
                 {field('বিস্তারিত', <textarea rows={5} maxLength={10_000} value={values.descriptionBn ?? ''} onChange={(e) => set('descriptionBn', e.target.value)} className={textAreaClass} />, category === 'bus' ? 'প্রকৃত অপারেটরের বুকিং/যোগাযোগ নির্দেশনা এখানে দিন। এটি বুকিং বা আসন নিশ্চিতকরণ নয়।' : undefined)}
                 {field('অ্যাডমিন-শুধু যোগাযোগ নম্বর', <input value={values.contactPhonePrivate ?? ''} onChange={(e) => set('contactPhonePrivate', e.target.value)} className={inputClass} inputMode="tel" />, 'ফোন নম্বর পাবলিক লিস্টিং query-তে অন্তর্ভুক্ত নয়।')}
                 <label className="flex min-h-11 items-center gap-3 text-sm font-semibold text-admin-text">
@@ -643,10 +658,14 @@ export default function ServiceListingForm({
                     {field('যাত্রার শুরু *', <input required value={values.originBn ?? ''} onChange={(e) => set('originBn', e.target.value)} className={inputClass} />)}
                     {field('গন্তব্য *', <input required value={values.destinationBn ?? ''} onChange={(e) => set('destinationBn', e.target.value)} className={inputClass} />)}
                     {field('অপারেটর / বাস কোম্পানি', <input maxLength={160} value={values.operatorBn ?? ''} onChange={(e) => set('operatorBn', e.target.value)} className={inputClass} placeholder="যেমন: নির্দিষ্ট কোম্পানির নাম" />, 'নাম দিলে অপারেটর অনুযায়ীও খুঁজে পাওয়া যাবে।')}
-                    {field('সময়সূচি (শুধু সরবরাহকৃত)', <input value={values.availableTimeBn ?? ''} onChange={(e) => set('availableTimeBn', e.target.value)} className={inputClass} />)}
+                    {field('একাধিক ছাড়ার সময়সূচি', <textarea rows={2} maxLength={500} value={values.availableTimeBn ?? ''} onChange={(e) => set('availableTimeBn', e.target.value)} className={textAreaClass} placeholder="যেমন: সকাল ৭টা, ৯টা এবং রাত ১০টা" />)}
+                    {field('যাত্রার দিন', <div className="flex flex-wrap gap-x-4 gap-y-2">{BUS_DAYS.map((day) => <label key={day} className="inline-flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={(values.travelDays ?? []).includes(day)} onChange={() => set('travelDays', values.travelDays?.includes(day) ? values.travelDays.filter((value) => value !== day) : [...(values.travelDays ?? []), day])} className="h-4 w-4 accent-admin-navy" />{day}</label>)}</div>)}
+                    {field('যাত্রার সময়কাল', <input maxLength={120} value={values.journeyDurationBn ?? ''} onChange={(e) => set('journeyDurationBn', e.target.value)} className={inputClass} placeholder="যেমন: ৩ ঘণ্টা ৩০ মিনিট" />)}
+                    {field('পথের স্টপসমূহ (কমা দিয়ে আলাদা)', <textarea rows={2} maxLength={2000} value={busStopsText} onChange={(e) => setBusStopsText(e.target.value)} className={textAreaClass} placeholder="যেমন: ভালুকা, ত্রিশাল, গফরগাঁও" />)}
                     {field('সর্বনিম্ন ভাড়া', <input type="number" min={0} value={fareMinText} onChange={(e) => setFareMinText(e.target.value)} className={inputClass} />)}
                     {field('সর্বোচ্চ ভাড়া', <input type="number" min={0} value={fareMaxText} onChange={(e) => setFareMaxText(e.target.value)} className={inputClass} />)}
                     {field('অপারেটর/বাসের ধরন', <div className="flex flex-wrap gap-3">{BUS_TYPES.map((item) => <label key={item.id} className="inline-flex min-h-11 items-center gap-2 text-sm"><input type="checkbox" checked={values.tags.includes(item.id)} onChange={() => toggleValue('tags', item.id)} className="h-4 w-4 accent-admin-navy" />{item.labelBn}</label>)}</div>)}
+                    {field('বাসের সুবিধা (কমা দিয়ে আলাদা)', <textarea rows={2} maxLength={2000} value={busFacilitiesText} onChange={(e) => setBusFacilitiesText(e.target.value)} className={textAreaClass} placeholder="যেমন: ওয়াইফাই, এসি, খাবার বিরতি" />)}
                   </>
                 )}
                 {category === 'wifi' && (
@@ -663,6 +682,7 @@ export default function ServiceListingForm({
                     {field('ঠিকানা', <input maxLength={400} value={values.addressBn ?? ''} onChange={(e) => set('addressBn', e.target.value)} className={inputClass} placeholder="রোড, এলাকা, ময়মনসিংহ" />)}
                     {field('মাসিক সর্বনিম্ন ফি', <input type="number" min={0} value={feeMinText} onChange={(e) => setFeeMinText(e.target.value)} className={inputClass} />)}
                     {field('মাসিক সর্বোচ্চ ফি', <input type="number" min={0} value={feeMaxText} onChange={(e) => setFeeMaxText(e.target.value)} className={inputClass} />)}
+                    {field('ভর্তি ফি (ঐচ্ছিক)', <input type="number" min={0} value={admissionFeeText} onChange={(e) => setAdmissionFeeText(e.target.value)} className={inputClass} />)}
                     {field('ক্লাস, বিষয় ও প্রস্তুতির ধরন', <div className="max-h-56 overflow-y-auto rounded-md border border-admin-border p-2">{taxonomy.map((item) => <label key={item.id} className="flex min-h-10 items-center gap-2 text-sm"><input type="checkbox" checked={values.tags.includes(item.id)} onChange={() => toggleValue('tags', item.id)} className="h-4 w-4 accent-admin-navy" />{item.labelBn}</label>)}</div>, 'সূচি, শিক্ষক ও যোগ্যতার তথ্য কেবল সরবরাহকৃত হলে বিস্তারিত ঘরে লিখুন।')}
                   </>
                 )}
@@ -671,13 +691,29 @@ export default function ServiceListingForm({
               </div>
             </Panel>
 
+            {category === 'bus' && (
+              <Panel title="বাসের ছবি" description="একাধিক প্রকৃত ছবি আপলোড করুন। প্রথম ছবিটি কভার হিসেবে ব্যবহৃত হবে।">
+                <div className="flex flex-wrap gap-3">
+                  {vehicleImages.map((url, index) => (
+                    <div key={`${url}-${index}`} className="relative h-24 w-32 overflow-hidden rounded-lg border border-admin-border">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt={`বাসের ছবি ${toBn(index + 1)}`} className="h-full w-full object-cover" />
+                      {index === 0 && <span className="absolute left-1 top-1 rounded bg-admin-navy px-1.5 py-0.5 text-[10px] font-bold text-white">কভার</span>}
+                      <button type="button" onClick={() => { const next = vehicleImages.filter((_, i) => i !== index); setVehicleImages(next); if (index === 0) set('imageUrl', next[0] ?? ''); }} className="absolute right-1 top-1 rounded bg-white px-1 text-sm font-bold text-rose-700" aria-label={`ছবি ${toBn(index + 1)} সরান`}>×</button>
+                    </div>
+                  ))}
+                  {vehicleImages.length < MAX_VEHICLE_IMAGES && <label className="flex h-24 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-admin-border text-xs font-bold text-admin-muted">{uploading ? 'আপলোড হচ্ছে…' : 'ছবি যোগ করুন'}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple disabled={uploading} onChange={(event) => void uploadVehicleImages(event)} className="sr-only" /></label>}
+                </div>
+              </Panel>
+            )}
+
             <Panel title="সার্ভিস এলাকা">{areaPicker}</Panel>
           </>
         )}
 
         {error && <p role="alert" className="rounded-md border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p>}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Link href={`/admin/catalog/${category}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-admin-border px-4 text-sm font-semibold text-admin-text">ফিরে যান</Link>
+          <Link href={`/admin/directories/${category}`} className="inline-flex min-h-11 items-center justify-center rounded-md border border-admin-border px-4 text-sm font-semibold text-admin-text">ফিরে যান</Link>
           <button type="submit" disabled={busy || uploading} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white disabled:opacity-60">
             {busy || uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             {uploading ? 'ছবি আপলোড হচ্ছে…' : busy ? 'সংরক্ষণ হচ্ছে…' : 'সংরক্ষণ'}

@@ -8,7 +8,6 @@ import {
   PenSquare,
   MessageCircle,
   Workflow,
-  ArrowRight,
   Star,
   Landmark,
   BookOpen,
@@ -24,10 +23,9 @@ const BENEFITS = [
 /**
  * CommunityInviteSection — "ময়মনসিংহ কমিউনিটির জন্য" ব্যান্ড।
  *
- * একটি পরিষ্কার, কেন্দ্রীভূত সংযোগ-বার্ণ: স্থানীয় পরিচয়, উপকারিতা, তিনটি
- * পথ (তথ্য যোগ · কীভাবে কাজ করে · রিভিউ) এবং একটি ছোট সহায়ক লাইন।
- * আগের "কমিউনিটি বোর্ড" মোজাইক বাদ দেওয়া হয়েছে — এখন একটি কেন্দ্রীভূত,
- * পড়তে-সহজ লেখাই আছে।
+ * একটি পরিষ্কার, কেন্দ্রীভূত সংযোগ-বার্ণ: স্থানীয় পরিচয়, উপকারিতা, চারটি
+ * পথ (তথ্য যোগ · উপায় · রিভিউ · যোগাযোগ) এবং ময়মনসিংহ পরিচিতির ছোট
+ * কল-আউট। শুধু শেষের পুনরাবৃত্তিমূলক সহায়ক লাইনটি বাদ দেওয়া হয়েছে।
  */
 export default function CommunityInviteSection() {
   return (
@@ -54,7 +52,7 @@ export default function CommunityInviteSection() {
         className="pointer-events-none absolute bottom-10 right-40 hidden h-16 w-16 rotate-12 rounded-xl bg-white/15 ring-1 ring-white/20 lg:block"
       />
 
-      <div className="relative mx-auto w-full max-w-4xl px-4 py-8 text-center sm:px-6 sm:py-10 lg:px-8">
+      <div className="relative mx-auto w-full max-w-4xl px-4 py-10 text-center sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <Reveal>
           <span className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/15 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white sm:text-xs">
             <span className="h-2 w-2 rounded-full bg-accent-400" />
@@ -99,7 +97,7 @@ export default function CommunityInviteSection() {
             })}
           </ul>
 
-          {/* পথ — তথ্য যোগ · কীভাবে কাজ করে · রিভিউ */}
+          {/* পথ — তথ্য যোগ · উপায় · রিভিউ · যোগাযোগ */}
           <div className="mt-6 flex flex-col items-center justify-center gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
             <Link
               href="/register"
@@ -115,7 +113,6 @@ export default function CommunityInviteSection() {
             >
               <Workflow className="h-4 w-4 shrink-0" />
               সেবা নেওয়া ও দেওয়ার উপায় দেখুন
-              <ArrowRight className="h-4 w-4 shrink-0" />
             </Link>
 
             <button
@@ -158,20 +155,13 @@ export default function CommunityInviteSection() {
 
               <Link
                 href="/mymensingh"
-                className="group/history inline-flex min-h-[46px] shrink-0 items-center justify-center gap-2 self-stretch rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-950/30 ring-1 ring-white/15 transition-all duration-150 hover:bg-brand-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:self-center"
+                className="inline-flex min-h-[46px] shrink-0 items-center justify-center gap-2 self-stretch rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-950/30 ring-1 ring-white/15 transition-all duration-150 hover:bg-brand-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:self-center"
               >
                 <BookOpen className="h-4 w-4 shrink-0" />
                 ময়মনসিংহ পরিচিতি
-                <ArrowRight className="h-4 w-4 shrink-0 transition-transform duration-150 group-hover/history:translate-x-0.5" />
               </Link>
             </div>
           </div>
-
-          {/* সহায়ক লাইন */}
-          <p className="mx-auto mt-5 max-w-2xl text-xs leading-relaxed text-white/85 sm:text-[13px]">
-            কোন সেবাগুলো নিজে পোস্ট করা যায়, কোনগুলোর জন্য অ্যাডমিনের সাথে যোগাযোগ করতে
-            হয় এবং পুরো প্রক্রিয়াটি কীভাবে — সব বিস্তারিত এক পাতায় সাজানো হয়েছে।
-          </p>
         </Reveal>
       </div>
     </section>

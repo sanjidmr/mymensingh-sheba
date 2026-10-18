@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { MapPin, Star, ArrowRight } from 'lucide-react';
+import { MapPin, Star } from 'lucide-react';
 import { useState } from 'react';
 import type { HomePreviewCard } from '@/lib/home-preview';
 
@@ -33,9 +33,6 @@ export default function ServiceCard({
   const [imgError, setImgError] = useState(false);
   const showRating = typeof card.rating === 'number' && (card.ratingCount || 0) > 0;
   const red = tone === 'red';
-
-  const arrowBoxClass =
-    card.avatarTone === 'rose' ? 'bg-rose-700' : red ? 'bg-red-700' : 'bg-brand-700';
 
   return (
     <Link
@@ -73,14 +70,6 @@ export default function ServiceCard({
             aria-hidden="true"
             className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-brand-950/40 to-transparent sm:h-16"
           />
-          {!imageless && (
-            <span
-              className={`absolute bottom-1.5 right-1.5 inline-flex h-5 w-5 items-center justify-center rounded text-white shadow-md sm:bottom-2.5 sm:right-2.5 sm:h-7 sm:w-7 sm:rounded-md ${arrowBoxClass}`}
-              aria-hidden="true"
-            >
-              <ArrowRight className="h-3 w-3 transition-transform duration-300 group-hover:translate-x-0.5 sm:h-4 sm:w-4" />
-            </span>
-          )}
         </div>
       ) : null}
 
@@ -129,14 +118,6 @@ export default function ServiceCard({
           <span className={`truncate font-bold ${red ? 'text-red-700' : 'text-brand-800'} ${compact ? 'text-[10.5px] sm:text-xs' : 'text-sm'}`}>{card.footer}</span>
           <span className={`hidden shrink-0 items-center gap-1 text-xs font-semibold opacity-0 transition-opacity duration-300 group-hover:opacity-100 sm:inline-flex ${red ? 'text-red-600' : 'text-brand-600'} ${compact ? 'text-[11px]' : ''}`}>
             {card.footerLabel}
-            {imageless && (
-              <span
-                className={`inline-flex h-6 w-6 items-center justify-center rounded-md text-white ${arrowBoxClass}`}
-                aria-hidden="true"
-              >
-                <ArrowRight className="h-3.5 w-3.5" />
-              </span>
-            )}
           </span>
         </div>
       </div>

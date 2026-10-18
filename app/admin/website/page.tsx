@@ -60,7 +60,6 @@ export default async function AdminWebsitePage() {
             overrides={overrides.launch_services ?? LAUNCH_SERVICES.map((service) => ({
               slug: service.slug,
               nameBn: service.nameBn,
-              nameEn: service.nameEn,
               shortDesc: service.shortDesc,
               coverImage: service.coverImage,
               sort_order: service.sortOrder,

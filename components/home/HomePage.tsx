@@ -7,7 +7,6 @@ import ServiceRowSection from '@/components/home/ServiceRowSection';
 import CommunityInviteSection from '@/components/home/CommunityInviteSection';
 import WhySection from '@/components/home/WhySection';
 import StepsSection from '@/components/home/StepsSection';
-import TestimonialsSection from '@/components/home/TestimonialsSection';
 import ReviewSection from '@/components/home/ReviewSection';
 import FinalCtaSection from '@/components/home/FinalCtaSection';
 import {
@@ -159,7 +158,6 @@ export default async function HomePage() {
         )}
 
         {visible('steps') && <StepsSection />}
-        {visible('testimonials') && <TestimonialsSection />}
         {visible('why') && <WhySection />}
         {visible('reviews') && <ReviewSection />}
         {visible('final_cta') && <FinalCtaSection />}
