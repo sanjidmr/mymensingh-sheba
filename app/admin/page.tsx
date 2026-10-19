@@ -552,9 +552,9 @@ async function DashboardContent({ range }: { range: ResolvedDashboardRange }) {
                   </div>
                   <Link
                     href={item.href}
+                    aria-label="বিস্তারিত তথ্য খুলুন"
                     className="mt-3 flex min-h-10 items-center justify-center gap-1 rounded-md border border-admin-border px-3 text-xs font-semibold text-admin-navy hover:bg-admin-page focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-admin-accent"
                   >
-                    বিস্তারিত দেখুন
                     <ArrowUpRight className="h-3.5 w-3.5" aria-hidden="true" />
                   </Link>
                 </li>

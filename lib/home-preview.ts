@@ -2,6 +2,7 @@
 import type { StaffProfile } from '@/lib/staff-types';
 import type { HomeTutorProfile, BloodDonorProfile } from '@/lib/supabase/types';
 import type { ServiceListing, CommunityPost } from '@/lib/catalog-types';
+import { areaNames, bnTakaRange, tagLabels, toBn } from '@/lib/catalog-types';
 import {
   STAFF_SERVICE_UI,
   STAFF_AVAILABILITY_LABELS,
@@ -211,7 +212,51 @@ export function vehicleToPreviewCard(listing: ServiceListing): HomePreviewCard {
     availability: listing.isActive
       ? { label: 'চলমান', tone: 'green' }
       : { label: 'অনুপলব্ধ', tone: 'slate' },
-    footer: price || 'সরাসরি যোগাযোগ',
+    footer: price,
+  };
+}
+
+/**
+ * A WiFi provider or coaching centre → the compact homepage row card.
+ *
+ * Both directories live in `service_listings`, so one mapper covers the pair;
+ * the category only decides which image wins and which price field is the
+ * loudest line. Numbers and areas come from the stored row — never invented —
+ * and a row that publishes no fee simply omits the footer line.
+ */
+export function listingToPreviewCard(listing: ServiceListing): HomePreviewCard {
+  const wifi = listing.category === 'wifi';
+  const fee = wifi
+    ? bnTakaRange(listing.priceMin, listing.priceMax)
+    : bnTakaRange(listing.monthlyFeeMin, listing.monthlyFeeMax);
+  const chips = wifi
+    ? [
+        listing.speedMbps != null ? `${toBn(listing.speedMbps)} Mbps` : '',
+        ...tagLabels(listing.tags).slice(0, 1),
+      ].filter(Boolean)
+    : tagLabels(listing.tags).slice(0, 2);
+
+  return {
+    id: listing.id,
+    href: `/${listing.category}/${listing.slug}`,
+    imageUrl: wifi
+      ? listing.logoUrl || listing.imageUrl
+      : listing.imageUrl || listing.logoUrl,
+    avatarLabel: listing.titleBn.charAt(0) || '?',
+    avatarTone: 'green',
+    title: listing.titleBn,
+    subtitle: listing.subtitleBn
+      ? `${wifi ? 'WiFi' : 'কোচিং'} · ${listing.subtitleBn}`
+      : wifi
+        ? 'WiFi'
+        : 'কোচিং',
+    location: areaNames(listing.areaIds) || 'ময়মনসিংহ সিটি কর্পোরেশন',
+    metaChips: chips,
+    availability: listing.isFeatured
+      ? { label: 'ফিচার্ড', tone: 'green' }
+      : { label: 'প্রকাশিত', tone: 'green' },
+    verified: listing.isFeatured,
+    footer: fee ? `${fee}/মাস` : undefined,
   };
 }
 
@@ -251,7 +296,7 @@ export function postToPreviewCard(post: CommunityPost): HomePreviewCard {
     verified: post.isFeatured,
     footer:
       post.kind === 'buy_sell'
-        ? price || 'সরাসরি যোগাযোগ'
+        ? price
         : post.kind === 'job'
           ? post.organizationBn || 'পূর্ণ বিজ্ঞাপন দেখুন'
           : 'পূর্ণ খবর পড়ুন',

@@ -55,7 +55,7 @@ export function ProviderPersonCard({
   detailHref,
   bloodGroup,
   lastDonationDate,
-  ctaText = 'বিস্তারিত দেখুন',
+  ctaText,
   className,
 }: ProviderPersonCardProps) {
   const isBloodDonor = category === 'blood';
@@ -179,17 +179,19 @@ export function ProviderPersonCard({
           <div className="text-xs text-slate-500">অ্যাডমিন নির্ধারিত দর</div>
         )}
 
-        <Link
-          href={detailHref}
-          className={cn(
-            'px-4 py-2 rounded-xl text-xs font-semibold shadow-2xs transition-colors whitespace-nowrap',
-            isBloodDonor
-              ? 'bg-rose-700 hover:bg-rose-800 text-white'
-              : 'bg-emerald-800 hover:bg-emerald-900 text-white'
-          )}
-        >
-          {ctaText}
-        </Link>
+        {ctaText && (
+          <Link
+            href={detailHref}
+            className={cn(
+              'px-4 py-2 rounded-xl text-xs font-semibold shadow-2xs transition-colors whitespace-nowrap',
+              isBloodDonor
+                ? 'bg-rose-700 hover:bg-rose-800 text-white'
+                : 'bg-emerald-800 hover:bg-emerald-900 text-white'
+            )}
+          >
+            {ctaText}
+          </Link>
+        )}
       </div>
     </div>
   );

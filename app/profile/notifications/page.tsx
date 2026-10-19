@@ -126,8 +126,8 @@ export default function NotificationsPage() {
                     </span>
                   </div>
                   <p className="text-xs text-ink-500 leading-relaxed">{notif.body}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-3">
-                    {!notif.isRead && (
+                  {!notif.isRead && (
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
                       <button
                         type="button"
                         disabled={busy}
@@ -136,16 +136,8 @@ export default function NotificationsPage() {
                       >
                         পড়া হয়েছে চিহ্নিত করুন
                       </button>
-                    )}
-                    {notif.linkHref && (
-                      <Link
-                        href={notif.linkHref}
-                        className="inline-flex items-center gap-1 text-xs font-semibold text-brand-700 hover:underline"
-                      >
-                        বিস্তারিত দেখুন
-                      </Link>
-                    )}
-                  </div>
+                    </div>
+                  )}
                 </div>
               </div>
             ))

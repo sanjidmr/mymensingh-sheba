@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import { Bell, CheckCircle2, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
-import Link from 'next/link';
 import { useAuth } from '@/lib/auth-context';
 import { bnRelativeTime } from '@/lib/catalog-types';
 
@@ -79,18 +78,13 @@ export default function DashboardNotifications() {
                   <span className="shrink-0 text-[10.5px] text-ink-400">{bnRelativeTime(n.createdAt) ?? ''}</span>
                 </div>
                 <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">{n.body}</p>
-                <div className="mt-1.5 flex flex-wrap items-center gap-3">
-                  {!n.isRead && (
+                {!n.isRead && (
+                  <div className="mt-1.5 flex flex-wrap items-center gap-3">
                     <button type="button" disabled={busy} onClick={() => void markRead(n.id)} className="text-[12px] font-bold text-brand-700 hover:underline disabled:opacity-50">
                       পড়া হয়েছে চিহ্নিত করুন
                     </button>
-                  )}
-                  {n.linkHref && (
-                    <Link href={n.linkHref} className="text-[12px] font-bold text-brand-700 hover:underline">
-                      বিস্তারিত দেখুন
-                    </Link>
-                  )}
-                </div>
+                  </div>
+                )}
               </div>
             </div>
           ))

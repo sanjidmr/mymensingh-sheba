@@ -90,7 +90,6 @@ export default function CoachingDirectory() {
         chips={[...tagLabels(listing.tags), 'যাচাইয়ের তথ্য নেই']}
         description={listing.summaryBn}
         badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
-        actionLabel="বিস্তারিত"
         ratingAvg={listing.ratingAvg}
         ratingCount={listing.ratingCount}
       />

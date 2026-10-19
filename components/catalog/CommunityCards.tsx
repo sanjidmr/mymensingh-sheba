@@ -72,14 +72,8 @@ export function NewsCard({ post }: { post: CommunityPost }) {
     <Link href={`/news/${post.slug}`} className={`${CARD_BASE} flex-row`}>
       <div className="relative aspect-[4/3] w-[38%] shrink-0 overflow-hidden bg-mist-100 sm:aspect-[16/10] sm:w-[42%]">
         <ListingMedia src={post.coverImageUrl} alt={post.titleBn} label={post.titleBn} />
-        {post.isFeatured && (
-          <span className="absolute left-1.5 top-1.5 rounded-md bg-accent-400 px-1.5 py-[3px] text-[10px] font-extrabold text-brand-950 shadow-sm">
-            ফিচার্ড
-          </span>
-        )}
-        <span className="absolute right-1.5 top-1.5">
-          <StatusBadge status={post.status} />
-        </span>
+
+
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-4">

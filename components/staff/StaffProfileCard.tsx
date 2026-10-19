@@ -75,30 +75,6 @@ export function StaffProfileCard({ profile, serviceUi, imageless = false }: Staf
           </div>
         )}
 
-        {/* Gradient overlay for legibility */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/0 to-black/10 pointer-events-none" />
-
-        <div className="absolute top-3 left-3 right-3 flex items-start justify-between gap-2">
-          {profile.isVerified ? (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-white bg-emerald-700/95 px-2.5 py-1 rounded-full border border-white/30">
-              <ShieldCheck className="w-3.5 h-3.5" />
-              ভেরিফাইড
-            </span>
-          ) : (
-            <span />
-          )}
-          {profile.isEmergency && (
-            <span className="inline-flex items-center gap-1 text-[11px] font-bold text-rose-100 bg-rose-700/90 px-2.5 py-1 rounded-full border border-white/30">
-              <Zap className="w-3.5 h-3.5" />
-              জরুরিতে উপলব্ধ
-            </span>
-          )}
-        </div>
-
-        <span className="absolute bottom-3 left-3 inline-flex items-center gap-1 text-[11px] font-semibold text-white bg-slate-900/70 backdrop-blur-sm px-2.5 py-1 rounded-full">
-          <Clock className="w-3 h-3" />
-          {STAFF_AVAILABILITY_LABELS[profile.availability] || 'সীমিত সময়ে'}
-        </span>
       </div>
       )}
 

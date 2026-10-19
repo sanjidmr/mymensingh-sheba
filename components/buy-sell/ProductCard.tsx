@@ -33,7 +33,6 @@ import { ListingMedia } from '@/components/catalog/CatalogCards';
 import {
   bnRelativeTime,
   bnTaka,
-  tagLabel,
   type CommunityPost,
 } from '@/lib/catalog-types';
 import { getAreaById } from '@/lib/locations';
@@ -53,10 +52,6 @@ interface ProductCardProps {
 export function ProductCard({ post, now }: ProductCardProps) {
   const area = post.areaId ? getAreaById(post.areaId)?.nameBn : undefined;
   const posted = bnRelativeTime(post.publishedAt ?? post.createdAt, now);
-  // The condition lives in `conditionLabel` (display text, already Bangla) and the
-  // band id in `tags` (what the filter matches). Resolve the label from either,
-  // so a row written before the column existed still shows its condition.
-  const condition = post.conditionLabel || conditionFromTags(post.tags);
   // Anything in `tags` that is neither the category nor the condition is the
   // seller's own extra note ("ফোন চার্জার সহ", "নিজস্ব লাইসেনসহ").
   const extras = post.tags.filter((t) => t !== post.category && !isConditionId(t));
@@ -70,23 +65,8 @@ export function ProductCard({ post, now }: ProductCardProps) {
           bottom of the handset off; 4:3 shows what was actually for sale. */}
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-mist-100">
         <ListingMedia src={post.coverImageUrl} alt={post.titleBn} label={post.titleBn} />
-        <div className="absolute left-0 top-0 flex flex-col items-start gap-1 p-1.5">
-          {post.isFeatured && (
-            <span className="rounded-md bg-accent-400 px-1.5 py-[3px] text-[10px] font-extrabold text-brand-950 shadow-sm">
-              ফিচার্ড
-            </span>
-          )}
-          {post.isDemo && (
-            <span className="rounded-md border border-white/40 bg-brand-900/75 px-1.5 py-[3px] text-[10px] font-extrabold text-white shadow-sm">
-              নমুনা
-            </span>
-          )}
-        </div>
-        {condition && (
-          <span className="absolute bottom-1.5 left-1.5 rounded-md bg-white/90 px-1.5 py-[3px] text-[10px] font-bold text-ink-700 shadow-sm backdrop-blur-[2px]">
-            {condition}
-          </span>
-        )}
+
+
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-2.5">
@@ -144,10 +124,4 @@ const CONDITION_IDS = new Set(['new', 'like-new', 'good', 'used']);
 
 function isConditionId(tag: string): boolean {
   return CONDITION_IDS.has(tag);
-}
-
-/** The condition band, resolved back to its Bangla label from `tags`. */
-function conditionFromTags(tags: string[]): string | undefined {
-  const hit = tags.find(isConditionId);
-  return hit ? tagLabel(hit) : undefined;
 }

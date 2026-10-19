@@ -17,6 +17,7 @@
 import { isSupabaseConfigured, createClient } from './supabase/client';
 import { toCamelObject } from './supabase/transform';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
+import { requestAdminEmailAlert } from './admin-email-alerts';
 import type {
   BloodDonorProfile,
   BloodDonorReport,
@@ -148,8 +149,10 @@ export async function createBloodDonorReport(input: {
   if (!isSupabaseConfigured) return mockCreateBloodDonorReport(input);
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
+  const reportId = crypto.randomUUID();
   const { data: user } = await client.auth.getUser();
   const { error } = await client.from('blood_donor_reports').insert({
+    id: reportId,
     donor_profile_id: input.donorProfileId,
     reporter_id: user?.user?.id || null,
     reporter_name: input.reporterName,
@@ -157,6 +160,7 @@ export async function createBloodDonorReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: `রিপোর্ট জমা ব্যর্থ: ${error.message}` };
+  void requestAdminEmailAlert('blood_donor_reports', reportId);
   return { success: true };
 }
 

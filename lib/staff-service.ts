@@ -21,6 +21,7 @@ import type {
 } from './staff-types';
 import { STAFF_SERVICE_KEYS } from './staff-types';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
+import { requestAdminEmailAlert } from './admin-email-alerts';
 import {
   mockFetchPublicStaffProfiles,
   mockFetchStaffProfileById,
@@ -184,7 +185,9 @@ export async function createStaffReport(input: {
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
+  const reportId = crypto.randomUUID();
   const { error } = await client.from('staff_profile_reports').insert({
+    id: reportId,
     profile_id: input.profileId,
     service_slug: input.serviceSlug,
     reporter_id: input.reporterId || null,
@@ -193,6 +196,7 @@ export async function createStaffReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: `রিপোর্ট জমা ব্যর্থ: ${error.message}` };
+  void requestAdminEmailAlert('staff_profile_reports', reportId);
   return { success: true };
 }
 

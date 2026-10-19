@@ -11,6 +11,7 @@ import {
   Bus,
   Briefcase,
   Newspaper,
+  ShoppingBag,
   Wifi,
   BookOpen,
   Stethoscope,
@@ -86,8 +87,9 @@ export const DAILY_CATEGORY: HomepageCategory = {
     'বাসা, মেরামত, যাতায়াত, পড়াশোনা, গৃহকর্মী — জীবন চলার কাজগুলো এখন এক পরিচিত জায়গায়।',
   tone: 'white',
   // Phones show FOUR compact tiles per row (all four must sit inside one row
-  // with no sideways overflow), then the desktop rhythm from `sm` upwards.
-  grid: 'grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-7',
+  // with no sideways overflow). From `lg` upwards every card in this category
+  // sits in ONE row — the desktop layout must never wrap the last card.
+  grid: 'grid-cols-4 sm:grid-cols-4 md:grid-cols-4 lg:grid-cols-8',
   compact: true,
   viewAll: { href: '/services', label: 'সব সেবা দেখুন' },
   items: [
@@ -220,6 +222,17 @@ export const SHOP_TRAVEL_CATEGORY: HomepageCategory = {
       chips: ['ঢাকা রুট', 'বুকিং'],
       cta: 'দেখুন',
       icon: Bus,
+    },
+    {
+      id: 'buy-sell',
+      name: 'কেনাবেচা',
+      en: 'Buy & Sell',
+      text: 'ব্যবহৃত ও নতুন পণ্য — মোবাইল, আসবাব, বাইকসহ স্থানীয় কেনাবেচার পোস্ট।',
+      href: '/buy-sell',
+      image: '/buysell.jpg',
+      chips: ['ব্যবহৃত পণ্য', 'নতুন'],
+      cta: 'দেখুন',
+      icon: ShoppingBag,
     },
     {
       id: 'jobs',

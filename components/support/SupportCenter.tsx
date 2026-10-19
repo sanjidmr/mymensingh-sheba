@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Mail, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { requestAdminEmailAlert } from '@/lib/admin-email-alerts';
 
 export type SupportMode = 'messages' | 'complaints';
 
@@ -221,7 +222,9 @@ export default function SupportCenter({ mode }: { mode: SupportMode }) {
         if (uploadError) throw new Error(`সংযুক্তি আপলোড করা যায়নি: ${uploadError.message}`);
       }
 
+      const messageId = crypto.randomUUID();
       const { error: insertError } = await client.from('contact_messages').insert({
+        id: messageId,
         name: user.fullName,
         phone: user.phone,
         email: user.email || null,
@@ -241,6 +244,9 @@ export default function SupportCenter({ mode }: { mode: SupportMode }) {
           if (cleanupError) cleanupNote = ` সংযুক্তি পরিষ্কার করা যায়নি: ${cleanupError.message}`;
         }
         throw new Error(`অভিযোগ জমা দেওয়া যায়নি: ${insertError.message}.${cleanupNote}`);
+      }
+      if (['safety', 'payment'].includes(complaintCategory)) {
+        void requestAdminEmailAlert('contact_message', messageId);
       }
 
       setComplaintSubject('');

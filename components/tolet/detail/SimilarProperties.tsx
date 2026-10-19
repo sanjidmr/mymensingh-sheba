@@ -110,11 +110,7 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
           </div>
         )}
 
-        {typeInfo?.labelBn && (
-          <span className="absolute left-1.5 top-1.5 inline-flex items-center rounded-md bg-white/95 px-1.5 py-[3px] text-[11px] font-extrabold text-ink-800 shadow-sm">
-            {typeInfo.labelBn}
-          </span>
-        )}
+
       </div>
 
       <div className="p-2.5 sm:p-3.5">

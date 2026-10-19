@@ -26,6 +26,7 @@
  * could mislead a customer into submitting a real booking request.
  */
 import { createClient, isSupabaseConfigured } from './supabase/client';
+import { requestAdminEmailAlert } from './admin-email-alerts';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
 import {
@@ -2217,7 +2218,9 @@ export async function createCommunityPostReport(input: {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
+  const reportId = crypto.randomUUID();
   const { error } = await client.from('community_post_reports').insert({
+    id: reportId,
     post_id: input.postId,
     reporter_id: input.reporterId,
     reporter_name: input.reporterName.trim() || 'অতিথি',
@@ -2225,6 +2228,7 @@ export async function createCommunityPostReport(input: {
     details: input.details?.trim() || null,
   });
   if (error) return { success: false, error: error.message };
+  void requestAdminEmailAlert('community_post_reports', reportId);
   return { success: true };
 }
 

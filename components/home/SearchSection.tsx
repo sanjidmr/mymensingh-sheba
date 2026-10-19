@@ -13,7 +13,7 @@ import ServiceSearchBox from '@/components/home/ServiceSearchBox';
  */
 export default function SearchSection() {
   return (
-    <section className="border-b border-brand-100/70 bg-mist-50" aria-label="আপনার কী সেবা প্রয়োজন">
+    <section className="hidden border-b border-brand-100/70 bg-mist-50 lg:block" aria-label="আপনার কী সেবা প্রয়োজন">
       <div className="mx-auto w-full max-w-7xl px-4 pb-5 pt-3 sm:px-6 sm:pb-6 sm:pt-4 lg:px-8 lg:pb-7 lg:pt-5">
         <div className="mx-auto max-w-3xl text-center">
           <h1

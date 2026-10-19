@@ -109,10 +109,9 @@ export default function ServiceRowSection({
 
   /**
    * How many of the fetched cards each breakpoint shows.
-   * Phone  -> six cards, two tidy rows of three.
-   * sm+    -> four cards (the previous behaviour, untouched).
+   * Phone  -> four cards, two tidy rows of two (cards 5–6 stay off-screen).
+   * sm+    -> all six cards in two rows of three.
    * lg+    -> five cards across, the desktop row.
-   * So the two "extra" cards are revealed and hidden at the opposite ends.
    */
   const visibilityAt = (index: number) => {
     if (index === 4) return 'max-sm:hidden';
@@ -147,7 +146,7 @@ export default function ServiceRowSection({
             {error}
           </p>
         ) : loading ? (
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 lg:gap-3">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 lg:gap-3">
             {Array.from({ length: count }).map((_, i) => (
               <div
                 key={i}
@@ -162,7 +161,7 @@ export default function ServiceRowSection({
             ))}
           </div>
         ) : shown.length > 0 ? (
-          <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 lg:gap-3">
+          <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 lg:gap-3">
             {shown.map((card, index) => (
               <ServiceCard
                 key={card.id}

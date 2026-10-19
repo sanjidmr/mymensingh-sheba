@@ -174,7 +174,7 @@ export function ToletListingCard({
                 href={`/tolet/${listing.id}`}
                 className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-2xs transition-colors"
               >
-                বিস্তারিত দেখুন
+                বিস্তারিত
               </Link>
             </div>
           </div>

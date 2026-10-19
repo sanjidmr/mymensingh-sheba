@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import {
-  MapPin,
   Bed,
   Bath,
   Calendar,
@@ -97,21 +96,6 @@ export default function ToletPreviewSection() {
                     referrerPolicy="no-referrer"
                   />
 
-                  {/* Gradient Overlay for text contrast */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
-
-                  {/* Top Tags */}
-                  <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
-                    <span className="px-2.5 py-1 rounded-md bg-white/90 backdrop-blur-xs text-slate-900 text-xs font-semibold shadow-2xs">
-                      {listing.propertyTypeLabelBn}
-                    </span>
-                    {listing.featuredBadge && (
-                      <span className="px-2 py-1 rounded-md bg-emerald-800 text-white text-xs font-medium shadow-2xs">
-                        {listing.featuredBadge}
-                      </span>
-                    )}
-                  </div>
-
                   {/* Favorite Button */}
                   <button
                     type="button"
@@ -126,11 +110,7 @@ export default function ToletPreviewSection() {
                     />
                   </button>
 
-                  {/* Area Badge bottom-left */}
-                  <div className="absolute bottom-3 left-3 text-white flex items-center gap-1.5 text-xs font-medium drop-shadow-sm">
-                    <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                    <span>{listing.areaNameBn}</span>
-                  </div>
+
                 </div>
 
                 {/* Card Content */}
@@ -199,7 +179,7 @@ export default function ToletPreviewSection() {
                         মালিকের ফোন নম্বর সুরক্ষিত
                       </span>
                       <span className="text-emerald-800 font-medium group-hover:underline flex items-center gap-0.5">
-                        বিস্তারিত দেখুন
+                        বিস্তারিত
                       </span>
                     </div>
                   </div>

@@ -186,14 +186,6 @@ export function AdminTable<T>({
                     <ChevronRight className="mt-0.5 h-5 w-5 shrink-0 text-ink-300" aria-hidden="true" />
                   )}
                 </div>
-                {href && (
-                  <a
-                    href={href}
-                    className="flex min-h-11 items-center justify-center border-t border-admin-border text-xs font-semibold text-admin-navy hover:bg-admin-page"
-                  >
-                    বিস্তারিত দেখুন
-                  </a>
-                )}
               </div>
             </li>
           );

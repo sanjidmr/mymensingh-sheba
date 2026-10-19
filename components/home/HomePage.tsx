@@ -1,16 +1,15 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import Link from 'next/link';
 import HeroCarousel from '@/components/home/HeroCarousel';
 import SearchSection from '@/components/home/SearchSection';
 import CategorySection from '@/components/home/CategorySection';
 import ServiceRowSection from '@/components/home/ServiceRowSection';
+import WifiCoachingSection from '@/components/home/WifiCoachingSection';
 import CommunityInviteSection from '@/components/home/CommunityInviteSection';
 import WhySection from '@/components/home/WhySection';
 import StepsSection from '@/components/home/StepsSection';
 import ReviewSection from '@/components/home/ReviewSection';
 import FinalCtaSection from '@/components/home/FinalCtaSection';
-import { BookOpen, Wifi } from 'lucide-react';
 import {
   mergeHomepageCategories,
   isHomepageSectionVisible,
@@ -141,38 +140,8 @@ export default async function HomePage() {
           />
         )}
 
-        {/* WiFi ও কোচিং — সরাসরি নিজ নিজ সেবার পাতায় */}
-        {visible('row_kenabecha') && (
-          <section aria-labelledby="wifi-coaching-heading" className="border-b border-brand-100/70 bg-mist-50">
-            <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
-              <div className="text-center sm:text-left">
-                <span className="inline-flex items-center gap-2 text-[11px] font-bold text-brand-600 sm:text-xs">
-                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />
-                  আরও স্থানীয় সেবা
-                </span>
-                <h2 id="wifi-coaching-heading" className="mx-auto mt-2 max-w-2xl text-xl font-extrabold leading-tight tracking-tight text-ink-900 sm:mx-0 sm:text-2xl">
-                  WiFi ও কোচিং
-                </h2>
-              </div>
-              <div className="mt-4 grid gap-3 sm:grid-cols-2">
-                {[
-                  { title: 'WiFi সংযোগ', description: 'এলাকাভিত্তিক ইন্টারনেট সেবা ও সংযোগ খুঁজুন।', href: '/wifi', icon: Wifi },
-                  { title: 'কোচিং সেন্টার', description: 'শিক্ষার্থীদের জন্য স্থানীয় কোচিং সেবা দেখুন।', href: '/coaching', icon: BookOpen },
-                ].map(({ title, description, href, icon: Icon }) => (
-                  <Link key={href} href={href} className="group flex min-h-24 items-center gap-4 rounded-2xl border border-brand-100 bg-white p-4 transition-colors hover:border-brand-300 hover:bg-brand-50/40">
-                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-                      <Icon className="h-6 w-6" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0">
-                      <span className="block text-[15px] font-extrabold leading-snug text-ink-900 group-hover:text-brand-700">{title}</span>
-                      <span className="mt-1 block text-[13px] leading-relaxed text-ink-500">{description}</span>
-                    </span>
-                  </Link>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        {/* WiFi ও কোচিং — প্রকাশিত প্রোভাইডার/সেন্টারের কার্ড */}
+        {visible('row_kenabecha') && <WifiCoachingSection />}
 
         {/* সার্ভিস রো — স্থানীয় খবর */}
         {visible('row_news') && (

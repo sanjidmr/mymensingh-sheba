@@ -83,6 +83,7 @@ export default function ListingCard({
 }: ListingCardProps) {
   const [imgFailed, setImgFailed] = useState(false);
   const showImage = !imageless && item.imageUrl && !imgFailed;
+  const showRating = item.rating !== undefined && (item.ratingCount ?? 0) > 0;
   const initial = (fallbackLabel || item.title).trim().slice(0, 2);
 
   // Bus cards are a schedule, not a product: the route is the headline and the
@@ -204,24 +205,28 @@ export default function ListingCard({
         )}
 
         {/* Footer CTA */}
-        <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-brand-100 pt-2 sm:pt-2.5">
-          {item.unavailableLabel ? (
-            <span className="truncate text-[11px] font-bold text-ink-400 sm:text-xs">
-              {item.unavailableLabel}
-            </span>
-          ) : (
-            <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
-              <span className="truncate">{item.actionLabel || 'বিস্তারিত'}</span>
-            </span>
-          )}
+        {(item.unavailableLabel || item.actionLabel || showRating) && (
+          <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-brand-100 pt-2 sm:pt-2.5">
+            {item.unavailableLabel ? (
+              <span className="truncate text-[11px] font-bold text-ink-400 sm:text-xs">
+                {item.unavailableLabel}
+              </span>
+            ) : item.actionLabel ? (
+              <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
+                <span className="truncate">{item.actionLabel}</span>
+              </span>
+            ) : (
+              <span />
+            )}
 
-          {item.rating !== undefined && item.ratingCount !== undefined && item.ratingCount > 0 && (
-            <span className="hidden shrink-0 items-center gap-0.5 text-[10px] font-bold text-ink-500 sm:inline-flex">
-              <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" aria-hidden="true" />
-              {item.rating.toFixed(1)}
-            </span>
-          )}
-        </div>
+            {showRating && item.rating !== undefined && (
+              <span className="hidden shrink-0 items-center gap-0.5 text-[10px] font-bold text-ink-500 sm:inline-flex">
+                <Star className="h-2.5 w-2.5 fill-amber-400 text-amber-400" aria-hidden="true" />
+                {item.rating.toFixed(1)}
+              </span>
+            )}
+          </div>
+        )}
       </div>
     </Link>
   );

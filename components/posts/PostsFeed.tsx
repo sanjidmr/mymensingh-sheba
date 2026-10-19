@@ -132,11 +132,7 @@ function FeedCard({ post }: { post: CommunityPost }) {
               label={post.titleBn}
               imgClassName="transition-transform duration-500 group-hover:scale-[1.02]"
             />
-            {post.isFeatured && (
-              <span className="absolute left-2 top-2 rounded-md bg-accent-400 px-2 py-1 text-[10px] font-extrabold text-brand-950 shadow-sm">
-                ফিচার্ড
-              </span>
-            )}
+
           </div>
         )}
 

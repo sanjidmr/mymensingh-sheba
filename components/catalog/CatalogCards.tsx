@@ -200,7 +200,7 @@ export function BannerCard({
   description,
   isVerified,
   badge,
-  actionLabel = 'বিস্তারিত',
+  actionLabel,
   actionHref,
   tone = 'brand',
   ratingAvg,
@@ -288,13 +288,15 @@ export function BannerCard({
 
         <FactChips items={chips ?? []} max={3} className="mt-1.5" />
 
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-brand-100 pt-2">
-          <span
-            className={`flex min-w-0 items-center gap-1 text-[11px] font-bold sm:text-xs ${accent}`}
-          >
-            <span className="truncate">{actionLabel}</span>
-          </span>
-        </div>
+        {actionLabel && (
+          <div className="mt-auto flex items-center justify-between gap-2 border-t border-brand-100 pt-2">
+            <span
+              className={`flex min-w-0 items-center gap-1 text-[11px] font-bold sm:text-xs ${accent}`}
+            >
+              <span className="truncate">{actionLabel}</span>
+            </span>
+          </div>
+        )}
       </div>
     </Link>
   );
@@ -333,7 +335,7 @@ export function TileCard({
   badge,
   badgeTone = 'brand',
   isVerified,
-  actionLabel = 'বিস্তারিত',
+  actionLabel,
   actionHref,
 }: TileCardProps) {
   const toneClass =
@@ -391,11 +393,13 @@ export function TileCard({
 
         <FactChips items={chips ?? []} max={2} className="mt-1.5" />
 
-        <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-brand-100 pt-2 sm:pt-2.5">
-          <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
-            <span className="truncate">{actionLabel}</span>
-          </span>
-        </div>
+        {actionLabel && (
+          <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-brand-100 pt-2 sm:pt-2.5">
+            <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
+              <span className="truncate">{actionLabel}</span>
+            </span>
+          </div>
+        )}
       </div>
     </Link>
   );

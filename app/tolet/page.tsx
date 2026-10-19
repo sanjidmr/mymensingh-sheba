@@ -182,7 +182,6 @@ function ToletDirectory() {
           // needs none, a pending/unavailable one must not read as available.
           badge: isLive ? undefined : statusInfo?.labelBn,
           badgeTone: 'brand' as const,
-          actionLabel: 'বিস্তারিত দেখুন',
           unavailableLabel: isLive ? undefined : statusInfo?.labelBn,
         };
       }),

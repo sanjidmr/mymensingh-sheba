@@ -11,6 +11,7 @@ import {
   NotificationItem,
 } from './supabase/types';
 import { createClient, isSupabaseConfigured } from './supabase/client';
+import { requestAdminEmailAlert } from './admin-email-alerts';
 import { LAUNCH_SERVICES } from './services-data';
 import { MCC_AREAS } from './locations';
 import type { AppRole } from './auth-routes';
@@ -953,7 +954,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       const client = createClient();
       if (client) {
+        const requestId = crypto.randomUUID();
         const { error } = await client.from('service_requests').insert({
+          id: requestId,
           customer_id: user.id,
           service_slug: requestData.serviceSlug,
           status: 'new',
@@ -983,6 +986,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           return { success: false, error: `অনুরোধ সংরক্ষণ করা যায়নি: ${error.message}` };
         }
+        void requestAdminEmailAlert('service_request', requestId);
       }
     }
 

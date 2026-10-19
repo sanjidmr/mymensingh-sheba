@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { Search, Plus, UserRound } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import MymensinghLiveBar from '@/components/MymensinghLiveBar';
@@ -23,7 +23,9 @@ import { SITE_NAV_LINKS } from '@/lib/site-navigation';
  */
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const pathname = usePathname();
+  const router = useRouter();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
     useAuth();
 
@@ -58,9 +60,39 @@ export default function Navbar() {
   const iconBtn =
     'rounded-lg text-ink-600 transition-colors hover:bg-brand-100/60 hover:text-brand-900';
 
+  const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const query = searchQuery.trim();
+    router.push(query ? `/services?q=${encodeURIComponent(query)}` : '/services');
+  };
+
   return (
     <>
       <MymensinghLiveBar />
+      <div className="border-b border-brand-100/70 bg-white px-4 py-2 lg:hidden">
+        <form
+          role="search"
+          onSubmit={submitSearch}
+          className="mx-auto flex h-10 w-full max-w-7xl items-center gap-2 rounded-xl border border-brand-100 bg-mist-50 px-3 focus-within:border-brand-400"
+        >
+          <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
+          <input
+            type="search"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
+            placeholder="সেবা খুঁজুন"
+            aria-label="সেবা খুঁজুন"
+            className="h-full min-w-0 flex-1 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-400"
+          />
+          <button
+            type="submit"
+            aria-label="খুঁজুন"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-400 text-brand-900 transition-colors hover:bg-accent-500"
+          >
+            <Search className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </form>
+      </div>
       <header
         className={`sticky top-0 z-50 ${
           onHome

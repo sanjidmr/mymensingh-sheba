@@ -76,19 +76,7 @@ export default function ServiceCardsSection() {
                       <Icon className="w-6 h-6" />
                     </div>
 
-                    {service.tagBadge && (
-                      <span
-                        className={`text-xs px-2.5 py-1 rounded-full font-medium ${
-                          isBlood
-                            ? 'bg-rose-100 text-rose-800'
-                            : isTolet
-                            ? 'bg-emerald-100 text-emerald-900 font-semibold'
-                            : 'bg-slate-100 text-slate-700'
-                        }`}
-                      >
-                        {service.tagBadge}
-                      </span>
-                    )}
+
                   </div>
 
                   {/* Title */}

@@ -140,9 +140,9 @@ export default function SavedPage() {
                 <div className="mt-4 pt-3 border-t border-brand-100">
                   <Link
                     href={item.linkHref}
+                    aria-label="সংরক্ষিত লিংক খুলুন"
                     className="w-full py-2 px-3 rounded-xl bg-brand-50 text-brand-800 text-xs font-semibold hover:bg-brand-100 flex items-center justify-center gap-1.5 transition-colors"
                   >
-                    <span>বিস্তারিত দেখুন</span>
                     <ExternalLink className="w-3.5 h-3.5" />
                   </Link>
                 </div>

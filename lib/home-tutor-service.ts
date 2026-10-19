@@ -36,6 +36,7 @@ import {
   mockAdminUpdateTutorRequest,
 } from './home-tutor-mock';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
+import { requestAdminEmailAlert } from './admin-email-alerts';
 import { TUTOR_STATUS_META } from './home-tutor-types';
 import { DEMO_TUTOR_PROFILES, getDemoTutor as getDemoTutorProfile } from './home-tutor-demo-data';
 
@@ -274,8 +275,10 @@ export async function createTutorReport(input: {
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
+  const reportId = crypto.randomUUID();
   const { data: user } = await client.auth.getUser();
   const { error } = await client.from('tutor_reports').insert({
+    id: reportId,
     tutor_id: input.tutorId,
     reporter_id: user?.user?.id || null,
     reporter_name: input.reporterName,
@@ -283,6 +286,7 @@ export async function createTutorReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: `রিপোর্ট জমা ব্যর্থ: ${error.message}` };
+  void requestAdminEmailAlert('tutor_reports', reportId);
   return { success: true };
 }
 

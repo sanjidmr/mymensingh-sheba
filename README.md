@@ -26,6 +26,10 @@
    NEXT_PUBLIC_SUPABASE_URL=""
    NEXT_PUBLIC_SUPABASE_ANON_KEY=""
    SUPABASE_SERVICE_ROLE_KEY=""
+   BREVO_API_KEY=""
+   ADMIN_NOTIFICATION_EMAIL=""
+   EMAIL_FROM=""
+   APP_BASE_URL="https://mymensinghsheba.com"
    ```
 
    `/admin` uses a signed-in Supabase admin account by default. The
@@ -33,6 +37,13 @@
    local UI work only, `DEV_AUTH_BYPASS=1` in `.env.local` skips normal login;
    it is disabled on hosted Vercel environments and is never an authorization
    substitute. Never point it at production or shared customer data.
+
+   Important admin events can also send email through Brevo. Set
+   `BREVO_API_KEY`, `ADMIN_NOTIFICATION_EMAIL` (the administrator's Gmail),
+   `EMAIL_FROM` (a sender address verified in Brevo), and `APP_BASE_URL` in the
+   server environment. Keep these server-only and never use `NEXT_PUBLIC_`
+   names. Email is best-effort and cannot change the result of the underlying
+   database operation.
 
 3. Run the dev server:
 
@@ -61,6 +72,16 @@ to restrict customer service-request updates to cancellation of new/submitted
 requests only.
 Apply `supabase/migrations/20261009230000_customer_post_drafts.sql` to enable
 private, per-category Supabase drafts for signed-in customers.
+Apply `supabase/migrations/20261019200000_admin_email_delivery_tracking.sql`
+after the other incremental migrations to enable deduplicated Brevo alert
+delivery tracking.
+To verify an alert, configure the four Brevo variables and the migration, restart
+the server, then submit a new service request, pending To-Let listing, report,
+or safety/payment complaint. Confirm the server log records delivery and check
+the configured Gmail inbox (including spam). Routine contact messages and
+customer-facing status notifications do not send email. A build never attempts
+real delivery. Brevo rate-limit responses are retried a bounded number of times;
+failed deliveries are recorded for a later retry of the same event.
 
 Signed-in community post drafts are stored in Supabase, scoped by customer and
 post category; anonymous drafts are local to the browser. Images must be

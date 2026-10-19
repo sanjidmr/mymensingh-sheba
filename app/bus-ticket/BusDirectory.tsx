@@ -102,7 +102,6 @@ export default function BusDirectory() {
           'যাচাইয়ের তথ্য নেই',
         ]}
         badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
-        actionLabel="বিস্তারিত"
       />
     );
   }, []);

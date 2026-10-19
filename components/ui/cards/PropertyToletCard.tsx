@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
-import { Badge } from '@/components/ui/Badge';
 import { calculateToletFee } from '@/lib/services-data';
 import { cn } from '@/lib/utils';
 
@@ -65,15 +64,6 @@ export function PropertyToletCard({
     onFavoriteToggle?.(id, next);
   };
 
-  const propertyTypeBangla: Record<string, string> = {
-    seat: 'সিট ভাড়া',
-    mess: 'মেস রুম',
-    hostel: 'হোস্টেল',
-    flat: 'ফ্ল্যাট',
-    sublet: 'সাবলেট',
-    family: 'ফ্যামিলি বাসা',
-  };
-
   return (
     <div
       className={cn(
@@ -113,29 +103,7 @@ export function PropertyToletCard({
           />
         </button>
 
-        {/* Top-Left Badges */}
-        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1 z-10">
-          <span className="px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-xs text-slate-800 text-[11px] font-bold shadow-2xs">
-            {propertyTypeBangla[propertyType] || propertyType}
-          </span>
-          {isVerified && (
-            <Badge variant="verified" size="sm">
-              যাচাইকৃত
-            </Badge>
-          )}
-          {isFeatured && (
-            <Badge variant="featured" size="sm">
-              পছন্দসই
-            </Badge>
-          )}
-        </div>
 
-        {/* Available from badge */}
-        {availableFrom && (
-          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-slate-900/80 text-white text-[11px] font-medium backdrop-blur-xs">
-            উপলব্ধ: {availableFrom}
-          </div>
-        )}
       </div>
 
       {/* Body */}
@@ -202,7 +170,7 @@ export function PropertyToletCard({
               href={`/tolet/${id}`}
               className="px-3.5 py-2 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-xs font-semibold shadow-2xs transition-colors"
             >
-              বিস্তারিত দেখুন
+              বিস্তারিত
             </Link>
           </div>
         </div>

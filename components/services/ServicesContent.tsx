@@ -94,7 +94,7 @@ export default function ServicesContent({ services }: { services: ServiceCategor
       </div>
 
       {/* Services Grid — same compact card size as the homepage */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {filteredServices.map((service) => {
           const route = EMERGENCY_ROUTES[service.slug] ?? `/${service.slug}`;
           const href = selectedArea ? `${route}?area=${selectedArea}` : route;
@@ -119,29 +119,20 @@ export default function ServicesContent({ services }: { services: ServiceCategor
                   </span>
                 </div>
               )}
-              {service.tagBadge && (
-                <span className="absolute left-1.5 top-1.5 inline-flex items-center rounded bg-white/90 px-1 py-px text-[9px] font-bold text-brand-800 ring-1 ring-brand-100 sm:left-2.5 sm:top-2.5 sm:rounded-md sm:px-2 sm:py-0.5 sm:text-[10px]">
-                  {service.tagBadge}
-                </span>
-              )}
+
             </div>
           );
 
           return (
             <Link key={service.id} href={href} className={cardClass}>
               {media}
-              <div className="flex flex-1 flex-col p-1.5 sm:p-3">
-                <h3 className="line-clamp-2 text-[10.5px] font-bold leading-tight text-ink-900 sm:line-clamp-1 sm:text-[13px] sm:leading-snug">
+              <div className="flex flex-1 flex-col p-2 sm:p-3">
+                <h3 className="line-clamp-2 break-words text-[13px] font-bold leading-snug text-ink-900 sm:line-clamp-1 sm:text-[13px]">
                   {service.nameBn}
                 </h3>
-                <p className="mt-0.5 hidden line-clamp-2 text-[11px] leading-relaxed text-ink-500 sm:mt-1 sm:block">
+                <p className="mt-1 line-clamp-2 break-words text-[11.5px] leading-relaxed text-ink-500 sm:mt-1 sm:block sm:text-[11px]">
                   {service.shortDesc}
                 </p>
-                <div className="mt-auto flex pt-1.5 sm:pt-2">
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-bold text-brand-700 transition-colors duration-300 group-hover:text-brand-800 sm:gap-1 sm:text-xs">
-                    বিস্তারিত দেখুন
-                  </span>
-                </div>
               </div>
             </Link>
           );

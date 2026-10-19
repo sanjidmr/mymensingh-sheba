@@ -30,6 +30,7 @@ import {
   mockGetReportsForListing,
 } from './tolet-service-mock';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
+import { requestAdminEmailAlert } from './admin-email-alerts';
 import { mockTrackListingMeta } from './tolet-tracking';
 import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
 import { searchToletAreas } from './tolet-areas';
@@ -331,6 +332,9 @@ export async function createListing(
     .select('*')
     .single();
   if (error) return { success: false, error: error.message };
+  if (targetStatus === 'pending_review' && data?.id) {
+    void requestAdminEmailAlert('tolet_listing', data.id);
+  }
   return { success: true, listing: mapListingRow(data as RawListingRow) };
 }
 
@@ -354,10 +358,12 @@ export async function updateListingOwned(
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
 
   const payload: Record<string, unknown> = toListingInputObject(input);
+  let shouldAlertOnSubmit = false;
   if (mode === 'submit') {
     const existing = await fetchListingById(listingId);
     if (existing && (existing.status === 'rejected' || existing.status === 'draft' || existing.status === 'archived' || existing.status === 'unavailable')) {
       payload.status = 'pending_review';
+      shouldAlertOnSubmit = true;
     }
     if (payload.status === 'pending_review' && existing?.status !== 'pending_review') {
       payload.rejection_reason = null;
@@ -373,6 +379,9 @@ export async function updateListingOwned(
     .maybeSingle();
   if (error) return { success: false, error: error.message };
   if (!data) return { success: false, error: 'বিজ্ঞাপনটি পাওয়া যায়নি' };
+  if (shouldAlertOnSubmit && data.status === 'pending_review') {
+    void requestAdminEmailAlert('tolet_listing', data.id);
+  }
   return { success: true, listing: mapListingRow(data as RawListingRow) };
 }
 
@@ -774,7 +783,9 @@ export async function createListingReport(input: {
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
+  const reportId = crypto.randomUUID();
   const { error } = await client.from('listing_reports').insert({
+    id: reportId,
     listing_id: input.listingId,
     reporter_id: input.reporterId,
     reporter_name: input.reporterName.trim() || 'অতিথি',
@@ -782,6 +793,7 @@ export async function createListingReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: error.message };
+  void requestAdminEmailAlert('listing_reports', reportId);
   return { success: true };
 }
 

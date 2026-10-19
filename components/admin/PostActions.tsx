@@ -81,7 +81,7 @@ export default function PostActions({ post }: { post: AdminPostRow }) {
       <div className="flex flex-wrap items-center gap-1.5">
         <Link
           href={`/admin/posts/${post.id}`}
-          aria-label="বিস্তারিত দেখুন"
+          aria-label="বিস্তারিত"
           title="বিস্তারিত"
           className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-admin-border bg-white text-admin-muted hover:bg-admin-page hover:text-admin-navy"
         >
