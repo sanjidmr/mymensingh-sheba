@@ -202,7 +202,7 @@ function HomeTutorContent() {
           areaName={activeArea?.nameBn}
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
+        <div className="grid grid-cols-1 gap-5 max-sm:grid-cols-2 max-sm:gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filteredTutors.map((tutor) => (
             <TutorCard key={tutor.id} tutor={tutor} />
           ))}

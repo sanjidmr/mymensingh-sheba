@@ -73,15 +73,15 @@ export default function WhySection() {
           </div>
         </Reveal>
 
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <div className="mt-6 grid grid-cols-2 gap-2.5 max-sm:mt-4 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {WHY_ITEMS.map((item, i) => (
             <Reveal key={item.title} delay={i * 60}>
-              <div className="group h-full rounded-2xl border border-brand-100 bg-mist-50/50 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:bg-white hover:shadow-lg hover:shadow-brand-900/5 sm:p-5">
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 text-white shadow-sm transition-colors group-hover:bg-brand-800 sm:h-11 sm:w-11">
-                  <item.icon className="h-5 w-5" />
+              <div className="group h-full rounded-2xl border border-brand-100 bg-mist-50/50 p-4 transition-all duration-300 hover:-translate-y-1 hover:border-brand-200 hover:bg-white hover:shadow-lg hover:shadow-brand-900/5 max-sm:p-3 sm:p-5">
+                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-700 text-white shadow-sm transition-colors group-hover:bg-brand-800 max-sm:h-8 max-sm:w-8 sm:h-11 sm:w-11">
+                  <item.icon className="h-5 w-5 max-sm:h-4 max-sm:w-4" />
                 </span>
-                <h3 className="mt-3 text-[15px] font-bold text-ink-900">{item.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500">{item.text}</p>
+                <h3 className="mt-3 text-[15px] font-bold text-ink-900 max-sm:mt-2 max-sm:text-[13px]">{item.title}</h3>
+                <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500 max-sm:mt-1 max-sm:text-[11px]">{item.text}</p>
               </div>
             </Reveal>
           ))}
@@ -89,19 +89,19 @@ export default function WhySection() {
 
         {/* Points + review invite */}
         <Reveal delay={120}>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+          <div className="mt-4 grid grid-cols-2 gap-2.5 max-sm:mt-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {POINTS.map((point) => (
               <div
                 key={point.title}
-                className="flex h-full flex-col rounded-2xl border border-brand-100 bg-white p-4 sm:p-5"
+                className={`flex h-full flex-col rounded-2xl border border-brand-100 bg-white p-4 max-sm:p-3 sm:p-5 ${point.title === 'বিভিন্ন এলাকায়' ? 'max-sm:hidden' : ''}`}
               >
                 <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-11 sm:w-11">
                   <point.icon className="h-5 w-5" />
                 </span>
-                <h3 className="mt-3 text-[15px] font-bold leading-snug text-ink-900">
+                <h3 className="mt-3 text-[15px] font-bold leading-snug text-ink-900 max-sm:mt-2 max-sm:text-[13px]">
                   {point.title}
                 </h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-ink-500">{point.text}</p>
+                <p className="mt-1 text-[13px] leading-relaxed text-ink-500 max-sm:text-[11px]">{point.text}</p>
               </div>
             ))}
 
@@ -109,13 +109,13 @@ export default function WhySection() {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event('mms:open-review'))}
-              className="group flex h-full flex-col rounded-2xl border border-accent-400/70 bg-accent-400/10 p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-accent-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 sm:p-5"
+              className="group flex h-full flex-col rounded-2xl border border-accent-400/70 bg-accent-400/10 p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-accent-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 max-sm:p-3 sm:p-5"
             >
               <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-400 text-brand-900 shadow-sm sm:h-11 sm:w-11">
                 <Star className="h-5 w-5" />
               </span>
-              <h3 className="mt-3 text-[15px] font-bold text-ink-900">আপনার রিভিউ দিন</h3>
-              <p className="mt-1 text-[13px] leading-relaxed text-ink-600">
+              <h3 className="mt-3 text-[15px] font-bold text-ink-900 max-sm:mt-2 max-sm:text-[13px]">আপনার রিভিউ দিন</h3>
+              <p className="mt-1 text-[13px] leading-relaxed text-ink-600 max-sm:text-[11px]">
                 কোন সেবা নিয়েছেন, অভিজ্ঞতা কেমন — সবার জানান।
               </p>
               <span className="mt-auto pt-3 text-xs font-bold text-brand-800">

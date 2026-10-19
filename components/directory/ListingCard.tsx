@@ -58,12 +58,6 @@ export interface ListingCardProps {
   className?: string;
 }
 
-const TONE_CLASS: Record<NonNullable<ListingCardData['badgeTone']>, string> = {
-  brand: 'bg-brand-700 text-white',
-  accent: 'bg-accent-400 text-brand-950',
-  urgent: 'bg-red-700 text-white',
-};
-
 /**
  * ListingCard — the one card used across every directory page.
  *
@@ -130,29 +124,25 @@ export default function ListingCard({
           </div>
         )}
 
-        {item.badge && (
-          <span
-            className={`absolute left-1.5 top-1.5 inline-flex items-center rounded-md px-1.5 py-[3px] text-[10px] font-extrabold shadow-sm ${
-              TONE_CLASS[item.badgeTone ?? 'brand']
-            }`}
-          >
-            {item.badge}
-          </span>
-        )}
-
-        {item.isVerified && (
-          <span
-            className="absolute right-1.5 top-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-brand-700 shadow-sm"
-            title="ভেরিফাইড"
-          >
-            <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="sr-only">ভেরিফাইড</span>
-          </span>
-        )}
       </div>
 
       {/* Body */}
       <div className="flex flex-1 flex-col p-2.5 sm:p-3.5">
+        {(item.badge || item.isVerified) && (
+          <div className="mb-1 flex flex-wrap items-center gap-1">
+            {item.badge && (
+              <span className="rounded-md bg-mist-100 px-1.5 py-0.5 text-[10px] font-bold text-ink-600">
+                {item.badge}
+              </span>
+            )}
+            {item.isVerified && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-700">
+                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                ভেরিফাইড
+              </span>
+            )}
+          </div>
+        )}
         {/* Price leads on priced variants; on profile/job variants the title
             leads because there is no single number to anchor on. */}
         {item.priceLabel && (

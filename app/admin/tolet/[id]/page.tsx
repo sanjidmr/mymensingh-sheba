@@ -37,7 +37,7 @@ import {
 import { ListingStatusBadge, RequestStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletListingStatsPanel } from '@/components/tolet/admin/ToletAnalytics';
 import ToletRequestActions from '@/components/admin/ToletRequestActions';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 
 interface AdminToletDetailProps {
   params: Promise<{ id: string }>;
@@ -193,7 +193,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
     );
   }
 
-  const area = getAreaById(listing.areaId);
+  const area = getToletAreaById(listing.areaId);
   const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
   const statusDescription: Partial<Record<ToletListingStatus, string>> = {
     draft: 'মালিক এখনও চূড়ান্তভাবে জমা দেননি; এই অবস্থা পাবলিক্যালি দেখা যাবে না।',

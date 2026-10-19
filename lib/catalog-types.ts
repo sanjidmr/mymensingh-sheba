@@ -20,7 +20,7 @@
  * number only ever comes from the database, entered by an admin. Nothing in
  * this file is seeded into the UI as content.
  */
-import { getAllMCCAreas } from './locations';
+import { getAllMCCAreas, getAreaById } from './locations';
 
 // ---------------------------------------------------------------------------
 // Admin-curated listings
@@ -979,7 +979,7 @@ export function areaNames(areaIds: string[]): string {
   if (!areaIds || areaIds.length === 0) return '';
   const byId = new Map(getAllMCCAreas().map((a) => [a.id, a.nameBn]));
   const names = areaIds
-    .map((id) => byId.get(id))
+    .map((id) => byId.get(id) ?? getAreaById(id)?.nameBn)
     .filter((n): n is string => Boolean(n));
   if (names.length === 0) return '';
   if (names.length <= 2) return names.join(', ');

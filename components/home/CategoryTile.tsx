@@ -60,7 +60,7 @@ export default function CategoryTile({
         {media}
       </span>
       <span
-        className={`mt-1.5 line-clamp-2 break-words text-center text-[11.5px] font-semibold leading-[1.3] tracking-tight transition-colors sm:mt-2 sm:text-[13px] lg:text-sm ${
+        className={`mt-1.5 line-clamp-2 break-words text-center text-[12px] font-bold leading-[1.4] tracking-normal transition-colors sm:mt-2 sm:text-[13.5px] lg:text-sm ${
           red ? 'text-red-700 group-hover:text-red-800' : 'text-ink-900 group-hover:text-brand-700'
         }`}
       >

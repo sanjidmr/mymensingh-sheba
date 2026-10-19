@@ -27,8 +27,8 @@ interface ServiceOption {
 const SERVICE_OPTIONS: ServiceOption[] = [
   { id: 'tolet', nameBn: 'বাসা ভাড়া (To-Let)', category: 'আবাসন', route: '/tolet', icon: Home },
   { id: 'kajer-bua', nameBn: 'কাজের বুয়া', category: 'গৃহকর্মী', route: '/kajer-bua', icon: Sparkles },
-  { id: 'electrician', nameBn: 'Electrician', category: 'মেরামত', route: '/electrician', icon: Zap },
-  { id: 'plumber', nameBn: 'Plumber', category: 'মেরামত', route: '/plumber', icon: Wrench },
+  { id: 'electrician', nameBn: 'ইলেকট্রিশিয়ান', category: 'মেরামত', route: '/electrician', icon: Zap },
+  { id: 'plumber', nameBn: 'প্লাম্বার', category: 'মেরামত', route: '/plumber', icon: Wrench },
   { id: 'home-moving', nameBn: 'বাসা পাল্টানো', category: 'শিফটিং', route: '/home-moving', icon: Truck },
   { id: 'home-tutor', nameBn: 'গৃহশিক্ষক', category: 'শিক্ষা', route: '/home-tutor', icon: GraduationCap },
   { id: 'blood-donor', nameBn: 'রক্তদাতা', category: 'জরুরি', route: '/blood-donor', icon: HeartHandshake },
@@ -68,7 +68,7 @@ export default function HeroServiceFinder() {
         {/* Local Verification Tag */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-emerald-100/80 text-emerald-900 text-xs sm:text-sm font-medium mb-5 shadow-2xs">
           <ShieldCheck className="w-4 h-4 text-emerald-700" />
-          <span>শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশন এলাকার জন্য (৩৩টি ওয়ার্ড)</span>
+          <span>ময়মনসিংহ সিটি কর্পোরেশন এলাকার জন্য</span>
         </div>
 
         {/* Primary Question Headline */}
@@ -77,7 +77,7 @@ export default function HeroServiceFinder() {
         </h1>
 
         <p className="text-base sm:text-lg text-slate-600 max-w-2xl mx-auto mb-8 font-normal leading-relaxed">
-          বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, শিফটিং, গৃহশিক্ষক কিংবা জরুরি রক্তদাতা — সম্পূর্ণ সিটি কর্পোরেশন এলাকার ভেরিফাইড সেবা এক ঠিকানায়।
+          বাসা ভাড়া, কাজের বুয়া, ইলেকট্রিশিয়ান, শিফটিং, গৃহশিক্ষক কিংবা জরুরি রক্তদাতা — ময়মনসিংহ সিটি কর্পোরেশন এলাকার সেবা এক ঠিকানায়।
         </p>
 
         {/* Central Search Card */}
@@ -170,7 +170,7 @@ export default function HeroServiceFinder() {
           <div className="mt-5 pt-4 border-t border-slate-100 flex flex-wrap items-center justify-center sm:justify-start gap-4 text-xs text-slate-500">
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />
-              <span>৩৩টি সাধারণ ওয়ার্ডের কেন্দ্রীয় ডাটাবেজ</span>
+              <span>এলাকাভিত্তিক কেন্দ্রীয় ডাটাবেজ</span>
             </span>
             <span className="flex items-center gap-1.5">
               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700" />

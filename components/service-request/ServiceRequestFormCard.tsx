@@ -22,7 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getAllMCCAreas, getAreaById } from '@/lib/locations';
+import { getAllMCCAreas, getAreaById, isInsideMCC } from '@/lib/locations';
 import {
   REQUEST_TIME_OPTIONS,
   formatAnswersBn,
@@ -106,10 +106,12 @@ interface FormState {
   locations: LocationMap;
   preferredDate: string;
   preferredTime: string;
+  preferredTimeCustom: string;
   details: string;
 }
 
 type Status = 'idle' | 'submitting' | 'success' | 'error';
+const CUSTOM_OPTION = '__custom__';
 
 export interface ServiceRequestFormCardProps {
   config: ServiceRequestPageConfig;
@@ -152,6 +154,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
     locations: { work: emptyLocation(), destination: emptyLocation() },
     preferredDate: '',
     preferredTime: '',
+    preferredTimeCustom: '',
     details: '',
   }));
 
@@ -188,7 +191,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
           // an existing selection.
           areaId:
             prev.locations.work.areaId ||
-            (getAreaById(user.primaryAreaId) ? (user.primaryAreaId ?? '') : ''),
+            (isInsideMCC(user.primaryAreaId) ? (user.primaryAreaId ?? '') : ''),
         },
       },
     }));
@@ -329,6 +332,12 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
     }
 
     if (!form.serviceType) next.serviceType = `${config.serviceTypesLabel} একটি বেছে নিন`;
+    if (
+      form.serviceType === CUSTOM_OPTION &&
+      !String(form.answers.serviceTypeCustom ?? '').trim()
+    ) {
+      next.serviceType = `${config.serviceTypesLabel} নিজে লিখুন`;
+    }
 
     for (const block of config.locations) {
       const location = form.locations[block.key];
@@ -343,12 +352,20 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
     }
 
     for (const field of config.fields) {
-      if (!field.required) continue;
       const value = form.answers[field.name];
+      const customSelected = Array.isArray(value)
+        ? value.includes(CUSTOM_OPTION)
+        : value === CUSTOM_OPTION;
+      const customValue = String(form.answers[`${field.name}Custom`] ?? '').trim();
       const empty =
         value === undefined ||
         (Array.isArray(value) ? value.length === 0 : !value.trim());
-      if (empty) next[field.name] = `${field.label} — একটি বেছে নিন বা লিখুন`;
+      if ((field.required && empty) || (customSelected && !customValue)) {
+        next[field.name] = `${field.label} — একটি বেছে নিন বা লিখুন`;
+      }
+    }
+    if (form.preferredTime === CUSTOM_OPTION && !form.preferredTimeCustom.trim()) {
+      next.preferredTime = 'সময়ের বিবরণ লিখুন';
     }
 
     if (file) {
@@ -402,11 +419,17 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
             ? { destination: form.locations.destination }
             : {}),
         },
-        serviceType: form.serviceType,
+        serviceType:
+          form.serviceType === CUSTOM_OPTION
+            ? String(form.answers.serviceTypeCustom ?? '').trim()
+            : form.serviceType,
         answers: { ...form.answers, serviceType: form.serviceType },
         details: form.details,
         preferredDate: form.preferredDate,
-        preferredTime: form.preferredTime,
+        preferredTime:
+          form.preferredTime === CUSTOM_OPTION
+            ? form.preferredTimeCustom.trim()
+            : form.preferredTime,
         file,
       },
       user.id
@@ -440,6 +463,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
       locations: { work: emptyLocation(), destination: emptyLocation() },
       preferredDate: '',
       preferredTime: '',
+      preferredTimeCustom: '',
       details: '',
     });
     setFile(null);
@@ -695,17 +719,62 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                     </label>
                   );
                 })}
+                {config.allowCustomServiceType && (
+                  <label className="block cursor-pointer">
+                    <input
+                      type="radio"
+                      name="serviceType"
+                      value={CUSTOM_OPTION}
+                      checked={form.serviceType === CUSTOM_OPTION}
+                      onChange={() => {
+                        setForm((prev) => ({ ...prev, serviceType: CUSTOM_OPTION }));
+                        clearError('serviceType');
+                      }}
+                      className="peer sr-only"
+                    />
+                    <span className={`${optionClass(form.serviceType === CUSTOM_OPTION)} peer-focus-visible:ring-2 peer-focus-visible:ring-brand-600/40`}>
+                      <Indicator active={form.serviceType === CUSTOM_OPTION} />
+                      <span>নিজে লিখুন</span>
+                    </span>
+                  </label>
+                )}
               </div>
             </Field>
+
+            {config.allowCustomServiceType && form.serviceType === CUSTOM_OPTION && (
+              <Field
+                id="service-type-custom"
+                label="আপনার প্রয়োজনের কাজটি লিখুন"
+                required
+                error={errors.serviceType}
+              >
+                <input
+                  id="service-type-custom"
+                  value={String(form.answers.serviceTypeCustom ?? '')}
+                  onChange={(event) => {
+                    setAnswer('serviceTypeCustom', event.target.value);
+                    clearError('serviceType');
+                  }}
+                  maxLength={160}
+                  placeholder="যেমন: আপনার প্রয়োজনের কাজ"
+                  ref={(element) => {
+                    fieldRefs.current.serviceTypeCustom = element;
+                  }}
+                  className={controlClass(errors.serviceType)}
+                />
+              </Field>
+            )}
 
             {config.fields.map((field) => (
               <DynamicField
                 key={field.name}
                 field={field}
                 value={form.answers[field.name]}
+                customValue={String(form.answers[`${field.name}Custom`] ?? '')}
                 error={errors[field.name]}
                 onChange={(value) => setAnswer(field.name, value)}
                 onToggle={(optionValue) => toggleMulti(field.name, optionValue)}
+                onCustomChange={(value) => setAnswer(`${field.name}Custom`, value)}
                 registerRef={(el) => {
                   fieldRefs.current[field.name] = el;
                 }}
@@ -759,7 +828,22 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                       {option.label}
                     </option>
                   ))}
+                  <option value={CUSTOM_OPTION}>নিজে লিখুন</option>
                 </select>
+                {form.preferredTime === CUSTOM_OPTION && (
+                  <input
+                    value={form.preferredTimeCustom}
+                    onChange={(event) => {
+                      setTop('preferredTimeCustom', event.target.value, 'preferredTime');
+                    }}
+                    maxLength={80}
+                    placeholder="আপনার সুবিধাজনক সময় লিখুন"
+                    className={`${controlClass(errors.preferredTime)} mt-2`}
+                  />
+                )}
+                {errors.preferredTime && (
+                  <p role="alert" className="mt-1 text-xs font-semibold text-red-700">{errors.preferredTime}</p>
+                )}
               </Field>
             )}
           </div>
@@ -1064,7 +1148,7 @@ function LocationBlock({
             <option value="">এলাকা নির্বাচন করুন</option>
             {areas.map((area) => (
               <option key={area.id} value={area.id}>
-                {area.nameBn} — {area.wardLabelBn}
+                {area.nameBn}
               </option>
             ))}
           </select>
@@ -1173,19 +1257,43 @@ function LocationBlock({
 function DynamicField({
   field,
   value,
+  customValue,
   error,
   onChange,
   onToggle,
+  onCustomChange,
   registerRef,
 }: {
   field: ServiceField;
   value: AnswerValue | undefined;
+  customValue: string;
   error?: string;
   onChange: (value: string) => void;
   onToggle: (value: string) => void;
+  onCustomChange: (value: string) => void;
   registerRef: (el: HTMLElement | null) => void;
 }) {
   const selected = Array.isArray(value) ? value : [];
+  const customSelected = Array.isArray(value)
+    ? selected.includes(CUSTOM_OPTION)
+    : value === CUSTOM_OPTION;
+  const customInput =
+    field.allowCustom && customSelected ? (
+      <div className="mt-2">
+        <label htmlFor={`field-${field.name}-custom`} className="mb-1 block text-[12px] font-semibold text-ink-600">
+          নিজের উত্তর লিখুন
+        </label>
+        <input
+          id={`field-${field.name}-custom`}
+          value={customValue}
+          onChange={(event) => onCustomChange(event.target.value)}
+          maxLength={160}
+          placeholder="আপনার উত্তর লিখুন"
+          aria-invalid={Boolean(error && !customValue.trim())}
+          className={controlClass(error && !customValue.trim() ? error : undefined)}
+        />
+      </div>
+    ) : null;
 
   /* Radio group ------------------------------------------------------- */
   if (field.kind === 'radio' && field.options) {
@@ -1233,8 +1341,25 @@ function DynamicField({
                 </label>
               );
             })}
+            {field.allowCustom && (
+              <label className="block cursor-pointer">
+                <input
+                  type="radio"
+                  name={field.name}
+                  value={CUSTOM_OPTION}
+                  checked={customSelected}
+                  onChange={() => onChange(CUSTOM_OPTION)}
+                  className="peer sr-only"
+                />
+                <span className={`${optionClass(customSelected)} peer-focus-visible:ring-2 peer-focus-visible:ring-brand-600/40`}>
+                  <Indicator active={customSelected} />
+                  <span>নিজে লিখুন</span>
+                </span>
+              </label>
+            )}
           </div>
         </fieldset>
+        {customInput}
         {error ? (
           <p
             id={`field-${field.name}-error`}
@@ -1285,8 +1410,25 @@ function DynamicField({
                 </label>
               );
             })}
+            {field.allowCustom && (
+              <label className="block cursor-pointer">
+                <input
+                  type="checkbox"
+                  name={field.name}
+                  value={CUSTOM_OPTION}
+                  checked={customSelected}
+                  onChange={() => onToggle(CUSTOM_OPTION)}
+                  className="peer sr-only"
+                />
+                <span className={`${optionClass(customSelected)} peer-focus-visible:ring-2 peer-focus-visible:ring-brand-600/40`}>
+                  <BoxIndicator active={customSelected} />
+                  <span>নিজে লিখুন</span>
+                </span>
+              </label>
+            )}
           </div>
         </fieldset>
+        {customInput}
         {error ? (
           <p
             id={`field-${field.name}-error`}
@@ -1343,6 +1485,7 @@ function DynamicField({
             {option.label}
           </option>
         ))}
+        {field.allowCustom && <option value={CUSTOM_OPTION}>নিজে লিখুন</option>}
       </select>
     );
   } else if (field.kind === 'date') {
@@ -1384,6 +1527,7 @@ function DynamicField({
       <Field id={id} label={field.label} required={field.required} hint={field.hint} error={error}>
         {control}
       </Field>
+      {customInput}
     </div>
   );
 }
@@ -1479,7 +1623,9 @@ function SuccessPanel({
             {form.preferredDate && (
               <div className="text-[12.5px] leading-relaxed text-ink-600">
                 তারিখ: {form.preferredDate}
-                {form.preferredTime ? `, ${form.preferredTime}` : ''}
+                {form.preferredTime
+                  ? `, ${form.preferredTime === CUSTOM_OPTION ? form.preferredTimeCustom : form.preferredTime}`
+                  : ''}
               </div>
             )}
             {form.details.trim() && (

@@ -47,7 +47,7 @@ import type {
   ToletEventType,
   ToletListingStats,
 } from './tolet-types';
-import { getAreaById } from './locations';
+import { getToletAreaById } from './tolet-areas';
 import { TOLET_PROPERTY_TYPE_INFO } from './tolet-types';
 
 const VISITOR_KEY = 'mms_vid';
@@ -560,7 +560,7 @@ export function describeToletStats(stats: ToletListingStats): {
   typeLabelBn: string;
 } {
   const meta = mockListingMeta.get(stats.listingId);
-  const area = meta ? getAreaById(meta.areaId) : undefined;
+  const area = meta ? getToletAreaById(meta.areaId) : undefined;
   const type = meta?.propertyType as keyof typeof TOLET_PROPERTY_TYPE_INFO | undefined;
   return {
     labelBn: meta?.title ?? stats.listingId,

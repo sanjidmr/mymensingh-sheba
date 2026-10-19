@@ -21,7 +21,7 @@ import type {
   ToletListingStats,
 } from '@/lib/tolet-types';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import { cn } from '@/lib/utils';
 
 /**
@@ -444,7 +444,7 @@ export function ToletAnalyticsTable({ limit = 25 }: { limit?: number }) {
                 </thead>
                 <tbody>
                   {pageRows.map((row) => {
-                    const areaName = row.areaId ? getAreaById(row.areaId)?.nameBn ?? row.areaId : '—';
+                    const areaName = row.areaId ? getToletAreaById(row.areaId)?.nameBn ?? row.areaId : '—';
                     const location = [areaName, row.specificAddress].filter(Boolean).join(' • ');
                     return (
                       <tr key={row.listingId} className="border-b border-slate-100 last:border-0">

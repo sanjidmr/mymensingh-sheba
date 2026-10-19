@@ -24,7 +24,7 @@ const ICONS: Record<ServiceTrustIcon, typeof MapPin> = {
  * skilled or that an electrician is licensed, so no point here says "verified",
  * "guaranteed", "trained" or promises a response time. Each point describes
  * behaviour that is really true of the product — requests land in a real admin
- * board, the area picker only offers the 33 MCC wards, the contact details are
+ * board, the area picker only offers Mymensingh City Corporation areas, the contact details are
  * never shown on a public listing — and the verification point says outright
  * that we try, without claiming to have done it.
  *

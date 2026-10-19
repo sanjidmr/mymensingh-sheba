@@ -72,10 +72,10 @@ export default function Footer() {
 
   return (
     <footer className="border-t border-brand-900 bg-brand-950 text-brand-100/80">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-7 lg:px-8">
-        <div className="grid grid-cols-1 gap-x-4 gap-y-6 sm:grid-cols-2 lg:grid-cols-12 lg:gap-x-7">
+      <div className="mx-auto w-full max-w-7xl px-4 py-6 max-sm:py-4 sm:px-6 sm:py-7 lg:px-8">
+        <div className="grid grid-cols-1 gap-x-4 gap-y-6 max-sm:grid-cols-2 max-sm:gap-x-3 max-sm:gap-y-4 sm:grid-cols-2 lg:grid-cols-12 lg:gap-x-7">
           {/* Brand */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-4">
+          <div className="col-span-1 max-sm:col-span-2 sm:col-span-2 lg:col-span-4">
             <Link href="/" className="inline-flex items-center gap-3">
               <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-white/10">
                 <Image
@@ -100,7 +100,7 @@ export default function Footer() {
 
             <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-bronze-400/25 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-brand-100/90">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-bronze-300" />
-              শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশনের ৩৩টি ওয়ার্ডে সক্রিয়
+              ময়মনসিংহ সিটি কর্পোরেশন এলাকার সেবায়
             </div>
 
             <div className="mt-3 space-y-1.5 text-[13px]">
@@ -202,7 +202,7 @@ export default function Footer() {
           </div>
 
           {/* সহায়তা */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-3">
+          <div className="col-span-1 sm:col-span-2 lg:col-span-3 max-sm:hidden">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">সহায়তা ও অ্যাকাউন্ট</h4>
             <ul className="mt-2.5 space-y-1.5 text-[13px]">
               {supportLinks.map((l) => (
@@ -216,7 +216,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-4 text-xs text-brand-100/60 sm:flex-row">
+        <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-4 text-xs text-brand-100/60 max-sm:mt-4 max-sm:pt-3 sm:flex-row">
           <p>© {currentYear} Mymensingh Sheba (ময়মনসিংহ সেবা)। সর্বস্বত্ব সংরক্ষিত।</p>
           <span className="flex items-center gap-1.5">
             <ShieldCheck className="h-3.5 w-3.5 text-brand-300" />

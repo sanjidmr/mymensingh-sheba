@@ -3,8 +3,8 @@
  *
  * Why this file exists
  * --------------------
- * `lib/locations.ts` is the authoritative, gazette-sourced list of the 33 MCC
- * wards and their areas, but it deliberately carries no geometry: it is a
+ * `lib/locations.ts` is the authoritative area list for Mymensingh City
+ * Corporation, but it deliberately carries no geometry: it is a
  * filter/label system, not a geo index. The listing detail page needs exactly
  * one thing from geography — a human-readable "where is this" map — and that
  * only needs an area centroid, not a polygon.
@@ -60,6 +60,15 @@ const AREA_COORDINATES: Record<string, MymensinghCoordinate> = {
   maskanda: { lat: 24.7716, lng: 90.4154 },
   kewatkhali: { lat: 24.7573, lng: 90.4187 },
   boyra: { lat: 24.7642, lng: 90.4249 },
+  // To-Let-only additions (see lib/tolet-areas.ts). Approximate, city-scale.
+  senbari: { lat: 24.756, lng: 90.402 },
+  'boundary-road': { lat: 24.752, lng: 90.42 },
+  'akua-madrasa-quarter': { lat: 24.7625, lng: 90.3985 },
+  hajibari: { lat: 24.748, lng: 90.413 },
+  'golpukur-par': { lat: 24.749, lng: 90.411 },
+  'boro-bazar': { lat: 24.751, lng: 90.409 },
+  'trishal-bus-stand': { lat: 24.803, lng: 90.402 },
+  'habun-byapari-mor': { lat: 24.759, lng: 90.408 },
 };
 
 /** Centroid for an MCC area id, falling back to the city centre. */

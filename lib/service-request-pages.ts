@@ -12,7 +12,7 @@
  *
  * HONESTY CONTRACT (the same rule /about and /contact already follow)
  * Trust points describe what the product actually does: requests land in a real
- * admin board, location is restricted to the 33 MCC wards, and we do NOT claim
+ * admin board, location is restricted to Mymensingh City Corporation, and we do NOT claim
  * every provider is "verified" — the platform cannot verify tradespeople, so it
  * never says it does. Each trust point below was written against the real
  * implementation, not against a wish list.
@@ -61,6 +61,8 @@ export interface ServiceField {
   /** Supporting line under the label or under the control. */
   hint?: string;
   options?: ServiceFieldOption[];
+  /** Offer a clean free-text alternative after the predefined choices. */
+  allowCustom?: boolean;
 }
 
 /** A location block inside the "ঠিকানা" section. */
@@ -115,6 +117,7 @@ export interface ServiceRequestPageConfig {
   /** The primary choice, stored in `service_requests.service_type`. */
   serviceTypesLabel: string;
   serviceTypes: { id: string; labelBn: string }[];
+  allowCustomServiceType?: boolean;
 
   /** One or more address blocks. */
   locations: ServiceLocationBlock[];
@@ -173,7 +176,7 @@ const CORE_TRUST: ServiceTrustPoint[] = [
   {
     icon: 'map',
     title: 'শুধু ময়মনসিংহ সিটি কর্পোরেশনের ভেতরে',
-    body: 'সিটি কর্পোরেশনের ৩৩টি ওয়ার্ডের তালিকা থেকে এলাকা বেছে নিতে হয়। শহরের বাইরের ঠিকানা এখানে গ্রহণ করা হয় না।',
+    body: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকার তালিকা থেকে ঠিকানা বেছে নিতে হয়। শহরের বাইরের ঠিকানা এখানে গ্রহণ করা হয় না।',
   },
   {
     icon: 'lock',
@@ -216,7 +219,7 @@ const KAJER_BUA: ServiceRequestPageConfig = {
     'ঘরের দৈনন্দিন কাজে একজন ভরসার মানুষ দরকার। আপনার কী কাজ লাগবে, কতক্ষণ লাগবে আর কখন থেকে শুরু করতে হবে — অনুরোধটি এখানেই পাঠিয়ে দিন।',
   metaTitle: 'কাজের বুয়া সেবা অনুরোধ পাঠান | Mymensingh Sheba',
   metaDescription:
-    'ময়মনসিংহ সিটি কর্পোরেশনের ৩৩টি ওয়ার্ডে কাজের বুয়ার অনুরোধ পাঠান — কাজের ধরন, শিফট ও সময় জিজ্ঞেস করে এমন ছক। মোবাইল নম্বর ও ঠিকানা দিয়ে অনুরোধ জমা দিন।',
+    'ময়মনসিংহ সিটি কর্পোরেশন এলাকায় কাজের বুয়ার অনুরোধ পাঠান — কাজের ধরন, শিফট ও সময় জিজ্ঞেস করে এমন ছক। মোবাইল নম্বর ও ঠিকানা দিয়ে অনুরোধ জমা দিন।',
   image: {
     src: '/kajerbua.jpg',
     alt: 'রান্নাঘরে কাজ করছেন একজন গৃহকর্মী',
@@ -235,7 +238,7 @@ const KAJER_BUA: ServiceRequestPageConfig = {
     {
       icon: 'map',
       title: 'শুধু ময়মনসিংহ সিটি কর্পোরেশনের ভেতরে',
-      body: 'সিটি কর্পোরেশনের ৩৩টি ওয়ার্ডের তালিকা থেকে এলাকা বেছে নিতে হয়। শহরের বাইরের ঠিকানা এখানে গ্রহণ করা হয় না।',
+      body: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকার তালিকা থেকে ঠিকানা বেছে নিতে হয়। শহরের বাইরের ঠিকানা এখানে গ্রহণ করা হয় না।',
     },
     CORE_TRUST[1],
     {
@@ -252,6 +255,7 @@ const KAJER_BUA: ServiceRequestPageConfig = {
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
   serviceTypes: withoutAll(KAJER_BUA_WORK_TYPES),
+  allowCustomServiceType: true,
   locations: [
     {
       key: 'work',
@@ -266,6 +270,7 @@ const KAJER_BUA: ServiceRequestPageConfig = {
       label: 'কাজের সময় কোন সময়টা?',
       kind: 'radio',
       required: true,
+      allowCustom: true,
       options: [
         { value: 'morning', label: 'সকাল শিফট', hint: '৭টা – ১০টা' },
         { value: 'afternoon', label: 'দুপুর শিফট', hint: '১০টা – ২টা' },
@@ -278,6 +283,7 @@ const KAJER_BUA: ServiceRequestPageConfig = {
       label: 'কত ঘণ্টা বা কতদিন লাগবে?',
       kind: 'select',
       required: true,
+      allowCustom: true,
       options: [
         { value: 'daily_short', label: 'প্রতিদিন ২–৩ ঘণ্টা' },
         { value: 'daily_long', label: 'প্রতিদিন ৪–৬ ঘণ্টা' },
@@ -365,6 +371,7 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
   serviceTypes: withoutAll(ELECTRICIAN_SERVICE_TYPES),
+  allowCustomServiceType: true,
   locations: [
     {
       key: 'work',
@@ -379,6 +386,7 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
       label: 'কোন জিনিসে সমস্যা?',
       kind: 'checkboxes',
       required: true,
+      allowCustom: true,
       hint: 'একাধিকটি বেছে নিতে পারেন।',
       options: [
         { value: 'fan_light', label: 'ফ্যান বা লাইট' },
@@ -452,6 +460,7 @@ const PLUMBER: ServiceRequestPageConfig = {
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
   serviceTypes: withoutAll(PLUMBING_SERVICE_TYPES),
+  allowCustomServiceType: true,
   locations: [
     {
       key: 'work',
@@ -466,6 +475,7 @@ const PLUMBER: ServiceRequestPageConfig = {
       label: 'কোথায় সমস্যা?',
       kind: 'checkboxes',
       required: true,
+      allowCustom: true,
       hint: 'একাধিকটি বেছে নিতে পারেন।',
       options: [
         { value: 'pipe_line', label: 'পানির পাইপ বা লাইন' },
@@ -532,7 +542,7 @@ const BASHA_PALTANO: ServiceRequestPageConfig = {
     {
       icon: 'map',
       title: 'দুই ঠিকানাই ময়মনসিংহের ভেতরে',
-      body: 'কোথা থেকে যেখানে যাচ্ছেন, দুই জায়গাই সিটি কর্পোরেশনের ৩৩টি ওয়ার্ডের তালিকা থেকে বেছে নিতে হয়।',
+      body: 'কোথা থেকে যেখানে যাচ্ছেন, দুই জায়গাই ময়মনসিংহ সিটি কর্পোরেশন এলাকার তালিকা থেকে বেছে নিতে হয়।',
     },
     CORE_TRUST[1],
     CORE_TRUST[2],
@@ -540,6 +550,7 @@ const BASHA_PALTANO: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
+  allowCustomServiceType: true,
   serviceTypes: [
     { id: 'full_move', labelBn: 'পুরো বাসা পাল্টানো' },
     { id: 'small_items', labelBn: 'অল্প কিছু জিনিস সরানো' },
@@ -568,6 +579,7 @@ const BASHA_PALTANO: ServiceRequestPageConfig = {
       label: 'কী কী জিনিস সরাতে হবে?',
       kind: 'checkboxes',
       required: true,
+      allowCustom: true,
       hint: 'একাধিকটি বেছে নিতে পারেন।',
       options: [
         { value: 'bed_furniture', label: 'বিছানা-ম্যাট্রেস ও ফার্নিচার' },
@@ -662,6 +674,7 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
+  allowCustomServiceType: true,
   serviceTypes: [
     { id: 'ac_servicing', labelBn: 'এসি সার্ভিসিং' },
     { id: 'ac_gas_charge', labelBn: 'এসি-তে গ্যাস চার্জ' },
@@ -704,6 +717,7 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
       label: 'সমস্যার ধরন',
       kind: 'checkboxes',
       required: true,
+      allowCustom: true,
       hint: 'একাধিকটি বেছে নিতে পারেন।',
       options: [
         { value: 'not_cooling', label: 'ঠান্ডা করছে না' },
@@ -793,6 +807,12 @@ export function formatAnswersBn(
   const selectedType = config.serviceTypes.find((type) => type.id === answers.serviceType);
   if (selectedType) {
     lines.push(`${config.serviceTypesLabel} ${selectedType.labelBn}`);
+  } else if (
+    answers.serviceType === '__custom__' &&
+    typeof answers.serviceTypeCustom === 'string' &&
+    answers.serviceTypeCustom.trim()
+  ) {
+    lines.push(`${config.serviceTypesLabel} ${answers.serviceTypeCustom.trim()}`);
   }
 
   for (const field of config.fields) {
@@ -804,6 +824,10 @@ export function formatAnswersBn(
     const label = values
       .map((value) => {
         if (field.kind === 'date') return value;
+        if (value === '__custom__') {
+          const custom = answers[`${field.name}Custom`];
+          return typeof custom === 'string' ? custom.trim() : '';
+        }
         const match = field.options?.find((option) => option.value === value);
         return match ? match.label : value;
       })

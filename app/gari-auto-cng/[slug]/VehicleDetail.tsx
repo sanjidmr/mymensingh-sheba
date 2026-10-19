@@ -24,7 +24,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Phone, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import DirectoryShell from '@/components/directory/DirectoryShell';
 import { DetailSkeleton, CatalogDetailMissing } from '@/components/catalog/CatalogDetailView';
 import {
@@ -150,17 +150,6 @@ export default function VehicleDetail({ slug }: { slug: string }) {
           <div className="space-y-3 lg:sticky lg:top-4">
             <VehiclePricing listing={listing} />
 
-            {/* Admin-only: a real published number, gated in the service layer. */}
-            {listing.contactPhonePrivate && (
-              <a
-                href={`tel:${listing.contactPhonePrivate.replace(/[^\d+]/g, '')}`}
-                className={`flex min-h-11 items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-4 text-[13.5px] font-extrabold text-brand-700 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
-              >
-                <Phone className="h-4 w-4" aria-hidden="true" />
-                সরাসরি কল করুন
-              </a>
-            )}
-
             {/* Mobile: the CTA that reveals the form. Desktop: the form itself,
                 which is why this button is `lg:hidden`. */}
             {!formOpen && (
@@ -184,7 +173,7 @@ export default function VehicleDetail({ slug }: { slug: string }) {
             </div>
 
             <p className="hidden text-center text-[11.5px] leading-relaxed text-ink-400 lg:block">
-              অ্যাডমিন আপনার অনুরোধ পেয়ে সরাসরি কল করে জামালতা ঠিক করাবেন।
+              অনুরোধ পাওয়ার পর অ্যাডমিন আপনার সঙ্গে যোগাযোগ করে ভাড়া ও সময় নিশ্চিত করবেন।
             </p>
           </div>
         </div>

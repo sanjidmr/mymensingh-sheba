@@ -16,7 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BloodGroup } from '@/lib/supabase/types';
-import { MCC_AREAS } from '@/lib/locations';
+import { MCC_AREAS, isInsideMCC } from '@/lib/locations';
 import { uploadDonorProfilePhoto } from '@/lib/blood-donor-service';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -29,7 +29,10 @@ export default function BloodDonorSetupPage() {
 
   const [fullName, setFullName] = useState(bloodDonorProfile?.fullName || user?.fullName || '');
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>(bloodDonorProfile?.bloodGroup || 'O+');
-  const [areaId, setAreaId] = useState(bloodDonorProfile?.areaId || user?.primaryAreaId || 'charpara');
+  const [areaId, setAreaId] = useState(() => {
+    const preferred = bloodDonorProfile?.areaId || user?.primaryAreaId || '';
+    return isInsideMCC(preferred) ? preferred : 'charpara';
+  });
   const [gender, setGender] = useState<'male' | 'female'>(bloodDonorProfile?.gender || 'male');
   const [birthYear, setBirthYear] = useState<number>(bloodDonorProfile?.birthYear || 1998);
   const [weightKg, setWeightKg] = useState<number>(bloodDonorProfile?.weightKg || 65);
@@ -257,7 +260,7 @@ export default function BloodDonorSetupPage() {
                 >
                   {MCC_AREAS.map((area) => (
                     <option key={area.id} value={area.id}>
-                      {area.nameBn} {area.wardNo ? `(ওয়ার্ড ${area.wardNo})` : ''}
+                      {area.nameBn}
                     </option>
                   ))}
                 </select>

@@ -21,7 +21,6 @@ export interface PropertyToletCardProps {
   title: string;
   propertyType: 'seat' | 'mess' | 'hostel' | 'flat' | 'sublet' | 'family';
   areaBn: string;
-  wardNo?: string;
   addressLine?: string;
   rentPrice: number;
   bedrooms?: number;
@@ -41,7 +40,6 @@ export function PropertyToletCard({
   title,
   propertyType,
   areaBn,
-  wardNo,
   addressLine,
   rentPrice,
   bedrooms,
@@ -147,7 +145,6 @@ export function PropertyToletCard({
           <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
             <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
             <span className="font-semibold text-slate-700">{areaBn}</span>
-            {wardNo && <span>• ওয়ার্ড {wardNo}</span>}
           </div>
 
           <Link href={`/tolet/${id}`} className="block group-hover:text-emerald-900 transition-colors">

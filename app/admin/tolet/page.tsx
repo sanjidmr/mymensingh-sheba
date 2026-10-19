@@ -16,7 +16,7 @@ import { adminFetchToletListingMetrics } from '@/lib/tolet-tracking';
 import { TOLET_LISTING_STATUS_INFO, TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletAnalyticsTable } from '@/components/tolet/admin/ToletAnalytics';
-import { getAllMCCAreas, getAreaById } from '@/lib/locations';
+import { getToletAreas, getToletAreaById } from '@/lib/tolet-areas';
 
 const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color: string; active: string }> = [
   { key: 'all', label: 'সব', color: 'bg-slate-200 text-slate-700', active: 'bg-slate-800 text-white' },
@@ -353,7 +353,7 @@ export default function AdminToletPage() {
               </select>
               <select aria-label="এলাকা" value={areaId} onChange={(event) => { setAreaId(event.target.value); setPage(1); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs">
                 <option value="">সব এলাকা</option>
-                {getAllMCCAreas({ activeOnly: false }).map((area) => <option key={area.id} value={area.id}>{area.nameBn}</option>)}
+                {getToletAreas().map((area) => <option key={area.id} value={area.id}>{area.nameBn}</option>)}
               </select>
               <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-500">
                 <span className="shrink-0">তারিখ থেকে</span>
@@ -381,7 +381,7 @@ export default function AdminToletPage() {
               <div className="space-y-3">
                 {listings.map((item) => {
                   const typeInfo = TOLET_PROPERTY_TYPE_INFO[item.propertyType];
-                  const area = getAreaById(item.areaId);
+                  const area = getToletAreaById(item.areaId);
                   const cover = item.photos[0];
                   return (
                     <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 flex items-start gap-4">

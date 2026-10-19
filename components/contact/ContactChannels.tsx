@@ -102,7 +102,7 @@ export default function ContactChannels({
         আপনার বার্তা পাবে।
       </p>
 
-      <ul className="mt-5 space-y-2.5">
+      <ul className="mt-5 space-y-2.5 max-sm:mt-3 max-sm:space-y-2">
         {channels.map((channel) => {
           const Icon = channel.icon;
           const pending = channel.state === 'pending';
@@ -117,13 +117,13 @@ export default function ContactChannels({
                 <a
                   href={href}
                   {...(external ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  className={`group flex min-h-[76px] w-full items-center gap-3.5 rounded-xl border bg-white p-3.5 text-left transition-all duration-200 hover:border-brand-300 hover:shadow-sm sm:p-4 ${LIGHT_FOCUS} ${
+                  className={`group flex min-h-[76px] w-full items-center gap-3.5 rounded-xl border bg-white p-3.5 text-left transition-all duration-200 hover:border-brand-300 hover:shadow-sm max-sm:min-h-16 max-sm:gap-2.5 max-sm:p-2.5 sm:p-4 ${LIGHT_FOCUS} ${
                     pending ? 'border-dashed border-brand-200' : 'border-brand-100'
                   }`}
                 >
                   <span
                     aria-hidden="true"
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors ${
+                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-colors max-sm:h-9 max-sm:w-9 ${
                       pending
                         ? 'bg-mist-100 text-ink-400'
                         : 'bg-brand-50 text-brand-700 group-hover:bg-brand-700 group-hover:text-white'
@@ -143,11 +143,11 @@ export default function ContactChannels({
                         </span>
                       )}
                     </span>
-                    <span className="mt-0.5 block text-[13px] leading-snug text-ink-500">
+                    <span className="mt-0.5 block text-[13px] leading-snug text-ink-500 max-sm:text-xs">
                       {channel.description}
                     </span>
                     <span
-                      className={`mt-1 block text-[12.5px] font-semibold ${
+                      className={`mt-1 block text-[12.5px] font-semibold max-sm:text-[11px] ${
                         pending ? 'text-ink-400' : 'text-brand-700'
                       }`}
                     >
@@ -156,7 +156,7 @@ export default function ContactChannels({
                   </span>
 
                   <span
-                    className={`inline-flex shrink-0 items-center gap-1 text-xs font-bold transition-colors ${
+                    className={`inline-flex shrink-0 items-center gap-1 text-xs font-bold transition-colors max-sm:text-[10px] ${
                       pending
                         ? 'text-ink-500 group-hover:text-ink-700'
                         : 'text-brand-700 group-hover:text-brand-800'

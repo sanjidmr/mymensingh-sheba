@@ -6,7 +6,7 @@ import { ChevronRight, MapPin, ShieldCheck, Share2 } from 'lucide-react';
 import type { ToletListing } from '@/lib/tolet-types';
 import { TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { TOLET_LISTING_STATUS_INFO } from '@/lib/tolet-types';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ShareButton } from '@/components/tolet/detail/ContactActions';
 import { cn } from '@/lib/utils';
@@ -40,7 +40,7 @@ export function ToletDetailHeader({
   userId?: string | null;
   isLoggedIn: boolean;
 }) {
-  const area = getAreaById(listing.areaId);
+  const area = getToletAreaById(listing.areaId);
   const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
   const statusInfo = TOLET_LISTING_STATUS_INFO[listing.status];
   const isLive = listing.status === 'approved';
@@ -107,7 +107,6 @@ export function ToletDetailHeader({
               {listing.specificAddress}
               <span className="text-ink-400">
                 {' '}— {area?.nameBn ?? ''}
-                {area?.wardNo ? `, ${area.wardLabelBn}` : ''}
               </span>
             </span>
           </p>

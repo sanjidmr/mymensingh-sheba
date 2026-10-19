@@ -9,6 +9,7 @@
  * `id` is the key used in filter state and in the URL query string.
  */
 import { getAllMCCAreas } from './locations';
+import { getToletAreas } from './tolet-areas';
 
 export interface FilterOption {
   id: string;
@@ -59,6 +60,24 @@ export function areaFilterGroupMulti(): FilterGroup {
     type: 'multi',
     compact: true,
     options: areas.map((a) => ({ id: a.id, labelBn: a.nameBn })),
+  };
+}
+
+/**
+ * To-Let area facet: the site-wide MCC list PLUS the To-Let-only additions.
+ * Kept separate from `areaFilterGroup` so those additions never surface in the
+ * filters of other directories.
+ */
+export function toletAreaFilterGroup(): FilterGroup {
+  const areas = getToletAreas();
+  return {
+    id: 'area',
+    labelBn: 'এলাকা',
+    type: 'single',
+    options: [
+      { id: 'all', labelBn: 'সব এলাকা' },
+      ...areas.map((a) => ({ id: a.id, labelBn: a.nameBn })),
+    ],
   };
 }
 

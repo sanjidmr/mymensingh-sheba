@@ -44,14 +44,6 @@ const TIME_SLOTS = [
   'যেকোনো সময়',
 ];
 
-const BUDGET_OPTIONS = [
-  '২,০০০৳ এর কম',
-  '২,০০০ – ৪,০০০৳',
-  '৪,০০০ – ৬,০০০৳',
-  '৬,০০০৳ এর বেশি',
-  'আলোচনা সাপেক্ষে',
-];
-
 const SELECT_CLASS =
   'w-full min-h-11 rounded-xl border border-mist-200 bg-white px-3.5 py-2.5 text-[16px] text-ink-900 outline-none transition-colors focus:border-brand-500 sm:min-h-0 sm:text-[13.5px]';
 
@@ -69,7 +61,6 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
   const [subject, setSubject] = useState('math');
   const [mode, setMode] = useState('both');
   const [preferredTime, setPreferredTime] = useState(TIME_SLOTS[2]);
-  const [budget, setBudget] = useState(BUDGET_OPTIONS[2]);
   const [note, setNote] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
@@ -135,7 +126,6 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
         `শ্রেণি: ${classLabel}`,
         `বিষয়: ${subjectLabel}`,
         `মাধ্যম: ${modeLabel}`,
-        `মাসিক বাজেট: ${budget}`,
         note ? `অতিরিক্ত নোট: ${note}` : null,
       ]
         .filter(Boolean)
@@ -274,29 +264,12 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
           </div>
         </div>
 
-        <div>
-          <label htmlFor="tutor-req-budget" className={LABEL_CLASS}>
-            মাসিক বাজেট
-          </label>
-          <select
-            id="tutor-req-budget"
-            value={budget}
-            onChange={(e) => setBudget(e.target.value)}
-            className={SELECT_CLASS}
-          >
-            {BUDGET_OPTIONS.map((b) => (
-              <option key={b} value={b}>
-                {b}
-              </option>
-            ))}
-          </select>
-          <p className="mt-1 text-[11px] text-ink-500">
-            শিক্ষকের প্রত্যাশিত বেতন:{' '}
-            <strong className="font-bold text-ink-700">
-              {formatTutorFee(tutor.expectedSalaryMin, tutor.expectedSalaryMax)}
-            </strong>
-          </p>
-        </div>
+        <p className="rounded-xl bg-mist-50 px-3.5 py-2.5 text-[12px] text-ink-600">
+          শিক্ষকের প্রত্যাশিত বেতন:{' '}
+          <strong className="font-bold text-ink-800">
+            {formatTutorFee(tutor.expectedSalaryMin, tutor.expectedSalaryMax)}
+          </strong>
+        </p>
 
         <div>
           <label htmlFor="tutor-req-note" className={LABEL_CLASS}>

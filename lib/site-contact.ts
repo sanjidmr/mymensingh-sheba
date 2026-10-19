@@ -50,7 +50,7 @@ export const SITE_CONTACT: SiteContact = {
   officeAddress: null,
   officeAddressPendingBn:
     'এখনো কোনো স্থায়ী ভূমিকস্থ অফিস ঠিকানা প্রকাশ করা হয়নি। ঠিকানা প্রকাশিত হলে এখানেই তা যুক্ত হবে।',
-  serviceAreaBn: 'ময়মনসিংহ সিটি কর্পোরেশনের ৩৩টি ওয়ার্ড',
+  serviceAreaBn: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকা',
   serviceAreaMapUrl: 'https://www.google.com/maps/search/?api=1&query=Mymensingh+City+Corporation',
   hoursBn: 'সপ্তাহের ৭ দিন',
 };

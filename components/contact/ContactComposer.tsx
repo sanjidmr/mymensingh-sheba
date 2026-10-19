@@ -22,8 +22,8 @@ export default function ContactComposer({
       aria-label="যোগাযোগের উপায় ও বার্তা পাঠানোর ফর্ম"
       className="border-y border-brand-100/70 bg-mist-50"
     >
-      <div className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
-        <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-12">
+      <div className="mx-auto w-full max-w-7xl px-4 py-10 max-sm:px-3 max-sm:py-6 sm:px-6 sm:py-14 lg:px-8">
+        <div className="grid gap-8 max-sm:gap-5 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-12">
           <Reveal className="lg:sticky lg:top-24">
             <ContactChannels contact={contact} />
           </Reveal>

@@ -4,25 +4,12 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
-import {
-  Menu,
-  X,
-  User,
-  Home,
-  LayoutGrid,
-  Workflow,
-  Info,
-  Phone,
-  ChevronRight,
-  Search,
-  Landmark,
-  Newspaper,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+import { Search, Plus, UserRound } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import MymensinghLiveBar from '@/components/MymensinghLiveBar';
 import NotificationBell from '@/components/account/NotificationBell';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
+import { SITE_NAV_LINKS } from '@/lib/site-navigation';
 
 /**
  * Premium navbar, same on every page.
@@ -35,7 +22,6 @@ import { ListingMedia } from '@/components/catalog/CatalogCards';
  * (logo + hamburger, 44px targets) with a polished drawer.
  */
 export default function Navbar() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const pathname = usePathname();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
@@ -50,25 +36,6 @@ export default function Navbar() {
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
-
-  /**
-   * Shared by the desktop top bar and the mobile drawer so both stay in sync.
-   *
-   * `desktopOnly` marks the one item the top bar carries alone: `/posts`
-   * already has its own slot in the fixed bottom bar on phones, so the drawer
-   * keeps exactly the links it had before instead of growing a duplicate.
-   */
-  type NavLink = { name: string; href: string; icon: LucideIcon; desktopOnly?: boolean };
-
-  const navLinks: NavLink[] = [
-    { name: 'হোম', href: '/', icon: Home },
-    { name: 'সেবা সমূহ', href: '/services', icon: LayoutGrid },
-    { name: 'পোস্ট', href: '/posts', icon: Newspaper, desktopOnly: true },
-    { name: 'কিভাবে কাজ করে', href: '/how-it-works', icon: Workflow },
-    { name: 'আমাদের সম্পর্কে', href: '/about', icon: Info },
-    { name: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh', icon: Landmark },
-    { name: 'যোগাযোগ', href: '/contact', icon: Phone },
-  ];
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -123,7 +90,7 @@ export default function Navbar() {
 
           {/* Desktop links */}
           <nav className="hidden items-center gap-1 lg:flex">
-            {navLinks.map((link) => {
+            {SITE_NAV_LINKS.map((link) => {
               const active = isActive(link.href);
               return (
                 <Link
@@ -207,88 +174,41 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile — notifications + hamburger (search lives in the hero) */}
-          <div className="flex items-center gap-1 lg:hidden">
-            {user && !isAdmin && <NotificationBell />}
-            <button
-              type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="flex h-11 w-11 items-center justify-center rounded-xl text-brand-900 transition-colors hover:bg-brand-100/60"
-              aria-label={mobileMenuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
-              aria-expanded={mobileMenuOpen}
-              aria-controls="mobile-menu"
-            >
-              {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-            </button>
+          {/* Mobile account action — navigation opens from the bottom bar. */}
+          <div className="flex items-center gap-2 lg:hidden">
+            {user && !isAdmin ? (
+              <>
+                <NotificationBell />
+                <Link
+                  href="/register"
+                  className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-accent-400 px-3 text-xs font-extrabold text-brand-950 shadow-sm transition-colors hover:bg-accent-500"
+                >
+                  <Plus className="h-4 w-4" aria-hidden="true" />
+                  পোস্ট করুন
+                </Link>
+              </>
+            ) : user && isAdmin ? (
+              <Link
+                href="/admin"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-bold text-white"
+              >
+                <UserRound className="h-4 w-4" aria-hidden="true" />
+                অ্যাডমিন
+              </Link>
+            ) : authLoading ? (
+              <span aria-hidden="true" className="h-10 w-20 animate-pulse rounded-lg bg-brand-100/60" />
+            ) : (
+              <Link
+                href="/login"
+                className="inline-flex min-h-10 items-center rounded-lg border border-brand-300 px-3 text-xs font-bold text-brand-800 transition-colors hover:bg-brand-50"
+              >
+                লগইন
+              </Link>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Mobile drawer */}
-      {mobileMenuOpen && (
-        <div
-          id="mobile-menu"
-          className="relative z-10 max-h-[calc(100dvh-4rem)] overflow-y-auto border-t border-brand-700/70 bg-white px-4 pb-8 pt-3 shadow-xl lg:hidden"
-        >
-          <nav className="space-y-1">
-            {navLinks
-              .filter((link) => !link.desktopOnly)
-              .map((link) => {
-                const Icon = link.icon;
-                const active = isActive(link.href);
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className={`flex items-center justify-between rounded-xl px-3.5 py-3 text-[15px] font-medium transition-colors ${
-                      active
-                        ? 'bg-brand-50 font-semibold text-brand-800'
-                        : 'text-ink-700 hover:bg-mist-50'
-                    }`}
-                  >
-                    <span className="flex items-center gap-3">
-                      <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : 'text-ink-400'}`} />
-                      {link.name}
-                    </span>
-                    <ChevronRight className="h-4 w-4 text-ink-400" />
-                  </Link>
-                );
-              })}
-          </nav>
-
-          <div className="mt-4 flex flex-col gap-2.5 border-t border-brand-100 pt-4">
-            {!user && !authLoading && (
-              <Link
-                href="/login"
-                onClick={() => setMobileMenuOpen(false)}
-                className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-4 py-3 text-[15px] font-semibold text-brand-800 hover:bg-brand-50"
-              >
-                <User className="h-5 w-5" />
-                লগইন / রেজিস্ট্রেশন
-              </Link>
-            )}
-            <Link
-              href="/services"
-              onClick={() => setMobileMenuOpen(false)}
-              className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 py-3 text-[15px] font-bold text-white shadow-sm hover:bg-brand-800"
-            >
-              সেবা সমূহ দেখুন
-            </Link>
-          </div>
-
-          <div className="mt-4 flex items-center justify-center gap-4 border-t border-brand-100 pt-3.5 text-xs font-semibold text-ink-500">
-            <div className="flex gap-4">
-              <Link href="/safety" onClick={() => setMobileMenuOpen(false)} className="text-brand-800 hover:underline">
-                নিরাপত্তা
-              </Link>
-              <Link href="/help" onClick={() => setMobileMenuOpen(false)} className="text-brand-800 hover:underline">
-                সহায়তা
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
     </header>
     </>
   );

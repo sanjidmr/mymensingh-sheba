@@ -250,7 +250,6 @@ export default function AdminRequestDetailPage({
                   </div>
                   <div className="font-bold text-slate-900">
                     {pickupArea?.nameBn || req.pickupAreaId}
-                    {pickupArea?.wardLabelBn ? ` (${pickupArea.wardLabelBn})` : ''}
                   </div>
                   <div className="text-slate-600 mt-0.5">{req.pickupAddress}</div>
                   {req.pickupFloor && (
@@ -263,7 +262,6 @@ export default function AdminRequestDetailPage({
                   </div>
                   <div className="font-bold text-slate-900">
                     {destArea?.nameBn || req.destinationAreaId}
-                    {destArea?.wardLabelBn ? ` (${destArea.wardLabelBn})` : ''}
                   </div>
                   <div className="text-slate-600 mt-0.5">{req.destinationAddress}</div>
                   {req.destinationFloor && (

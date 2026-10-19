@@ -29,17 +29,19 @@ export function AboutSection({
   className = '',
   id,
   labelledBy,
+  mobileClassName = '',
 }: {
   children: React.ReactNode;
   className?: string;
   id?: string;
   labelledBy: string;
+  mobileClassName?: string;
 }) {
   return (
     <section
       id={id}
       aria-labelledby={labelledBy}
-      className={`py-8 sm:py-12 ${className}`}
+      className={`py-8 sm:py-12 ${mobileClassName} ${className}`}
     >
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">{children}</div>
     </section>

@@ -11,6 +11,7 @@ import {
 import { TUTOR_AVAILABILITY_LABELS, formatTutorFee } from '@/lib/home-tutor-types';
 import { DONOR_AVAILABILITY_LABELS, formatLastDonation } from '@/lib/blood-donor-types';
 import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import { resolveStaffImageUrl } from '@/lib/staff-service';
 import { resolveListingPhotoUrl } from '@/lib/tolet-service';
 import { resolveTutorPhotoUrl } from '@/lib/home-tutor-service';
@@ -51,7 +52,7 @@ const TUTOR_AVAILABILITY_TONE: Record<string, 'green' | 'amber' | 'slate'> = {
 };
 
 export function toletToPreviewCard(listing: ToletListing): HomePreviewCard {
-  const area = getAreaById(listing.areaId);
+  const area = getToletAreaById(listing.areaId);
   const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType] || {
     labelBn: 'বাসা',
     shortLabelBn: 'বাসা',

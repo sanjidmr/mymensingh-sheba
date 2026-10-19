@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { MapPin, Navigation, Map as MapIcon, Loader2 } from 'lucide-react';
 import type { ToletListing } from '@/lib/tolet-types';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import {
   getAreaCoordinate,
   buildOsmEmbedUrl,
@@ -37,7 +37,7 @@ export function PropertyLocation({ listing }: { listing: ToletListing }) {
   const [mapRequested, setMapRequested] = useState(false);
   const [mapLoading, setMapLoading] = useState(true);
 
-  const area = getAreaById(listing.areaId);
+  const area = getToletAreaById(listing.areaId);
   const coord = getAreaCoordinate(listing.areaId);
   const precise = hasAreaCoordinate(listing.areaId);
   const areaName = area?.nameBn ?? listing.areaId;
@@ -62,7 +62,7 @@ export function PropertyLocation({ listing }: { listing: ToletListing }) {
           </p>
           <p className="mt-1 pl-[22px] text-[12px] text-ink-500">
             {areaName}
-            {area?.wardNo ? ` • ${area.wardLabelBn}` : ''} • ময়মনসিংহ সিটি কর্পোরেশন
+            {' • '}ময়মনসিংহ সিটি কর্পোরেশন
           </p>
 
           {/* Landmarks — the part that actually answers "will the commute work?" */}

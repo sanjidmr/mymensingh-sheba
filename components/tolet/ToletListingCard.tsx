@@ -7,7 +7,7 @@ import { MapPin, Bed, Bath, Calendar, Heart, Phone, ShieldCheck } from 'lucide-r
 import { calculateToletFee } from '@/lib/tolet-fees';
 import type { ToletListing } from '@/lib/tolet-types';
 import { TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { useListingContact } from '@/components/tolet/detail/ContactActions';
 import { cn } from '@/lib/utils';
@@ -29,7 +29,7 @@ export function ToletListingCard({
   className,
   compact = false,
 }: ToletListingCardProps) {
-  const area = getAreaById(listing.areaId);
+  const area = getToletAreaById(listing.areaId);
   const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
   const coverPhoto = listing.photos[0] || '';
   const isMessLike = typeInfo?.isMessLike ?? false;
@@ -80,35 +80,28 @@ export function ToletListingCard({
           />
         </button>
 
-        <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1 z-10">
-          <span className="px-2 py-0.5 rounded-md bg-white/95 backdrop-blur-xs text-slate-800 text-[11px] font-bold shadow-2xs">
-            {typeInfo?.labelBn || listing.propertyType}
-          </span>
-          {showStatus && listing.status !== 'approved' && (
-            <ListingStatusBadge status={listing.status} />
-          )}
-          {showVerified && (
-            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-emerald-800 text-white text-[10px] font-semibold">
-              <ShieldCheck className="w-3 h-3" />
-              যাচাইকৃত
-            </span>
-          )}
-        </div>
-
-        {listing.availableFrom && (
-          <div className="absolute bottom-2 left-2 px-2 py-0.5 rounded bg-slate-900/80 text-white text-[11px] font-medium backdrop-blur-xs">
-            উপলব্ধ: {listing.availableFrom}
-          </div>
-        )}
       </div>
 
       {/* Body */}
       <div className="p-4 flex-1 flex flex-col justify-between">
         <div>
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">
+              {typeInfo?.labelBn || listing.propertyType}
+            </span>
+            {showStatus && listing.status !== 'approved' && (
+              <ListingStatusBadge status={listing.status} />
+            )}
+            {showVerified && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-emerald-800">
+                <ShieldCheck className="h-3 w-3" aria-hidden="true" />
+                যাচাইকৃত
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
             <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
             <span className="font-semibold text-slate-700">{area?.nameBn || listing.areaId}</span>
-            {area?.wardNo && <span>• ওয়ার্ড {area.wardNo}</span>}
           </div>
 
           <Link
@@ -121,6 +114,11 @@ export function ToletListingCard({
           </Link>
 
           <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{listing.specificAddress}</p>
+          {listing.availableFrom && (
+            <p className="mt-1 text-[11px] font-medium text-slate-500">
+              উপলব্ধ: {listing.availableFrom}
+            </p>
+          )}
 
           <div className="flex items-center gap-3 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100">
             {!isMessLike && (

@@ -52,16 +52,16 @@ export default function CommunityInviteSection() {
         className="pointer-events-none absolute bottom-10 right-40 hidden h-16 w-16 rotate-12 rounded-xl bg-white/15 ring-1 ring-white/20 lg:block"
       />
 
-      <div className="relative mx-auto w-full max-w-4xl px-4 py-10 text-center sm:px-6 sm:py-12 lg:px-8 lg:py-14">
+      <div className="relative mx-auto w-full max-w-4xl px-4 py-10 text-center max-sm:py-6 sm:px-6 sm:py-12 lg:px-8 lg:py-14">
         <Reveal>
-          <span className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/15 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white sm:text-xs">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/15 px-3.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.18em] text-white max-sm:hidden sm:text-xs">
             <span className="h-2 w-2 rounded-full bg-accent-400" />
             ময়মনসিংহ কমিউনিটির জন্য
           </span>
 
           <h2
             id="community-heading"
-            className="mx-auto mt-4 max-w-2xl text-xl font-extrabold leading-snug tracking-tight text-white sm:text-2xl lg:text-3xl"
+            className="mx-auto mt-4 max-w-2xl text-xl font-extrabold leading-snug tracking-tight text-white max-sm:mt-2 sm:text-2xl lg:text-3xl"
           >
             আপনার সেবা, আপনার তথ্য —{' '}
             <span className="relative inline-block">
@@ -73,35 +73,35 @@ export default function CommunityInviteSection() {
             </span>
           </h2>
 
-          <p className="mx-auto mt-4 max-w-2xl text-[13px] leading-relaxed text-white/90 sm:text-[15px]">
+          <p className="mx-auto mt-4 max-w-2xl text-[13px] leading-relaxed text-white/90 max-sm:mt-2.5 max-sm:text-[12px] sm:text-[15px]">
             ময়মনসিংহ সিটি কর্পোরেশন এলাকার মানুষের জন্য তৈরি এই প্ল্যাটফর্মে আপনার
             প্রয়োজনের সেবাটি খুঁজে নিন, আর আপনার নিজের সেবা বা তথ্য সহজেই সবার সামনে
             তুলে ধরুন — ছোট-বড় সব প্রয়োজনে আমরা পাশে।
           </p>
 
           {/* উপকারিতা */}
-          <ul className="mt-5 flex flex-wrap items-center justify-center gap-2 sm:gap-2.5">
+          <ul className="mt-5 flex flex-wrap items-center justify-center gap-2 max-sm:mt-3 max-sm:gap-1.5 sm:gap-2.5">
             {BENEFITS.map((benefit) => {
               const Icon = benefit.icon;
               return (
                 <li
                   key={benefit.label}
-                  className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5"
+                  className="inline-flex min-h-[38px] items-center gap-2 rounded-lg border border-white/25 bg-white/10 px-3 py-1.5 max-sm:min-h-9 max-sm:gap-1.5 max-sm:px-2"
                 >
                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md bg-white text-brand-700">
                     <Icon className="h-3.5 w-3.5" />
                   </span>
-                  <span className="text-xs font-semibold text-white">{benefit.label}</span>
+                  <span className="text-xs font-semibold text-white max-sm:text-[11px]">{benefit.label}</span>
                 </li>
               );
             })}
           </ul>
 
           {/* পথ — তথ্য যোগ · উপায় · রিভিউ · যোগাযোগ */}
-          <div className="mt-6 flex flex-col items-center justify-center gap-2.5 sm:flex-row sm:flex-wrap sm:gap-3">
+          <div className="mt-6 flex flex-col items-center justify-center gap-2.5 max-sm:mt-4 max-sm:flex-row max-sm:flex-wrap max-sm:gap-2 sm:flex-row sm:flex-wrap sm:gap-3">
             <Link
               href="/register"
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-brand-800 shadow-sm transition-colors duration-150 hover:bg-mist-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:w-auto"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-brand-800 shadow-sm transition-colors duration-150 hover:bg-mist-50 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 max-sm:w-[calc(50%-0.25rem)] max-sm:px-2 max-sm:text-xs sm:w-auto"
             >
               <PenSquare className="h-4 w-4 shrink-0" />
               আপনার তথ্য / সেবা যোগ করুন
@@ -109,7 +109,7 @@ export default function CommunityInviteSection() {
 
             <Link
               href="/how-it-works"
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-5 py-2.5 text-sm font-bold text-brand-900 shadow-sm transition-colors duration-150 hover:bg-accent-500 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:w-auto"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-5 py-2.5 text-sm font-bold text-brand-900 shadow-sm transition-colors duration-150 hover:bg-accent-500 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 max-sm:w-[calc(50%-0.25rem)] max-sm:px-2 max-sm:text-xs sm:w-auto"
             >
               <Workflow className="h-4 w-4 shrink-0" />
               সেবা নেওয়া ও দেওয়ার উপায় দেখুন
@@ -118,7 +118,7 @@ export default function CommunityInviteSection() {
             <button
               type="button"
               onClick={() => window.dispatchEvent(new Event('mms:open-review'))}
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-transparent px-5 py-2.5 text-sm font-bold text-white transition-colors duration-150 hover:bg-white/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:w-auto"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-transparent px-5 py-2.5 text-sm font-bold text-white transition-colors duration-150 hover:bg-white/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 max-sm:w-[calc(50%-0.25rem)] max-sm:px-2 max-sm:text-xs sm:w-auto"
             >
               <Star className="h-4 w-4 shrink-0" />
               আপনার রিভিউ দিন
@@ -126,7 +126,7 @@ export default function CommunityInviteSection() {
 
             <Link
               href="/contact"
-              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-transparent px-5 py-2.5 text-sm font-bold text-white transition-colors duration-150 hover:bg-white/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:w-auto"
+              className="inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl border border-white/60 bg-transparent px-5 py-2.5 text-sm font-bold text-white transition-colors duration-150 hover:bg-white/10 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 max-sm:w-[calc(50%-0.25rem)] max-sm:px-2 max-sm:text-xs sm:w-auto"
             >
               <MessageCircle className="h-4 w-4 shrink-0" />
               আমাদের সাথে যোগাযোগ

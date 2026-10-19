@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { MapPin, X, ChevronDown } from 'lucide-react';
-import { MCCArea, getAreaById } from '@/lib/locations';
+import { MCC_AREA_SOURCE, type AreaSource, type MCCArea } from '@/lib/locations';
 import LocationPickerModal from './LocationPickerModal';
 
 interface LocationSelectInputProps {
@@ -14,7 +14,8 @@ interface LocationSelectInputProps {
   allowClear?: boolean;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
-  showWardBadge?: boolean;
+  /** Area list to search; defaults to the site-wide MCC list. */
+  source?: AreaSource;
 }
 
 export default function LocationSelectInput({
@@ -26,10 +27,10 @@ export default function LocationSelectInput({
   allowClear = true,
   className = '',
   size = 'md',
-  showWardBadge = true,
+  source = MCC_AREA_SOURCE,
 }: LocationSelectInputProps) {
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const selectedArea = getAreaById(value);
+  const selectedArea = source.byId(value);
 
   const handleSelectArea = (area: MCCArea | null) => {
     if (area) {
@@ -91,11 +92,6 @@ export default function LocationSelectInput({
               <span className="font-bold text-slate-900 truncate">
                 {selectedArea.nameBn}
               </span>
-              {showWardBadge && (
-                <span className="shrink-0 text-[11px] bg-emerald-100/70 text-emerald-900 px-2 py-0.5 rounded-md font-medium">
-                  {selectedArea.wardLabelBn}
-                </span>
-              )}
             </div>
           ) : (
             <span className="text-slate-400 truncate">{placeholder}</span>
@@ -136,6 +132,7 @@ export default function LocationSelectInput({
         onSelectArea={handleSelectArea}
         title={label || 'আপনার এলাকা বেছে নিন'}
         allowClear={allowClear}
+        source={source}
       />
     </div>
   );

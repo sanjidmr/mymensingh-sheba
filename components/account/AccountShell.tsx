@@ -63,7 +63,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
     <div data-dashboard-shell className="min-h-screen overflow-x-clip bg-[#faf9f6]">
       <Navbar />
 
-      <main className="mx-auto w-full max-w-7xl px-3 py-4 pb-24 sm:px-5 sm:py-6 sm:pb-24 lg:flex lg:gap-6 lg:px-7 lg:pb-8">
+      <main className="mx-auto w-full max-w-7xl px-3 py-4 pb-24 max-sm:px-2.5 max-sm:py-3 sm:px-5 sm:py-6 sm:pb-24 lg:flex lg:gap-6 lg:px-7 lg:pb-8">
         <aside className="hidden w-60 shrink-0 lg:block">
           <nav aria-label="অ্যাকাউন্ট মেনু" className="sticky top-24 border-r border-brand-100 pr-4">
             <p className="px-3 pb-3 pt-2 text-[11px] font-extrabold tracking-wide text-ink-400">
@@ -106,8 +106,8 @@ export default function AccountShell({ children }: { children: React.ReactNode }
           </nav>
         </aside>
         <div className="min-w-0 flex-1 lg:max-w-5xl">
-          <nav className="mb-4 overflow-x-auto lg:hidden" aria-label="অ্যাকাউন্ট মেনু">
-            <div className="flex w-max min-w-full gap-1 border-b border-brand-100">
+          <nav className="mb-4 overflow-x-auto lg:hidden max-sm:mb-3 max-sm:overflow-visible" aria-label="অ্যাকাউন্ট মেনু">
+            <div className="flex w-max min-w-full gap-1 border-b border-brand-100 max-sm:grid max-sm:w-full max-sm:grid-cols-4 max-sm:gap-1 max-sm:border-0">
               {ACCOUNT_LINKS.map((item) => {
                 const Icon = item.icon;
                 const active = item.href === '/dashboard'
@@ -118,7 +118,7 @@ export default function AccountShell({ children }: { children: React.ReactNode }
                     key={item.href}
                     href={item.href}
                     aria-current={active ? 'page' : undefined}
-                    className={`flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-xs font-semibold transition-colors ${
+                    className={`flex min-h-11 shrink-0 items-center gap-2 border-b-2 px-3 text-xs font-semibold transition-colors max-sm:min-w-0 max-sm:flex-col max-sm:justify-center max-sm:gap-1 max-sm:rounded-lg max-sm:border max-sm:px-1 max-sm:py-2 max-sm:text-center max-sm:text-[10px] ${
                       active
                         ? 'border-brand-700 bg-brand-50/70 text-brand-800'
                         : 'border-transparent text-ink-600 hover:bg-white'

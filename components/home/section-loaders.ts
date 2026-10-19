@@ -45,3 +45,19 @@ export const loadMarketCards = (): Promise<HomePreviewCard[]> =>
 /** স্থানীয় খবর — approved news posts (empty until the first real post). */
 export const loadNewsCards = (): Promise<HomePreviewCard[]> =>
   fetchApprovedPosts('news').then((posts) => posts.map(postToPreviewCard));
+
+/** খবর, চাকরি ও কেনাবেচা — একই স্থানীয় কমিউনিটি ফিডের সর্বশেষ পোস্ট। */
+export const loadCommunityPostCards = (): Promise<HomePreviewCard[]> =>
+  Promise.all([
+    fetchApprovedPosts('news'),
+    fetchApprovedPosts('job'),
+    fetchApprovedPosts('buy_sell'),
+  ]).then(([news, jobs, market]) =>
+    [...news, ...jobs, ...market]
+      .sort(
+        (a, b) =>
+          new Date(b.publishedAt || b.createdAt).getTime() -
+          new Date(a.publishedAt || a.createdAt).getTime()
+      )
+      .map(postToPreviewCard)
+  );

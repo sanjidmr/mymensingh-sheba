@@ -139,23 +139,30 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
     const budgetNumber = budgetDigits ? Number(budgetDigits) : undefined;
     const passengerDigits = latinDigits(passengers).replace(/[^\d]/g, '');
 
-    const result = await createVehicleRequest({
-      vehicleListingId: listing.id,
-      vehicleKind: kind,
-      vehicleName: listing.titleBn,
-      contactName: name.trim(),
-      contactPhone: normalised,
-      pickupAreaId: pickup.trim(),
-      destinationAreaId: destination.trim(),
-      travelDate: date || undefined,
-      travelTime: time.trim() || undefined,
-      passengerCount: passengerDigits ? Number(passengerDigits) : undefined,
-      tripDuration: duration.trim() || undefined,
-      budget: budgetNumber && budgetNumber > 0 ? budgetNumber : undefined,
-      notes: notes.trim() || undefined,
-      estimatedDistanceKm: distance!,
-      distanceSource: distanceMode,
-    });
+    let result: Awaited<ReturnType<typeof createVehicleRequest>>;
+    try {
+      result = await createVehicleRequest({
+        vehicleListingId: listing.id,
+        vehicleKind: kind,
+        vehicleName: listing.titleBn,
+        contactName: name.trim(),
+        contactPhone: normalised,
+        pickupAreaId: pickup.trim(),
+        destinationAreaId: destination.trim(),
+        travelDate: date || undefined,
+        travelTime: time.trim() || undefined,
+        passengerCount: passengerDigits ? Number(passengerDigits) : undefined,
+        tripDuration: duration.trim() || undefined,
+        budget: budgetNumber && budgetNumber > 0 ? budgetNumber : undefined,
+        notes: notes.trim() || undefined,
+        estimatedDistanceKm: distance!,
+        distanceSource: distanceMode,
+      });
+    } catch (cause) {
+      setStatus('error');
+      setMessage(cause instanceof Error ? cause.message : 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      return;
+    }
 
     if (result.success) {
       // The row exists in the database; this is a confirmed submission.
@@ -247,7 +254,7 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
         সেবা নেওয়ার অনুরোধ
       </h2>
       <p className="mt-1 text-[12px] leading-relaxed text-ink-500">
-        অ্যাকাউন্ট ছাড়াই পাঠানো যাবে। অ্যাডমিন আপনার অনুরোধ দেখে সরাসরি কল করবেন।
+        আপনার অনুরোধ অ্যাডমিন টিমের কাছে যাবে; তারা যাচাই করে আপনার সঙ্গে যোগাযোগ করবেন।
       </p>
 
       <div className="mt-4 space-y-3">

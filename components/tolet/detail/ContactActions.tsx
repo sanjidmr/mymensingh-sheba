@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { MessageCircle, Phone, Lock, Check } from 'lucide-react';
 import type { ToletEventSource, ToletListing } from '@/lib/tolet-types';
 import { trackToletEvent } from '@/lib/tolet-tracking';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import { cn } from '@/lib/utils';
 
 /**
@@ -69,7 +69,7 @@ export function buildWhatsAppHref(phoneE164: string, message: string): string {
 }
 
 export function buildWhatsAppMessage(listing: ToletListing): string {
-  const area = getAreaById(listing.areaId);
+  const area = getToletAreaById(listing.areaId);
   return [
     `আসসালামু আলাইকুম। আমি Mymensingh Sheba থেকে "${listing.title}" বিজ্ঞাপনটি দেখেছি।`,
     `এলাকা: ${area?.nameBn ?? listing.areaId}`,

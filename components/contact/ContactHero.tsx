@@ -29,7 +29,7 @@ export default function ContactHero({
         <MessageCircleQuestion className="h-full w-full" strokeWidth={0.4} />
       </div>
 
-      <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-8 sm:px-6 sm:pb-14 sm:pt-12 lg:px-8 lg:pb-16 lg:pt-16">
+      <div className="relative mx-auto w-full max-w-7xl px-4 pb-10 pt-8 max-sm:pb-6 max-sm:pt-6 sm:px-6 sm:pb-14 sm:pt-12 lg:px-8 lg:pb-16 lg:pt-16">
         <p className="mms-fade-up inline-flex items-center gap-2 rounded-full border border-brand-700 bg-brand-900 px-3 py-1.5 text-[11px] font-bold text-accent-300 sm:text-xs">
           <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />
           যোগাযোগ
@@ -37,14 +37,14 @@ export default function ContactHero({
 
         <h1
           id="contact-hero-heading"
-          className="mms-fade-up mt-4 max-w-3xl text-[1.75rem] font-extrabold leading-[1.25] tracking-tight text-white sm:text-4xl lg:text-[2.75rem]"
+          className="mms-fade-up mt-4 max-w-3xl text-[1.75rem] font-extrabold leading-[1.25] tracking-tight text-white max-sm:mt-3 max-sm:text-2xl sm:text-4xl lg:text-[2.75rem]"
           style={{ animationDelay: '80ms' }}
         >
           আমাদের সাথে যোগাযোগ করুন
         </h1>
 
         <p
-          className="mms-fade-up mt-4 max-w-2xl text-[15px] leading-relaxed text-brand-100/85 sm:text-base"
+          className="mms-fade-up mt-4 max-w-2xl text-[15px] leading-relaxed text-brand-100/85 max-sm:mt-2.5 max-sm:text-sm sm:text-base"
           style={{ animationDelay: '160ms' }}
         >
           আপনার কোনো প্রশ্ন, পরামর্শ, সমস্যা বা সহযোগিতার প্রয়োজন হলে আমাদের সাথে
@@ -55,7 +55,7 @@ export default function ContactHero({
         {/* Reassurance markers — factual, sourced from SITE_CONTACT rather than
             invented, so nothing here over-promises. */}
         <ul
-          className="mms-fade-up mt-7 flex flex-wrap gap-x-6 gap-y-2.5 border-t border-brand-800 pt-5"
+          className="mms-fade-up mt-7 flex flex-wrap gap-x-6 gap-y-2.5 border-t border-brand-800 pt-5 max-sm:mt-4 max-sm:gap-y-2 max-sm:pt-3"
           style={{ animationDelay: '240ms' }}
         >
           <li className="flex items-center gap-2 text-xs font-medium text-brand-200/90 sm:text-[13px]">
@@ -73,12 +73,12 @@ export default function ContactHero({
         </ul>
 
         <div
-          className="mms-fade-up mt-6"
+          className="mms-fade-up mt-6 max-sm:mt-4"
           style={{ animationDelay: '320ms' }}
         >
           <a
             href="#contact-form"
-            className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-accent-300 sm:w-auto ${DARK_FOCUS}`}
+            className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-accent-300 max-sm:min-h-11 sm:w-auto ${DARK_FOCUS}`}
           >
             বার্তা পাঠান
           </a>

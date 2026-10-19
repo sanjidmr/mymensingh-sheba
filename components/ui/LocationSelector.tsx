@@ -2,7 +2,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { MapPin, Search, X, Check, ChevronDown } from 'lucide-react';
-import { getAllMCCAreas, MCCArea } from '@/lib/locations';
+import {
+  MCC_AREA_SOURCE,
+  type AreaSource,
+  type MCCArea,
+} from '@/lib/locations';
 import { cn } from '@/lib/utils';
 
 export interface LocationSelectorProps {
@@ -12,41 +16,35 @@ export interface LocationSelectorProps {
   placeholder?: string;
   className?: string;
   error?: string;
+  /**
+   * Which area list to search. Defaults to the site-wide MCC list; To-Let
+   * passes `TOLET_AREA_SOURCE` so its extra areas appear here and nowhere else.
+   */
+  source?: AreaSource;
 }
 
 export function LocationSelector({
   selectedAreaId,
   onSelectArea,
-  label = 'এলাকা (ময়মনসিংহ সিটি কর্পোরেশন)',
+  label = 'এলাকা (ময়মনসিংহ সিটি কর্পোরেশন)',
   placeholder = 'এলাকা নির্বাচন করুন',
   className,
   error,
+  source = MCC_AREA_SOURCE,
 }: LocationSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const allAreas = useMemo(() => getAllMCCAreas(), []);
+  const popularAreas = useMemo(() => source.popular(), [source]);
 
   const selectedArea = useMemo(
-    () => allAreas.find((a) => a.id === selectedAreaId) || null,
-    [allAreas, selectedAreaId]
+    () => source.byId(selectedAreaId) ?? null,
+    [source, selectedAreaId]
   );
 
-  const filteredAreas = useMemo(() => {
-    if (!searchQuery.trim()) return allAreas;
-    const q = searchQuery.toLowerCase().trim();
-    return allAreas.filter(
-      (a) =>
-        a.nameBn.toLowerCase().includes(q) ||
-        a.nameEn.toLowerCase().includes(q) ||
-        (a.wardNo && String(a.wardNo).includes(q)) ||
-        a.prominentLandmarks?.some((l) => l.toLowerCase().includes(q))
-    );
-  }, [allAreas, searchQuery]);
-
-  const popularAreas = useMemo(
-    () => ['charpara', 'ganginarpar', 'sankipara', 'kachijhuli', 'akua', 'natun-bazar'],
-    []
+  const filteredAreas = useMemo(
+    () => source.search(searchQuery),
+    [source, searchQuery]
   );
 
   const handleSelect = (area: MCCArea) => {
@@ -91,12 +89,7 @@ export function LocationSelector({
           />
           {selectedArea ? (
             <span className="text-sm font-semibold text-slate-900 truncate">
-              {selectedArea.nameBn}{' '}
-              {selectedArea.wardNo && (
-                <span className="text-xs font-normal text-slate-500">
-                  (ওয়ার্ড {selectedArea.wardNo})
-                </span>
-              )}
+              {selectedArea.nameBn}
             </span>
           ) : (
             <span className="text-sm text-slate-400 truncate">{placeholder}</span>
@@ -143,7 +136,7 @@ export function LocationSelector({
             <div className="p-3 sm:p-3.5 border-b border-slate-100 bg-slate-50/70">
               <div className="flex items-center justify-between sm:hidden mb-2">
                 <span className="text-xs font-bold text-slate-700">
-                  ময়মনসিংহ সিটি কর্পোরেশন এলাকা
+                  ময়মনসিংহ সিটি কর্পোরেশন এলাকা
                 </span>
                 <button
                   type="button"
@@ -168,26 +161,22 @@ export function LocationSelector({
 
               {/* Quick Popular Chips */}
               <div className="flex items-center gap-1.5 overflow-x-auto pt-2 pb-0.5 no-scrollbar text-xs">
-                <span className="text-[11px] text-slate-400 shrink-0">জনপ্রিয়:</span>
-                {popularAreas.map((id) => {
-                  const a = allAreas.find((item) => item.id === id);
-                  if (!a) return null;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => handleSelect(a)}
-                      className={cn(
-                        'px-2 py-0.5 rounded-full text-[11px] whitespace-nowrap shrink-0 border transition-colors',
-                        selectedAreaId === id
-                          ? 'bg-emerald-800 text-white border-emerald-800'
-                          : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600'
-                      )}
-                    >
-                      {a.nameBn}
-                    </button>
-                  );
-                })}
+                <span className="text-[11px] text-slate-400 shrink-0">জনপ্রিয়:</span>
+                {popularAreas.slice(0, 8).map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    onClick={() => handleSelect(a)}
+                    className={cn(
+                      'px-2 py-0.5 rounded-full text-[11px] whitespace-nowrap shrink-0 border transition-colors',
+                      selectedAreaId === a.id
+                        ? 'bg-emerald-800 text-white border-emerald-800'
+                        : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-600'
+                    )}
+                  >
+                    {a.nameBn}
+                  </button>
+                ))}
               </div>
             </div>
 
@@ -211,11 +200,7 @@ export function LocationSelector({
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium">{area.nameBn}</span>
-                          {area.wardNo && (
-                            <span className="text-[10px] px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 font-mono">
-                              ওয়ার্ড {area.wardNo}
-                            </span>
-                          )}
+                          <span className="text-[11px] text-slate-400">{area.nameEn}</span>
                         </div>
                         {area.popularFor && (
                           <div className="text-[11px] text-slate-500 mt-0.5">
@@ -232,7 +217,7 @@ export function LocationSelector({
                 })
               ) : (
                 <div className="p-4 text-center text-xs text-slate-500">
-                  সিটি কর্পোরেশন এলাকার মধ্যে এমন কোনো নাম পাওয়া যায়নি
+                  সিটি কর্পোরেশন এলাকার মধ্যে এমন কোনো নাম পাওয়া যায়নি
                 </div>
               )}
             </div>

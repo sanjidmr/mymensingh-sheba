@@ -84,7 +84,7 @@ export default function ServicesContent({ services }: { services: ServiceCategor
                 <option value="">ময়মনসিংহ সিটি কর্পোরেশনের সব এলাকা</option>
                 {mccAreas.map((area) => (
                   <option key={area.id} value={area.id}>
-                    {area.nameBn} (ওয়ার্ড {area.wardNo})
+                    {area.nameBn}
                   </option>
                 ))}
               </select>

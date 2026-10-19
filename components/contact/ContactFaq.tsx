@@ -22,14 +22,14 @@ export default function ContactFaq() {
       aria-labelledby="contact-faq-heading"
       className="border-t border-brand-100/70 bg-mist-50"
     >
-      <div className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 sm:py-14 lg:px-8">
+      <div className="mx-auto w-full max-w-4xl px-4 py-10 max-sm:py-6 sm:px-6 sm:py-14 lg:px-8">
         <p className="flex items-center gap-2.5 text-xs font-bold text-brand-600 sm:text-[13px]">
           <span aria-hidden="true" className="h-1 w-7 shrink-0 rounded-full bg-accent-400" />
           দ্রুত সহায়তা
         </p>
         <h2
           id="contact-faq-heading"
-          className="mt-3 text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl"
+          className="mt-3 text-xl font-extrabold tracking-tight text-ink-900 max-sm:mt-2 max-sm:text-lg sm:text-2xl"
         >
           প্রায়ই জিজ্ঞাসিত প্রশ্ন
         </h2>
@@ -37,7 +37,7 @@ export default function ContactFaq() {
           এখানে উত্তর না পেলে উপরের ফর্মে লিখে পাঠাতে পারেন।
         </p>
 
-        <ul className="mt-6 divide-y divide-brand-100 overflow-hidden rounded-xl border border-brand-100 bg-white">
+        <ul className="mt-6 divide-y divide-brand-100 overflow-hidden rounded-xl border border-brand-100 bg-white max-sm:mt-4">
           {CONTACT_FAQS.map((faq, index) => {
             const isOpen = openIndex === index;
             const panelId = `contact-faq-panel-${index}`;
@@ -52,7 +52,7 @@ export default function ContactFaq() {
                     aria-expanded={isOpen}
                     aria-controls={panelId}
                     onClick={() => setOpenIndex(isOpen ? null : index)}
-                    className={`flex w-full items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-mist-50 sm:px-5 ${LIGHT_FOCUS}`}
+                    className={`flex w-full items-center gap-3 px-4 py-4 text-left transition-colors duration-200 hover:bg-mist-50 max-sm:px-3 max-sm:py-3 sm:px-5 ${LIGHT_FOCUS}`}
                   >
                     <span className="min-w-0 flex-1 text-[14.5px] font-bold leading-snug text-ink-900 sm:text-[15px]">
                       {faq.questionBn}

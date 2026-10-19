@@ -292,11 +292,9 @@ export default function HowItWorksPage() {
           <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {SELF_POST.map((item) =>
               item.name === 'রক্তদাতা' ? (
-                <BloodDonorCard
-                  key={item.name}
-                  wide
-                  mediaClassName="aspect-[21/9] sm:aspect-[16/9] lg:aspect-square"
-                />
+                <div key={item.name} className="hidden sm:block">
+                  <BloodDonorCard mediaClassName="aspect-[21/9]" />
+                </div>
               ) : (
                 <div
                   key={item.name}

@@ -132,7 +132,7 @@ export default function ContactForm() {
     return (
       <div
         id="contact-form"
-        className="rounded-2xl border border-brand-200 bg-white p-5 sm:p-8"
+        className="rounded-2xl border border-brand-200 bg-white p-5 max-sm:p-4 sm:p-8"
       >
         <div className="flex flex-col items-center text-center sm:py-4">
           <span
@@ -174,13 +174,13 @@ export default function ContactForm() {
       onSubmit={handleSubmit}
       noValidate
       aria-labelledby="contact-form-heading"
-      className="scroll-mt-24 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm sm:p-8"
+      className="scroll-mt-24 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm max-sm:p-4 sm:p-8"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2
             id="contact-form-heading"
-            className="text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl"
+            className="text-xl font-extrabold tracking-tight text-ink-900 max-sm:text-lg sm:text-2xl"
           >
             আপনার বার্তা পাঠান
           </h2>
@@ -217,7 +217,7 @@ export default function ContactForm() {
         </div>
       )}
 
-      <div className="mt-5 space-y-4">
+      <div className="mt-5 space-y-4 max-sm:mt-4 max-sm:space-y-3">
         {/* Name + phone share a row on wider phones, stack on the narrowest. */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
@@ -361,7 +361,7 @@ export default function ContactForm() {
             aria-describedby={
               errors.message ? 'contact-message-error contact-message-count' : 'contact-message-count'
             }
-            className={`${controlClass(errors.message)} min-h-[140px] resize-y leading-relaxed`}
+            className={`${controlClass(errors.message)} min-h-[140px] resize-y leading-relaxed max-sm:min-h-[120px]`}
           />
           <div className="mt-1.5 flex items-start justify-between gap-3">
             <FieldError id="contact-message-error" message={errors.message} />
@@ -378,7 +378,7 @@ export default function ContactForm() {
       <button
         type="submit"
         disabled={disabled}
-        className={`mt-6 inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-6 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70 ${LIGHT_FOCUS}`}
+        className={`mt-6 inline-flex min-h-[50px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-6 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-70 max-sm:mt-4 max-sm:min-h-12 ${LIGHT_FOCUS}`}
       >
         {disabled ? (
           <>

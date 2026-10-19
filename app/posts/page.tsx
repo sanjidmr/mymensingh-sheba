@@ -14,12 +14,12 @@ import PostsFeed from '@/components/posts/PostsFeed';
  * render the Navbar alone — see `components/directory/DirectoryShell.tsx`.
  */
 export const metadata: Metadata = {
-  title: 'কমিউনিটি পোস্ট',
+  title: 'স্থানীয় খবর ও ঘোষণা',
   description:
     'ময়মনসিংহের মানুষদের প্রকাশিত খবর, চাকরি, কেনাবেচা ও সেবার পোস্ট — ক্যাটাগরি অনুযায়ী সাজানো কমিউনিটি ফিড।',
   alternates: { canonical: '/posts' },
   openGraph: {
-    title: 'কমিউনিটি পোস্ট — Mymensingh Sheba',
+    title: 'স্থানীয় খবর ও ঘোষণা — Mymensingh Sheba',
     description:
       'ময়মনসিংহের মানুষদের প্রকাশিত খবর, চাকরি, কেনাবেচা ও সেবার পোস্ট এক জায়গায়।',
     url: '/posts',

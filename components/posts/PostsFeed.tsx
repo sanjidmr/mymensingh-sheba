@@ -56,10 +56,10 @@ type FeedChip = 'all' | 'job' | 'buy_sell' | 'news' | 'service' | 'other';
 
 const CHIPS: { id: FeedChip; label: string }[] = [
   { id: 'all', label: 'সব পোস্ট' },
+  { id: 'news', label: 'খবর ও ঘোষণা' },
   { id: 'job', label: 'চাকরি' },
   { id: 'buy_sell', label: 'কেনাবেচা' },
   { id: 'service', label: 'সেবা' },
-  { id: 'news', label: 'খবর' },
   { id: 'other', label: 'অন্যান্য' },
 ];
 
@@ -306,11 +306,11 @@ export default function PostsFeed() {
                 কমিউনিটি
               </p>
               <h1 className="mt-1 text-2xl font-extrabold leading-tight tracking-tight text-ink-900 sm:text-[28px]">
-                কমিউনিটি পোস্ট
+                স্থানীয় খবর ও ঘোষণা
               </h1>
               <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500 sm:text-sm">
-                ময়মনসিংহের মানুষদের প্রকাশিত খবর, চাকরি, কেনাবেচা ও সেবার পোস্ট — নতুন থেকে
-                পুরনো, এক ফিডে।
+                খবর, চাকরি, কেনাবেচা ও সেবার পোস্ট এক জায়গায় দেখুন। ক্যাটাগরি বেছে নিয়ে
+                সহজে ফিল্টার করুন।
               </p>
             </div>
             <Link

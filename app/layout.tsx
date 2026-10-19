@@ -35,6 +35,11 @@ export async function generateMetadata(): Promise<Metadata> {
     template: '%s | Mymensingh Sheba',
   },
   description,
+  icons: {
+    icon: '/favicon.png',
+    shortcut: '/favicon.png',
+    apple: '/favicon.png',
+  },
   openGraph: {
     title,
     description,

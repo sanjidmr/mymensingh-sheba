@@ -24,6 +24,9 @@ const ICON_MAP: Record<string, React.ComponentType<{ className?: string }>> = {
   GraduationCap,
   HeartHandshake,
 };
+const SERVICE_HREFS: Record<string, string> = {
+  buysell: '/buy-sell',
+};
 
 export default function ServiceCardsSection() {
   return (
@@ -49,7 +52,7 @@ export default function ServiceCardsSection() {
             return (
               <Link
                 key={service.id}
-                href={`/${service.slug}`}
+                href={SERVICE_HREFS[service.id] ?? `/${service.slug}`}
                 className={`group relative flex flex-col justify-between p-5 sm:p-6 bg-white rounded-2xl border transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md cursor-pointer ${
                   isTolet
                     ? 'border-emerald-700/30 ring-1 ring-emerald-600/10 sm:col-span-2 lg:col-span-2 xl:col-span-1'

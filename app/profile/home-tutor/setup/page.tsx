@@ -18,7 +18,7 @@ import {
   Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { MCC_AREAS } from '@/lib/locations';
+import { MCC_AREAS, isInsideMCC } from '@/lib/locations';
 import { uploadTutorProfilePhoto } from '@/lib/home-tutor-service';
 import { TUTOR_TEACHING_MODE_LABELS } from '@/lib/home-tutor-types';
 import type { TutorTeachingMode } from '@/lib/supabase/types';
@@ -61,9 +61,10 @@ export default function HomeTutorSetupPage() {
       : ''
   );
   const [experienceYears, setExperienceYears] = useState(homeTutorProfile?.experienceYears || 2);
-  const [selectedAreas, setSelectedAreas] = useState<string[]>(
-    homeTutorProfile?.preferredAreas || ['charpara', 'ganginarpar']
-  );
+  const [selectedAreas, setSelectedAreas] = useState<string[]>(() => {
+    const preferred = (homeTutorProfile?.preferredAreas || []).filter(isInsideMCC);
+    return preferred.length > 0 ? preferred : ['charpara'];
+  });
   const [selectedClasses, setSelectedClasses] = useState<string[]>(
     homeTutorProfile?.preferredClasses || ['৯ম - ১০ম শ্রেণি (SSC)', 'একাদশ - দ্বাদশ শ্রেণি (HSC)']
   );

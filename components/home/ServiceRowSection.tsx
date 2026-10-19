@@ -10,6 +10,7 @@ import {
   loadVehicleCards,
   loadMarketCards,
   loadNewsCards,
+  loadCommunityPostCards,
 } from '@/components/home/section-loaders';
 import type { HomePreviewCard } from '@/lib/home-preview';
 
@@ -22,7 +23,8 @@ export type ServiceRowSource =
   | 'donor'
   | 'vehicle'
   | 'market'
-  | 'news';
+  | 'news'
+  | 'posts';
 
 const ROW_LOADERS = {
   tolet: loadToletCards,
@@ -31,6 +33,7 @@ const ROW_LOADERS = {
   vehicle: loadVehicleCards,
   market: loadMarketCards,
   news: loadNewsCards,
+  posts: loadCommunityPostCards,
 } satisfies Record<ServiceRowSource, () => Promise<HomePreviewCard[]>>;
 
 interface ServiceRowSectionProps {
@@ -51,6 +54,7 @@ interface ServiceRowSectionProps {
   /** Demo photo pool — cycled across the cards in this row */
   demoImages?: string[];
   count?: number;
+  hideKickerOnMobile?: boolean;
 }
 
 /**
@@ -71,6 +75,7 @@ export default function ServiceRowSection({
   withImage = false,
   demoImages = [],
   count = 6,
+  hideKickerOnMobile = false,
 }: ServiceRowSectionProps) {
   const [items, setItems] = useState<HomePreviewCard[] | null>(cards ?? null);
   const [error, setError] = useState('');
@@ -127,7 +132,7 @@ export default function ServiceRowSection({
       <div className="mx-auto w-full max-w-7xl px-4 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
         {/* Header — centered on mobile, left-aligned on larger screens */}
         <div className="text-center sm:text-left">
-          <span className="inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-brand-600 sm:text-xs">
+          <span className={`inline-flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.22em] text-brand-600 sm:text-xs ${hideKickerOnMobile ? 'max-sm:hidden' : ''}`}>
             <span className="h-1.5 w-1.5 rounded-full bg-accent-400" aria-hidden="true" />
             {kicker}
           </span>

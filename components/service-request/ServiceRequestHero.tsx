@@ -28,35 +28,51 @@ export const REQUEST_FORM_ANCHOR = 'service-request-form';
  * which is what makes these five pages feel like part of the same site.
  */
 export default function ServiceRequestHero({ config }: ServiceRequestHeroProps) {
+  const cleanHero = ['basha-paltano', 'electrician', 'plumber'].includes(config.slug);
+
   return (
     <section
       aria-labelledby="service-hero-heading"
-      className="relative overflow-hidden bg-brand-950 text-brand-100"
+      className={`relative overflow-hidden ${
+        cleanHero
+          ? 'border-b border-brand-100 bg-white text-ink-900'
+          : 'bg-brand-950 text-brand-100'
+      }`}
     >
       <div className="mx-auto w-full max-w-7xl px-4 pb-9 pt-8 sm:px-6 sm:pb-12 sm:pt-11 lg:px-8 lg:pb-14 lg:pt-14">
         <div className="grid gap-x-10 gap-y-7 lg:grid-cols-12 lg:gap-y-6">
           {/* Row 1, columns 1–7 — what this service is. */}
           <header className="lg:col-span-7 lg:col-start-1 lg:row-start-1">
-            <p className="inline-flex items-center gap-2 rounded-full border border-brand-700 bg-brand-900 px-3 py-1.5 text-[11px] font-bold text-accent-300 sm:text-xs">
-              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />
+            <p className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] font-bold sm:text-xs ${
+              cleanHero
+                ? 'border-brand-100 bg-brand-50 text-brand-800'
+                : 'border-brand-700 bg-brand-900 text-accent-300'
+            }`}>
+              <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-500" />
               {config.eyebrow}
             </p>
 
             <h1
               id="service-hero-heading"
-              className="mt-4 text-[2rem] font-extrabold leading-[1.18] tracking-tight text-white sm:text-[2.75rem] lg:text-[3.25rem]"
+              className={`mt-4 text-[2rem] font-extrabold leading-[1.18] tracking-tight sm:text-[2.75rem] lg:text-[3.25rem] ${
+                cleanHero ? 'text-ink-900' : 'text-white'
+              }`}
             >
               {config.title}
             </h1>
 
-            <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-brand-100/85 sm:text-base">
+            <p className={`mt-4 max-w-xl text-[15px] leading-relaxed sm:text-base ${
+              cleanHero ? 'text-ink-600' : 'text-brand-100/85'
+            }`}>
               {config.description}
             </p>
           </header>
 
           {/* Row 1–2, columns 8–12 — the service photo. */}
           <figure className="lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1">
-            <div className="overflow-hidden rounded-xl border border-bronze-400/45 bg-brand-900 lg:h-full">
+            <div className={`overflow-hidden rounded-xl border lg:h-full ${
+              cleanHero ? 'border-brand-100 bg-mist-50' : 'border-bronze-400/45 bg-brand-900'
+            }`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={config.image.src}
@@ -78,15 +94,19 @@ export default function ServiceRequestHero({ config }: ServiceRequestHeroProps) 
                 <li key={benefit.title} className="flex items-start gap-2.5">
                   <span
                     aria-hidden="true"
-                    className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-accent-400/15 text-accent-300"
+                    className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                      cleanHero ? 'bg-brand-50 text-brand-700' : 'bg-accent-400/15 text-accent-300'
+                    }`}
                   >
                     <Check className="h-3 w-3" strokeWidth={3} />
                   </span>
                   <span className="min-w-0">
-                    <span className="block text-[13px] font-bold text-white">
+                    <span className={`block text-[13px] font-bold ${cleanHero ? 'text-ink-900' : 'text-white'}`}>
                       {benefit.title}
                     </span>
-                    <span className="mt-0.5 block text-[12.5px] leading-relaxed text-brand-200/75">
+                    <span className={`mt-0.5 block text-[12.5px] leading-relaxed ${
+                      cleanHero ? 'text-ink-500' : 'text-brand-200/75'
+                    }`}>
                       {benefit.body}
                     </span>
                   </span>
@@ -94,7 +114,7 @@ export default function ServiceRequestHero({ config }: ServiceRequestHeroProps) 
               ))}
             </ul>
 
-            <ServiceHeroCta anchorId={REQUEST_FORM_ANCHOR} category={config.slug} />
+            <ServiceHeroCta anchorId={REQUEST_FORM_ANCHOR} category={config.slug} clean={cleanHero} />
           </div>
         </div>
       </div>

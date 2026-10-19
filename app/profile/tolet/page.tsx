@@ -22,7 +22,7 @@ import {
   MessageSquareText,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import {
   fetchMyListings,
   fetchRequestsForListing,
@@ -135,7 +135,7 @@ export default function MyToletListingsPage() {
   const archivedListings = listings.filter((listing) => listing.status === 'archived');
 
   const renderListingCard = (listing: ToletListing, archived = false) => {
-    const area = getAreaById(listing.areaId);
+    const area = getToletAreaById(listing.areaId);
     const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
     const cover = listing.photos[0];
     return (

@@ -220,23 +220,20 @@ export function BannerCard({
     >
       <div className="relative aspect-[4/3] w-[38%] shrink-0 overflow-hidden bg-mist-100 sm:aspect-[16/10] sm:w-[42%]">
         <ListingMedia src={imageUrl} alt={title} label={title} />
-        {badge && (
-          <span className="absolute left-1.5 top-1.5 rounded-md bg-white/95 px-1.5 py-[3px] text-[10px] font-extrabold text-brand-800 shadow-sm ring-1 ring-brand-100">
-            {badge}
-          </span>
-        )}
-        {isVerified && (
-          <span
-            className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-brand-700 shadow-sm"
-            title="অ্যাডমিন যাচাইকৃত"
-          >
-            <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="sr-only">অ্যাডমিন যাচাইকৃত</span>
-          </span>
-        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-4">
+        {(badge || isVerified) && (
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
+            {badge && <span className="text-[10px] font-bold text-brand-700">{badge}</span>}
+            {isVerified && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-700">
+                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                অ্যাডমিন যাচাইকৃত
+              </span>
+            )}
+          </div>
+        )}
         {priceLabel && (
           <p className="text-[15px] font-extrabold leading-none tracking-tight text-brand-800 sm:text-lg">
             <span className="truncate">{priceLabel}</span>
@@ -350,22 +347,20 @@ export function TileCard({
     <Link href={actionHref || href} className={CARD_BASE}>
       <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-mist-100">
         <ListingMedia src={imageUrl} alt={title} label={title} />
-        {badge && (
-          <span
-            className={`absolute left-1.5 top-1.5 rounded-md px-1.5 py-[3px] text-[10px] font-extrabold shadow-sm ${toneClass}`}
-          >
-            {badge}
-          </span>
-        )}
-        {isVerified && (
-          <span className="absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-white/95 text-brand-700 shadow-sm">
-            <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
-            <span className="sr-only">অ্যাডমিন যাচাইকৃত</span>
-          </span>
-        )}
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-3.5">
+        {(badge || isVerified) && (
+          <div className="mb-1 flex flex-wrap items-center gap-1">
+            {badge && <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${toneClass}`}>{badge}</span>}
+            {isVerified && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-700">
+                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                অ্যাডমিন যাচাইকৃত
+              </span>
+            )}
+          </div>
+        )}
         {priceLabel && (
           <p className="text-[15px] font-extrabold leading-none tracking-tight text-brand-800 sm:text-lg">
             <span className="truncate">{priceLabel}</span>
@@ -435,20 +430,20 @@ export function CompactCard({
     <Link href={href} className={CARD_BASE}>
       <div className="relative aspect-square w-full shrink-0 overflow-hidden bg-mist-100">
         <ListingMedia src={imageUrl} alt={title} label={title} />
-        {badge && (
-          <span className="absolute left-1.5 top-1.5 rounded-md bg-accent-400 px-1.5 py-[3px] text-[10px] font-extrabold text-brand-950 shadow-sm">
-            {badge}
-          </span>
-        )}
-        {isVerified && (
-          <span className="absolute right-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-white/95 text-brand-700 shadow-sm">
-            <BadgeCheck className="h-3 w-3" aria-hidden="true" />
-            <span className="sr-only">অ্যাডমিন যাচাইকৃত</span>
-          </span>
-        )}
       </div>
 
       <div className="flex min-w-0 flex-col p-2 sm:p-2.5">
+        {(badge || isVerified) && (
+          <div className="mb-1 flex flex-wrap items-center gap-1">
+            {badge && <span className="text-[10px] font-bold text-brand-700">{badge}</span>}
+            {isVerified && (
+              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-700">
+                <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                যাচাইকৃত
+              </span>
+            )}
+          </div>
+        )}
         {priceLabel && (
           <p className="truncate text-[13px] font-extrabold leading-none tracking-tight text-brand-800 sm:text-sm">
             {priceLabel}

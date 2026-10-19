@@ -86,17 +86,13 @@ export default function CategoryCard({
           </span>
         </div>
       )}
-      {item.pill && (
-        <span className="absolute left-1.5 top-1.5 inline-flex items-center rounded bg-white/90 px-1 py-px text-[9px] font-bold text-brand-800 ring-1 ring-brand-100 sm:left-2.5 sm:top-2.5 sm:rounded-md sm:px-2 sm:py-0.5 sm:text-[10px]">
-          {item.pill}
-        </span>
-      )}
     </div>
   );
 
   const body = dense ? (
     <div className={`flex flex-1 flex-col ${sz('p-1.5 sm:p-2.5', 'p-2.5')}`}>
-      <h3 className={`line-clamp-2 font-bold leading-tight sm:line-clamp-1 sm:leading-snug ${red ? 'text-red-700' : 'text-ink-900'} ${sz('text-[10.5px] sm:text-[12px]', 'text-[12px]')}`}>
+      {item.pill && <span className="mb-1 text-[9px] font-bold text-brand-700 sm:text-[10px]">{item.pill}</span>}
+      <h3 className={`line-clamp-2 font-bold leading-[1.4] sm:line-clamp-1 sm:leading-snug ${red ? 'text-red-700' : 'text-ink-900'} ${sz('text-[11.5px] sm:text-[12px]', 'text-[12px]')}`}>
         {item.name}
       </h3>
       <span className={`mt-0.5 hidden text-[10px] font-semibold leading-none sm:block ${red ? 'text-red-400' : 'text-ink-400'}`}>
@@ -123,7 +119,8 @@ export default function CategoryCard({
     </div>
   ) : compact ? (
     <div className={`flex flex-1 flex-col ${sz('p-1.5 sm:p-3', 'p-3')}`}>
-      <h3 className={`line-clamp-2 font-bold leading-tight sm:line-clamp-1 sm:leading-snug ${red ? 'text-red-700' : 'text-ink-900'} ${sz('text-[10.5px] sm:text-[13px]', 'text-[13px]')}`}>
+      {item.pill && <span className="mb-1 text-[9px] font-bold text-brand-700 sm:text-[10px]">{item.pill}</span>}
+      <h3 className={`line-clamp-2 font-bold leading-[1.4] sm:line-clamp-1 sm:leading-snug ${red ? 'text-red-700' : 'text-ink-900'} ${sz('text-[11.5px] sm:text-[13px]', 'text-[13px]')}`}>
         {item.name}
       </h3>
       <p className={`mt-0.5 hidden text-[11px] leading-relaxed sm:mt-1 sm:line-clamp-2 sm:block ${red ? 'text-red-500/80' : 'text-ink-500'}`}>{item.text}</p>
@@ -148,6 +145,7 @@ export default function CategoryCard({
     </div>
   ) : (
     <div className="flex flex-1 flex-col p-4 sm:p-5">
+      {item.pill && <span className="mb-1 text-[10px] font-bold text-brand-700">{item.pill}</span>}
       <h3 className={`line-clamp-2 text-[15px] font-bold leading-snug ${red ? 'text-red-700' : 'text-ink-900'}`}>
         {item.name}
       </h3>

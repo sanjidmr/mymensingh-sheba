@@ -9,11 +9,11 @@ import DirectoryResults, { ListingGrid } from '@/components/directory/DirectoryR
 import ListingCard, { type ListingCardData } from '@/components/directory/ListingCard';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useDirectoryController } from '@/lib/use-directory-controller';
-import { areaFilterGroup, type FilterGroup } from '@/lib/directory-filters';
+import { toletAreaFilterGroup, type FilterGroup } from '@/lib/directory-filters';
 import type { SearchableFields } from '@/lib/directory-search';
 import { fetchPublicListings } from '@/lib/tolet-service';
 import type { ToletListing } from '@/lib/tolet-types';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import {
   TOLET_PROPERTY_TYPE_INFO,
   TOLET_LISTING_STATUS_INFO,
@@ -27,7 +27,7 @@ const SORT_OPTIONS = [
 ];
 
 const FILTER_GROUPS: FilterGroup[] = [
-  areaFilterGroup(),
+  toletAreaFilterGroup(),
   {
     id: 'propertyType',
     labelBn: 'বাসার ধরন',
@@ -109,17 +109,28 @@ function ToletDirectory() {
   }, []);
 
   const searchable = useCallback(
-    (l: ToletListing): SearchableFields => ({
-      title: l.title,
-      subtitle: TOLET_PROPERTY_TYPE_INFO[l.propertyType]?.labelBn,
-      area: getAreaById(l.areaId)?.nameBn,
-      address: l.specificAddress,
-      priceText: `${l.rentPrice}`,
-      tags: [...l.facilities, l.floor || '', l.availableFrom || ''],
-      description: l.description,
-      // Primary price first so "৫০০০ টাকা" ranks by rent, then room counts.
-      numbers: [l.rentPrice, l.bedrooms, l.bathrooms],
-    }),
+    (l: ToletListing): SearchableFields => {
+      const area = getToletAreaById(l.areaId);
+      return {
+        title: l.title,
+        subtitle: TOLET_PROPERTY_TYPE_INFO[l.propertyType]?.labelBn,
+        area: area?.nameBn,
+        address: l.specificAddress,
+        priceText: `${l.rentPrice}`,
+        // The area's English name + transliterations are indexed as tags so a
+        // Latin query ("Senbari", "Trishal bus stand", "Golpukur par") finds a
+        // listing whose stored area label is Bengali.
+        tags: [
+          ...l.facilities,
+          l.floor || '',
+          l.availableFrom || '',
+          ...(area ? [area.nameEn, ...area.aliases] : []),
+        ],
+        description: l.description,
+        // Primary price first so "৫০০০ টাকা" ranks by rent, then room counts.
+        numbers: [l.rentPrice, l.bedrooms, l.bathrooms],
+      };
+    },
     []
   );
 
@@ -160,7 +171,7 @@ function ToletDirectory() {
           imageUrl: listing.photos?.[0],
           priceLabel: `৳${toBengaliDigits(listing.rentPrice)}`,
           priceSuffix: '/মাস',
-          areaLabel: getAreaById(listing.areaId)?.nameBn,
+          areaLabel: getToletAreaById(listing.areaId)?.nameBn,
           chips: [
             listing.bedrooms > 0 ? `${toBengaliDigits(listing.bedrooms)} রুম` : '',
             listing.bathrooms > 0 ? `${toBengaliDigits(listing.bathrooms)} বাথ` : '',

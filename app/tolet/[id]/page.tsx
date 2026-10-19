@@ -9,7 +9,6 @@ import Navbar from '@/components/Navbar';
 import { PropertyGallery } from '@/components/tolet/detail/PropertyGallery';
 import { PropertyFactGrid } from '@/components/tolet/detail/PropertyFactGrid';
 import { FacilityPanels } from '@/components/tolet/detail/FacilityPanels';
-import { PropertyLocation } from '@/components/tolet/detail/PropertyLocation';
 import { RentSummaryCard } from '@/components/tolet/detail/RentSummaryCard';
 import { OwnerProfileCard } from '@/components/tolet/detail/OwnerProfileCard';
 import { ContactActionsPanel } from '@/components/tolet/detail/ContactActions';
@@ -28,7 +27,7 @@ import { fetchListingById, fetchSimilarListings } from '@/lib/tolet-service';
 import type { ToletListing } from '@/lib/tolet-types';
 import { useAuth } from '@/lib/auth-context';
 import { trackListingView, trackToletEvent } from '@/lib/tolet-tracking';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 /**
@@ -37,7 +36,7 @@ import { toBengaliDigits } from '@/lib/bengali-numerals';
  * Layout contract
  * ---------------
  * Mobile is a single column in reading order: photo → key numbers → money →
- * description → facilities → map → contact → owner → request. On `lg` the page
+ * description → facilities → contact → owner → request. On `lg` the page
  * becomes two columns: the property and everything about it on the left, the
  * money + contact summary in a sticky rail on the right.
  *
@@ -177,7 +176,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
       // synced anywhere, and we say so rather than pretending it is.
       setGuestFavorite(next);
     } else {
-      const area = getAreaById(listing.areaId);
+      const area = getToletAreaById(listing.areaId);
       try {
         const result = await toggleSaveItem({
           itemType: 'tolet',
@@ -286,8 +285,6 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
               facilities={listing.facilities}
               unavailableFacilities={listing.unavailableFacilities}
             />
-
-            <PropertyLocation listing={listing} />
 
             {/* Posted-at note, so an old listing is obviously an old listing. */}
             {listing.publishedAt && (

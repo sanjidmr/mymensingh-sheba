@@ -23,7 +23,6 @@ export interface ProviderPersonCardProps {
   category: 'bua' | 'electrician' | 'plumber' | 'tutor' | 'blood' | 'moving';
   titleOrSpecialty: string;
   areaBn: string;
-  wardNo?: string;
   avatarUrl?: string | null;
   rating?: number;
   reviewCount?: number;
@@ -45,7 +44,6 @@ export function ProviderPersonCard({
   category,
   titleOrSpecialty,
   areaBn,
-  wardNo,
   avatarUrl,
   rating,
   reviewCount,
@@ -114,7 +112,6 @@ export function ProviderPersonCard({
             <div className="flex items-center gap-1 text-[11px] text-slate-500 mt-1">
               <MapPin className="w-3 h-3 text-emerald-700 shrink-0" />
               <span>{areaBn}</span>
-              {wardNo && <span>(ওয়ার্ড {wardNo})</span>}
             </div>
           </div>
         </div>

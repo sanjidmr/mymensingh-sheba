@@ -13,7 +13,7 @@ import Reveal from '@/components/home/Reveal';
  */
 export default function ContactClosing() {
   return (
-    <AboutSection labelledBy="contact-closing-heading" className="bg-mist-50">
+    <AboutSection labelledBy="contact-closing-heading" mobileClassName="max-sm:py-5" className="bg-mist-50">
       <Reveal className="relative overflow-hidden rounded-2xl border border-bronze-200 bg-bronze-50">
         {/* A single quiet bronze arc — warmth without a gradient wash. */}
         <span
@@ -21,34 +21,34 @@ export default function ContactClosing() {
           className="pointer-events-none absolute -right-16 -top-24 h-64 w-64 rounded-full border-[28px] border-bronze-200/50"
         />
 
-        <div className="relative max-w-3xl p-6 sm:p-10 lg:p-12">
+        <div className="relative max-w-3xl p-6 max-sm:p-4 sm:p-10 lg:p-12">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-bronze-600">
             শেষ কথা
           </p>
 
           <h2
             id="contact-closing-heading"
-            className="mt-3 text-[1.5rem] font-extrabold leading-tight tracking-tight text-ink-900 sm:text-3xl lg:text-[2.1rem]"
+            className="mt-3 text-[1.5rem] font-extrabold leading-tight tracking-tight text-ink-900 max-sm:mt-2 max-sm:text-xl sm:text-3xl lg:text-[2.1rem]"
           >
             কথা বলতে দ্বিধা করবেন না।
           </h2>
 
-          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-600 sm:text-[16px]">
+          <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-ink-600 max-sm:mt-2.5 max-sm:text-sm sm:text-[16px]">
             আপনার একটি প্রশ্ন, পরামর্শ কিংবা একটি ভালো idea — Mymensingh Sheba-কে
             আরও ভালো করতে সাহায্য করতে পারে।
           </p>
 
-          <div className="mt-7 flex flex-col gap-2.5 sm:flex-row sm:flex-wrap">
+          <div className="mt-7 flex flex-col gap-2.5 max-sm:mt-4 sm:flex-row sm:flex-wrap">
             <Link
               href="/services"
-              className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 sm:w-auto ${LIGHT_FOCUS}`}
+              className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 max-sm:min-h-11 max-sm:text-[13px] sm:w-auto ${LIGHT_FOCUS}`}
             >
               <Search className="h-4 w-4" aria-hidden="true" />
               সেবা খুঁজুন
             </Link>
             <Link
               href="/register"
-              className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-brand-300 bg-white px-5 text-sm font-bold text-brand-800 transition-colors hover:border-brand-400 hover:bg-brand-50 sm:w-auto ${LIGHT_FOCUS}`}
+              className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-xl border border-brand-300 bg-white px-5 text-sm font-bold text-brand-800 transition-colors hover:border-brand-400 hover:bg-brand-50 max-sm:min-h-11 max-sm:text-[13px] sm:w-auto ${LIGHT_FOCUS}`}
             >
               <PenSquare className="h-4 w-4" aria-hidden="true" />
               আপনার সেবা পোস্ট করুন

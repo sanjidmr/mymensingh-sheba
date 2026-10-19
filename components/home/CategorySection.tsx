@@ -47,6 +47,7 @@ export default function CategorySection({ category }: CategorySectionProps) {
           description={emergency ? undefined : category.description}
           dark={dark}
           compact={emergency}
+          hideDescriptionOnMobile={category.id === 'daily' || category.id === 'shop-travel'}
         />
 
         {/* Four compact tiles per row on phones (all four inside one row, no

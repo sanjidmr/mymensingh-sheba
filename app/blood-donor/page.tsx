@@ -196,7 +196,7 @@ function BloodDonorContent() {
             // has to stay readable at a glance: a reader is comparing blood
             // groups and recovery windows, and a 160px-wide card makes the
             // group token and the status line wrap into noise.
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 max-sm:grid-cols-2 max-sm:gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {filteredDonors.map((donor) => (
                 <div
                   key={donor.id}

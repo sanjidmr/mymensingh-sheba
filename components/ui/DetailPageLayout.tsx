@@ -28,7 +28,6 @@ export interface DetailPageLayoutProps {
   categoryHref: string;
   title: string;
   areaBn: string;
-  wardNo?: string;
   addressDetail?: string;
   isVerified?: boolean;
   metrics?: DetailMetric[];
@@ -54,7 +53,6 @@ export function DetailPageLayout({
   categoryHref,
   title,
   areaBn,
-  wardNo,
   addressDetail,
   isVerified = true,
   metrics = [],
@@ -156,7 +154,6 @@ export function DetailPageLayout({
                 <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2.5 py-1 rounded-lg">
                   <MapPin className="w-3.5 h-3.5 text-emerald-700" />
                   <span>{areaBn}</span>
-                  {wardNo && <span>(ওয়ার্ড {wardNo})</span>}
                 </span>
 
                 {isVerified && (

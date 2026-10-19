@@ -107,8 +107,8 @@ export default function HomeMovingLocationPair({
         <div className="mt-3.5 pt-3 border-t border-slate-100 flex items-center gap-2 text-xs text-emerald-800 font-medium bg-emerald-50/50 p-2.5 rounded-xl">
           <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>
-            নির্বাচিত রুট: <strong>{pickupArea?.nameBn}</strong> ({pickupArea?.wardLabelBn}) →{' '}
-            <strong>{destinationArea?.nameBn}</strong> ({destinationArea?.wardLabelBn})
+            নির্বাচিত রুট: <strong>{pickupArea?.nameBn}</strong> →{' '}
+            <strong>{destinationArea?.nameBn}</strong>
           </span>
         </div>
       )}

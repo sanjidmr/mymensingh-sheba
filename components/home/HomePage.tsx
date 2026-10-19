@@ -1,5 +1,6 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import Link from 'next/link';
 import HeroCarousel from '@/components/home/HeroCarousel';
 import SearchSection from '@/components/home/SearchSection';
 import CategorySection from '@/components/home/CategorySection';
@@ -9,6 +10,7 @@ import WhySection from '@/components/home/WhySection';
 import StepsSection from '@/components/home/StepsSection';
 import ReviewSection from '@/components/home/ReviewSection';
 import FinalCtaSection from '@/components/home/FinalCtaSection';
+import { BookOpen, Wifi } from 'lucide-react';
 import {
   mergeHomepageCategories,
   isHomepageSectionVisible,
@@ -28,7 +30,7 @@ import { fetchPublicHeroSlides } from '@/lib/hero-service';
  *   → ক্যাটাগরি ০৩ (জরুরি ও জনসেবা, সাদা — অন্য সেকশনের মতো, ডেন্স কার্ড)
  *   → সার্ভিস রো: বাসা ভাড়া → গৃহশিক্ষক → গাড়ি ভাড়া (৫টি ছোট imageless কার্ড এক রোতে)
  *   → ময়মনসিংহ কমিউনিটির জন্য
- *   → সার্ভিস রো: রক্তদাতা → কেনাবেচা → স্থানীয় খবর
+ *   → সার্ভিস রো: রক্তদাতা → WiFi ও কোচিং → স্থানীয় খবর ও ঘোষণা
  *   → কীভাবে কাজ করে → এলাকার মতামত → কেন আমরা → রিভিউ মডাল → শেষ কল-টু-অ্যাকশন
  *
  * This is a Server Component so it can read the admin's homepage overrides
@@ -85,6 +87,7 @@ export default async function HomePage() {
         {visible('row_tolet') && (
           <ServiceRowSection
             kicker="এই শহরের তালিকা"
+            hideKickerOnMobile
             title="বাসা / মেস / হোস্টেল ভাড়া"
             href="/tolet"
             source="tolet"
@@ -98,6 +101,7 @@ export default async function HomePage() {
         {visible('row_tutor') && (
           <ServiceRowSection
             kicker="অভিজ্ঞ শিক্ষক"
+            hideKickerOnMobile
             title="গৃহশিক্ষক খুঁজুন"
             href="/home-tutor"
             source="tutor"
@@ -111,6 +115,7 @@ export default async function HomePage() {
         {visible('row_gari') && (
           <ServiceRowSection
             kicker="স্থানীয় যাতায়াত"
+            hideKickerOnMobile
             title="গাড়ি, অটো ও CNG ভাড়া"
             href="/services?q=%E0%A6%97%E0%A6%BE%E0%A6%A1%E0%A6%BC%E0%A6%BF"
             source="vehicle"
@@ -126,6 +131,7 @@ export default async function HomePage() {
         {visible('row_donor') && (
           <ServiceRowSection
             kicker="জরুরি প্রয়োজনে"
+            hideKickerOnMobile
             title="রক্তদাতা খুঁজুন"
             href="/blood-donor"
             source="donor"
@@ -135,25 +141,47 @@ export default async function HomePage() {
           />
         )}
 
-        {/* সার্ভিস রো — কেনাবেচা */}
+        {/* WiFi ও কোচিং — সরাসরি নিজ নিজ সেবার পাতায় */}
         {visible('row_kenabecha') && (
-          <ServiceRowSection
-            kicker="স্থানীয় বাজার"
-            title="কেনাবেচা"
-            href="/services?q=%E0%A6%95%E0%A7%87%E0%A6%A8%E0%A6%BE%E0%A6%AC%E0%A7%87%E0%A6%9A%E0%A6%BE"
-            source="market"
-            tone="mist"
-            withImage
-          />
+          <section aria-labelledby="wifi-coaching-heading" className="border-b border-brand-100/70 bg-mist-50">
+            <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+              <div className="text-center sm:text-left">
+                <span className="inline-flex items-center gap-2 text-[11px] font-bold text-brand-600 sm:text-xs">
+                  <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-accent-400" />
+                  আরও স্থানীয় সেবা
+                </span>
+                <h2 id="wifi-coaching-heading" className="mx-auto mt-2 max-w-2xl text-xl font-extrabold leading-tight tracking-tight text-ink-900 sm:mx-0 sm:text-2xl">
+                  WiFi ও কোচিং
+                </h2>
+              </div>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                {[
+                  { title: 'WiFi সংযোগ', description: 'এলাকাভিত্তিক ইন্টারনেট সেবা ও সংযোগ খুঁজুন।', href: '/wifi', icon: Wifi },
+                  { title: 'কোচিং সেন্টার', description: 'শিক্ষার্থীদের জন্য স্থানীয় কোচিং সেবা দেখুন।', href: '/coaching', icon: BookOpen },
+                ].map(({ title, description, href, icon: Icon }) => (
+                  <Link key={href} href={href} className="group flex min-h-24 items-center gap-4 rounded-2xl border border-brand-100 bg-white p-4 transition-colors hover:border-brand-300 hover:bg-brand-50/40">
+                    <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                      <Icon className="h-6 w-6" aria-hidden="true" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block text-[15px] font-extrabold leading-snug text-ink-900 group-hover:text-brand-700">{title}</span>
+                      <span className="mt-1 block text-[13px] leading-relaxed text-ink-500">{description}</span>
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          </section>
         )}
 
         {/* সার্ভিস রো — স্থানীয় খবর */}
         {visible('row_news') && (
           <ServiceRowSection
             kicker="সম্প্রতি"
+            hideKickerOnMobile
             title="স্থানীয় খবর ও ঘোষণা"
-            href="/services?q=news"
-            source="news"
+            href="/posts"
+            source="posts"
             tone="white"
             withImage
           />

@@ -2,7 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, LayoutGrid, Newspaper, UserRound, Plus } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ChevronRight, Home, LayoutGrid, Menu, Newspaper, UserRound, X } from 'lucide-react';
+import { SITE_NAV_LINKS } from '@/lib/site-navigation';
 
 const ITEMS = [
   { name: 'হোম', href: '/', icon: Home },
@@ -26,8 +28,7 @@ function isBareRoute(pathname: string): boolean {
 
 /**
  * Fixed mobile bottom navigation.
- * Five slots — the center slot is a raised gold "পোস্ট করুন" (+) action that
- * floats above the bar so posting is always one thumb-tap away on mobile.
+ * Five slots — the center slot opens the mobile navigation drawer.
  *
  * Mounted once from the root layout rather than per page, so it survives every
  * client-side route change instead of vanishing on any page that forgot to
@@ -37,6 +38,16 @@ function isBareRoute(pathname: string): boolean {
  */
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [menuOpen]);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -49,63 +60,127 @@ export default function MobileBottomNav() {
   if (isBareRoute(pathname)) return null;
 
   return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-50 border-t border-brand-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
-      aria-label="মোবাইল মেনু"
-    >
-      <div className="grid grid-cols-5">
-        {ITEMS.slice(0, 2).map((item) => {
-          const active = isActive(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? 'page' : undefined}
-              className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
-                active ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-400 hover:text-ink-700'
-              }`}
+    <>
+      <div
+        aria-hidden={!menuOpen}
+        onClick={() => setMenuOpen(false)}
+        className={`fixed inset-0 z-[60] bg-brand-950/35 transition-opacity duration-300 lg:hidden ${
+          menuOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      >
+        <section
+          id="mobile-menu"
+          role="dialog"
+          aria-modal={menuOpen ? true : undefined}
+          aria-hidden={!menuOpen}
+          aria-label="মোবাইল নেভিগেশন"
+          inert={!menuOpen}
+          onClick={(event) => event.stopPropagation()}
+          className={`absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-3xl border-t border-brand-100 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-4 shadow-2xl transition-transform duration-300 ease-out ${
+            menuOpen ? 'translate-y-0' : 'translate-y-full'
+          }`}
+        >
+          <div className="mb-3 flex items-center justify-between border-b border-brand-100 pb-3">
+            <h2 className="text-base font-extrabold text-brand-950">মেনু</h2>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              aria-label="মেনু বন্ধ করুন"
+              className="flex h-11 w-11 items-center justify-center rounded-xl text-ink-600 hover:bg-mist-50"
             >
-              <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : ''}`} />
-              <span className="text-[10px] font-semibold">{item.name}</span>
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+          <nav aria-label="প্রধান নেভিগেশন" className="space-y-1">
+            {SITE_NAV_LINKS.filter((item) => !item.desktopOnly).map((item) => {
+              const Icon = item.icon;
+              const active = isActive(item.href);
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setMenuOpen(false)}
+                  className={`flex min-h-12 items-center justify-between rounded-xl px-3 text-sm font-semibold ${
+                    active ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-mist-50'
+                  }`}
+                >
+                  <span className="flex items-center gap-3">
+                    <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : 'text-ink-400'}`} />
+                    {item.name}
+                  </span>
+                  <ChevronRight className="h-4 w-4 text-ink-400" aria-hidden="true" />
+                </Link>
+              );
+            })}
+          </nav>
+          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-brand-100 pt-3">
+            <Link href="/safety" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center justify-center rounded-xl border border-brand-200 text-sm font-semibold text-brand-800">
+              নিরাপত্তা
             </Link>
-          );
-        })}
-
-        {/* Center — raised post action */}
-        <div className="relative flex items-start justify-center">
-          <Link
-            href="/register"
-            aria-label="পোস্ট করুন"
-            className="group -mt-4 flex w-full flex-col items-center gap-0.5"
-          >
-            <span className="flex h-12 w-12 items-center justify-center rounded-full bg-brand-700 text-white shadow-lg shadow-brand-900/25 ring-4 ring-white transition-transform duration-150 group-active:scale-95 sm:h-[3.25rem] sm:w-[3.25rem]">
-              <Plus className="h-6 w-6 sm:h-7 sm:w-7" />
-            </span>
-            <span className="text-[10px] font-bold text-brand-700">
-              পোস্ট করুন
-            </span>
-          </Link>
-        </div>
-
-        {ITEMS.slice(2).map((item) => {
-          const active = isActive(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? 'page' : undefined}
-              className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
-                active ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-400 hover:text-ink-700'
-              }`}
-            >
-              <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : ''}`} />
-              <span className="text-[10px] font-semibold">{item.name}</span>
+            <Link href="/help" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center justify-center rounded-xl border border-brand-200 text-sm font-semibold text-brand-800">
+              সহায়তা
             </Link>
-          );
-        })}
+            <Link href="/services" onClick={() => setMenuOpen(false)} className="col-span-2 flex min-h-12 items-center justify-center rounded-xl bg-brand-700 text-sm font-bold text-white">
+              সেবা সমূহ দেখুন
+            </Link>
+          </div>
+        </section>
       </div>
-    </nav>
+
+      <nav
+        className="fixed inset-x-0 bottom-0 z-50 border-t border-brand-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+        aria-label="মোবাইল মেনু"
+      >
+        <div className="grid grid-cols-5">
+          {ITEMS.slice(0, 2).map((item) => {
+            const active = isActive(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
+                  active ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-400 hover:text-ink-700'
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : ''}`} />
+                <span className="text-[10px] font-semibold">{item.name}</span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-label={menuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 ${
+              menuOpen ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-500'
+            }`}
+          >
+            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            <span className="text-[10px] font-semibold">মেনু</span>
+          </button>
+          {ITEMS.slice(2).map((item) => {
+            const active = isActive(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? 'page' : undefined}
+                className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
+                  active ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-400 hover:text-ink-700'
+                }`}
+              >
+                <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : ''}`} />
+                <span className="text-[10px] font-semibold">{item.name}</span>
+              </Link>
+            );
+          })}
+        </div>
+      </nav>
+    </>
   );
 }

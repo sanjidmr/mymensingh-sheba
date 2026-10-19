@@ -6,7 +6,7 @@ import { MapPin } from 'lucide-react';
 import type { ToletListing } from '@/lib/tolet-types';
 import { TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { calculateToletFee } from '@/lib/tolet-fees';
-import { getAreaById } from '@/lib/locations';
+import { getToletAreaById } from '@/lib/tolet-areas';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 import { cn } from '@/lib/utils';
 
@@ -67,7 +67,7 @@ export function SimilarProperties({ listings }: { listings: ToletListing[] }) {
 }
 
 function SimilarCard({ listing }: { listing: ToletListing }) {
-  const area = getAreaById(listing.areaId);
+  const area = getToletAreaById(listing.areaId);
   const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
   const isMessLike = typeInfo?.isMessLike ?? false;
   const cover = listing.photos[0] ?? '';

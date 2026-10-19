@@ -19,11 +19,9 @@ import { SHOP_TRAVEL_CATEGORY, type HomepageService } from '@/lib/homepage-catal
  */
 export default function BloodDonorCard({
   compact = true,
-  wide = false,
   mediaClassName,
 }: {
   compact?: boolean;
-  wide?: boolean;
   mediaClassName?: string;
 }) {
   const homeCard = SHOP_TRAVEL_CATEGORY.items.find((item) => item.id === 'blood-donor');
@@ -39,7 +37,7 @@ export default function BloodDonorCard({
     <CategoryCard
       item={item}
       compact={compact}
-      wide={wide}
+      wide={false}
       mediaClassName={mediaClassName}
     />
   );

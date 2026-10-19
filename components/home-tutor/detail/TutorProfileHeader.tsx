@@ -64,7 +64,7 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
             <img
               src={tutor.profilePhotoUrl}
               alt={tutor.fullName}
-              className="h-full w-full object-cover object-top"
+              className="h-full w-full object-contain"
             />
           ) : (
             <div className="flex h-full w-full items-center justify-center">

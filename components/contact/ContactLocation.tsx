@@ -19,25 +19,25 @@ export default function ContactLocation({
   contact: ReturnType<typeof mergeSiteContact>;
 }) {
   return (
-    <AboutSection labelledBy="contact-location-heading" className="bg-white">
-      <div className="grid items-center gap-8 lg:grid-cols-[1fr_0.9fr] lg:gap-14">
+    <AboutSection labelledBy="contact-location-heading" mobileClassName="max-sm:py-5" className="bg-white">
+      <div className="grid items-center gap-8 max-sm:gap-4 lg:grid-cols-[1fr_0.9fr] lg:gap-14">
         <Reveal>
           <SectionLabel>আমাদের শহর</SectionLabel>
           <h2
             id="contact-location-heading"
-            className="mt-3 text-2xl font-extrabold leading-snug tracking-tight text-ink-900 sm:text-3xl"
+            className="mt-3 text-2xl font-extrabold leading-snug tracking-tight text-ink-900 max-sm:mt-2 max-sm:text-xl sm:text-3xl"
           >
             আমরা ময়মনসিংহের মানুষের জন্য
           </h2>
 
-          <p className="mt-3.5 max-w-lg text-[15px] leading-relaxed text-ink-600">
+          <p className="mt-3.5 max-w-lg text-[15px] leading-relaxed text-ink-600 max-sm:mt-2 max-sm:text-sm">
             Mymensingh Sheba শুধু একটি ওয়েবসাইট নয় — এটি ময়মনসিংহের দৈনন্দিন
             জীবনের প্রয়োজনগুলো এক জায়গায় সাজানোর একটি চেষ্টা। আমরা
             {` ${contact.serviceAreaBn}`}-তে কাজ করি, অর্থাৎ শহরের যেকোনো
             প্রান্ত থেকে কেউ সেবা খুঁজতে এবং নিজের সেবা পৌঁছে দিতে পারেন।
           </p>
 
-          <dl className="mt-6 space-y-4">
+          <dl className="mt-6 space-y-4 max-sm:mt-4 max-sm:space-y-3">
             <div className="flex gap-3">
               <dt className="sr-only">সেবার এলাকা</dt>
               <span
@@ -79,7 +79,7 @@ export default function ContactLocation({
             href={SITE_CONTACT.serviceAreaMapUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-6 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50 sm:w-auto"
+            className="mt-6 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50 max-sm:mt-4 sm:w-auto"
           >
             ম্যাপে সেবার এলাকা দেখুন
             <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />

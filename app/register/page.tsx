@@ -231,7 +231,6 @@ export default function RegisterPage() {
                 {AREAS.map((area) => (
                   <option key={area.id} value={area.id}>
                     {area.nameBn}
-                    {area.wardNo ? ` — ওয়ার্ড ${area.wardNo}` : ''}
                   </option>
                 ))}
               </select>

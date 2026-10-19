@@ -3,6 +3,7 @@ export interface CategoryHeaderProps {
   description?: string;
   dark?: boolean;
   compact?: boolean;
+  hideDescriptionOnMobile?: boolean;
 }
 
 /**
@@ -15,6 +16,7 @@ export default function CategoryHeader({
   description,
   dark = false,
   compact = false,
+  hideDescriptionOnMobile = false,
 }: CategoryHeaderProps) {
   return (
     <div className="flex flex-col items-center text-center">
@@ -30,6 +32,8 @@ export default function CategoryHeader({
       {description && (
         <p
           className={`mt-1.5 max-w-2xl text-[13px] leading-relaxed sm:text-sm ${
+            hideDescriptionOnMobile ? 'max-sm:hidden' : ''
+          } ${
             dark ? 'text-brand-100/75' : 'text-ink-500'
           }`}
         >

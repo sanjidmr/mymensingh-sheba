@@ -298,7 +298,7 @@ export default function DesignSystemShowcasePage() {
               ৪. লোকেশন সিলেক্টর ও সার্চ বার (MCC Central Area Picker)
             </h3>
             <p className="text-xs text-slate-500">
-              ময়মনসিংহ সিটি কর্পোরেশনের ৩৩টি ওয়ার্ড ও প্রধান এলাকা সমূহের সেন্ট্রাল ম্যাপ ডাটা।
+              ময়মনসিংহ সিটি কর্পোরেশন ও প্রধান এলাকার কেন্দ্রীয় মানচিত্রের তথ্য।
             </p>
           </div>
 
@@ -326,7 +326,7 @@ export default function DesignSystemShowcasePage() {
             {selectedArea && (
               <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-950 flex items-center justify-between">
                 <div>
-                  <strong>নির্বাচিত এলাকা:</strong> {selectedArea.nameBn} (ওয়ার্ড {selectedArea.wardNo}) — {selectedArea.popularFor}
+                  <strong>নির্বাচিত এলাকা:</strong> {selectedArea.nameBn} — {selectedArea.popularFor}
                 </div>
                 <button
                   type="button"
@@ -385,7 +385,6 @@ export default function DesignSystemShowcasePage() {
                   title="চরপাড়ায় দক্ষিণমুখী ৩ রুমের সুপরিসর ফ্ল্যাট"
                   propertyType="flat"
                   areaBn="চরপাড়া"
-                  wardNo="১৪"
                   rentPrice={15000}
                   bedrooms={3}
                   bathrooms={2}
@@ -399,7 +398,6 @@ export default function DesignSystemShowcasePage() {
                   title="সানকিপাড়ায় শিক্ষার্থীদের জন্য ২ সিট বিশিষ্ট রুম"
                   propertyType="seat"
                   areaBn="সানকিপাড়া"
-                  wardNo="১৩"
                   rentPrice={2500}
                   bedrooms={1}
                   bathrooms={1}
@@ -423,7 +421,6 @@ export default function DesignSystemShowcasePage() {
                   titleOrSpecialty="গণিত ও পদার্থবিজ্ঞান (৯ম-১২শ শ্রেণি)"
                   institutionOrOrg="বাংলাদেশ কৃষি বিশ্ববিদ্যালয় (BAU)"
                   areaBn="চরপাড়া"
-                  wardNo="১৪"
                   experienceYears="৩ বছর অভিজ্ঞতা"
                   rating={4.9}
                   reviewCount={18}
@@ -438,7 +435,6 @@ export default function DesignSystemShowcasePage() {
                   titleOrSpecialty="স্বেচ্ছাসেবী রক্তদাতা (গোপনীয় নম্বর)"
                   bloodGroup="O+"
                   areaBn="গাঙ্গিনারপাড়"
-                  wardNo="১০"
                   lastDonationDate="৩ মাস আগে"
                   detailHref="/blood-donor/sample-1"
                   ctaText="রক্তের রিকোয়েস্ট"

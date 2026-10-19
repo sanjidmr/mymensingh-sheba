@@ -77,7 +77,7 @@ export default function ServiceCard({
       <div className={`flex flex-1 flex-col ${compact ? 'gap-1 p-1.5 sm:gap-1.5 sm:p-3' : 'gap-2.5 p-4'}`}>
         <div>
           <div className="flex items-start justify-between gap-1 sm:gap-2">
-            <h3 className={`line-clamp-2 font-bold leading-tight sm:leading-snug ${red ? 'text-red-700' : 'text-ink-900'} ${compact ? 'text-[10.5px] sm:text-[13px]' : 'text-[15px]'}`}>
+            <h3 className={`line-clamp-2 font-bold leading-[1.45] sm:leading-snug ${red ? 'text-red-700' : 'text-ink-900'} ${compact ? 'text-[12px] sm:text-[13.5px]' : 'text-[15px]'}`}>
               {card.title}
             </h3>
             {showRating && card.rating != null && (
@@ -88,7 +88,7 @@ export default function ServiceCard({
             )}
           </div>
           {card.subtitle && (
-            <p className={`mt-0.5 line-clamp-1 text-[10.5px] sm:mt-1 sm:text-xs ${red ? 'text-red-500/80' : 'text-ink-500'}`}>{card.subtitle}</p>
+            <p className={`mt-0.5 line-clamp-1 text-[11.5px] leading-relaxed sm:mt-1 sm:text-xs ${red ? 'text-red-500/80' : 'text-ink-500'}`}>{card.subtitle}</p>
           )}
           {card.location && (
             <p className={`mt-1.5 hidden items-center gap-1 sm:flex ${compact ? 'text-[11px]' : 'text-xs'} ${red ? 'text-red-500/70' : 'text-ink-400'}`}>
@@ -115,7 +115,7 @@ export default function ServiceCard({
         )}
 
         <div className={`mt-auto flex items-center border-t border-brand-100 ${compact ? 'pt-1.5 sm:pt-2' : 'pt-3'}`}>
-          <span className={`truncate font-bold ${red ? 'text-red-700' : 'text-brand-800'} ${compact ? 'text-[10.5px] sm:text-xs' : 'text-sm'}`}>{card.footer}</span>
+          <span className={`truncate font-bold leading-snug ${red ? 'text-red-700' : 'text-brand-800'} ${compact ? 'text-[11.5px] sm:text-xs' : 'text-sm'}`}>{card.footer}</span>
         </div>
       </div>
     </Link>

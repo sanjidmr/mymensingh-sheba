@@ -79,7 +79,6 @@ export function OwnerProfileCard({ listing }: { listing: ToletListing }) {
       </div>
 
       <p className="mt-3 rounded-lg bg-mist-50 px-2.5 py-2 text-[11px] leading-relaxed text-ink-500">
-        স্প্যাম ও হয়রানি রোধে মালিকের নম্বর সরাসরি প্রকাশ করা হয় না। আপনার
         যোগাযোগের অনুরোধটি প্ল্যাটফর্মের মাধ্যমে মালিকের কাছে পৌঁছাবে।
       </p>
     </section>

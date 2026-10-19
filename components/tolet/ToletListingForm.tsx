@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { AlertTriangle, Loader2, Save, Send } from 'lucide-react';
-import { getAllMCCAreas } from '@/lib/locations';
+import { TOLET_AREA_SOURCE } from '@/lib/tolet-areas';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import { TOLET_FACILITY_OPTIONS } from '@/lib/filter-definitions';
 import {
   TOLET_PROPERTY_TYPE_INFO,
@@ -283,7 +284,6 @@ export function ToletListingForm({
   // state, and only the ref closes that window.
   const submittingRef = useRef(false);
 
-  const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
   const typeInfo = TOLET_PROPERTY_TYPE_INFO[form.propertyType];
   const isMessLike = typeInfo?.isMessLike ?? false;
   const isEditing = Boolean(initialListing);
@@ -334,7 +334,7 @@ export function ToletListingForm({
     const wrapper = document.getElementById(`tolet-field-${field}`);
     if (!wrapper) return;
     wrapper.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    wrapper.querySelector<HTMLElement>('input, textarea, select, button')?.focus({ preventScroll: true });
+    wrapper.querySelector<HTMLElement>('input, textarea, select, button, [role="button"]')?.focus({ preventScroll: true });
   };
 
   const buildInput = (): ToletListingInput => ({
@@ -489,20 +489,13 @@ export function ToletListingForm({
 
         {/* 5 — এলাকা ও ঠিকানা */}
         <Field id="areaId" label="এলাকা" required error={errors.areaId}>
-          <select
-            id="tolet-areaId"
-            value={form.areaId}
-            onChange={(e) => set('areaId', e.target.value)}
-            className={controlClass(Boolean(errors.areaId))}
-          >
-            <option value="">এলাকা নির্বাচন করুন</option>
-            {areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.nameBn}
-                {area.wardNo ? ` (ওয়ার্ড ${area.wardNo})` : ''}
-              </option>
-            ))}
-          </select>
+          <LocationSelectInput
+            value={form.areaId || null}
+            onChange={(areaId) => set('areaId', areaId ?? '')}
+            placeholder="এলাকা নির্বাচন করুন"
+            source={TOLET_AREA_SOURCE}
+            size="md"
+          />
         </Field>
 
         <Field

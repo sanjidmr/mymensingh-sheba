@@ -15,7 +15,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { MCC_AREAS } from '@/lib/locations';
+import { getToletAreas, isValidToletArea } from '@/lib/tolet-areas';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -26,9 +26,10 @@ export default function ToletSetupPage() {
   const [ownerName, setOwnerName] = useState(toletProfile?.ownerName || user?.fullName || '');
   const [phone, setPhone] = useState(toletProfile?.phone || user?.phone || '');
   const [emergencyPhone, setEmergencyPhone] = useState(toletProfile?.emergencyPhone || '');
-  const [primaryAreaId, setPrimaryAreaId] = useState(
-    toletProfile?.primaryAreaId || user?.primaryAreaId || 'charpara'
-  );
+  const [primaryAreaId, setPrimaryAreaId] = useState(() => {
+    const preferred = toletProfile?.primaryAreaId || user?.primaryAreaId || '';
+    return isValidToletArea(preferred) ? preferred : 'charpara';
+  });
   const [addressLine, setAddressLine] = useState(toletProfile?.addressLine || '');
   const [holdingNumber, setHoldingNumber] = useState(toletProfile?.holdingNumber || '');
   const [nidNumber, setNidNumber] = useState(toletProfile?.nidNumber || '');
@@ -163,9 +164,9 @@ export default function ToletSetupPage() {
                   className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 >
-                  {MCC_AREAS.map((area) => (
+                  {getToletAreas().map((area) => (
                     <option key={area.id} value={area.id}>
-                      {area.nameBn} {area.wardNo ? `(ওয়ার্ড ${area.wardNo})` : ''}
+                      {area.nameBn}
                     </option>
                   ))}
                 </select>

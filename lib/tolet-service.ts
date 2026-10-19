@@ -32,6 +32,7 @@ import {
 import { notifyCustomer, notifyAdminHub } from './notification-service';
 import { mockTrackListingMeta } from './tolet-tracking';
 import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
+import { searchToletAreas } from './tolet-areas';
 
 export const toletStorageConfigured = isSupabaseConfigured;
 const LISTING_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -580,6 +581,17 @@ export async function adminFetchListingsPage(
         return { rows: [], total: 0, counts: {}, error: `মালিকের তথ্য খোঁজা যায়নি: ${ownersError.message}` };
       }
       if (owners?.length) filters.push(`owner_id.in.(${owners.map(({ id }) => id).join(',')})`);
+      // A Bangla area name ("সেনবাড়ি") never appears in `area_id` (which holds
+      // kebab ids), so resolve the query through the To-Let area search and
+      // match those ids directly. This keeps area search working in both
+      // scripts for To-Let admin — and only To-Let.
+      if (term.length >= 2) {
+        const matchedAreaIds = searchToletAreas(term)
+          .slice(0, 30)
+          .map((area) => area.id)
+          .filter((id) => /^[a-z0-9-]+$/.test(id));
+        if (matchedAreaIds.length) filters.push(`area_id.in.(${matchedAreaIds.join(',')})`);
+      }
       query = query.or(filters.join(','));
     }
   }
