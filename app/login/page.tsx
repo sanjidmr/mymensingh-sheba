@@ -2,7 +2,7 @@
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { Lock, Phone, LogIn, AlertCircle } from 'lucide-react';
+import { Lock, Mail, LogIn, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
@@ -21,9 +21,9 @@ function LoginForm() {
   const requestedTarget = isSafeInternalPath(rawTarget) ? rawTarget : null;
   const { login, user, isLoading: authLoading } = useAuth();
 
-  const [identifier, setIdentifier] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [fieldErrors, setFieldErrors] = useState<{ identifier?: string; password?: string }>({});
+  const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -48,8 +48,11 @@ function LoginForm() {
     setFormError('');
 
     const errors: typeof fieldErrors = {};
-    if (!identifier.trim()) {
-      errors.identifier = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
+    const normalizedEmail = email.trim();
+    if (!normalizedEmail) {
+      errors.email = 'আপনার ইমেইল লিখুন';
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      errors.email = 'সঠিক ইমেইল ঠিকানা লিখুন';
     }
     if (!password) {
       errors.password = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
@@ -60,7 +63,7 @@ function LoginForm() {
     setLoading(true);
     let res: { success: boolean; error?: string; role?: 'admin' | 'customer' };
     try {
-      res = await login(identifier.trim(), password);
+      res = await login(normalizedEmail, password);
     } catch {
       res = { success: false };
     }
@@ -73,10 +76,9 @@ function LoginForm() {
       return;
     }
 
-    // Auth failures are intentionally vague: saying "no such account" would
-    // let someone test which numbers are registered.
+    // Auth failures are intentionally vague to avoid revealing registered accounts.
     setFormError(
-      res.error || 'এই তথ্য দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। নম্বর ও পাসওয়ার্ড দেখে আবার চেষ্টা করুন।'
+      res.error || 'এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। ইমেইল ও পাসওয়ার্ড দেখে আবার চেষ্টা করুন।'
     );
   };
 
@@ -111,18 +113,19 @@ function LoginForm() {
         )}
 
         <AuthField
-          label="মোবাইল নম্বর অথবা ইমেইল"
-          value={identifier}
+          label="ইমেইল"
+          type="email"
+          value={email}
           onChange={(v) => {
-            setIdentifier(v);
-            if (fieldErrors.identifier) setFieldErrors((p) => ({ ...p, identifier: undefined }));
+            setEmail(v);
+            if (fieldErrors.email) setFieldErrors((p) => ({ ...p, email: undefined }));
           }}
-          placeholder="০১৭১২৩৪৫৬৭৮"
-          icon={<Phone className="h-4 w-4" />}
-          autoComplete="username"
+          placeholder="আপনার ইমেইল ঠিকানা"
+          icon={<Mail className="h-4 w-4" />}
+          autoComplete="email"
           inputMode="email"
           required
-          error={fieldErrors.identifier}
+          error={fieldErrors.email}
         />
 
         <AuthField

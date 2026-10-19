@@ -21,7 +21,7 @@ import Footer from '@/components/Footer';
 const ACCOUNT_LINKS = [
   { href: '/dashboard', label: 'ওভারভিউ', icon: LayoutDashboard },
   { href: '/dashboard/posts', label: 'আমার পোস্ট', icon: FileText },
-  { href: '/dashboard/profiles', label: 'প্রোফাইল ব্যবস্থাপনা', icon: UserRound },
+  { href: '/dashboard/profiles', label: 'সেবা প্রোফাইল খুলুন', icon: UserRound },
   { href: '/profile/saved', label: 'সংরক্ষিত পোস্ট', icon: Bookmark },
   { href: '/dashboard/messages', label: 'বার্তা', icon: Mail },
   { href: '/dashboard/complaints', label: 'অভিযোগ', icon: CircleAlert },

@@ -73,7 +73,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAdmin: boolean;
   isConfiguredWithSupabase: boolean;
-  login: (phoneOrEmail: string, pass: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
+  login: (email: string, pass: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
   register: (data: {
@@ -309,7 +309,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => subscription.subscription.unsubscribe();
   }, [refreshUserData, clearSessionState]);
 
-  const login = async (phoneOrEmail: string, pass: string) => {
+  const login = async (email: string, pass: string) => {
     setIsLoading(true);
     try {
       if (!isSupabaseConfigured) {
@@ -319,9 +319,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!client) {
         return { success: false, error: NOT_CONFIGURED_MESSAGE };
       }
-      const isEmail = phoneOrEmail.includes('@');
-      const email = isEmail ? phoneOrEmail : `${phoneOrEmail}@mymensinghsheba.internal`;
-      const { data, error } = await client.auth.signInWithPassword({ email, password: pass });
+      const { data, error } = await client.auth.signInWithPassword({
+        email: email.trim().toLowerCase(),
+        password: pass,
+      });
       if (error) {
         return { success: false, error: error.message };
       }

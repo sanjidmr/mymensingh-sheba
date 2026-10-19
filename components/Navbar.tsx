@@ -1,15 +1,75 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useId, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
-import { Search, Plus, UserRound } from 'lucide-react';
+import { Search, Plus, UserRound, X, FilePlus2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import MymensinghLiveBar from '@/components/MymensinghLiveBar';
 import NotificationBell from '@/components/account/NotificationBell';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { SITE_NAV_LINKS } from '@/lib/site-navigation';
+
+function PostMenuButton({ compact = false }: { compact?: boolean }) {
+  const [open, setOpen] = useState(false);
+  const menuId = useId();
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [open]);
+
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-controls={menuId}
+        onClick={() => setOpen((current) => !current)}
+        className={
+          compact
+            ? 'inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-accent-400 px-3 text-xs font-extrabold text-brand-950 shadow-sm transition-colors hover:bg-accent-500'
+            : 'inline-flex min-h-10 items-center gap-2 rounded-xl bg-accent-400 px-4 text-sm font-bold text-brand-900 transition-colors hover:bg-accent-500'
+        }
+      >
+        <Plus className="h-4 w-4" aria-hidden="true" />
+        পোস্ট করুন
+      </button>
+      {open && (
+        <div
+          id={menuId}
+          role="group"
+          aria-label="পোস্ট বা প্রোফাইল তৈরি"
+          className="absolute right-0 top-full z-[70] mt-2 w-64 rounded-2xl border border-brand-100 bg-white p-2 shadow-xl"
+        >
+          <p className="px-3 py-2 text-xs font-bold text-ink-500">কী করতে চান?</p>
+          <Link
+            href="/dashboard/new"
+            onClick={() => setOpen(false)}
+            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-800 transition-colors hover:bg-brand-50"
+          >
+            <FilePlus2 className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
+            নতুন পোস্ট করুন
+          </Link>
+          <Link
+            href="/dashboard/profiles"
+            onClick={() => setOpen(false)}
+            className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-800 transition-colors hover:bg-brand-50"
+          >
+            <UserRound className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
+            নতুন প্রোফাইল বানান
+          </Link>
+        </div>
+      )}
+    </div>
+  );
+}
 
 /**
  * Premium navbar, same on every page.
@@ -24,6 +84,7 @@ import { SITE_NAV_LINKS } from '@/lib/site-navigation';
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const pathname = usePathname();
   const router = useRouter();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
@@ -63,36 +124,13 @@ export default function Navbar() {
   const submitSearch = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const query = searchQuery.trim();
+    setSearchOpen(false);
     router.push(query ? `/services?q=${encodeURIComponent(query)}` : '/services');
   };
 
   return (
     <>
       <MymensinghLiveBar />
-      <div className="border-b border-brand-100/70 bg-white px-4 py-2 lg:hidden">
-        <form
-          role="search"
-          onSubmit={submitSearch}
-          className="mx-auto flex h-10 w-full max-w-7xl items-center gap-2 rounded-xl border border-brand-100 bg-mist-50 px-3 focus-within:border-brand-400"
-        >
-          <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
-          <input
-            type="search"
-            value={searchQuery}
-            onChange={(event) => setSearchQuery(event.target.value)}
-            placeholder="সেবা খুঁজুন"
-            aria-label="সেবা খুঁজুন"
-            className="h-full min-w-0 flex-1 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-400"
-          />
-          <button
-            type="submit"
-            aria-label="খুঁজুন"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-400 text-brand-900 transition-colors hover:bg-accent-500"
-          >
-            <Search className="h-4 w-4" aria-hidden="true" />
-          </button>
-        </form>
-      </div>
       <header
         className={`sticky top-0 z-50 ${
           onHome
@@ -140,16 +178,20 @@ export default function Navbar() {
 
           {/* Right actions (desktop) — search / auth */}
           <div className="hidden items-center gap-2 lg:flex">
-            <Link
-              href="/services"
-              aria-label="সেবা খোঁজ"
+            <button
+              type="button"
+              aria-label={searchOpen ? 'সার্চ বন্ধ করুন' : 'সেবা খুঁজুন'}
+              aria-expanded={searchOpen}
+              aria-controls="navbar-search"
+              onClick={() => setSearchOpen((current) => !current)}
               className={`flex h-10 w-10 items-center justify-center ${iconBtn}`}
             >
-              <Search className="h-5 w-5" />
-            </Link>
+              {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+            </button>
 
             {user ? (
               <>
+              {!isAdmin && <PostMenuButton />}
               {!isAdmin && <NotificationBell />}
               <Link
                 href={isAdmin ? '/admin' : '/profile'}
@@ -208,16 +250,20 @@ export default function Navbar() {
 
           {/* Mobile account action — navigation opens from the bottom bar. */}
           <div className="flex items-center gap-2 lg:hidden">
+            <button
+              type="button"
+              aria-label={searchOpen ? 'সার্চ বন্ধ করুন' : 'সেবা খুঁজুন'}
+              aria-expanded={searchOpen}
+              aria-controls="navbar-search"
+              onClick={() => setSearchOpen((current) => !current)}
+              className={`flex h-10 w-10 items-center justify-center ${iconBtn}`}
+            >
+              {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
+            </button>
             {user && !isAdmin ? (
               <>
                 <NotificationBell />
-                <Link
-                  href="/register"
-                  className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-accent-400 px-3 text-xs font-extrabold text-brand-950 shadow-sm transition-colors hover:bg-accent-500"
-                >
-                  <Plus className="h-4 w-4" aria-hidden="true" />
-                  পোস্ট করুন
-                </Link>
+                <PostMenuButton compact />
               </>
             ) : user && isAdmin ? (
               <Link
@@ -240,6 +286,32 @@ export default function Navbar() {
           </div>
         </div>
       </div>
+      {searchOpen && (
+        <div id="navbar-search" className="border-t border-brand-100/70 px-4 py-2.5 sm:px-6 lg:px-8">
+          <form
+            role="search"
+            onSubmit={submitSearch}
+            className="mx-auto flex h-11 w-full max-w-7xl items-center gap-2 rounded-xl border border-brand-100 bg-white px-3 shadow-sm focus-within:border-brand-400"
+          >
+            <Search className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
+            <input
+              type="search"
+              autoFocus
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="সেবা খুঁজুন"
+              aria-label="সেবা খুঁজুন"
+              className="h-full min-w-0 flex-1 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-400"
+            />
+            <button
+              type="submit"
+              className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg bg-accent-400 px-3 text-sm font-bold text-brand-900 transition-colors hover:bg-accent-500"
+            >
+              খুঁজুন
+            </button>
+          </form>
+        </div>
+      )}
 
     </header>
     </>
