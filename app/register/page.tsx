@@ -1,148 +1,173 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { User, Phone, Lock, Mail, MapPin, UserPlus, AlertCircle, CheckCircle2 } from 'lucide-react';
+import React, { Suspense, useEffect, useState } from 'react';
+import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
+import { AlertCircle, Check, CheckCircle2, Lock, Mail, UserPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
-import AuthField, { AuthSubmit, PasswordStrength } from '@/components/auth/AuthField';
-import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
+import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/lib/auth-context';
-import { getAllMCCAreas } from '@/lib/locations';
-import { CUSTOMER_HOME, resolveAuthRedirect } from '@/lib/auth-routes';
+import { isSafeInternalPath, resolveAuthRedirect } from '@/lib/auth-routes';
+import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import SplashScreen from '@/components/site/SplashScreen';
 
-const AREAS = getAllMCCAreas();
 const MIN_PASSWORD = 6;
 
-type Errors = Partial<
-  Record<'fullName' | 'phone' | 'primaryAreaId' | 'password' | 'confirmPassword', string>
->;
-
-export default function RegisterPage() {
-  const router = useRouter();
-  const { register, user, isLoading: authLoading } = useAuth();
-
-  const [fullName, setFullName] = useState('');
-  const [phone, setPhone] = useState('');
+function RegisterForm() {
+  const searchParams = useSearchParams();
+  const rawTarget = searchParams.get('next') ?? searchParams.get('redirect');
+  const requestedTarget = isSafeInternalPath(rawTarget) ? rawTarget : null;
+  const { register, signInWithGoogle, user, isLoading: authLoading } = useAuth();
   const [email, setEmail] = useState('');
-  const [primaryAreaId, setPrimaryAreaId] = useState(AREAS[0]?.id || 'charpara');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
-  const [agreed, setAgreed] = useState(false);
-
-  const [errors, setErrors] = useState<Errors>({});
+  const [emailError, setEmailError] = useState('');
+  const [passwordError, setPasswordError] = useState('');
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [done, setDone] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [welcomeState, setWelcomeState] = useState<'ready' | 'setup' | null>(null);
 
+  // Existing sessions leave the registration route immediately. A newly
+  // registered user sees the welcome moment first, then enters their account.
   useEffect(() => {
-    // Role-aware: a self-registered account is always a customer, but if an
-    // already-signed-in admin ever lands here they go to the console, not the
-    // customer profile.
-    if (user) router.replace(resolveAuthRedirect(user.role, null));
-  }, [user, router]);
-
-  const clearError = (key: keyof Errors) =>
-    setErrors((prev) => (prev[key] ? { ...prev, [key]: undefined } : prev));
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFormError('');
-
-    const next: Errors = {};
-
-    if (!fullName.trim()) next.fullName = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
-    else if (fullName.trim().length < 3) next.fullName = 'নাম কমপক্ষে ৩ অক্ষরের হতে হবে';
-
-    // Bangladeshi mobile: 11 digits, 01 + operator digit. Tolerates +88, spaces
-    // and Bengali digits, because people type all three.
-    const digits = phone.replace(/[^\d]/g, '');
-    const local = digits.startsWith('880') ? digits.slice(3) : digits;
-    if (!local) next.phone = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
-    else if (!/^01[3-9]\d{8}$/.test(local)) next.phone = 'সঠিক মোবাইল নম্বর দিন (যেমন ০১৭১২৩৪৫৬৭৮)';
-
-    if (!password) next.password = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
-    else if (password.length < MIN_PASSWORD)
-      next.password = `কমপক্ষে ${MIN_PASSWORD} অক্ষরের পাসওয়ার্ড ব্যবহার করুন`;
-
-    if (!confirmPassword) next.confirmPassword = 'অনুগ্রহ করে তথ্যটি পূরণ করুন';
-    else if (password !== confirmPassword) next.confirmPassword = 'দুটি পাসওয়ার্ড মিলছে না';
-
-    setErrors(next);
-    if (Object.keys(next).length > 0) return;
-
-    if (!agreed) {
-      setFormError('চালু করার জন্য শর্তাবলী ও নিরাপত্তা নীতিতে সম্মতি দিন।');
-      return;
+    if (authLoading || !user || loading) return;
+    if (welcomeState === 'ready') {
+      const timer = window.setTimeout(
+        () => window.location.replace(resolveAuthRedirect(user.role, requestedTarget)),
+        2600
+      );
+      return () => window.clearTimeout(timer);
     }
+    if (!welcomeState) {
+      window.location.replace(resolveAuthRedirect(user.role, requestedTarget));
+    }
+  }, [authLoading, loading, user, welcomeState, requestedTarget]);
+
+  const handleSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setFormError('');
+    const normalizedEmail = email.trim();
+    let valid = true;
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) {
+      setEmailError('সঠিক ইমেইল ঠিকানা লিখুন');
+      valid = false;
+    } else {
+      setEmailError('');
+    }
+    if (password.length < MIN_PASSWORD) {
+      setPasswordError(`কমপক্ষে ${MIN_PASSWORD} অক্ষরের পাসওয়ার্ড ব্যবহার করুন`);
+      valid = false;
+    } else {
+      setPasswordError('');
+    }
+    if (!valid) return;
 
     setLoading(true);
-    let res: { success: boolean; error?: string; needsConfirmation?: boolean };
     try {
-      res = await register({
-        fullName: fullName.trim(),
-        phone: local,
-        primaryAreaId,
+      const result = await register({
+        email: normalizedEmail,
         password,
-        email: email.trim() || undefined,
+        next: requestedTarget,
       });
-    } catch {
-      res = { success: false };
-    }
-    setLoading(false);
-
-    if (res.success) {
-      // register() signs the user in, so a completed signup goes straight to
-      // /profile — no interstitial screen in between. The single exception is
-      // a signup Supabase still wants confirmed by email: there is no session
-      // behind it yet, so /profile would only bounce back to /login and the
-      // confirmation notice stays for that case.
-      if (res.needsConfirmation) {
-        setDone(true);
-        return;
+      if (!result.success) {
+        setFormError(result.error || 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।');
+      } else if (result.needsConfirmation) {
+        setWelcomeState('setup');
+      } else {
+        setWelcomeState('ready');
       }
-      router.replace(CUSTOMER_HOME);
-      return;
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।');
+    } finally {
+      setLoading(false);
     }
-    setFormError(res.error || 'অ্যাকাউন্ট তৈরি করা যায়নি। একটু পরে আবার চেষ্টা করুন।');
   };
 
-  if (done) {
+  const handleGoogleSignIn = async () => {
+    setFormError('');
+    setGoogleLoading(true);
+    try {
+      const result = await signInWithGoogle(requestedTarget);
+      if (!result.success) setFormError(result.error || 'Google দিয়ে চালিয়ে যাওয়া যায়নি।');
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Google দিয়ে চালিয়ে যাওয়া যায়নি।');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  if (authLoading || (user && welcomeState !== 'ready')) {
+    return <SplashScreen />;
+  }
+
+  if (welcomeState) {
     return (
       <div className="flex min-h-screen flex-col bg-mist-50">
         <Navbar />
-        <main className="flex flex-1 items-center justify-center bg-mist-50 px-4 py-8 sm:px-6 sm:py-12">
-          <div className="w-full max-w-md rounded-xl border border-brand-100 bg-white px-6 py-8 text-center shadow-sm">
-            <span
-              aria-hidden="true"
-              className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brand-50 text-brand-700"
-            >
-              <CheckCircle2 className="h-7 w-7" />
-            </span>
-            <h1 className="mt-5 text-xl font-extrabold tracking-tight text-ink-900">
-              অভিনন্দন!
-            </h1>
-            <p className="mx-auto mt-2 max-w-xs text-[14px] leading-relaxed text-ink-500">
-              আপনার অ্যাকাউন্ট সফলভাবে তৈরি হয়েছে। এখন সেবা খুঁজতে ও নিজের প্রোফাইল সাজাতে পারেন।
-            </p>
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:justify-center">
-              <button
-                type="button"
-                onClick={() => router.replace('/profile')}
-                className={`inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-[15px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:w-auto ${LIGHT_FOCUS}`}
-              >
-                শুরু করুন
-              </button>
-              <button
-                type="button"
-                onClick={() => router.replace('/services')}
-                className={`inline-flex min-h-[48px] w-full items-center justify-center rounded-lg border border-brand-200 bg-white px-5 text-[15px] font-bold text-brand-700 transition-colors hover:bg-mist-50 sm:w-auto ${LIGHT_FOCUS}`}
-              >
-                সেবা দেখুন
-              </button>
+        <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
+          <section className="mms-welcome-card w-full max-w-md rounded-2xl border border-brand-100 bg-white px-6 py-9 text-center shadow-[0_16px_48px_rgba(12,59,46,0.09)] sm:px-10 sm:py-11">
+            <div className="relative mx-auto flex h-[76px] w-[76px] items-center justify-center">
+              {welcomeState === 'ready' && (
+                <span
+                  aria-hidden="true"
+                  className="mms-welcome-ring absolute inset-0 rounded-full border border-brand-300"
+                />
+              )}
+              <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-brand-700 ring-1 ring-brand-100">
+                {welcomeState === 'ready' ? (
+                  <Check
+                    className="mms-welcome-check h-8 w-8"
+                    strokeWidth={2.5}
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <CheckCircle2 className="h-8 w-8" strokeWidth={1.8} aria-hidden="true" />
+                )}
+              </span>
             </div>
-          </div>
+            <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-[11px] font-bold text-brand-700">
+              {welcomeState === 'ready' ? 'নিবন্ধন সফল' : 'একটি ছোট সেটিংস বাকি'}
+            </span>
+            <p className="mt-4 text-xs font-extrabold uppercase tracking-[0.16em] text-brand-600">
+              Welcome to
+            </p>
+            <h1 className="mt-1 text-2xl font-extrabold leading-tight text-ink-900 sm:text-3xl">
+              Mymensingh Sheba
+            </h1>
+            <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-ink-600 sm:text-base">
+              এখন থেকে ঘরে বসেই পাবেন আপনার প্রয়োজনীয় স্থানীয় সেবা—সহজে, নিরাপদে, এক জায়গায়।
+            </p>
+            {welcomeState === 'setup' ? (
+              <>
+                <p className="mx-auto mt-5 max-w-sm rounded-lg bg-mist-50 px-4 py-3 text-sm leading-relaxed text-ink-700">
+                  অ্যাকাউন্টটি তৈরি হয়েছে, তবে স্বয়ংক্রিয়ভাবে প্রবেশ করা যায়নি। সাইটের প্রশাসককে Supabase Auth-এ Email confirmations বন্ধ করতে বলুন।
+                </p>
+                <Link
+                  href="/"
+                  className={`mt-5 inline-flex min-h-11 items-center justify-center rounded-lg border border-brand-200 px-5 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
+                >
+                  হোমপেজে যান
+                </Link>
+              </>
+            ) : (
+              <>
+                <p className="mt-4 text-sm font-semibold text-brand-700">
+                  আপনার অ্যাকাউন্ট তৈরি হয়েছে। আপনাকে{' '}
+                  {requestedTarget ? 'আপনার নির্বাচিত পেজে' : 'আপনার অ্যাকাউন্টে'} নিয়ে যাওয়া হচ্ছে…
+                </p>
+                <button
+                  type="button"
+                  onClick={() => user && window.location.replace(resolveAuthRedirect(user.role, requestedTarget))}
+                  className={`mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-800 motion-safe:animate-[mms-welcome-rise_500ms_350ms_both] ${LIGHT_FOCUS}`}
+                >
+                  {requestedTarget ? 'এখনই এগিয়ে যান' : 'ড্যাশবোর্ডে যান'}
+                </button>
+              </>
+            )}
+          </section>
         </main>
         <Footer />
       </div>
@@ -152,180 +177,56 @@ export default function RegisterPage() {
   return (
     <div className="flex min-h-screen flex-col bg-mist-50">
       <Navbar />
-
       <AuthShell
         eyebrow="একটি অ্যাকাউন্ট, সব সেবা"
         title="Mymensingh Sheba-তে যোগ দিন"
-        subtitle="মাত্র কয়েকটি তথ্য দিয়ে অ্যাকাউন্ট তৈরি করুন"
-        supporting="ফর্মটি শুধু আপনাকে সেবা দিতে সাহায্য করে — বাজার, বিজ্ঞাপন বা প্রোফাইলের জন্য কিছু আগে থেকে দিতে হবে না।"
-        formLabel="অ্যাকাউন্ট তৈরি করুন"
+        subtitle="ইমেইল ও পাসওয়ার্ড দিয়ে অ্যাকাউন্ট তৈরি করুন"
+        formLabel="রেজিস্ট্রেশন"
         after={
-          <AuthSwitch question="আগেই অ্যাকাউন্ট আছে?" actionLabel="লগইন করুন" href="/login" />
+          <AuthSwitch
+            question="আগেই অ্যাকাউন্ট আছে?"
+            actionLabel="লগইন করুন"
+            href={requestedTarget ? `/login?next=${encodeURIComponent(requestedTarget)}` : '/login'}
+          />
         }
       >
+        {formError && (
+          <p role="alert" className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
+            {formError}
+          </p>
+        )}
         <form onSubmit={handleSubmit} noValidate className="space-y-1">
-          {formError && (
-            <p
-              role="alert"
-              className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900"
-            >
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
-              {formError}
-            </p>
-          )}
-
           <AuthField
-            label="আপনার নাম"
-            value={fullName}
-            onChange={(v) => {
-              setFullName(v);
-              clearError('fullName');
+            label="ইমেইল"
+            type="email"
+            value={email}
+            onChange={(value) => {
+              setEmail(value);
+              setEmailError('');
             }}
-            placeholder="যেমন: রহিমা বেগম"
-            icon={<User className="h-4 w-4" />}
-            autoComplete="name"
+            placeholder="you@example.com"
+            icon={<Mail className="h-4 w-4" />}
+            autoComplete="email"
+            inputMode="email"
             required
-            error={errors.fullName}
+            error={emailError}
           />
-
-          <AuthField
-            label="মোবাইল নম্বর"
-            value={phone}
-            onChange={(v) => {
-              setPhone(v);
-              clearError('phone');
-            }}
-            placeholder="০১৭১২৩৪৫৬৭৮"
-            icon={<Phone className="h-4 w-4" />}
-            autoComplete="tel"
-            inputMode="tel"
-            maxLength={14}
-            required
-            error={errors.phone}
-            hint="এই নম্বরেই সেবার আপডেট জানানো হবে।"
-          />
-
-          <div>
-            <label
-              htmlFor="primaryArea"
-              className="mb-1.5 flex items-baseline gap-1.5 text-[13px] font-bold text-ink-700"
-            >
-              আপনার এলাকা
-              <span className="text-rose-500">*</span>
-            </label>
-            <div className="relative">
-              <MapPin
-                className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
-                aria-hidden="true"
-              />
-              <select
-                id="primaryArea"
-                value={primaryAreaId}
-                onChange={(e) => setPrimaryAreaId(e.target.value)}
-                className={`w-full appearance-none rounded-lg border bg-white py-3 pl-11 pr-9 text-[15px] text-ink-900 transition-colors focus:outline-none ${
-                  errors.primaryAreaId
-                    ? 'border-rose-300 bg-rose-50/50'
-                    : 'border-brand-200 hover:border-brand-300 focus:border-brand-500'
-                } ${LIGHT_FOCUS}`}
-              >
-                {AREAS.map((area) => (
-                  <option key={area.id} value={area.id}>
-                    {area.nameBn}
-                  </option>
-                ))}
-              </select>
-              <svg
-                className="pointer-events-none absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                aria-hidden="true"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"
-                  clipRule="evenodd"
-                />
-              </svg>
-            </div>
-            <div className="mt-1.5 min-h-[18px]">
-              <p className="text-[11.5px] leading-relaxed text-ink-400">
-                কাছের সেবাগুলো আগে দেখানোর জন্য ব্যবহার হবে।
-              </p>
-            </div>
-          </div>
-
           <AuthField
             label="পাসওয়ার্ড"
             value={password}
-            onChange={(v) => {
-              setPassword(v);
-              clearError('password');
-              if (confirmPassword && v !== confirmPassword)
-                setErrors((p) => ({ ...p, confirmPassword: 'দুটি পাসওয়ার্ড মিলছে না' }));
+            onChange={(value) => {
+              setPassword(value);
+              setPasswordError('');
             }}
             placeholder={`কমপক্ষে ${MIN_PASSWORD} অক্ষর`}
             icon={<Lock className="h-4 w-4" />}
             autoComplete="new-password"
             isPassword
             required
-            error={errors.password}
+            error={passwordError}
             hint={`কমপক্ষে ${MIN_PASSWORD} অক্ষরের পাসওয়ার্ড ব্যবহার করুন`}
-          >
-            <div className="mt-2">
-              <PasswordStrength value={password} />
-            </div>
-          </AuthField>
-
-          <AuthField
-            label="পাসওয়ার্ড আবার লিখুন"
-            value={confirmPassword}
-            onChange={(v) => {
-              setConfirmPassword(v);
-              clearError('confirmPassword');
-            }}
-            placeholder="একই পাসওয়ার্ড আবার লিখুন"
-            icon={<Lock className="h-4 w-4" />}
-            autoComplete="new-password"
-            isPassword
-            required
-            error={errors.confirmPassword}
           />
-
-          <AuthField
-            label="ইমেইল ঠিকানা"
-            labelSuffix="(ঐচ্ছিক)"
-            type="email"
-            value={email}
-            onChange={setEmail}
-            placeholder="you@example.com"
-            icon={<Mail className="h-4 w-4" />}
-            autoComplete="email"
-            inputMode="email"
-            hint="পাসওয়ার্ড ভুলে গেলে ইমেইলে সাহায্য লাগে।"
-          />
-
-          <label className="flex cursor-pointer items-start gap-2.5 py-1">
-            <input
-              type="checkbox"
-              checked={agreed}
-              onChange={(e) => {
-                setAgreed(e.target.checked);
-                if (e.target.checked) setFormError('');
-              }}
-              className={`mt-0.5 h-4 w-4 shrink-0 rounded border-brand-300 accent-brand-700 ${LIGHT_FOCUS}`}
-            />
-            <span className="text-[12.5px] leading-relaxed text-ink-600">
-              আমি শর্তাবলী ও{' '}
-              <a
-                href="/safety"
-                className={`font-semibold text-brand-700 underline underline-offset-2 ${LIGHT_FOCUS}`}
-              >
-                নিরাপত্তা নীতি
-              </a>{' '}
-              মেনে চলছি।
-            </span>
-          </label>
-
           <div className="pt-2">
             <AuthSubmit
               loading={loading || authLoading}
@@ -335,9 +236,22 @@ export default function RegisterPage() {
             />
           </div>
         </form>
+        <div className="my-3 flex items-center gap-3 text-[11px] font-semibold text-ink-400">
+          <span className="h-px flex-1 bg-brand-100" />
+          অথবা
+          <span className="h-px flex-1 bg-brand-100" />
+        </div>
+        <GoogleSignInButton onClick={handleGoogleSignIn} loading={googleLoading} />
       </AuthShell>
-
       <Footer />
     </div>
+  );
+}
+
+export default function RegisterPage() {
+  return (
+    <Suspense fallback={<SplashScreen />}>
+      <RegisterForm />
+    </Suspense>
   );
 }

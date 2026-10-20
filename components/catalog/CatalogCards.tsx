@@ -321,6 +321,7 @@ export interface TileCardProps {
   isVerified?: boolean;
   actionLabel?: string;
   actionHref?: string;
+  mobileMinimal?: boolean;
 }
 
 export function TileCard({
@@ -337,6 +338,7 @@ export function TileCard({
   isVerified,
   actionLabel,
   actionHref,
+  mobileMinimal = false,
 }: TileCardProps) {
   const toneClass =
     badgeTone === 'urgent'
@@ -379,19 +381,23 @@ export function TileCard({
         </h3>
 
         {subtitle && (
-          <p className="mt-0.5 line-clamp-1 text-[10.5px] leading-snug text-ink-500 sm:text-xs">
+          <p className={`mt-0.5 line-clamp-1 text-[10.5px] leading-snug text-ink-500 sm:text-xs ${mobileMinimal ? 'hidden sm:block' : ''}`}>
             {subtitle}
           </p>
         )}
 
         {areaLabel && (
-          <p className="mt-1.5 flex items-center gap-1 text-[10.5px] text-ink-400 sm:text-xs">
+          <p className={`mt-1.5 flex items-center gap-1 text-[10.5px] text-ink-400 sm:text-xs ${mobileMinimal ? 'hidden sm:flex' : ''}`}>
             <MapPin className="h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
             <span className="truncate">{areaLabel}</span>
           </p>
         )}
 
-        <FactChips items={chips ?? []} max={2} className="mt-1.5" />
+        <FactChips
+          items={chips ?? []}
+          max={2}
+          className={`mt-1.5 ${mobileMinimal ? 'hidden sm:flex' : ''}`}
+        />
 
         {actionLabel && (
           <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-brand-100 pt-2 sm:pt-2.5">

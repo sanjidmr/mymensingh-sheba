@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { sendAdminCriticalError } from '@/lib/admin-email-alerts.server';
 import { getAdminDataClient } from './queries';
 
 /**
@@ -57,6 +58,11 @@ export async function runAdminAction(
   try {
     return await fn(ctx.client, ctx.userId);
   } catch (error) {
+    try {
+      await sendAdminCriticalError(error);
+    } catch {
+      console.error('Admin action failure alert could not be processed.');
+    }
     return { ok: false, error: toActionError(error) };
   }
 }

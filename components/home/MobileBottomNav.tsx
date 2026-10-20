@@ -1,10 +1,11 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { ChevronRight, Home, LayoutGrid, Menu, Newspaper, UserRound, X } from 'lucide-react';
+import { ChevronRight, Home, LayoutGrid, LogOut, Menu, Newspaper, UserRound, X } from 'lucide-react';
 import { SITE_NAV_LINKS } from '@/lib/site-navigation';
+import { useAuth } from '@/lib/auth-context';
 
 const ITEMS = [
   { name: 'হোম', href: '/', icon: Home },
@@ -38,7 +39,11 @@ function isBareRoute(pathname: string): boolean {
  */
 export default function MobileBottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
+  const { user, isLoading: authLoading, logout } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState('');
+  const [loggingOut, setLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -55,6 +60,21 @@ export default function MobileBottomNav() {
       return pathname.startsWith('/profile') || pathname.startsWith('/dashboard');
     }
     return pathname.startsWith(href);
+  };
+
+  const handleLogout = async () => {
+    setLogoutError('');
+    setLoggingOut(true);
+    try {
+      await logout();
+      setMenuOpen(false);
+      router.replace('/');
+      router.refresh();
+    } catch (error) {
+      setLogoutError(error instanceof Error ? error.message : 'লগআউট করা যায়নি। আবার চেষ্টা করুন।');
+    } finally {
+      setLoggingOut(false);
+    }
   };
 
   if (isBareRoute(pathname)) return null;
@@ -120,9 +140,20 @@ export default function MobileBottomNav() {
             <Link href="/help" onClick={() => setMenuOpen(false)} className="flex min-h-11 items-center justify-center rounded-xl border border-brand-200 text-sm font-semibold text-brand-800">
               সহায়তা
             </Link>
-            <Link href="/services" onClick={() => setMenuOpen(false)} className="col-span-2 flex min-h-12 items-center justify-center rounded-xl bg-brand-700 text-sm font-bold text-white">
-              সেবা সমূহ দেখুন
-            </Link>
+            {!authLoading && user && (
+              <div className="col-span-2">
+                <button
+                  type="button"
+                  onClick={() => void handleLogout()}
+                  disabled={loggingOut}
+                  className="flex min-h-12 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 text-sm font-bold text-rose-800 transition-colors hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"
+                >
+                  <LogOut className="h-4 w-4" aria-hidden="true" />
+                  {loggingOut ? 'লগআউট হচ্ছে…' : 'লগআউট'}
+                </button>
+                {logoutError && <p role="alert" className="mt-2 text-center text-xs font-semibold text-rose-700">{logoutError}</p>}
+              </div>
+            )}
           </div>
         </section>
       </div>

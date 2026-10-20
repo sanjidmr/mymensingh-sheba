@@ -212,7 +212,7 @@ export default function ServiceRequestForm({
             লগইন করুন
           </Link>
           <Link
-            href="/register"
+            href={`/register?next=${encodeURIComponent(pathname)}`}
             className={`inline-flex min-h-[44px] w-full items-center justify-center rounded-lg border border-brand-200 bg-white px-5 text-sm font-bold text-brand-700 transition-colors hover:bg-mist-50 sm:w-auto ${LIGHT_FOCUS}`}
           >
             অ্যাকাউন্ট খুলুন

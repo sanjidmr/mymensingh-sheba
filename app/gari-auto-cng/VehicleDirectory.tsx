@@ -55,7 +55,7 @@ const SORTERS = {
  */
 function priceParts(listing: ServiceListing): { label: string; suffix?: string } | null {
   if (listing.ratePerKm != null) {
-    return { label: bnTakaDecimal(listing.ratePerKm), suffix: 'প্রতি কিলোমিটার' };
+    return { label: bnTakaDecimal(listing.ratePerKm), suffix: '/কিমি' };
   }
   const { priceMin, priceMax, priceNoteBn } = listing;
   if (priceMin == null && priceMax == null) return null;
@@ -112,6 +112,7 @@ export default function VehicleDirectory() {
         priceLabel={price?.label}
         priceSuffix={price?.suffix}
         areaLabel={areaNames(listing.areaIds)}
+        mobileMinimal
         chips={[
           listing.seatCount ? `${toBn(listing.seatCount)} সিট` : undefined,
           ...tagLabels(listing.tags),

@@ -77,8 +77,8 @@ const SEED_REQUESTS: HomeMovingRequest[] = [
     status: 'completed',
     pickupAreaId: 'sankipara',
     destinationAreaId: 'akua',
-    pickupAddress: 'সানকিপাড়া, ব্রাহ্মপল্লী, বাসা 21',
-    destinationAddress: 'আকুয়া, মোড়লপাড়া, বাসা 9/বি',
+    pickupAddress: 'সাংকিপাড়া, ব্রাহ্মপল্লী, বাসা 21',
+    destinationAddress: 'আকুয়া, মড়লপাড়া, বাসা 9/বি',
     preferredDate: '2026-09-15',
     preferredTime: 'যেকোনো সময়',
     items: [

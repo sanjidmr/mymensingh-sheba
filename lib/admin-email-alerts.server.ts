@@ -1,14 +1,18 @@
 import 'server-only';
 
+import { createHash, randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AdminEmailAlertType } from './admin-email-alerts';
 
 const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
 const EVENT_WINDOW_MS = 10 * 60 * 1000;
 const MAX_ALERTS_PER_WINDOW = 10;
+const MAX_DELIVERY_ATTEMPTS = 5;
+const MAX_ATTEMPTS_PER_REQUEST = 3;
+const STALE_DELIVERY_MS = 2 * 60 * 1000;
 
 type EmailAlert = {
-  type: AdminEmailAlertType;
+  type: AdminEmailAlertType | 'critical_error' | 'admin_test';
   id: string;
   eventKey: string;
   severity: 'high' | 'critical';
@@ -243,7 +247,7 @@ async function reserveDelivery(
   alert: EmailAlert
 ): Promise<
   | { status: 'reserved'; attemptCount: number }
-  | { status: 'sent' | 'in_progress' | 'rate_limited' }
+  | { status: 'sent' | 'in_progress' | 'rate_limited' | 'failed' }
 > {
   const now = new Date();
   const windowStart = new Date(now.getTime() - EVENT_WINDOW_MS).toISOString();
@@ -277,9 +281,21 @@ async function reserveDelivery(
     existing.status === 'failed' &&
     Boolean(existing.next_attempt_at) &&
     new Date(existing.next_attempt_at).getTime() <= now.getTime();
-  if (!retryDue) return { status: 'in_progress' };
+  const staleSending =
+    existing.status === 'sending' &&
+    Boolean(existing.last_attempt_at) &&
+    now.getTime() - new Date(existing.last_attempt_at!).getTime() >= STALE_DELIVERY_MS;
+  if (!retryDue && !staleSending) return { status: 'in_progress' };
+  if (existing.attempt_count >= MAX_DELIVERY_ATTEMPTS) {
+    await updateDelivery(client, alert.eventKey, {
+      status: 'failed',
+      next_attempt_at: null,
+      last_error: 'retry_limit_reached',
+    });
+    return { status: 'failed' };
+  }
 
-  const { data: claimed, error: claimError } = await client
+  let claim = client
     .from('admin_email_deliveries')
     .update({
       status: 'sending',
@@ -288,11 +304,10 @@ async function reserveDelivery(
       next_attempt_at: null,
       last_error: null,
     })
-    .eq('event_key', alert.eventKey)
-    .eq('status', existing.status)
-    .eq('attempt_count', existing.attempt_count)
-    .select('event_key')
-    .maybeSingle();
+    .eq('event_key', alert.eventKey);
+  claim = claim.eq('status', existing.status).eq('attempt_count', existing.attempt_count);
+  if (existing.last_attempt_at) claim = claim.eq('last_attempt_at', existing.last_attempt_at);
+  const { data: claimed, error: claimError } = await claim.select('event_key').maybeSingle();
   if (claimError) throw new Error('delivery_claim_failed');
   return claimed
     ? { status: 'reserved', attemptCount: existing.attempt_count + 1 }
@@ -317,7 +332,8 @@ function delay(milliseconds: number): Promise<void> {
 
 async function deliverWithBrevo(
   alert: EmailAlert,
-  configuration: Extract<ReturnType<typeof emailConfiguration>, { ok: true }>
+  configuration: Extract<ReturnType<typeof emailConfiguration>, { ok: true }>,
+  maxAttempts = MAX_ATTEMPTS_PER_REQUEST
 ): Promise<{ messageId: string | null; attempts: number }> {
   const subject = `[Mymensingh Sheba] ${alert.title}`;
   const safeTitle = escapeHtml(alert.title);
@@ -339,7 +355,7 @@ async function deliverWithBrevo(
     `অ্যাডমিন প্যানেল: ${adminUrl}`,
   ].join('\n\n');
 
-  for (let attempt = 1; attempt <= 3; attempt += 1) {
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     let response: Response;
     try {
       response = await fetch(BREVO_ENDPOINT, {
@@ -372,25 +388,125 @@ async function deliverWithBrevo(
       return { messageId, attempts: attempt };
     }
 
-    if (response.status === 429 && attempt < 3) {
+    if (response.status === 429 && attempt < maxAttempts) {
       await delay(attempt * 300);
       continue;
     }
     throw new BrevoDeliveryError(
       attempt,
       response.status === 429,
-      `provider_http_${response.status}`
+      response.status === 401 || response.status === 403
+        ? 'provider_permission_denied'
+        : `provider_http_${response.status}`
     );
   }
-  throw new BrevoDeliveryError(3, true, 'provider_http_429');
+  throw new BrevoDeliveryError(maxAttempts, true, 'provider_http_429');
+}
+
+type AlertDeliveryResult = {
+  status: 'sent' | 'ignored' | 'in_progress' | 'rate_limited' | 'unconfigured' | 'failed';
+};
+
+async function deliverAdminAlert(
+  alert: EmailAlert,
+  requiresAdminNotification: boolean
+): Promise<AlertDeliveryResult> {
+  const client = getServerClient();
+  if (!client) {
+    console.error('Admin email alert unavailable: Supabase server configuration is missing.');
+    return { status: 'unconfigured' };
+  }
+
+  if (requiresAdminNotification) {
+    if (alert.type === 'critical_error' || alert.type === 'admin_test') {
+      return { status: 'ignored' };
+    }
+    if (!(await hasAdminNotification(client, alert.type, alert.id))) {
+      return { status: 'ignored' };
+    }
+  }
+
+  const configuration = emailConfiguration();
+  if (!configuration.ok) {
+    console.error('Admin email alert configuration is incomplete.', {
+      missing: configuration.missing,
+      type: alert.type,
+    });
+    return { status: 'unconfigured' };
+  }
+
+  const reservation = await reserveDelivery(client, alert);
+  if (reservation.status === 'sent') return { status: 'sent' };
+  if (reservation.status === 'in_progress') return { status: 'in_progress' };
+  if (reservation.status === 'rate_limited') return { status: 'rate_limited' };
+  if (reservation.status === 'failed') return { status: 'failed' };
+  if (reservation.status !== 'reserved') return { status: 'in_progress' };
+
+  let result: { messageId: string | null; attempts: number };
+  try {
+    const remainingAttempts = MAX_DELIVERY_ATTEMPTS - reservation.attemptCount + 1;
+    result = await deliverWithBrevo(
+      alert,
+      configuration,
+      Math.min(MAX_ATTEMPTS_PER_REQUEST, remainingAttempts)
+    );
+  } catch (error) {
+    const message = error instanceof BrevoDeliveryError ? error.code : 'delivery_failed';
+    const attempts = error instanceof BrevoDeliveryError ? error.attempts : 1;
+    const retryable = error instanceof BrevoDeliveryError && error.retryable;
+    try {
+      const totalAttempts = reservation.attemptCount + attempts - 1;
+      await updateDelivery(client, alert.eventKey, {
+        status: 'failed',
+        attempt_count: totalAttempts,
+        last_error: message.slice(0, 80),
+        next_attempt_at:
+          retryable && totalAttempts < MAX_DELIVERY_ATTEMPTS
+            ? new Date(Date.now() + 60_000).toISOString()
+            : null,
+      });
+    } catch {
+      console.error('Admin email alert state could not be updated.', {
+        type: alert.type,
+        eventId: alert.id,
+      });
+    }
+    console.error('Admin email alert delivery failed.', {
+      type: alert.type,
+      eventId: alert.id,
+      reason: message.slice(0, 80),
+      retryable,
+    });
+    return { status: 'failed' };
+  }
+
+  try {
+    await updateDelivery(client, alert.eventKey, {
+      status: 'sent',
+      provider_message_id: result.messageId,
+      attempt_count: reservation.attemptCount + result.attempts - 1,
+      last_error: null,
+      next_attempt_at: null,
+    });
+    console.info('Admin email alert delivered.', {
+      type: alert.type,
+      eventId: alert.id,
+      attempts: reservation.attemptCount + result.attempts - 1,
+    });
+    return { status: 'sent' };
+  } catch {
+    console.error('Admin email alert was accepted but delivery state could not be saved.', {
+      type: alert.type,
+      eventId: alert.id,
+    });
+    return { status: 'in_progress' };
+  }
 }
 
 export async function sendAdminEmailAlert(
   type: AdminEmailAlertType,
   id: string
-): Promise<{
-  status: 'sent' | 'ignored' | 'in_progress' | 'rate_limited' | 'unconfigured' | 'failed';
-}> {
+): Promise<AlertDeliveryResult> {
   const client = getServerClient();
   if (!client) {
     console.error('Admin email alert unavailable: Supabase server configuration is missing.');
@@ -399,68 +515,60 @@ export async function sendAdminEmailAlert(
 
   const lookup = await findEligibleAlert(client, type, id);
   if (!lookup.eligible) return { status: 'ignored' };
-  if (!(await hasAdminNotification(client, type, id))) return { status: 'ignored' };
+  return deliverAdminAlert(lookup.alert, true);
+}
 
-  const configuration = emailConfiguration();
-  if (!configuration.ok) {
-    console.error('Admin email alert configuration is incomplete.', {
-      missing: configuration.missing,
-      type,
-    });
-    return { status: 'unconfigured' };
-  }
+export async function sendAdminCriticalError(error: unknown): Promise<AlertDeliveryResult> {
+  const candidateCode =
+    error && typeof error === 'object' && 'code' in error && typeof error.code === 'string'
+      ? error.code
+      : '';
+  const expectedCodes = new Set([
+    '23505',
+    '23503',
+    '23514',
+    '42501',
+    'PGRST116',
+    'storage/object_not_found',
+  ]);
+  if (expectedCodes.has(candidateCode)) return { status: 'ignored' };
 
-  const reservation = await reserveDelivery(client, lookup.alert);
-  if (reservation.status === 'sent') return { status: 'sent' };
-  if (reservation.status === 'in_progress') return { status: 'in_progress' };
-  if (reservation.status === 'rate_limited') return { status: 'rate_limited' };
-  if (reservation.status !== 'reserved') return { status: 'in_progress' };
+  const safeCode = /^[A-Za-z0-9_/-]{1,40}$/.test(candidateCode)
+    ? candidateCode
+    : 'unexpected_admin_action_error';
+  const occurredAt = new Date();
+  const dedupeBucket = Math.floor(occurredAt.getTime() / EVENT_WINDOW_MS);
+  const fingerprint = createHash('sha256')
+    .update(`${safeCode}:${dedupeBucket}`)
+    .digest('hex')
+    .slice(0, 24);
+  const alert: EmailAlert = {
+    type: 'critical_error',
+    id: randomUUID(),
+    eventKey: `critical_error:${fingerprint}`,
+    severity: 'critical',
+    title: 'অ্যাডমিন কার্যক্রমে গুরুতর ত্রুটি',
+    summary: `একটি অ্যাডমিন কার্যক্রম অপ্রত্যাশিতভাবে ব্যর্থ হয়েছে (কোড: ${safeCode})। বিস্তারিত দেখতে সার্ভার লগ পরীক্ষা করুন।`,
+    adminPath: '/admin',
+    occurredAt: occurredAt.toISOString(),
+  };
+  return deliverAdminAlert(alert, false);
+}
 
-  let result: { messageId: string | null; attempts: number };
-  try {
-    result = await deliverWithBrevo(lookup.alert, configuration);
-  } catch (error) {
-    const message = error instanceof BrevoDeliveryError ? error.code : 'delivery_failed';
-    const attempts = error instanceof BrevoDeliveryError ? error.attempts : 1;
-    const retryable = error instanceof BrevoDeliveryError && error.retryable;
-    try {
-      await updateDelivery(client, lookup.alert.eventKey, {
-        status: 'failed',
-        attempt_count: reservation.attemptCount + attempts - 1,
-        last_error: message.slice(0, 80),
-        next_attempt_at: retryable ? new Date(Date.now() + 60_000).toISOString() : null,
-      });
-    } catch {
-      console.error('Admin email alert state could not be updated.', { type, eventId: id });
-    }
-    console.error('Admin email alert delivery failed.', {
-      type,
-      eventId: id,
-      reason: message.slice(0, 80),
-      retryable,
-    });
-    return { status: 'failed' };
-  }
-
-  try {
-    await updateDelivery(client, lookup.alert.eventKey, {
-      status: 'sent',
-      provider_message_id: result.messageId,
-      attempt_count: reservation.attemptCount + result.attempts - 1,
-      last_error: null,
-      next_attempt_at: null,
-    });
-    console.info('Admin email alert delivered.', {
-      type,
-      eventId: id,
-      attempts: reservation.attemptCount + result.attempts - 1,
-    });
-    return { status: 'sent' };
-  } catch {
-    console.error('Admin email alert was accepted but delivery state could not be saved.', {
-      type,
-      eventId: id,
-    });
-    return { status: 'in_progress' };
-  }
+export async function sendAdminTestEmail(adminId: string): Promise<AlertDeliveryResult> {
+  const occurredAt = new Date();
+  const day = occurredAt.toISOString().slice(0, 10);
+  return deliverAdminAlert(
+    {
+      type: 'admin_test',
+      id: adminId,
+      eventKey: `admin_test:${adminId}:${day}`,
+      severity: 'high',
+      title: 'Brevo ইমেইল সংযোগ পরীক্ষা সফল',
+      summary: 'Mymensingh Sheba অ্যাডমিন ইমেইল সতর্কতার জন্য একটি পরীক্ষামূলক বার্তা পাঠিয়েছে।',
+      adminPath: '/admin',
+      occurredAt: occurredAt.toISOString(),
+    },
+    false
+  );
 }

@@ -110,7 +110,7 @@ export function PropertyToletCard({
       <div className="p-4 sm:p-5 flex-1 flex flex-col justify-between">
         <div>
           {/* Location & Title */}
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
+          <div className="mb-1 hidden items-center gap-1.5 text-xs text-slate-500 sm:flex">
             <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
             <span className="font-semibold text-slate-700">{areaBn}</span>
           </div>
@@ -128,7 +128,7 @@ export function PropertyToletCard({
           )}
 
           {/* Features Row */}
-          <div className="flex items-center gap-3 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100">
+          <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 sm:mt-3 sm:border-t sm:border-slate-100 sm:pt-3">
             {bedrooms !== undefined && (
               <span className="inline-flex items-center gap-1">
                 <Bed className="w-3.5 h-3.5 text-slate-400" />
@@ -136,13 +136,13 @@ export function PropertyToletCard({
               </span>
             )}
             {bathrooms !== undefined && (
-              <span className="inline-flex items-center gap-1">
+              <span className="hidden items-center gap-1 sm:inline-flex">
                 <Bath className="w-3.5 h-3.5 text-slate-400" />
                 <span>{bathrooms} বাথ</span>
               </span>
             )}
             {sizeSqft && (
-              <span className="inline-flex items-center gap-1">
+              <span className="hidden items-center gap-1 sm:inline-flex">
                 <Maximize2 className="w-3.5 h-3.5 text-slate-400" />
                 <span>{sizeSqft} বর্গফুট</span>
               </span>
@@ -151,7 +151,12 @@ export function PropertyToletCard({
         </div>
 
         {/* Transparent Price & Fee Breakdown */}
-        <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/70 -mx-4 sm:-mx-5 -mb-4 sm:-mb-5 p-3.5 sm:p-4 rounded-b-2xl">
+        <div className="mt-2 border-t border-slate-100 pt-2 sm:hidden">
+          <span className="text-sm font-extrabold text-slate-900">
+            ৳{rentPrice.toLocaleString('bn-BD')} <span className="text-[11px] font-medium text-slate-500">/মাস</span>
+          </span>
+        </div>
+        <div className="mt-4 hidden border-t border-slate-100 bg-slate-50/70 p-3.5 sm:-mx-4 sm:-mb-4 sm:block sm:p-4">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>ভাড়া: ৳{rentPrice.toLocaleString('bn-BD')}</span>
             <span>ফি: +৳{platformFee}</span>

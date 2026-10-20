@@ -222,15 +222,18 @@ export default function HeroCarousel({
   const frameStyle = { backgroundImage: cssUrl(active[0].image) };
 
   return (
-    <section className="bg-mist-50" aria-label="বৈশিষ্ট্যযুক্ত সেবা">
+    <section
+      className="bg-mist-50"
+      aria-label="বৈশিষ্ট্যযুক্ত সেবা"
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
       <div className="mx-auto w-full max-w-none px-0 pb-0 pt-0 sm:max-w-7xl sm:px-6 sm:pb-2 sm:pt-3 lg:px-8 lg:pb-3 lg:pt-4">
         <div
           className="group/carousel relative overflow-hidden rounded-none bg-cover bg-center bg-mist-100 shadow-none ring-0 sm:rounded-2xl sm:shadow-xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-brand-900/10 lg:rounded-3xl"
           style={frameStyle}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
-          onFocusCapture={() => setPaused(true)}
-          onBlurCapture={() => setPaused(false)}
         >
           {/* Sliding track — clones included, so `pos` may never run past it */}
           <div
@@ -277,39 +280,22 @@ export default function HeroCarousel({
                   }}
                   className="h-full w-full object-cover"
                 />
-                <div
-                  aria-hidden="true"
-                  className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-brand-950/70 via-brand-950/20 to-transparent sm:h-32"
-                />
-                <span className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6">
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-white/90 px-3 py-1.5 text-xs font-bold text-brand-800 ring-1 ring-brand-100 backdrop-blur-sm sm:text-[13px]">
-                    {s.caption}
-                  </span>
-                </span>
               </div>
             ))}
           </div>
 
-          {/* Prev / Next — ghost controls, desktop only */}
+        </div>
+
+        {/* Controls stay outside the image so every slide remains unobstructed. */}
+        <div className="mt-2 flex items-center justify-center gap-2">
           <button
             type="button"
             onClick={prev}
             aria-label="আগের স্লাইড"
-            className="absolute left-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-brand-800 shadow-md ring-1 ring-brand-100 backdrop-blur-sm transition-all duration-300 hover:bg-white hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 sm:flex lg:left-5"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-brand-700 hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           >
-            <ChevronLeft className="h-5 w-5" />
+            <ChevronLeft className="h-4 w-4" />
           </button>
-          <button
-            type="button"
-            onClick={next}
-            aria-label="পরের স্লাইড"
-            className="absolute right-3 top-1/2 hidden h-11 w-11 -translate-y-1/2 items-center justify-center rounded-full bg-white/85 text-brand-800 shadow-md ring-1 ring-brand-100 backdrop-blur-sm transition-all duration-300 hover:bg-white hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 sm:flex lg:right-5"
-          >
-            <ChevronRight className="h-5 w-5" />
-          </button>
-
-          {/* Dots — small, quiet */}
-          <div className="absolute bottom-5 right-4 flex items-center gap-1.5 sm:bottom-6 sm:right-6">
             {active.map((s, i) => (
               <button
                 key={`dot-${i}-${s.image}`}
@@ -318,11 +304,18 @@ export default function HeroCarousel({
                 aria-label={`স্লাইড ${i + 1} দেখুন`}
                 aria-current={i === displayIndex}
                 className={`h-1.5 rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400 ${
-                  i === displayIndex ? 'w-6 bg-accent-400' : 'w-1.5 bg-white/60 hover:bg-white'
+                  i === displayIndex ? 'w-6 bg-brand-700' : 'w-1.5 bg-brand-300 hover:bg-brand-500'
                 }`}
               />
             ))}
-          </div>
+          <button
+            type="button"
+            onClick={next}
+            aria-label="পরের স্লাইড"
+            className="flex h-8 w-8 items-center justify-center rounded-full text-brand-700 hover:bg-brand-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </div>
       </div>
     </section>

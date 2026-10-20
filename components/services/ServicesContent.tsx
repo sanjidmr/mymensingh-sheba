@@ -94,13 +94,13 @@ export default function ServicesContent({ services }: { services: ServiceCategor
       </div>
 
       {/* Services Grid — same compact card size as the homepage */}
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {filteredServices.map((service) => {
           const route = EMERGENCY_ROUTES[service.slug] ?? `/${service.slug}`;
           const href = selectedArea ? `${route}?area=${selectedArea}` : route;
 
           const cardClass =
-            'group flex h-full flex-col overflow-hidden rounded-lg border border-brand-100/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 sm:rounded-xl';
+            'group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-brand-100/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 sm:rounded-xl';
 
           const media = (
             <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-mist-100 sm:aspect-square">
@@ -127,10 +127,10 @@ export default function ServicesContent({ services }: { services: ServiceCategor
             <Link key={service.id} href={href} className={cardClass}>
               {media}
               <div className="flex flex-1 flex-col p-2 sm:p-3">
-                <h3 className="line-clamp-2 break-words text-[13px] font-bold leading-snug text-ink-900 sm:line-clamp-1 sm:text-[13px]">
+                <h3 className="line-clamp-2 break-words text-[11px] font-bold leading-snug text-ink-900 sm:line-clamp-1 sm:text-[13px]">
                   {service.nameBn}
                 </h3>
-                <p className="mt-1 line-clamp-2 break-words text-[11.5px] leading-relaxed text-ink-500 sm:mt-1 sm:block sm:text-[11px]">
+                <p className="mt-1 line-clamp-2 break-words text-[10px] leading-snug text-ink-500 sm:mt-1 sm:block sm:text-[11px]">
                   {service.shortDesc}
                 </p>
               </div>

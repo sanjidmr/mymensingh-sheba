@@ -276,12 +276,20 @@ export default function Navbar() {
             ) : authLoading ? (
               <span aria-hidden="true" className="h-10 w-20 animate-pulse rounded-lg bg-brand-100/60" />
             ) : (
-              <Link
-                href="/login"
-                className="inline-flex min-h-10 items-center rounded-lg border border-brand-300 px-3 text-xs font-bold text-brand-800 transition-colors hover:bg-brand-50"
-              >
-                লগইন
-              </Link>
+              <div className="flex items-center gap-1.5">
+                <Link
+                  href="/login"
+                  className="inline-flex min-h-10 items-center rounded-lg border border-brand-300 px-2.5 text-[11px] font-bold text-brand-800 transition-colors hover:bg-brand-50"
+                >
+                  লগইন
+                </Link>
+                <Link
+                  href="/register"
+                  className="inline-flex min-h-10 items-center rounded-lg bg-accent-400 px-2.5 text-[11px] font-bold text-brand-900 transition-colors hover:bg-accent-500"
+                >
+                  রেজিস্ট্রেশন
+                </Link>
+              </div>
             )}
           </div>
         </div>

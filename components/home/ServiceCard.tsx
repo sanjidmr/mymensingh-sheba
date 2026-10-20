@@ -88,7 +88,17 @@ export default function ServiceCard({
             )}
           </div>
           {card.subtitle && (
-            <p className={`mt-1 line-clamp-2 break-words text-[12px] leading-relaxed sm:mt-1 sm:line-clamp-1 sm:text-xs ${red ? 'text-red-500/80' : 'text-ink-500'}`}>{card.subtitle}</p>
+            <p className={`mt-1 line-clamp-2 break-words text-[12px] leading-relaxed sm:mt-1 sm:line-clamp-1 sm:text-xs ${red ? 'text-red-500/80' : 'text-ink-500'} ${card.mobileMinimal ? 'hidden sm:block' : ''}`}>{card.subtitle}</p>
+          )}
+          {card.mobileMeta && card.mobileMeta.length > 0 && (
+            <div className="mt-1 flex flex-wrap gap-x-2 text-[10.5px] font-semibold leading-snug text-brand-800 sm:hidden">
+              {card.mobileMeta.map((item) => <span key={item}>{item}</span>)}
+            </div>
+          )}
+          {card.mobileSubtitle && (
+            <p className="mt-1 line-clamp-1 break-words text-[10px] leading-snug text-ink-500 sm:hidden">
+              {card.mobileSubtitle}
+            </p>
           )}
           {card.location && (
             <p className={`mt-1.5 hidden items-center gap-1 sm:flex ${compact ? 'text-[11px]' : 'text-xs'} ${red ? 'text-red-500/70' : 'text-ink-400'}`}>
@@ -115,7 +125,7 @@ export default function ServiceCard({
         )}
 
         {card.footer && (
-          <div className={`mt-auto flex items-center border-t border-brand-100 ${compact ? 'pt-1.5 sm:pt-2' : 'pt-3'}`}>
+          <div className={`mt-auto flex items-center border-t border-brand-100 ${compact ? 'pt-1.5 sm:pt-2' : 'pt-3'} ${card.mobileMinimal ? 'hidden sm:flex' : ''}`}>
             <span className={`truncate font-bold leading-snug ${red ? 'text-red-700' : 'text-brand-800'} ${compact ? 'text-[11.5px] sm:text-xs' : 'text-sm'}`}>{card.footer}</span>
           </div>
         )}

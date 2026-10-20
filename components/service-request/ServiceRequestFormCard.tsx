@@ -545,7 +545,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
               লগইন করুন
             </Link>
             <Link
-              href="/register"
+              href={`/register?next=${encodeURIComponent(pathname)}`}
               className={`inline-flex min-h-[44px] flex-1 items-center justify-center rounded-lg border border-brand-200 bg-white px-4 text-[13px] font-bold text-brand-700 transition-colors hover:bg-mist-50 sm:flex-none ${LIGHT_FOCUS}`}
             >
               অ্যাকাউন্ট খুলুন

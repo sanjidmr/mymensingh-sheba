@@ -1,5 +1,9 @@
-import { sendAdminEmailAlert } from '@/lib/admin-email-alerts.server';
+import {
+  sendAdminEmailAlert,
+  sendAdminTestEmail,
+} from '@/lib/admin-email-alerts.server';
 import type { AdminEmailAlertType } from '@/lib/admin-email-alerts';
+import { getAdminDataClient } from '@/lib/admin/queries';
 
 export const runtime = 'nodejs';
 
@@ -16,6 +20,25 @@ const ALLOWED_TYPES = new Set<AdminEmailAlertType>([
 ]);
 
 export async function POST(request: Request) {
+  const origin = request.headers.get('origin');
+  const host = request.headers.get('host');
+  if (!origin || !host) {
+    return Response.json({ error: 'Same-origin request required.' }, { status: 403 });
+  }
+  try {
+    const parsedOrigin = new URL(origin);
+    if (
+      parsedOrigin.host !== host ||
+      !['https:', ...(process.env.NODE_ENV === 'development' ? ['http:'] : [])].includes(
+        parsedOrigin.protocol
+      )
+    ) {
+      return Response.json({ error: 'Same-origin request required.' }, { status: 403 });
+    }
+  } catch {
+    return Response.json({ error: 'Same-origin request required.' }, { status: 403 });
+  }
+
   let payload: unknown;
   try {
     payload = await request.json();
@@ -27,6 +50,35 @@ export async function POST(request: Request) {
     return Response.json({ error: 'Invalid alert event.' }, { status: 400 });
   }
   const { type, eventId } = payload as Record<string, unknown>;
+  if (type === 'test') {
+    let admin;
+    try {
+      admin = await getAdminDataClient();
+    } catch {
+      console.error('Admin email test authorization could not be checked.');
+      return Response.json({ error: 'Email test could not be authorized.' }, { status: 503 });
+    }
+    if (!admin) {
+      return Response.json({ error: 'Admin authorization required.' }, { status: 403 });
+    }
+    try {
+      const result = await sendAdminTestEmail(admin.userId);
+      if (result.status === 'unconfigured') {
+        return Response.json({ error: 'Email alert service is not configured.' }, { status: 503 });
+      }
+      if (result.status === 'rate_limited') {
+        return Response.json({ error: 'Email alert rate limit reached.' }, { status: 429 });
+      }
+      if (result.status === 'failed') {
+        return Response.json({ error: 'Email alert delivery failed.' }, { status: 503 });
+      }
+      return Response.json({ status: result.status }, { status: 200 });
+    } catch {
+      console.error('Admin email test could not be processed.');
+      return Response.json({ error: 'Email test could not be processed.' }, { status: 503 });
+    }
+  }
+
   if (
     typeof type !== 'string' ||
     !ALLOWED_TYPES.has(type as AdminEmailAlertType) ||

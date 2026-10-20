@@ -14,10 +14,18 @@ import { createClient, isSupabaseConfigured } from './supabase/client';
 import { requestAdminEmailAlert } from './admin-email-alerts';
 import { LAUNCH_SERVICES } from './services-data';
 import { MCC_AREAS } from './locations';
-import type { AppRole } from './auth-routes';
+import { isSafeInternalPath, type AppRole } from './auth-routes';
 
 const NOT_CONFIGURED_MESSAGE =
   'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।';
+
+function normalizeBangladeshPhone(value: string): { local: string; international: string } | null {
+  const ascii = value.replace(/[০-৯]/g, (digit) => String('০১২৩৪৫৬৭৮৯'.indexOf(digit)));
+  const digits = ascii.replace(/\D/g, '');
+  const local = digits.startsWith('880') ? `0${digits.slice(3)}` : digits;
+  if (!/^01[3-9]\d{8}$/.test(local)) return null;
+  return { local, international: `+880${local.slice(1)}` };
+}
 
 function toCamelObject(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -74,17 +82,18 @@ interface AuthContextType {
   isAdmin: boolean;
   isConfiguredWithSupabase: boolean;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
+  signInWithGoogle: (next?: string | null) => Promise<{ success: boolean; error?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
   verifyOtp: (phone: string, token: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
-  register: (data: {
-    fullName: string;
-    phone: string;
-    primaryAreaId: string;
-    password: string;
-    email?: string;
-  }) => Promise<{ success: boolean; error?: string; needsConfirmation?: boolean }>;
+  register: (data: { email: string; password: string; next?: string | null }) => Promise<{
+    success: boolean;
+    error?: string;
+    needsConfirmation?: boolean;
+  }>;
   resetPassword: (phoneOrEmail: string) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
+  requestPhoneUpdate: (phone: string) => Promise<{ success: boolean; error?: string }>;
+  verifyPhoneUpdate: (phone: string, token: string) => Promise<{ success: boolean; error?: string }>;
   updateProfile: (updates: Partial<UserProfile>) => Promise<{ success: boolean; error?: string }>;
   /** Upload a new profile photo to the owner-scoped `avatars` bucket. */
   uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string; url?: string }>;
@@ -150,6 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { ok: false };
       }
       const profile = toCamelObject(profileData) as unknown as UserProfile;
+      profile.phone = profile.phone || '';
       if (profile.email?.endsWith('@mymensinghsheba.internal')) profile.email = '';
       const rawPreferences = profileData.notification_preferences as Record<string, unknown> | null;
       profile.notificationPreferences = {
@@ -347,6 +357,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithGoogle = async (next?: string | null) => {
+    if (!isSupabaseConfigured) {
+      return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    }
+    const client = createClient();
+    if (!client) {
+      return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    }
+    const target = isSafeInternalPath(next) ? next : '/profile';
+    const callback = new URL('/auth/callback', window.location.origin);
+    callback.searchParams.set('next', target);
+    const { error } = await client.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: callback.toString() },
+    });
+    return error
+      ? { success: false, error: error.message }
+      : { success: true };
+  };
+
   const sendOtp = async (phone: string) => {
     setIsLoading(true);
     try {
@@ -365,6 +395,52 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const requestPhoneUpdate = async (phone: string) => {
+    if (!user) return { success: false, error: 'আপনাকে আগে লগইন করতে হবে।' };
+    if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    const normalized = normalizeBangladeshPhone(phone);
+    if (!normalized) return { success: false, error: 'সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।' };
+    const client = createClient();
+    if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+
+    const { error } = await client.auth.updateUser({ phone: normalized.international });
+    return error
+      ? { success: false, error: `যাচাইকরণ কোড পাঠানো যায়নি: ${error.message}` }
+      : { success: true };
+  };
+
+  const verifyPhoneUpdate = async (phone: string, token: string) => {
+    if (!user) return { success: false, error: 'আপনাকে আগে লগইন করতে হবে।' };
+    if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+    const normalized = normalizeBangladeshPhone(phone);
+    if (!normalized) return { success: false, error: 'সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।' };
+    if (!/^\d{6}$/.test(token.trim())) return { success: false, error: '৬ সংখ্যার যাচাইকরণ কোড লিখুন।' };
+    const client = createClient();
+    if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
+
+    const { data, error } = await client.auth.verifyOtp({
+      phone: normalized.international,
+      token: token.trim(),
+      type: 'phone_change',
+    });
+    if (error) return { success: false, error: `নম্বর যাচাই করা যায়নি: ${error.message}` };
+    if (!data.user) return { success: false, error: 'নম্বর যাচাই সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।' };
+
+    const { error: profileError } = await client
+      .from('profiles')
+      .update({ phone: normalized.local, updated_at: new Date().toISOString() })
+      .eq('id', data.user.id);
+    if (profileError) {
+      return { success: false, error: `যাচাইকৃত নম্বর প্রোফাইলে সংরক্ষণ করা যায়নি: ${profileError.message}` };
+    }
+
+    const refreshed = await refreshUserData(client, data.user.id);
+    if (!refreshed?.ok) {
+      return { success: false, error: 'নম্বর সংরক্ষিত হয়েছে, তবে প্রোফাইল রিফ্রেশ করা যায়নি। পৃষ্ঠা রিলোড করুন।' };
+    }
+    return { success: true };
   };
 
   const verifyOtp = async (phone: string, token: string) => {
@@ -400,13 +476,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const register = async (data: {
-    fullName: string;
-    phone: string;
-    primaryAreaId: string;
-    password: string;
-    email?: string;
-  }) => {
+  const register = async (data: { email: string; password: string; next?: string | null }) => {
     setIsLoading(true);
     try {
       if (!isSupabaseConfigured) {
@@ -416,22 +486,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!client) {
         return { success: false, error: NOT_CONFIGURED_MESSAGE };
       }
-      const email = (data.email?.trim() || '').toLowerCase() || `${data.phone}@mymensinghsheba.internal`;
-      // Pass the full registration payload into the auth user's metadata. The
-      // profiles row mirrors these values (see the DB-side trigger in
-      // supabase/migrations/...fix_user_registration_profiles.sql), so the
-      // row always matches the INSERT RLS policy for self-registration:
-      //   auth.uid() = id, role = 'customer', status = 'active', is_verified = false
+      const email = data.email.trim().toLowerCase();
+      const emailRedirectTo = new URL('/auth/callback', window.location.origin);
+      const requestedTarget = isSafeInternalPath(data.next) ? data.next : '/profile';
+      emailRedirectTo.searchParams.set('next', requestedTarget);
       const { data: signUpData, error } = await client.auth.signUp({
         email,
         password: data.password,
         options: {
-          data: {
-            phone: data.phone,
-            full_name: data.fullName,
-            primary_area_id: data.primaryAreaId,
-            email,
-          },
+          emailRedirectTo: emailRedirectTo.toString(),
+          data: { email, full_name: email.split('@')[0] },
         },
       });
       if (error) {
@@ -441,60 +505,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।' };
       }
 
-      const userId = signUpData.user.id;
-      const hasSession = Boolean(signUpData.session);
-
-      // When Supabase hands back a live session (email confirmation off) the
-      // new user is authenticated immediately, so we can (and must) create
-      // their profiles row right here, with exactly the values the INSERT
-      // policy demands. When confirmation is required there is no session yet
-      // and the row is created by the DB trigger on first signup instead.
-      if (hasSession) {
-        const { error: profileError } = await client.from('profiles').upsert({
-          id: userId,
-          full_name: data.fullName,
-          phone: data.phone,
-          email,
-          primary_area_id: data.primaryAreaId,
-          role: 'customer',
-          status: 'active',
-          is_verified: false,
-        });
-        if (profileError) {
+      if (signUpData.session) {
+        const res = await refreshUserData(client, signUpData.user.id);
+        if (!res?.ok) {
+          await client.auth.signOut();
           return {
             success: false,
-            error: 'প্রোফাইল তৈরি করা যায়নি। সহায়তার জন্য যোগাযোগ করুন।',
+            error: res?.blocked
+              ? 'আপনার অ্যাকাউন্টটি স্থগিত বা বন্ধ। সহায়তার জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।'
+              : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
+        return { success: true };
       }
 
-      const { data: signInData, error: signInError } = await client.auth.signInWithPassword({ email, password: data.password });
-      // When email confirmation is on, signUp returns no session and the sign-in
-      // right after will be rejected until the confirmation link is opened. The
-      // account was still created successfully (its DB trigger will have made
-      // the profiles row), so surface the happy path and let the user confirm +
-      // sign in, matching the previous success UX. With a session already in
-      // hand, a redundant sign-in hiccup must not flip success into failure.
-      if (signInError && !hasSession && signUpData.user?.confirmation_sent_at) {
-        // `needsConfirmation` tells the caller that this "success" has no
-        // session behind it yet, so it must NOT be treated as a completed
-        // sign-in (no redirect to /profile; that page would bounce straight
-        // back to /login until the link in the email is opened).
+      // Supabase does not issue a session until its required email confirmation
+      // is completed. The callback exchanges that confirmation code and signs
+      // the user in; do not attempt a second password login here.
+      if (signUpData.user.confirmation_sent_at) {
         return { success: true, needsConfirmation: true };
       }
-      if (signInError && !hasSession) {
-        return { success: false, error: signInError.message };
-      }
-      if (signInData.user) {
-        await refreshUserData(client, signInData.user.id);
-      } else if (hasSession && signUpData.session?.user) {
-        // signUp already handed back a live session but the follow-up sign-in
-        // hiccuped: hydrate from the session we already have, so "success"
-        // always leaves `user` populated and the caller's redirect lands on a
-        // profile page that can actually render.
-        await refreshUserData(client, signUpData.session.user.id);
-      }
-      return { success: true };
+
+      return {
+        success: false,
+        error: 'এই ইমেইল দিয়ে অ্যাকাউন্ট তৈরি করা যায়নি। ইমেইলটি আগে ব্যবহার হয়ে থাকলে পাসওয়ার্ড পুনরুদ্ধার করুন।',
+      };
     } catch (err: unknown) {
       return { success: false, error: err instanceof Error ? err.message : 'নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' };
     } finally {
@@ -552,7 +587,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     if (updates.phone !== undefined && updates.phone !== user.phone) {
-      return { success: false, error: 'নম্বর বদলাতে আগে নতুন নম্বরে OTP যাচাই সম্পন্ন করুন।' };
+      return { success: false, error: 'নম্বর বদলাতে প্রোফাইলের যাচাইকরণ কোড ব্যবহার করুন।' };
     }
     if (updates.fullName !== undefined && updates.fullName.trim().length < 2) {
       return { success: false, error: 'নাম কমপক্ষে ২ অক্ষরের লিখুন।' };
@@ -1013,11 +1048,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isAdmin: user?.role === 'admin',
         isConfiguredWithSupabase: isSupabaseConfigured,
         login,
+        signInWithGoogle,
         sendOtp,
         verifyOtp,
         register,
         resetPassword,
         logout,
+        requestPhoneUpdate,
+        verifyPhoneUpdate,
         updateProfile,
         uploadAvatar,
         changePassword,

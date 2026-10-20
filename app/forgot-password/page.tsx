@@ -2,24 +2,24 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { Phone, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Mail, ArrowLeft, CheckCircle2, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { useAuth } from '@/lib/auth-context';
 
 export default function ForgotPasswordPage() {
   const { resetPassword } = useAuth();
-  const [phone, setPhone] = useState('');
+  const [emailOrPhone, setEmailOrPhone] = useState('');
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!phone || phone.length < 11) return;
+    if (!emailOrPhone.trim() || emailOrPhone.trim().length < 5) return;
     setLoading(true);
     setErrorMsg('');
-    const result = await resetPassword(phone);
+    const result = await resetPassword(emailOrPhone.trim());
     setLoading(false);
     if (result.success) {
       setSubmitted(true);
@@ -37,7 +37,7 @@ export default function ForgotPasswordPage() {
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-slate-900">পাসওয়ার্ড পুনরুদ্ধার</h1>
             <p className="text-xs sm:text-sm text-slate-600 mt-1.5">
-              আপনার নিবন্ধিত মোবাইল নম্বর লিখুন
+              আপনার নিবন্ধিত ইমেইল লিখুন। পুরোনো অ্যাকাউন্ট হলে মোবাইল নম্বরও ব্যবহার করতে পারেন।
             </p>
           </div>
 
@@ -51,7 +51,7 @@ export default function ForgotPasswordPage() {
                   পাসওয়ার্ড রিসেট নির্দেশনা পাঠানো হয়েছে
                 </h3>
                 <p className="text-xs text-slate-600 leading-relaxed">
-                  আপনার মোবাইল নম্বর <strong>{phone}</strong>-এ রিসেট নির্দেশনা পাঠানো হয়েছে। এসএমএস/ইমেইলের নির্দেশনানুযায়ী এগিয়ে যান।
+                  <strong>{emailOrPhone}</strong> ঠিকানায় রিসেট নির্দেশনা পাঠানো হয়েছে। ইমেইলের নির্দেশনা অনুসরণ করুন।
                 </p>
                 <div className="pt-2">
                   <Link
@@ -73,22 +73,22 @@ export default function ForgotPasswordPage() {
 
                 <div>
                   <label
-                    htmlFor="resetPhone"
+                    htmlFor="resetEmail"
                     className="block text-xs font-semibold text-slate-800 mb-1.5"
                   >
-                    মোবাইল নম্বর
+                    ইমেইল বা পুরোনো অ্যাকাউন্টের মোবাইল নম্বর
                   </label>
                   <div className="relative">
                     <input
-                      id="resetPhone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="01711223344"
+                      id="resetEmail"
+                      type="text"
+                      value={emailOrPhone}
+                      onChange={(e) => setEmailOrPhone(e.target.value)}
+                      placeholder="you@example.com"
                       className="w-full pl-10 pr-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-700"
                       required
                     />
-                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <Mail className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   </div>
                 </div>
 

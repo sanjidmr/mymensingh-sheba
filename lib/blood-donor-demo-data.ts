@@ -15,7 +15,7 @@
  *   | 2 | demo-donor-02   | A+    | টাউন হল            | ৪৮ দিন আগে    | দানে প্রস্তুত |
  *   | 3 | demo-donor-03   | B+    | চরপাড়া             | ৯৫ দিন আগে    | দানে প্রস্তুত |
  *   | 4 | demo-donor-04   | O-    | শাম্বুগঞ্জ          | ৩৭ দিন আগে    | বিরতিতে      |
- *   | 5 | demo-donor-05   | AB+   | গাঙ্গিনারপাড়       | ১৩৫ দিন আগে   | দানে প্রস্তুত |
+ *   | 5 | demo-donor-05   | AB+   | গাংগিনারপার         | ১৩৫ দিন আগে   | দানে প্রস্তুত |
  *   | 6 | demo-donor-06   | A-    | নতুন বাজার         | ৭৮ দিন আগে    | দানে প্রস্তুত |
  *
  * The four-month gap between donor 4's last donation and donor 5's is the point.

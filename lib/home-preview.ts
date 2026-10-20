@@ -28,6 +28,9 @@ export interface HomePreviewCard {
   avatarTone?: 'green' | 'rose';
   title: string;
   subtitle?: string;
+  mobileSubtitle?: string;
+  mobileMeta?: string[];
+  mobileMinimal?: boolean;
   location?: string;
   rating?: number;
   ratingCount?: number;
@@ -67,12 +70,18 @@ export function toletToPreviewCard(listing: ToletListing): HomePreviewCard {
     avatarLabel: listing.title.charAt(0) || 'বাসা',
     avatarTone: 'green',
     title: listing.title,
-    subtitle: `${typeInfo.labelBn} • ময়মনসিংহ সিটি কর্পোরেশন`,
-    location: area?.nameBn || 'ময়মনসিংহ',
+    subtitle: typeInfo.labelBn,
+    mobileSubtitle: listing.specificAddress,
+    mobileMinimal: true,
+    location: area?.nameBn || undefined,
     metaChips: [
       `৳${listing.rentPrice.toLocaleString('bn-BD')}/মাস`,
       `${listing.bedrooms} বেড`,
       `${listing.bathrooms} বাথ`,
+    ],
+    mobileMeta: [
+      `৳${listing.rentPrice.toLocaleString('bn-BD')}/মাস`,
+      `${listing.bedrooms} কক্ষ`,
     ],
     availability:
       listing.status === 'approved'
@@ -193,6 +202,9 @@ export function vehicleToPreviewCard(listing: ServiceListing): HomePreviewCard {
     listing.driverIncluded ? 'ড্রাইভারসহ' : '',
   ].filter(Boolean);
   const price =
+    (listing.ratePerKm != null
+      ? `৳${listing.ratePerKm.toLocaleString('bn-BD')}/কিমি`
+      : undefined) ||
     listing.priceNoteBn ||
     (listing.priceMin != null && listing.priceMax != null
       ? `৳${listing.priceMin.toLocaleString('bn-BD')}-${listing.priceMax.toLocaleString('bn-BD')}`
@@ -207,8 +219,12 @@ export function vehicleToPreviewCard(listing: ServiceListing): HomePreviewCard {
     avatarTone: 'green',
     title: listing.titleBn,
     subtitle: listing.subtitleBn || listing.modelNameBn,
-    location: areas.length ? areas.slice(0, 2).join(', ') : 'ময়মনসিংহ সিটি কর্পোরেশন',
+    location: areas.length ? areas.slice(0, 2).join(', ') : undefined,
     metaChips: chips,
+    mobileMeta: listing.ratePerKm != null
+      ? [`৳${listing.ratePerKm.toLocaleString('bn-BD')}/কিমি`]
+      : [],
+    mobileMinimal: true,
     availability: listing.isActive
       ? { label: 'চলমান', tone: 'green' }
       : { label: 'অনুপলব্ধ', tone: 'slate' },

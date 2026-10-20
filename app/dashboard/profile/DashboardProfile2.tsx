@@ -131,7 +131,7 @@ function InfoForm() {
   const [email, setEmail] = useState(user!.email || '');
   const [bio, setBio] = useState(user!.bio || '');
   const [areaId, setAreaId] = useState(
-    isInsideMCC(user!.primaryAreaId) ? user!.primaryAreaId : (MCC_AREAS[0]?.id ?? 'charpara')
+    isInsideMCC(user!.primaryAreaId) ? user!.primaryAreaId : ''
   );
   const [emg, setEmg] = useState(user!.emergencyContact || '');
   const [busy, setBusy] = useState(false);
@@ -160,18 +160,111 @@ function InfoForm() {
       <h2 className="text-[13px] font-extrabold text-ink-900">ব্যক্তিগত তথ্য</h2>
       <div><label className={labelCls}>পুরো নাম</label><input value={name} onChange={(e) => setName(e.target.value)} required className={inputCls} /></div>
       <div>
-        <label className={labelCls}>মোবাইল নম্বর</label>
-        <input value={user!.phone} readOnly className={`${inputCls} bg-mist-50 text-ink-700`} />
-        <p className="mt-1 text-[11.5px] leading-relaxed text-ink-500">নিরাপত্তার জন্য মোবাইল নম্বর এখানে পরিবর্তন করা যায় না। নম্বর বদলের যাচাইকৃত ব্যবস্থা চালু হলে এই পৃষ্ঠা থেকে করা যাবে।</p>
+        <ProfilePhoneField />
       </div>
       <div><label className={labelCls}>যোগাযোগের ইমেইল (ঐচ্ছিক)</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" className={inputCls} /><p className="mt-1 text-[11px] text-ink-500">এটি যোগাযোগের ঠিকানা; লগইন নম্বর পরিবর্তন হবে না।</p></div>
-      <div><label className={labelCls}>এলাকা</label><select value={areaId} onChange={(e) => setAreaId(e.target.value)} className={inputCls}>{MCC_AREAS.map((a) => (<option key={a.id} value={a.id}>{a.nameBn}</option>))}</select></div>
+      <div><label className={labelCls}>এলাকা</label><select value={areaId} onChange={(e) => setAreaId(e.target.value)} required className={inputCls}><option value="">এলাকা নির্বাচন করুন</option>{MCC_AREAS.map((a) => (<option key={a.id} value={a.id}>{a.nameBn}</option>))}</select></div>
       <div><label className={labelCls}>সংক্ষিপ্ত পরিচিতি</label><textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={300} placeholder="নিজের সম্পর্কে দু-এক লাইন..." className={`${inputCls} py-3`} /></div>
       <div><label className={labelCls}>জরুরি যোগাযোগ</label><input type="tel" value={emg} onChange={(e) => setEmg(e.target.value)} placeholder="018xxxxxxxx" className={inputCls} /></div>
       {ok && <p className="rounded-xl bg-emerald-50 px-3 py-2.5 text-[12px] font-bold text-emerald-900">তথ্য সংরক্ষণ হয়েছে।</p>}
       {error && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2.5 text-[12px] font-bold text-rose-800">{error}</p>}
       <button type="submit" disabled={busy} className={`min-h-[48px] w-full rounded-xl bg-brand-700 text-[14px] font-extrabold text-white hover:bg-brand-800 disabled:opacity-50 ${LIGHT_FOCUS}`}>{busy ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}</button>
     </form>
+  );
+}
+
+function ProfilePhoneField() {
+  const { user, requestPhoneUpdate, verifyPhoneUpdate } = useAuth();
+  const [phone, setPhone] = useState(user?.phone || '');
+  const [token, setToken] = useState('');
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [failed, setFailed] = useState(false);
+
+  const requestCode = async () => {
+    setBusy(true); setMessage(''); setFailed(false);
+    try {
+      const result = await requestPhoneUpdate(phone);
+      if (result.success) {
+        setSent(true);
+        setMessage('নম্বর যাচাইয়ের কোড পাঠানো হয়েছে।');
+      } else {
+        setFailed(true);
+        setMessage(result.error || 'যাচাইকরণ কোড পাঠানো যায়নি।');
+      }
+    } catch (error) {
+      setFailed(true);
+      setMessage(error instanceof Error ? error.message : 'যাচাইকরণ কোড পাঠানো যায়নি।');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const verifyCode = async () => {
+    setBusy(true); setMessage(''); setFailed(false);
+    try {
+      const result = await verifyPhoneUpdate(phone, token);
+      if (result.success) {
+        setSent(false);
+        setToken('');
+        setMessage('মোবাইল নম্বর যাচাই ও সংরক্ষণ হয়েছে।');
+      } else {
+        setFailed(true);
+        setMessage(result.error || 'নম্বর যাচাই করা যায়নি।');
+      }
+    } catch (error) {
+      setFailed(true);
+      setMessage(error instanceof Error ? error.message : 'নম্বর যাচাই করা যায়নি।');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div>
+      <label htmlFor="profile-phone" className={labelCls}>মোবাইল নম্বর</label>
+      <div className="flex flex-col gap-2 sm:flex-row">
+        <input
+          id="profile-phone"
+          type="tel"
+          value={phone}
+          onChange={(event) => {
+            setPhone(event.target.value);
+            setSent(false);
+            setMessage('');
+          }}
+          placeholder="০১৭১২৩৪৫৬৭৮"
+          autoComplete="tel"
+          className={`${inputCls} min-w-0 flex-1`}
+        />
+        {sent ? (
+          <div className="flex gap-2 sm:w-56">
+            <input
+              type="text"
+              inputMode="numeric"
+              maxLength={6}
+              value={token}
+              onChange={(event) => setToken(event.target.value.replace(/\D/g, ''))}
+              aria-label="এসএমএস যাচাইকরণ কোড"
+              placeholder="৬ সংখ্যার কোড"
+              className={`${inputCls} min-w-0 flex-1`}
+            />
+            <button type="button" onClick={() => void verifyCode()} disabled={busy} className={`min-h-[48px] rounded-xl bg-brand-700 px-3 text-xs font-bold text-white hover:bg-brand-800 disabled:opacity-50 ${LIGHT_FOCUS}`}>
+              যাচাই
+            </button>
+          </div>
+        ) : (
+          <button type="button" onClick={() => void requestCode()} disabled={busy || !phone.trim()} className={`min-h-[48px] shrink-0 rounded-xl border border-brand-200 px-3 text-xs font-bold text-brand-800 hover:bg-brand-50 disabled:opacity-50 ${LIGHT_FOCUS}`}>
+            {busy ? 'পাঠানো হচ্ছে…' : user?.phone ? 'নম্বর যাচাই করুন' : 'OTP পাঠান'}
+          </button>
+        )}
+      </div>
+      <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
+        নম্বরটি ব্যবহারের আগে এসএমএস কোড দিয়ে যাচাই করা হবে।
+      </p>
+      {message && <p role={failed ? 'alert' : 'status'} className={`mt-1 text-[11.5px] font-semibold ${failed ? 'text-rose-700' : 'text-brand-700'}`}>{message}</p>}
+    </div>
   );
 }
 

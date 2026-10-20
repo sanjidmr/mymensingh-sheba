@@ -85,7 +85,7 @@ export function ToletListingCard({
       {/* Body */}
       <div className="p-4 flex-1 flex flex-col justify-between">
         <div>
-          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+          <div className="mb-2 hidden flex-wrap items-center gap-1.5 sm:flex">
             <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[11px] font-bold text-slate-700">
               {typeInfo?.labelBn || listing.propertyType}
             </span>
@@ -99,7 +99,7 @@ export function ToletListingCard({
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
+          <div className="mb-1 hidden items-center gap-1.5 text-xs text-slate-500 sm:flex">
             <MapPin className="w-3.5 h-3.5 text-emerald-700 shrink-0" />
             <span className="font-semibold text-slate-700">{area?.nameBn || listing.areaId}</span>
           </div>
@@ -115,26 +115,32 @@ export function ToletListingCard({
 
           <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{listing.specificAddress}</p>
           {listing.availableFrom && (
-            <p className="mt-1 text-[11px] font-medium text-slate-500">
+            <p className="mt-1 hidden text-[11px] font-medium text-slate-500 sm:block">
               উপলব্ধ: {listing.availableFrom}
             </p>
           )}
 
-          <div className="flex items-center gap-3 text-xs text-slate-600 mt-3 pt-3 border-t border-slate-100">
+          <div className="mt-2 flex items-center gap-3 text-xs text-slate-600 sm:mt-3 sm:border-t sm:border-slate-100 sm:pt-3">
+            {listing.bedrooms > 0 && (
+              <span className="inline-flex items-center gap-1 sm:hidden">
+                <Bed className="h-3.5 w-3.5 text-slate-400" />
+                <span>{listing.bedrooms} কক্ষ</span>
+              </span>
+            )}
             {!isMessLike && (
-              <span className="inline-flex items-center gap-1">
+              <span className="hidden items-center gap-1 sm:inline-flex">
                 <Bed className="w-3.5 h-3.5 text-slate-400" />
                 <span>{listing.bedrooms} বেড</span>
               </span>
             )}
             {listing.bathrooms > 0 && !isMessLike && (
-              <span className="inline-flex items-center gap-1">
+              <span className="hidden items-center gap-1 sm:inline-flex">
                 <Bath className="w-3.5 h-3.5 text-slate-400" />
                 <span>{listing.bathrooms} বাথ</span>
               </span>
             )}
             {isMessLike && (
-              <span className="inline-flex items-center gap-1">
+              <span className="hidden items-center gap-1 sm:inline-flex">
                 <Calendar className="w-3.5 h-3.5 text-slate-400" />
                 <span>{listing.availableFrom || 'যেকোনো সময়'}</span>
               </span>
@@ -143,7 +149,12 @@ export function ToletListingCard({
         </div>
 
         {/* Transparent Price & Fee Breakdown */}
-        <div className="mt-4 pt-3 border-t border-slate-100 bg-slate-50/70 -mx-4 -mb-4 p-3.5 rounded-b-2xl">
+        <div className="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 sm:hidden">
+          <span className="text-sm font-extrabold text-slate-900">
+            ৳{listing.rentPrice.toLocaleString('bn-BD')} <span className="text-[11px] font-medium text-slate-500">/মাস</span>
+          </span>
+        </div>
+        <div className="mt-4 hidden border-t border-slate-100 bg-slate-50/70 p-3.5 sm:-mx-4 sm:-mb-4 sm:block sm:rounded-b-2xl">
           <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
             <span>ভাড়া: ৳{listing.rentPrice.toLocaleString('bn-BD')}</span>
             <span>ফি: +৳{platformFee}</span>
