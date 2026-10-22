@@ -32,8 +32,9 @@ export default function ServiceRequestFormSection({ config }: ServiceRequestForm
             আপনার প্রয়োজনের সেবা নিন
           </h2>
           <p className="mt-2.5 text-[14px] leading-relaxed text-ink-500 sm:text-[15px]">
-            নিচের তথ্যগুলো পূরণ করুন। আপনার প্রয়োজন অনুযায়ী সেবা দেওয়ার জন্য আমরা
-            আপনার দেওয়া তথ্য ব্যবহার করব।
+            {config.compactHero
+              ? 'সমস্যা ও ঠিকানার তথ্য দিয়ে অনুরোধ পাঠান।'
+              : 'নিচের তথ্যগুলো পূরণ করুন। আপনার প্রয়োজন অনুযায়ী সেবা দেওয়ার জন্য আমরা আপনার দেওয়া তথ্য ব্যবহার করব।'}
           </p>
         </div>
 

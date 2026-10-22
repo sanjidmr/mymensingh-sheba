@@ -34,6 +34,19 @@ export interface ServiceRequestPageProps {
  * container and does not break `position: sticky` on the navbar.
  */
 export default function ServiceRequestPage({ config }: ServiceRequestPageProps) {
+  if (config.compactHero) {
+    return (
+      <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">
+        <Navbar />
+        <main className="flex-1">
+          <ServiceRequestHero config={config} />
+          <ServiceRequestFormSection config={config} />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   if (config.minimalForm) {
     return (
       <div className="flex min-h-screen flex-col overflow-x-clip bg-white">

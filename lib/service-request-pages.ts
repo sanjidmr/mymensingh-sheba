@@ -124,6 +124,8 @@ export interface ServiceRequestPageConfig {
   dateLabel: string;
   /** Render a compact form-only page with an open-ended work description. */
   minimalForm?: boolean;
+  /** Show a short image-led hero and form without the long trust-card section. */
+  compactHero?: boolean;
   /** Require customers to explain the requested work in their own words. */
   requireDetails?: boolean;
 
@@ -211,7 +213,7 @@ const KAJER_BUA: ServiceRequestPageConfig = {
   eyebrow: 'গৃহকর্মী সেবা',
   title: 'কাজের বুয়া',
   description:
-    'ঘরের দৈনন্দিন কাজে একজন ভরসার মানুষ দরকার। আপনার কী কাজ লাগবে, কতক্ষণ লাগবে আর কখন থেকে শুরু করতে হবে — অনুরোধটি এখানেই পাঠিয়ে দিন।',
+    'ঘরের কাজের ধরন ও সময় জানিয়ে সেবা অনুরোধ পাঠান।',
   metaTitle: 'কাজের বুয়া সেবা অনুরোধ পাঠান | Mymensingh Sheba',
   metaDescription:
     'ময়মনসিংহ সিটি কর্পোরেশন এলাকায় কাজের বুয়ার অনুরোধ পাঠান — কাজের ধরন, শিফট ও সময় জিজ্ঞেস করে এমন ছক। মোবাইল নম্বর ও ঠিকানা দিয়ে অনুরোধ জমা দিন।',
@@ -221,9 +223,8 @@ const KAJER_BUA: ServiceRequestPageConfig = {
     position: 'center',
   },
   benefits: [
-    { title: 'রান্না ও ঘরের কাজ', body: 'সকাল থেকে সন্ধ্যা — নিজের হাতে বাজার থেকে রান্না করা পর্যন্ত।' },
-    { title: 'ঘর পরিষ্কার ও কাপড় ধোয়া', body: 'মেঝে, বাথরুম, ভাঙ্গি ও কাপড় ধোয়ার কাজ নিয়মিত করা।' },
-    { title: 'বাচ্চা দেখাশোনা', body: 'স্কুলের পর বা ছুটির দিনে বাচ্চার দায়িত্ব নিতে পারে।' },
+    { title: 'কাজের ধরন জানান', body: 'রান্না, পরিষ্কার বা অন্য কাজ লিখুন।' },
+    { title: 'সময় ও ঠিকানা দিন', body: 'কখন থেকে দরকার এবং কোথায়—তা জানান।' },
   ],
   trustHeading: 'কেন Mymensingh Sheba থেকে সেবা নেবেন?',
   trustIntro:
@@ -262,6 +263,7 @@ const KAJER_BUA: ServiceRequestPageConfig = {
   showTimeField: true,
   dateLabel: 'কখন থেকে প্রয়োজন?',
   minimalForm: true,
+  compactHero: true,
   requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
   detailsPlaceholder: 'কী কাজ দরকার এবং আপনার বিশেষ কোনো নির্দেশনা থাকলে নিজের ভাষায় লিখুন।',
@@ -278,7 +280,7 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
   eyebrow: 'বিদ্যুৎ ও ওয়্যারিং সেবা',
   title: 'ইলেকট্রিশিয়ান',
   description:
-    'শর্ট সার্কিট, ফ্যান-লাইট না চলা, পুরোনো ওয়্যারিং বা সুইচ-বোর্ড — বিদ্যুৎ সংক্রান্ত যা দরকার, এক ছক পূরণ করে বলে দিন।',
+    'ফ্যান, লাইট, সুইচ বা ওয়্যারিংয়ের সমস্যা জানিয়ে সেবা অনুরোধ পাঠান।',
   metaTitle: 'ইলেকট্রিশিয়ান সেবা অনুরোধ পাঠান | Mymensingh Sheba',
   metaDescription:
     'ময়মনসিংহে ইলেকট্রিশিয়ানের অনুরোধ পাঠান — সমস্যার ধরন, কোন জিনিসে সমস্যা, জরুরি না নিয়মিত, এবং ছবি সহ। মোবাইল ও ঠিকানা দিন।',
@@ -290,9 +292,8 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
     position: 'center 30%',
   },
   benefits: [
-    { title: 'সমস্যা বললেই বোঝা যাবে', body: 'কোন জিনিসে সমস্যা, কতদিন ধরে — সব লিখে দিলে ভুল অনুমান কমে।' },
-    { title: 'জরুরি বা নিয়মিত', body: 'রাতে শর্ট সার্কিট, কিংবা নির্ধারিত দিনে ছোট মেরামত — দুটোই বলা যায়।' },
-    { title: 'ছবি দিয়ে স্পষ্ট বলা', body: 'সমস্যার ছবি থাকলে আসার আগেই কী লাগবে, অনেকটা আগেই বোঝা যায়।' },
+    { title: 'সমস্যা লিখে জানান', body: 'কোন জিনিসে সমস্যা, সংক্ষেপে লিখুন।' },
+    { title: 'ছবি দিতে পারেন', body: 'ছবি থাকলে সমস্যাটি বুঝতে সুবিধা হয়।' },
   ],
   trustHeading: 'কেন Mymensingh Sheba থেকে সেবা নেবেন?',
   trustIntro:
@@ -353,6 +354,7 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
   showTimeField: true,
   dateLabel: 'কবে দরকার?',
   minimalForm: true,
+  compactHero: true,
   requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
   detailsPlaceholder: 'সমস্যা এবং কী ধরনের কাজ দরকার তা নিজের ভাষায় লিখুন।',
@@ -369,7 +371,7 @@ const PLUMBER: ServiceRequestPageConfig = {
   eyebrow: 'পানি ও প্লাম্বিং সেবা',
   title: 'প্লাম্বার',
   description:
-    'পাইপ থেকে পানি পড়ছে, চাপ কমে গেছে, নালিতে পানি দাঁড়িয়ে আছে — পানির সমস্যা থাকলে সঠিক জায়গায় সাহায্য দরকার।',
+    'পাইপ, বাথরুম বা পানির লাইনের সমস্যা জানিয়ে সেবা অনুরোধ পাঠান।',
   metaTitle: 'প্লাম্বার সেবা অনুরোধ পাঠান | Mymensingh Sheba',
   metaDescription:
     'ময়মনসিংহে প্লাম্বারের অনুরোধ পাঠান — কী সমস্যা, কোথায় সমস্যা, জরুরি না নিয়মিত এবং ছবি সহ। মোবাইল ও ঠিকানা দিয়ে অনুরোধ জমা দিন।',
@@ -380,9 +382,8 @@ const PLUMBER: ServiceRequestPageConfig = {
     position: 'center 72%',
   },
   benefits: [
-    { title: 'সমস্যা ধরা পড়ে', body: 'পাইপ, নালি বা ফিটিংস — কোথায় সমস্যা সেটাই আগে বলে দিন।' },
-    { title: 'বারবার আসা লাগে না', body: 'কারণ ও সমস্যার ধরন লিখে দিলে একবারেই সমাধান হওয়ার চেষ্টা করা যায়।' },
-    { title: 'ছবি থাকলে দ্রুত বোঝা', body: 'লিকের জায়গা বা ব্লকের ছবি দিলে সঠিক যন্ত্র নিয়ে যাওয়া যায়।' },
+    { title: 'কোথায় সমস্যা জানান', body: 'পাইপ, নালি বা ফিটিংস—যেটিতে সমস্যা লিখুন।' },
+    { title: 'ছবি দিতে পারেন', body: 'লিক বা সমস্যার ছবি দিলে বুঝতে সুবিধা হয়।' },
   ],
   trustHeading: 'কেন Mymensingh Sheba থেকে সেবা নেবেন?',
   trustIntro:
@@ -442,6 +443,7 @@ const PLUMBER: ServiceRequestPageConfig = {
   showTimeField: true,
   dateLabel: 'কবে দরকার?',
   minimalForm: true,
+  compactHero: true,
   requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
   detailsPlaceholder: 'সমস্যা এবং কী ধরনের কাজ দরকার তা নিজের ভাষায় লিখুন।',
@@ -586,7 +588,7 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
   eyebrow: 'শীতাতপ নিয়ন্ত্রণ সেবা',
   title: 'এসি ও ফ্রিজ মেরামত',
   description:
-    'এসি বা ফ্রিজ — ঠান্ডা করছে না, পানি পড়ছে, আওয়াজ করছে, কিংবা রেফ্রিজারেন্ট নেই। কোনটি, কী সমস্যা, সব এক ছকে লিখে দিন।',
+    'এসি বা ফ্রিজের সমস্যা জানিয়ে সহজে সেবা অনুরোধ পাঠান।',
   metaTitle: 'এসি ও ফ্রিজ মেরামত সেবা অনুরোধ পাঠান | Mymensingh Sheba',
   metaDescription:
     'ময়মনসিংহে এসি সার্ভিসিং বা ফ্রিজ মেরামতের অনুরোধ পাঠান — এসি নাকি ফ্রিজ, ব্র্যান্ড, সমস্যার ধরন, কতদিন ধরে সমস্যা এবং ছবি সহ।',
@@ -596,9 +598,8 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
     position: 'center',
   },
   benefits: [
-    { title: 'ঠান্ডা ফিরিয়ে আনা', body: 'সার্ভিসিং বা গ্যাস চার্জ — ঘরের শীতলতা ঠিক করার কাজ।' },
-    { title: 'ফ্রিজ ও এসি, দুটোই', body: 'একই ফর্মে দুই ধরনের যন্ত্রের সমস্যা বলা যায়।' },
-    { title: 'ঘরে এসে সার্ভিস', body: 'ইউনিট বাসায় থাকলে সেটি বলে দিন, বাসায় এসেই কাজ করা হবে।' },
+    { title: 'এসি বা ফ্রিজ বেছে নিন', body: 'একই ফর্মে দুটিরই অনুরোধ করা যায়।' },
+    { title: 'সমস্যা সংক্ষেপে লিখুন', body: 'ব্র্যান্ড বা মডেল জানা থাকলে উল্লেখ করুন।' },
   ],
   trustHeading: 'কেন Mymensingh Sheba থেকে সেবা নেবেন?',
   trustIntro:
@@ -690,6 +691,7 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
   showTimeField: true,
   dateLabel: 'কবে দরকার?',
   minimalForm: true,
+  compactHero: true,
   requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
   detailsPlaceholder: 'এসি বা ফ্রিজের সমস্যা এবং কী কাজ দরকার তা নিজের ভাষায় লিখুন।',

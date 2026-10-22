@@ -101,15 +101,24 @@ export function ToletDetailHeader({
             {listing.title}
           </h1>
 
-          <p className="mt-1 flex items-start gap-1 text-[12px] leading-relaxed text-ink-500 sm:text-[13px]">
-            <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
-            <span className="min-w-0">
-              {listing.specificAddress}
-              <span className="text-ink-400">
-                {' '}— {area?.nameBn ?? ''}
-              </span>
+          <div className="mt-2.5 flex max-w-2xl items-start gap-2.5 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 shadow-sm sm:mt-3 sm:px-4 sm:py-3">
+            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-700 text-white sm:h-9 sm:w-9">
+              <MapPin className="h-4.5 w-4.5 sm:h-5 sm:w-5" aria-hidden="true" />
             </span>
-          </p>
+            <div className="min-w-0">
+              <p className="text-[10.5px] font-bold text-brand-700 sm:text-[11px]">
+                বাসার অবস্থান
+              </p>
+              <p className="mt-0.5 text-[14px] font-extrabold leading-snug text-ink-900 sm:text-[16px]">
+                {listing.specificAddress}
+              </p>
+              {area?.nameBn && (
+                <p className="mt-0.5 text-[12px] font-semibold text-brand-800 sm:text-[13px]">
+                  {area.nameBn} — ময়মনসিংহ
+                </p>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Share: hidden on the smallest screens to keep the title block

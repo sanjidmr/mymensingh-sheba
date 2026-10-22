@@ -19,10 +19,12 @@ export default function ServiceHeroCta({
   anchorId,
   category,
   clean = false,
+  compact = false,
 }: {
   anchorId: string;
   category: string;
   clean?: boolean;
+  compact?: boolean;
 }) {
   const focusClass = clean ? LIGHT_FOCUS : DARK_FOCUS;
   const onClick = () => {
@@ -30,33 +32,39 @@ export default function ServiceHeroCta({
   };
 
   return (
-    <div className="mt-7">
+    <div className={compact ? 'mt-4' : 'mt-7'}>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <a
           href={`#${anchorId}`}
           onClick={onClick}
-          className={`inline-flex min-h-[58px] w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-7 text-base font-extrabold text-brand-950 shadow-sm transition-colors hover:bg-accent-300 sm:w-auto ${focusClass}`}
+          className={`inline-flex ${compact ? 'min-h-12' : 'min-h-[58px]'} w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-7 text-base font-extrabold text-brand-950 shadow-sm transition-colors hover:bg-accent-300 sm:w-auto ${focusClass}`}
         >
           <PhoneCall className="h-[18px] w-[18px]" aria-hidden="true" />
           সেবা নিন
         </a>
 
-        <a
-          href={`#${anchorId}`}
-          onClick={onClick}
-          className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-bold transition-colors ${
-            clean ? 'text-brand-700 hover:text-brand-900' : 'text-brand-200 hover:text-white'
-          } ${focusClass}`}
-        >
-          নিচে ফর্ম পূরণ করুন
-          <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
-        </a>
+        {!compact && (
+          <a
+            href={`#${anchorId}`}
+            onClick={onClick}
+            className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-2 text-[13px] font-bold transition-colors ${
+              clean ? 'text-brand-700 hover:text-brand-900' : 'text-brand-200 hover:text-white'
+            } ${focusClass}`}
+          >
+            নিচে ফর্ম পূরণ করুন
+            <ArrowDown className="h-3.5 w-3.5" aria-hidden="true" />
+          </a>
+        )}
       </div>
-      {category === 'kajer-bua' && (
+      {compact ? (
+        <p className={`mt-2 text-[11.5px] leading-relaxed ${clean ? 'text-ink-500' : 'text-brand-200/80'}`}>
+          আপনার যোগাযোগের তথ্য পাবলিক প্রোফাইলে দেখানো হয় না।
+        </p>
+      ) : category === 'kajer-bua' ? (
         <p className={`mt-2 text-center text-xs leading-relaxed sm:text-left ${clean ? 'text-ink-500' : 'text-brand-200/80'}`}>
           আপনার যোগাযোগের তথ্য গোপন থাকবে; অনুরোধটি অ্যাডমিন টিমের কাছে যাবে।
         </p>
-      )}
+      ) : null}
     </div>
   );
 }
