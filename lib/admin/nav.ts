@@ -214,6 +214,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         description: 'গৃহশিক্ষক রিভিউ পর্যালোচনা',
       },
       {
+        href: '/admin/site-reviews',
+        label: 'হোমপেজ রিভিউ',
+        icon: Star,
+        description: 'হোমপেজে পাঠানো সাইট রিভিউ দেখা ও প্রকাশনা পরিচালনা',
+      },
+      {
         href: '/admin/notifications',
         label: 'নোটিফিকেশন',
         icon: Bell,

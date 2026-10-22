@@ -20,6 +20,7 @@ import {
 import { getAreaById } from '@/lib/locations';
 import {
   tutorClassMatches,
+  isStandardTutorSubject,
   tutorSubjectMatches,
   matchesTutorEducation,
 } from '@/lib/home-tutor-types';
@@ -146,10 +147,7 @@ function HomeTutorContent() {
     const customSubjects = new Map<string, string>();
     tutors.forEach((tutor) => {
       tutor.preferredSubjects.forEach((subject) => {
-        const isStandardSubject = TUTOR_SUBJECTS.some((option) =>
-          option.id !== 'all' && tutorSubjectMatches(option.id, [subject])
-        );
-        if (!isStandardSubject) {
+        if (!isStandardTutorSubject(subject)) {
           customSubjects.set(subject.toLocaleLowerCase(), subject);
         }
       });

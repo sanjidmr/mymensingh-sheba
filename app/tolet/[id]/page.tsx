@@ -86,6 +86,8 @@ const NO_SIMILAR: ToletListing[] = [];
 export default function ToletDetailPage({ params }: ToletDetailPageProps) {
   const { id } = use(params);
   const { user, savedListings, toggleSaveItem } = useAuth();
+  const signedInUserId = user?.id ?? null;
+  const hasSignedInUser = Boolean(signedInUserId);
 
   const [load, setLoad] = useState<ListingLoad | null>(null);
   const [reportOpen, setReportOpen] = useState(false);
@@ -99,7 +101,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
     (async () => {
       let found: ToletListing | null;
       try {
-        found = await fetchListingById(id);
+        found = await fetchListingById(id, { includeContact: hasSignedInUser });
       } catch (error) {
         if (cancelled) return;
         setLoad({
@@ -137,7 +139,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, hasSignedInUser, signedInUserId]);
 
   // Derived, not stored. Anything describing a *different* id than the current
   // route is treated as "not loaded yet".
@@ -360,7 +362,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
 
         <SimilarProperties listings={similar} />
 
-        <StickyContactBarSpacer />
+        <StickyContactBarSpacer isLoggedIn={hasSignedInUser} />
       </main>
 
       {listing.status === 'approved' && (

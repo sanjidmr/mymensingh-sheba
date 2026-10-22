@@ -93,14 +93,15 @@ function mapListingRow(row: RawListingRow): ToletListing {
 }
 
 /**
- * Best-effort phone lookup for approved listings.
+ * Best-effort phone lookup for approved listings, called only after the
+ * authenticated visitor is confirmed by Supabase.
  *
  * The phone numbers are a convenience layered on top of the listing rows, not
  * the rows themselves: if the RPC is unavailable (migration not yet applied,
  * PostgREST schema cache stale, transient outage) the listings still render and
  * the contact buttons fall back to the tracked "যোগাযোগের অনুরোধ" flow instead of
- * the directory going blank. Failures are logged so the missing RPC stays
- * visible in the console.
+ * the detail page going blank. Failures are logged so the missing RPC stays
+ * visible in the console. The RPC itself independently enforces authentication.
  */
 async function attachApprovedListingPhones(
   client: NonNullable<ReturnType<typeof createClient>>,
@@ -216,15 +217,15 @@ export async function fetchPublicListings(): Promise<ToletListing[]> {
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   if (error) return [];
-  const real = await attachApprovedListingPhones(
-    client,
-    (data || []).map((row) => mapListingRow(row as RawListingRow))
-  );
+  const real = (data || []).map((row) => mapListingRow(row as RawListingRow));
   real.forEach(rememberListingMeta);
   return real;
 }
 
-export async function fetchListingById(id: string): Promise<ToletListing | null> {
+export async function fetchListingById(
+  id: string,
+  options: { includeContact?: boolean } = {}
+): Promise<ToletListing | null> {
   if (!isSupabaseConfigured) {
     const demo = getDemoListing(id);
     if (demo) {
@@ -242,7 +243,15 @@ export async function fetchListingById(id: string): Promise<ToletListing | null>
     .maybeSingle();
   if (error || !data) return null;
   let listing = mapListingRow(data as RawListingRow);
-  if (listing.status === 'approved' && LISTING_UUID_PATTERN.test(listing.id)) {
+  if (
+    options.includeContact &&
+    listing.status === 'approved' &&
+    LISTING_UUID_PATTERN.test(listing.id)
+  ) {
+    const { data: authData, error: authError } = await client.auth.getUser();
+    if (authError || !authData.user) {
+      return listing;
+    }
     [listing] = await attachApprovedListingPhones(client, [listing]);
   }
   rememberListingMeta(listing);

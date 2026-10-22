@@ -1,8 +1,7 @@
 'use client';
 
 import React from 'react';
-import Link from 'next/link';
-import { MessageCircle, Phone, Lock } from 'lucide-react';
+import { MessageCircle, Phone } from 'lucide-react';
 import type { ToletEventSource, ToletListing } from '@/lib/tolet-types';
 import { useListingContact } from '@/components/tolet/detail/ContactActions';
 
@@ -31,9 +30,9 @@ import { useListingContact } from '@/components/tolet/detail/ContactActions';
  * rather than by padding the body, so the reservation is scoped to the pages
  * that actually render the bar.
  *
- * The buttons reuse `ContactButton`, so the sticky bar and the desktop sidebar
- * are guaranteed to be the same actions, the same colours and the same hit
- * areas — only the layout differs.
+ * The bar appears only for signed-in visitors; guests see no phone or WhatsApp
+ * action. The buttons reuse `ContactButton`, so desktop and mobile actions stay
+ * consistent.
  */
 export function StickyContactBar({
   listing,
@@ -51,8 +50,8 @@ export function StickyContactBar({
     source,
   });
 
-  // Don't render the sticky bar if phone is unavailable
-  if (contact.mode === 'unavailable') {
+  // Contact links are available only to signed-in users.
+  if (!isLoggedIn || contact.mode === 'unavailable') {
     return null;
   }
 
@@ -72,25 +71,13 @@ export function StickyContactBar({
           onClick={contact.onWhatsApp}
           tone="whatsapp"
         />
-        {/* The call action exists only for a signed-in reader; a guest gets a
-            login link in its place instead of a number they were not given. */}
-        {isLoggedIn ? (
-          <StickyAction
-            icon={Phone}
-            label={contact.callLabelBn}
-            href={contact.telHref}
-            onClick={contact.onCall}
-            tone="call"
-          />
-        ) : (
-          <Link
-            href={`/login?next=${encodeURIComponent(`/tolet/${listing.id}`)}`}
-            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-2 text-[13px] font-extrabold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1"
-          >
-            <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="truncate">লগইন করুন</span>
-          </Link>
-        )}
+        <StickyAction
+          icon={Phone}
+          label={contact.callLabelBn}
+          href={contact.telHref}
+          onClick={contact.onCall}
+          tone="call"
+        />
       </div>
     </div>
   );
@@ -106,7 +93,8 @@ export function StickyContactBar({
  * (~3.6rem + 0.5rem). It is `lg:hidden`, matching the bar, so desktop spacing is
  * untouched.
  */
-export function StickyContactBarSpacer() {
+export function StickyContactBarSpacer({ isLoggedIn }: { isLoggedIn: boolean }) {
+  if (!isLoggedIn) return null;
   return <div aria-hidden="true" className="h-[4.25rem] lg:hidden" />;
 }
 

@@ -16,6 +16,7 @@ export interface SiteReview {
   rating: number;
   body: string;
   createdAt: string;
+  status: 'published' | 'hidden';
 }
 
 export interface ReviewSubmitInput {
@@ -48,6 +49,7 @@ interface RawReviewRow {
   rating?: number | null;
   body?: string | null;
   created_at?: string | null;
+  status?: 'published' | 'hidden' | null;
 }
 
 function mapRow(row: RawReviewRow): SiteReview {
@@ -58,7 +60,21 @@ function mapRow(row: RawReviewRow): SiteReview {
     rating: Number(row.rating ?? 0),
     body: (row.body ?? '').trim(),
     createdAt: row.created_at ?? new Date().toISOString(),
+    status: row.status === 'hidden' ? 'hidden' : 'published',
   };
+}
+
+function submitErrorMessage(code?: string): string {
+  if (code === '42P01' || code === 'PGRST205' || code === 'PGRST204') {
+    return 'রিভিউ সেবা ডাটাবেজে চালু নেই। অ্যাডমিনকে site_reviews migration প্রয়োগ করতে বলুন।';
+  }
+  if (code === '42501') {
+    return 'রিভিউ জমা দেওয়ার অনুমতি নেই। Supabase-এর site_reviews INSERT policy যাচাই করুন।';
+  }
+  if (code === '23514' || code === '22001') {
+    return 'রিভিউয়ের তথ্য সীমার বাইরে। নাম ও সেবা লিখুন এবং মতামত ১০–১,৫০০ অক্ষরের মধ্যে রাখুন।';
+  }
+  return 'রিভিউ জমা হয়নি। ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন।';
 }
 
 /** Newest published reviews, for the modal's "আপনাদের মতামত" list. */
@@ -82,26 +98,84 @@ export async function fetchPublishedSiteReviews(limit = 24): Promise<SiteReview[
 export async function submitSiteReview(
   input: ReviewSubmitInput
 ): Promise<ReviewSubmitResult> {
+  const name = input.name.trim();
+  const service = input.service.trim();
+  const body = input.body.trim();
+  if (name.length < 2 || service.length < 2 || !Number.isInteger(input.rating) ||
+      input.rating < 1 || input.rating > 5 ||
+      body.length < 10 || body.length > 1500) {
+    return {
+      ok: false,
+      persisted: false,
+      errorBn: 'নাম ও সেবা লিখুন; মতামত ১০–১,৫০০ অক্ষরের মধ্যে রাখুন এবং ১–৫ স্টার দিন।',
+    };
+  }
   if (!isSupabaseConfigured) return UNAVAILABLE;
 
   const client = createClient();
   if (!client) return UNAVAILABLE;
 
-  const { error } = await client.from('site_reviews').insert({
-    name: input.name.trim(),
-    service: input.service.trim(),
-    rating: input.rating,
-    body: input.body.trim(),
-    user_id: input.userId || null,
-  });
-
-  if (error) {
+  try {
+    const { error } = await client.from('site_reviews').insert({
+      name,
+      service,
+      rating: input.rating,
+      body,
+      user_id: input.userId || null,
+    });
+    if (!error) return { ok: true, persisted: true, errorBn: '' };
+    console.error('site_review_insert_failed', { code: error.code ?? 'unknown' });
     return {
       ok: false,
       persisted: false,
-      errorBn: 'রিভিউটি জমা দেওয়া যায়নি। একটু পরে আবার চেষ্টা করুন।',
+      errorBn: submitErrorMessage(error.code),
+    };
+  } catch {
+    console.error('site_review_insert_failed', { code: 'network_or_client_error' });
+    return {
+      ok: false,
+      persisted: false,
+      errorBn: 'রিভিউ জমা হয়নি। ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন।',
     };
   }
+}
 
-  return { ok: true, persisted: true, errorBn: '' };
+/** All site-wide reviews for the admin moderation screen. RLS enforces admin access. */
+export async function fetchAdminSiteReviews(): Promise<SiteReview[]> {
+  if (!isSupabaseConfigured) throw new Error('Supabase সংযোগ উপলভ্য নয়।');
+  const client = createClient();
+  if (!client) throw new Error('Supabase সংযোগ উপলভ্য নয়।');
+  const { data, error } = await client
+    .from('site_reviews')
+    .select('id, name, service, rating, body, created_at, status')
+    .order('created_at', { ascending: false })
+    .limit(200);
+  if (error) {
+    if (error.code === '42P01' || error.code === 'PGRST205') {
+      throw new Error('site_reviews টেবিল পাওয়া যায়নি। Supabase-এ 20261017160000_site_reviews.sql migration প্রয়োগ করুন।');
+    }
+    throw new Error(`সাইট রিভিউ লোড হয়নি (কোড: ${error.code || 'unknown'})।`);
+  }
+  return (data ?? []).map((row) => mapRow(row as RawReviewRow));
+}
+
+/** Publish or hide a homepage review. RLS permits this only for admins. */
+export async function setSiteReviewStatus(
+  id: string,
+  status: SiteReview['status']
+): Promise<{ success: boolean; error?: string }> {
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযোগ উপলভ্য নয়।' };
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase সংযোগ উপলভ্য নয়।' };
+  try {
+    const { error } = await client.from('site_reviews').update({ status }).eq('id', id);
+    if (error) {
+      console.error('site_review_status_update_failed', { code: error.code ?? 'unknown' });
+      return { success: false, error: `রিভিউর অবস্থা পরিবর্তন হয়নি (কোড: ${error.code || 'unknown'})।` };
+    }
+  } catch {
+    console.error('site_review_status_update_failed', { code: 'network_or_client_error' });
+    return { success: false, error: 'সংযোগ সমস্যার কারণে রিভিউর অবস্থা পরিবর্তন হয়নি।' };
+  }
+  return { success: true };
 }

@@ -229,6 +229,30 @@ const SUBJECT_INCLUDE_ANY: Record<string, string[]> = {
   bangla: ['বাংলা'],
 };
 
+const STANDARD_TUTOR_SUBJECT_LABELS: Record<string, string[]> = {
+  all_primary: [
+    'সকল বিষয়',
+    'সকল বিষয় (প্রাইমারি)',
+    'সকল বিষয় (প্রাথমিক/জুনিয়র)',
+    'সকল বিষয় (প্রাথমিক/জুনিয়র)',
+  ],
+  math: ['সাধারণ ও উচ্চতর গণিত', 'সাধারণ গণিত', 'উচ্চতর গণিত'],
+  english: ['ইংরেজি (English)', 'ইংরেজি', 'english'],
+  physics: ['পদার্থবিজ্ঞান'],
+  chemistry: ['রসায়ন', 'রসায়ন'],
+  biology: ['জীববিজ্ঞান'],
+  ict: ['আইসিটি (ICT)', 'তথ্য ও যোগাযোগ প্রযুক্তি (ICT)', 'আইসিটি'],
+  bangla: ['বাংলা'],
+};
+
+/** True only for a standard subject label, not a custom label containing it. */
+export function isStandardTutorSubject(subject: string): boolean {
+  const normalized = subject.trim().toLocaleLowerCase();
+  return Object.values(STANDARD_TUTOR_SUBJECT_LABELS).some((labels) =>
+    labels.some((label) => label.toLocaleLowerCase() === normalized)
+  );
+}
+
 export function tutorSubjectMatches(subjectId: string, subjects: string[]): boolean {
   if (!subjectId || subjectId === 'all') return true;
   const needles = SUBJECT_INCLUDE_ANY[subjectId] || [];

@@ -13,18 +13,12 @@ import { cn } from '@/lib/utils';
  *
  * Two contact modes
  * -----------------
- * `direct`  — the owner has published a phone number. The buttons open WhatsApp
- *             with the listing pre-filled as the message, or the phone dialer.
- *             This is the normal case for a live listing.
- * `request` — no phone is published (the default for a listing whose owner has
- *             not released their number, and for every showcase listing, which
- *             have no real person behind them at all). The buttons become the
- *             entry point to the tracked request form instead of a dead or
- *             invented number.
+ * `direct`  — the signed-in visitor may use the owner's published number for
+ *             WhatsApp or a direct call.
+ * `unavailable` — no phone is published. Contact actions are omitted rather
+ *                 than rendered as dead links or invented numbers.
  *
- * Falling back to `request` rather than hiding the buttons (or, worse,
- * rendering a made-up number) is deliberate: a tenant always gets a working
- * next step, and a demo listing can never send a real phone call somewhere.
+ * A demo listing can never send a real phone call somewhere.
  *
  * Tracking contract
  * -----------------
@@ -196,10 +190,8 @@ function ContactButton({
 /**
  * ContactActionsPanel — the sidebar contact block on the detail page.
  *
- * Explains the contact route before offering the buttons, because on a listing
- * whose owner has not released their number the buttons are disabled and
- * show "নম্বর নেই" — and a tenant who assumes otherwise will be confused when
- * no dialer opens. Being explicit about that is worth one short line.
+ * Guests receive only a login prompt. The number and both contact actions are
+ * rendered only for a signed-in visitor.
  */
 export function ContactActionsPanel({
   listing,
@@ -230,22 +222,29 @@ export function ContactActionsPanel({
       </h2>
 
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-500">
-        {contact.mode === 'direct'
-          ? isLoggedIn
-            ? 'সরাসরি মালিকের নম্বরে কল করুন বা হোয়াটসঅ্যাপে বিজ্ঞাপনটি পাঠিয়ে দিন।'
-            : 'মালিকের নম্বরে হোয়াটসঅ্যাপে বিজ্ঞাপনটি পাঠাতে পারবেন। সরাসরি কল করতে লগইন করতে হবে।'
-          : 'মালিকের ফোন নম্বর এখনো প্রকাশ করা হয়নি।'}
+        {!isLoggedIn
+          ? 'মালিকের সাথে কল বা হোয়াটসঅ্যাপে যোগাযোগ করতে লগইন করুন।'
+          : contact.mode === 'direct'
+            ? 'মালিকের নম্বরে কল করুন বা হোয়াটসঅ্যাপে যোগাযোগ করুন।'
+            : 'মালিকের ফোন নম্বর এখনো প্রকাশ করা হয়নি।'}
       </p>
 
-      <div className="mt-3 space-y-2">
-        <ContactButton
-          tone="whatsapp"
-          icon={MessageCircle}
-          label={contact.whatsappLabelBn}
-          href={contact.whatsappHref}
-          onClick={contact.onWhatsApp}
-        />
-        {isLoggedIn ? (
+      {!isLoggedIn ? (
+        <LoginGateNote listingId={listing.id} className="mt-3" />
+      ) : contact.mode === 'direct' ? (
+        <div className="mt-3 space-y-2">
+          {listing.ownerPhone && (
+            <p className="rounded-lg border border-brand-100 bg-mist-50 px-3 py-2 text-center text-[15px] font-extrabold tracking-wide text-brand-800">
+              {listing.ownerPhone}
+            </p>
+          )}
+          <ContactButton
+            tone="whatsapp"
+            icon={MessageCircle}
+            label={contact.whatsappLabelBn}
+            href={contact.whatsappHref}
+            onClick={contact.onWhatsApp}
+          />
           <ContactButton
             tone="call"
             icon={Phone}
@@ -253,18 +252,14 @@ export function ContactActionsPanel({
             href={contact.telHref}
             onClick={contact.onCall}
           />
-        ) : (
-          <LoginGateNote listingId={listing.id} />
-        )}
-      </div>
-
-      {contact.mode === 'unavailable' && (
-        <p className="mt-2.5 flex items-start gap-1.5 px-0.5 text-[10.5px] leading-relaxed text-ink-400">
-          <span>নম্বর প্রদান করা হলে সরাসরি কল বা হোয়াটসঅ্যাপ করার অপশন দেখাবে।</span>
+        </div>
+      ) : (
+        <p className="mt-3 flex items-start gap-1.5 px-0.5 text-[10.5px] leading-relaxed text-ink-400">
+          <span>মালিকের ফোন নম্বর এখনো প্রকাশ করা হয়নি।</span>
         </p>
       )}
 
-      {contact.mode === 'direct' && (
+      {isLoggedIn && contact.mode === 'direct' && (
         <p className="mt-2.5 flex items-start gap-1.5 px-0.5 text-[10.5px] leading-relaxed text-ink-400">
           <Check className="mt-px h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
           <span>মালিকের ফোন নম্বর এখানে প্রকাশ করা হয়েছে — অপব্যবহার এড়িয়ে চলুন।</span>
@@ -275,12 +270,7 @@ export function ContactActionsPanel({
 }
 
 /**
- * The stand-in for the "কল করুন" button when the reader is not signed in.
- *
- * The owner's number is only passed on to an account that can be held to it, so
- * a guest gets the reason and a login link in place of the button — never a
- * number. WhatsApp stays available either way: the owner publishes that number
- * precisely so a tenant can message them, and a message is not a call.
+ * Guests see a login prompt instead of either contact action or the number.
  */
 export function LoginGateNote({
   listingId,
@@ -298,14 +288,14 @@ export function LoginGateNote({
     >
       <Lock className="mt-px h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden="true" />
       <span>
-        সরাসরি কল করতে{' '}
+        মালিকের নম্বর দেখতে এবং কল বা হোয়াটসঅ্যাপে যোগাযোগ করতে{' '}
         <Link
           href={`/login?next=${encodeURIComponent(`/tolet/${listingId}`)}`}
           className="font-bold text-brand-700 underline underline-offset-2"
         >
           লগইন করুন
         </Link>
-        । লগইন করলেই “কল করুন” বাটনটি দেখা যাবে।
+        । লগইন করলেই কল ও হোয়াটসঅ্যাপের অপশন দেখা যাবে।
       </span>
     </p>
   );
