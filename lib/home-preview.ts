@@ -150,7 +150,7 @@ export function tutorToPreviewCard(tutor: HomeTutorProfile): HomePreviewCard {
       tone: TUTOR_AVAILABILITY_TONE[tutor.availability] || 'slate',
     },
     verified: tutor.isVerified,
-    footer: formatTutorFee(tutor.expectedSalaryMin, tutor.expectedSalaryMax),
+    footer: formatTutorFee(tutor.expectedSalary),
   };
 }
 

@@ -33,6 +33,8 @@ export type CustomerServiceCategory = 'coaching' | 'wifi';
 
 export const CUSTOMER_SERVICE_CATEGORIES: CustomerServiceCategory[] = ['coaching', 'wifi'];
 
+export type CoachingCategory = 'class_1_8' | 'ssc' | 'hsc' | 'admission';
+
 /**
  * Moderation state of an owner-submitted listing.
  *
@@ -78,6 +80,7 @@ export interface ServiceListing {
   descriptionBn?: string;
   imageUrl?: string;
   logoUrl?: string;
+  coachingCategory?: CoachingCategory;
   areaIds: string[];
   tags: string[];
   monthlyFeeMin?: number;
@@ -220,6 +223,10 @@ export interface CoachingBatch {
   listingId: string;
   titleBn: string;
   startDate?: string;
+  weekdayIds: CoachingWeekday[];
+  startTimeLocal?: string;
+  endTimeLocal?: string;
+  /** Legacy free-text value retained for batches created before schedule fields. */
   startTime?: string;
   noteBn?: string;
   isActive: boolean;
@@ -227,7 +234,66 @@ export interface CoachingBatch {
   updatedAt: string;
 }
 
-export type CoachingBatchInput = Omit<CoachingBatch, 'id' | 'createdAt' | 'updatedAt'>;
+export type CoachingBatchInput = Omit<
+  CoachingBatch,
+  'id' | 'createdAt' | 'updatedAt' | 'weekdayIds' | 'startTimeLocal' | 'endTimeLocal'
+> & {
+  weekdayIds?: CoachingWeekday[];
+  startTimeLocal?: string;
+  endTimeLocal?: string;
+};
+
+export const COACHING_WEEKDAYS = [
+  { id: 'saturday', labelBn: 'শনিবার' },
+  { id: 'sunday', labelBn: 'রবিবার' },
+  { id: 'monday', labelBn: 'সোমবার' },
+  { id: 'tuesday', labelBn: 'মঙ্গলবার' },
+  { id: 'wednesday', labelBn: 'বুধবার' },
+  { id: 'thursday', labelBn: 'বৃহস্পতিবার' },
+  { id: 'friday', labelBn: 'শুক্রবার' },
+] as const;
+
+export type CoachingWeekday = (typeof COACHING_WEEKDAYS)[number]['id'];
+
+export const COACHING_WEEKDAY_GROUPS: {
+  id: string;
+  labelBn: string;
+  weekdayIds: CoachingWeekday[];
+}[] = [
+  {
+    id: 'sat-mon-thu',
+    labelBn: 'শনি-সোম-বৃহস্পতি',
+    weekdayIds: ['saturday', 'monday', 'thursday'],
+  },
+  {
+    id: 'sun-tue-wed',
+    labelBn: 'রবি-মঙ্গল-বুধ',
+    weekdayIds: ['sunday', 'tuesday', 'wednesday'],
+  },
+];
+
+export function coachingWeekdayLabel(weekdayIds: CoachingWeekday[]): string {
+  const selected = new Set(weekdayIds);
+  const group = COACHING_WEEKDAY_GROUPS.find(
+    (candidate) =>
+      candidate.weekdayIds.length === selected.size &&
+      candidate.weekdayIds.every((weekday) => selected.has(weekday))
+  );
+  return group?.labelBn ??
+    COACHING_WEEKDAYS.filter((day) => selected.has(day.id)).map((day) => day.labelBn).join(', ');
+}
+
+function formatCoachingClock(value: string): string {
+  const match = /^([01]\d|2[0-3]):[0-5]\d$/.exec(value);
+  if (!match) return value;
+  const hour = Number(match[1]) % 12 || 12;
+  return `${toBn(hour)}টা`;
+}
+
+export function coachingTimeRange(start?: string, end?: string): string | undefined {
+  if (!start || !end) return undefined;
+  return `${formatCoachingClock(start)} থেকে ${formatCoachingClock(end)}`;
+}
 
 /** One purchasable internet package under a WiFi provider. */
 export interface WifiPackage {
@@ -260,12 +326,12 @@ export type WifiPackageInput = Omit<WifiPackage, 'id' | 'createdAt' | 'updatedAt
  */
 export interface CustomerServiceListingInput {
   category: CustomerServiceCategory;
+  coachingCategory?: CoachingCategory;
   titleBn: string;
   subtitleBn?: string;
   summaryBn?: string;
   descriptionBn?: string;
   imageUrl?: string;
-  photos?: string[];
   logoUrl?: string;
   areaIds: string[];
   /** Free-form highlight chips (coaching: classes/subjects/সুবিধা). */
@@ -494,22 +560,72 @@ export const COACHING_CLASSES: { id: string; labelBn: string }[] = [
 /** Subjects a coaching centre can offer. */
 export const COACHING_SUBJECTS: { id: string; labelBn: string }[] = [
   { id: 'math', labelBn: 'গণিত' },
+  { id: 'higher_math', labelBn: 'উচ্চতর গণিত' },
   { id: 'physics', labelBn: 'পদার্থবিজ্ঞান' },
   { id: 'chemistry', labelBn: 'রসায়ন' },
   { id: 'biology', labelBn: 'জীববিজ্ঞান' },
   { id: 'english', labelBn: 'ইংরেজি' },
   { id: 'bangla', labelBn: 'বাংলা' },
   { id: 'ict', labelBn: 'আইসিটি' },
+  { id: 'science', labelBn: 'সাধারণ বিজ্ঞান' },
+  { id: 'social_studies', labelBn: 'বাংলাদেশ ও বিশ্বপরিচয়' },
+  { id: 'religion', labelBn: 'ধর্ম ও নৈতিক শিক্ষা' },
+  { id: 'accounting', labelBn: 'হিসাববিজ্ঞান' },
+  { id: 'business_studies', labelBn: 'ব্যবসায় উদ্যোগ' },
+  { id: 'finance', labelBn: 'ফিন্যান্স ও ব্যাংকিং' },
+  { id: 'economics', labelBn: 'অর্থনীতি' },
+  { id: 'civics', labelBn: 'পৌরনীতি ও সুশাসন' },
+  { id: 'sociology', labelBn: 'সমাজবিজ্ঞান' },
+  { id: 'logic', labelBn: 'যুক্তিবিদ্যা' },
+  { id: 'history', labelBn: 'ইতিহাস' },
+  { id: 'general_knowledge', labelBn: 'সাধারণ জ্ঞান' },
+  { id: 'analytical_ability', labelBn: 'বিশ্লেষণী দক্ষতা' },
+  { id: 'medical_admission', labelBn: 'মেডিকেল ভর্তি প্রস্তুতি' },
+  { id: 'engineering_admission', labelBn: 'প্রকৌশল ভর্তি প্রস্তুতি' },
+  { id: 'university_admission', labelBn: 'বিশ্ববিদ্যালয় ভর্তি প্রস্তুতি' },
 ];
 
-/** Coaching centre types. */
-export const COACHING_CATEGORIES: { id: string; labelBn: string }[] = [
-  { id: 'general', labelBn: 'জেনারেল' },
+export const COACHING_SUBJECTS_BY_CATEGORY: Record<
+  CoachingCategory,
+  { id: string; labelBn: string }[]
+> = {
+  class_1_8: COACHING_SUBJECTS.filter((subject) =>
+    ['bangla', 'english', 'math', 'science', 'social_studies', 'ict', 'religion'].includes(subject.id)
+  ),
+  ssc: COACHING_SUBJECTS.filter((subject) =>
+    [
+      'bangla', 'english', 'math', 'higher_math', 'physics', 'chemistry', 'biology',
+      'ict', 'social_studies', 'religion', 'accounting', 'business_studies',
+      'finance', 'economics',
+    ].includes(subject.id)
+  ),
+  hsc: COACHING_SUBJECTS.filter((subject) =>
+    [
+      'bangla', 'english', 'ict', 'physics', 'chemistry', 'biology', 'higher_math',
+      'accounting', 'business_studies', 'finance', 'economics', 'civics',
+      'sociology', 'logic', 'history',
+    ].includes(subject.id)
+  ),
+  admission: COACHING_SUBJECTS.filter((subject) =>
+    [
+      'bangla', 'english', 'math', 'higher_math', 'physics', 'chemistry', 'biology',
+      'general_knowledge', 'analytical_ability', 'medical_admission',
+      'engineering_admission', 'university_admission',
+    ].includes(subject.id)
+  ),
+};
+
+/** Exactly the four directory categories used to classify coaching centres. */
+export const COACHING_CATEGORIES: { id: CoachingCategory; labelBn: string }[] = [
+  { id: 'class_1_8', labelBn: 'ক্লাস ১–৮' },
+  { id: 'ssc', labelBn: 'এসএসসি (ক্লাস ৯–১০)' },
   { id: 'hsc', labelBn: 'এইচএসসি' },
-  { id: 'admission', labelBn: 'ভর্তি কোচিং' },
-  { id: 'university', labelBn: 'বিশ্ববিদ্যালয়' },
-  { id: 'government', labelBn: 'সরকারি চাকরি প্রস্তুতি' },
+  { id: 'admission', labelBn: 'ভর্তি' },
 ];
+
+export function isCoachingCategory(value: unknown): value is CoachingCategory {
+  return COACHING_CATEGORIES.some((category) => category.id === value);
+}
 
 /** Bus body/category types. */
 export const BUS_TYPES: { id: string; labelBn: string }[] = [

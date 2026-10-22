@@ -17,8 +17,9 @@ import Link from 'next/link';
 import { ArrowLeft, Flag, ShieldAlert } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
+import { JobCard } from '@/components/catalog/CommunityCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
-import { fetchPostForViewer } from '@/lib/catalog-service';
+import { fetchApprovedPosts, fetchPostForViewer } from '@/lib/catalog-service';
 import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import {
@@ -58,6 +59,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
   const meta = KIND_META[kind];
   const { user } = useAuth();
   const [post, setPost] = useState<CommunityPost | null>(null);
+  const [related, setRelated] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
 
@@ -79,6 +81,33 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
       active = false;
     };
   }, [kind, slug]);
+
+  // A job page recommends other jobs only — never news or buy-sell. Same
+  // category first, then same area, so the row is relevant before it is full.
+  // Failures are silent: the related row is a bonus, not the page.
+  useEffect(() => {
+    if (kind !== 'job' || !post) return;
+    let active = true;
+    (async () => {
+      try {
+        const rows = await fetchApprovedPosts('job');
+        if (!active) return;
+        const score = (item: CommunityPost) =>
+          (post.category && item.category === post.category ? 2 : 0) +
+          (post.areaId && item.areaId === post.areaId ? 1 : 0);
+        const next = rows
+          .filter((item) => item.slug !== slug && item.status === 'approved')
+          .sort((a, b) => score(b) - score(a))
+          .slice(0, 4);
+        setRelated(next);
+      } catch {
+        if (active) setRelated([]);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [kind, slug, post]);
 
   if (loading) {
     return (
@@ -333,6 +362,25 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
           </Link>
           — অ্যাডমিন যাচাই করে নেবেন।
         </p>
+
+        {kind === 'job' && related.length > 0 && (
+          <section
+            className="mt-6 border-t border-brand-100 pt-5"
+            aria-labelledby="related-jobs-heading"
+          >
+            <h2
+              id="related-jobs-heading"
+              className="mb-2.5 text-[15px] font-extrabold text-ink-900"
+            >
+              আরও চাকরি
+            </h2>
+            <div className="grid gap-2.5 sm:grid-cols-2">
+              {related.map((item) => (
+                <JobCard key={item.id} post={item} />
+              ))}
+            </div>
+          </section>
+        )}
       </div>
     </Frame>
   );

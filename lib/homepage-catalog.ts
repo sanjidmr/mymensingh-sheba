@@ -250,7 +250,7 @@ export const SHOP_TRAVEL_CATEGORY: HomepageCategory = {
       name: 'স্থানীয় খবর ও ঘোষণা',
       en: 'স্থানীয় খবর',
       text: 'ময়মনসিংহের প্রয়োজনীয় খবর ও ঘোষণা, অবিলম্বে।',
-      href: '/posts',
+      href: '/news',
       image: '/news.jpg',
       chips: ['স্থানীয় খবর'],
       cta: 'দেখুন',

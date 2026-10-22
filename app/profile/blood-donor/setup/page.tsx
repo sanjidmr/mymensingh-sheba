@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -10,14 +10,11 @@ import {
   ArrowLeft,
   CheckCircle2,
   Lock,
-  AlertTriangle,
-  Loader2,
-  UploadCloud,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BloodGroup } from '@/lib/supabase/types';
-import { MCC_AREAS, isInsideMCC } from '@/lib/locations';
-import { uploadDonorProfilePhoto } from '@/lib/blood-donor-service';
+import { isInsideMCC } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -34,8 +31,8 @@ export default function BloodDonorSetupPage() {
     return isInsideMCC(preferred) ? preferred : 'charpara';
   });
   const [gender, setGender] = useState<'male' | 'female'>(bloodDonorProfile?.gender || 'male');
-  const [birthYear, setBirthYear] = useState<number>(bloodDonorProfile?.birthYear || 1998);
-  const [weightKg, setWeightKg] = useState<number>(bloodDonorProfile?.weightKg || 65);
+  const [birthYear, setBirthYear] = useState(bloodDonorProfile?.birthYear?.toString() || '');
+  const [weightKg, setWeightKg] = useState(bloodDonorProfile?.weightKg?.toString() || '');
   const [isAvailable, setIsAvailable] = useState<boolean>(bloodDonorProfile?.isAvailable ?? true);
   /**
    * Whether the public card may show the "রক্তদানের বর্তমান প্রস্তুতি" panel.
@@ -54,32 +51,25 @@ export default function BloodDonorSetupPage() {
     bloodDonorProfile?.privatePhone || user?.phone || ''
   );
   const [intro, setIntro] = useState(bloodDonorProfile?.intro || '');
-  const [profilePhoto, setProfilePhoto] = useState(bloodDonorProfile?.profilePhotoUrl || '');
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const [agreePolicy, setAgreePolicy] = useState(true);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [error, setError] = useState('');
 
-  const handlePhoto = async (f: File | undefined) => {
-    if (!f || !user?.id) return;
-    if (!f.type.startsWith('image/') || f.size > 5 * 1024 * 1024) return;
-    setPhotoUploading(true);
-    setError('');
-    const res = await uploadDonorProfilePhoto(user.id, f);
-    setPhotoUploading(false);
-    if (res.success && res.url) {
-      setProfilePhoto(res.url);
-    } else {
-      setError(res.error || 'ছবি আপলোড ব্যর্থ হয়েছে।');
-    }
-  };
-
   const saveProfile = async (mode: 'draft' | 'submit') => {
-    if (mode === 'submit' && (!fullName || !privatePhone || !agreePolicy)) {
-      setError('নাম, ফোন নম্বর এবং নীতিমালায় সম্মতি প্রয়োজন।');
+    if (mode === 'submit' && (!fullName || !privatePhone || !areaId || !agreePolicy)) {
+      setError('নাম, এলাকা, ফোন নম্বর এবং নীতিমালায় সম্মতি প্রয়োজন।');
+      return;
+    }
+    const parsedBirthYear = birthYear === '' ? undefined : Number(birthYear);
+    if (parsedBirthYear !== undefined && (!Number.isInteger(parsedBirthYear) || parsedBirthYear < 1950 || parsedBirthYear > 2007)) {
+      setError('জন্মসাল ১৯৫০ থেকে ২০০৭-এর মধ্যে লিখুন।');
+      return;
+    }
+    const parsedWeightKg = weightKg === '' ? undefined : Number(weightKg);
+    if (parsedWeightKg !== undefined && (!Number.isFinite(parsedWeightKg) || parsedWeightKg < 45 || parsedWeightKg > 140)) {
+      setError('ওজন ৪৫ থেকে ১৪০ কেজির মধ্যে লিখুন।');
       return;
     }
 
@@ -91,8 +81,8 @@ export default function BloodDonorSetupPage() {
         bloodGroup,
         areaId,
         gender,
-        birthYear: Number(birthYear),
-        weightKg: Number(weightKg),
+        birthYear: parsedBirthYear,
+        weightKg: parsedWeightKg,
         isAvailable,
         showReadiness,
         lastDonationDate: lastDonationDate || undefined,
@@ -100,7 +90,7 @@ export default function BloodDonorSetupPage() {
         privatePhone,
         isVerified: false,
         intro: intro.trim() || undefined,
-        profilePhotoUrl: profilePhoto || undefined,
+        profilePhotoUrl: bloodDonorProfile?.profilePhotoUrl,
       }, mode);
       if (!result.success) throw new Error(result.error || 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
       setSuccess(true);
@@ -196,43 +186,6 @@ export default function BloodDonorSetupPage() {
               </div>
             </div>
 
-            {/* Profile Photo (optional, public) */}
-            <div>
-              <label className="block text-xs font-semibold text-ink-800 mb-2">
-                প্রোফাইল ছবি (ঐচ্ছিক)
-              </label>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/*"
-                className="hidden"
-                onChange={(e) => handlePhoto(e.target.files?.[0])}
-              />
-              <button
-                type="button"
-                onClick={() => fileRef.current?.click()}
-                className="flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-brand-200 hover:border-rose-400 w-full bg-mist-50 transition-colors"
-              >
-                {profilePhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profilePhoto} alt="প্রোফাইল" className="w-14 h-14 rounded-full object-cover ring-2 ring-rose-200" />
-                ) : (
-                  <div className="w-14 h-14 rounded-full bg-rose-100 text-rose-500 flex items-center justify-center">
-                    <UploadCloud className="w-5 h-5" />
-                  </div>
-                )}
-                <span className="text-left">
-                  <span className="block text-sm font-semibold text-ink-700">
-                    {photoUploading ? 'আপলোড হচ্ছে...' : profilePhoto ? 'ছবি বদল করুন' : 'ছবি বাছাই করুন'}
-                  </span>
-                  <span className="block text-[11px] text-ink-400 mt-0.5">
-                    JPG/PNG, সর্বোচ্চ ৫MB — ডিরেক্টরিতে প্রদর্শিত হবে
-                  </span>
-                </span>
-                {photoUploading && <Loader2 className="w-4 h-4 animate-spin text-rose-500 ml-auto" />}
-              </button>
-            </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
@@ -252,18 +205,12 @@ export default function BloodDonorSetupPage() {
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   এলাকা (ময়মনসিংহ সিটি কর্পোরেশন)
                 </label>
-                <select
+                <LocationSelectInput
                   value={areaId}
-                  onChange={(e) => setAreaId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  required
-                >
-                  {MCC_AREAS.map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.nameBn}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(id) => setAreaId(id || '')}
+                  placeholder="এলাকা নির্বাচন করুন"
+                  allowClear={false}
+                />
               </div>
             </div>
 
@@ -304,9 +251,8 @@ export default function BloodDonorSetupPage() {
                   min="1950"
                   max="2007"
                   value={birthYear}
-                  onChange={(e) => setBirthYear(Number(e.target.value))}
+                  onChange={(e) => setBirthYear(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  required
                 />
               </div>
 
@@ -319,9 +265,8 @@ export default function BloodDonorSetupPage() {
                   min="45"
                   max="140"
                   value={weightKg}
-                  onChange={(e) => setWeightKg(Number(e.target.value))}
+                  onChange={(e) => setWeightKg(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  required
                 />
               </div>
             </div>
@@ -440,7 +385,7 @@ export default function BloodDonorSetupPage() {
                 <button
                   type="button"
                   onClick={() => void saveProfile('draft')}
-                  disabled={loading || photoUploading}
+                  disabled={loading}
                   className="px-4 py-2.5 rounded-xl border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-50 disabled:opacity-50"
                 >
                   {loading ? 'সংরক্ষণ হচ্ছে...' : 'জমা দেওয়া হয়নি সংরক্ষণ'}

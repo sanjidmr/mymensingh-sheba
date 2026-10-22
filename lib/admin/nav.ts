@@ -26,6 +26,7 @@ import {
   Droplet,
   Siren,
   MousePointerClick,
+  MailCheck,
 } from 'lucide-react';
 
 /**
@@ -111,9 +112,9 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       },
       {
         href: '/admin/verifications',
-        label: 'গৃহশিক্ষক প্রোফাইল',
+        label: 'গৃহ শিক্ষক প্রোফাইল',
         icon: GraduationCap,
-        description: 'সব গৃহশিক্ষক প্রোফাইল, তথ্য ও প্রকাশনার অবস্থা',
+        description: 'সব গৃহ শিক্ষক প্রোফাইল, তথ্য ও প্রকাশনার অবস্থা',
       },
       {
         href: '/admin/emergency-contacts',
@@ -218,6 +219,12 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: Bell,
         badgeKey: 'notifications',
         description: 'অ্যাডমিনের গুরুত্বপূর্ণ আপডেট',
+      },
+      {
+        href: '/admin/email-deliveries',
+        label: 'ইমেইল ডেলিভারি',
+        icon: MailCheck,
+        description: 'Brevo ইমেইল queue, ব্যর্থতা ও delivery status',
       },
     ],
   },

@@ -32,7 +32,6 @@ const FILTER_GROUPS: FilterGroup[] = [
     id: 'propertyType',
     labelBn: 'বাসার ধরন',
     type: 'single',
-    compact: true,
     options: [
       { id: 'all', labelBn: 'সব ধরন' },
       ...Object.entries(TOLET_PROPERTY_TYPE_INFO).map(([id, info]) => ({
@@ -45,7 +44,6 @@ const FILTER_GROUPS: FilterGroup[] = [
     id: 'rent',
     labelBn: 'ভাড়া / বাজেট',
     type: 'multi',
-    compact: true,
     options: [
       { id: 'under5k', labelBn: '৫,০০০ ৳ এর নিচে', min: 0, max: 5000 },
       { id: '5k-10k', labelBn: '৫–১০ হাজার', min: 5000, max: 10000 },
@@ -57,7 +55,6 @@ const FILTER_GROUPS: FilterGroup[] = [
     id: 'bedrooms',
     labelBn: 'রুম সংখ্যা',
     type: 'single',
-    compact: true,
     options: [
       { id: 'all', labelBn: 'যে কোনো' },
       { id: '1', labelBn: '১ রুম' },
@@ -70,7 +67,6 @@ const FILTER_GROUPS: FilterGroup[] = [
     id: 'facilities',
     labelBn: 'সুবিধা',
     type: 'multi',
-    compact: true,
     options: [
       { id: 'wifi', labelBn: 'ওয়াইফাই' },
       { id: 'lift', labelBn: 'লিফট' },
@@ -200,7 +196,7 @@ function ToletDirectory() {
           className={`inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-3.5 text-[13px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:w-auto ${LIGHT_FOCUS}`}
         >
           <PlusCircle className="h-4 w-4" aria-hidden="true" />
-          ভাড়া দেওয়ান
+          আপনার বাসা ভাড়া দিন
         </Link>
       }
     >

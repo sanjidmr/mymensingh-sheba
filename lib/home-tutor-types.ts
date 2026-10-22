@@ -85,23 +85,11 @@ export interface TutorJoin {
 }
 
 /**
- * Monthly fee, in Bangla, for a tutor profile.
- *
- * The three shapes a real tutor quotes, and all three have to read naturally:
- *   - a fixed fee            → "৳৫,০০০ (মাসিক)"
- *   - a band                → "৳৫,০০০ – ৳৭,০০০ (মাসিক)"
- *   - an open end            → "৳৫,০০০ + (আলোচনা সাপেক্ষে)"
- *
- * `min === max` is the fixed case and is common enough to matter: a tutor who
- * quotes one number is the single most common row in the directory, and printing
- * "৳৫,০০০ – ৳৫,০০০" for it looks like a bug rather than a quote.
+ * Monthly expected fee, in Bangla, for a tutor profile.
  */
-export function formatTutorFee(min: number, max: number): string {
-  if (!min && !max) return 'আলোচনা সাপেক্ষে';
-  if (min && !max) return `৳${min.toLocaleString('bn-BD')} + (আলোচনা সাপেক্ষে)`;
-  if (!min) return `৳${max.toLocaleString('bn-BD')} এর নিচে`;
-  if (min === max) return `৳${min.toLocaleString('bn-BD')} (মাসিক)`;
-  return `৳${min.toLocaleString('bn-BD')} – ৳${max.toLocaleString('bn-BD')} (মাসিক)`;
+export function formatTutorFee(amount: number): string {
+  if (!amount || amount < 0) return 'আলোচনা সাপেক্ষে';
+  return `৳${amount.toLocaleString('bn-BD')} (মাসিক)`;
 }
 
 /**
@@ -244,7 +232,12 @@ const SUBJECT_INCLUDE_ANY: Record<string, string[]> = {
 export function tutorSubjectMatches(subjectId: string, subjects: string[]): boolean {
   if (!subjectId || subjectId === 'all') return true;
   const needles = SUBJECT_INCLUDE_ANY[subjectId] || [];
-  return needles.some((n) => subjects.some((s) => s.toLowerCase().includes(n.toLowerCase())));
+  const normalizedId = subjectId.toLocaleLowerCase();
+  return subjects.some((subject) => {
+    const normalizedSubject = subject.toLocaleLowerCase();
+    return normalizedSubject === normalizedId ||
+      needles.some((needle) => normalizedSubject.includes(needle.toLocaleLowerCase()));
+  });
 }
 
 /** class filter id -> stored class labels. */

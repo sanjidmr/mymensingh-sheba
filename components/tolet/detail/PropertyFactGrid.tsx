@@ -65,6 +65,14 @@ export function PropertyFactGrid({ listing }: { listing: ToletListing }) {
     });
   }
 
+  if (listing.hasDrawingRoom) {
+    facts.push({ icon: DoorOpen, labelBn: 'ড্রয়িং রুম', value: 'আছে' });
+  }
+
+  if (listing.hasDiningRoom) {
+    facts.push({ icon: DoorOpen, labelBn: 'ডাইনিং রুম', value: 'আছে' });
+  }
+
   if (listing.floor && listing.floor.trim()) {
     facts.push({ icon: Layers, labelBn: 'তলা', value: listing.floor });
   }

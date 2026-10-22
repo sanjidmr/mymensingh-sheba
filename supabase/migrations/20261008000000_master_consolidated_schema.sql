@@ -137,6 +137,7 @@ CREATE TABLE IF NOT EXISTS public.home_tutor_profiles (
     preferred_areas TEXT[] NOT NULL DEFAULT '{}',
     preferred_classes TEXT[] NOT NULL DEFAULT '{}',
     preferred_subjects TEXT[] NOT NULL DEFAULT '{}',
+    expected_salary INTEGER NOT NULL DEFAULT 3000,
     expected_salary_min INTEGER DEFAULT 2000,
     expected_salary_max INTEGER DEFAULT 6000,
     days_per_week INTEGER DEFAULT 3,
@@ -275,6 +276,16 @@ ALTER TABLE public.home_tutor_profiles ADD COLUMN IF NOT EXISTS rejection_reason
 ALTER TABLE public.home_tutor_profiles ADD COLUMN IF NOT EXISTS published_at TIMESTAMPTZ;
 ALTER TABLE public.home_tutor_profiles ADD COLUMN IF NOT EXISTS rating_avg NUMERIC(3,2) NOT NULL DEFAULT 0;
 ALTER TABLE public.home_tutor_profiles ADD COLUMN IF NOT EXISTS rating_count INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE public.home_tutor_profiles ADD COLUMN IF NOT EXISTS expected_salary INTEGER;
+UPDATE public.home_tutor_profiles
+SET expected_salary = CASE
+    WHEN expected_salary_min IS NOT NULL AND expected_salary_max IS NOT NULL
+      THEN GREATEST(0, ROUND((expected_salary_min::NUMERIC + expected_salary_max::NUMERIC) / 2)::INTEGER)
+    ELSE GREATEST(0, COALESCE(expected_salary_max, expected_salary_min, 0))
+END
+WHERE expected_salary IS NULL;
+ALTER TABLE public.home_tutor_profiles ALTER COLUMN expected_salary SET DEFAULT 3000;
+ALTER TABLE public.home_tutor_profiles ALTER COLUMN expected_salary SET NOT NULL;
 ALTER TABLE public.home_tutor_profiles DROP CONSTRAINT IF EXISTS home_tutor_profiles_status_check;
 ALTER TABLE public.home_tutor_profiles ADD CONSTRAINT home_tutor_profiles_status_check CHECK (status IN ('draft', 'pending_approval', 'approved', 'rejected', 'paused', 'suspended'));
 ALTER TABLE public.home_tutor_profiles DROP CONSTRAINT IF EXISTS home_tutor_profiles_teaching_mode_check;
@@ -3244,7 +3255,7 @@ AS $$
         FROM public.staff_profile_reports r WHERE r.status = 'open'
         UNION ALL
         SELECT 'rp-t-' || r.id::text, r.created_at, 'report', 'submitted',
-               COALESCE(r.reason, 'রিপোর্ট'), 'গৃহশিক্ষক প্রোফাইল', '/admin/reports'
+               COALESCE(r.reason, 'রিপোর্ট'), 'গৃহ শিক্ষক প্রোফাইল', '/admin/reports'
         FROM public.tutor_reports r WHERE r.status = 'open'
         UNION ALL
         SELECT 'rp-b-' || r.id::text, r.created_at, 'report', 'submitted',

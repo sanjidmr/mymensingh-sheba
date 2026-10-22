@@ -231,7 +231,9 @@ export function ContactActionsPanel({
 
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-500">
         {contact.mode === 'direct'
-          ? 'সরাসরি মালিকের নম্বরে কল করুন বা হোয়াটসঅ্যাপে বিজ্ঞাপনটি পাঠিয়ে দিন।'
+          ? isLoggedIn
+            ? 'সরাসরি মালিকের নম্বরে কল করুন বা হোয়াটসঅ্যাপে বিজ্ঞাপনটি পাঠিয়ে দিন।'
+            : 'মালিকের নম্বরে হোয়াটসঅ্যাপে বিজ্ঞাপনটি পাঠাতে পারবেন। সরাসরি কল করতে লগইন করতে হবে।'
           : 'মালিকের ফোন নম্বর এখনো প্রকাশ করা হয়নি।'}
       </p>
 
@@ -243,13 +245,17 @@ export function ContactActionsPanel({
           href={contact.whatsappHref}
           onClick={contact.onWhatsApp}
         />
-        <ContactButton
-          tone="call"
-          icon={Phone}
-          label={contact.callLabelBn}
-          href={contact.telHref}
-          onClick={contact.onCall}
-        />
+        {isLoggedIn ? (
+          <ContactButton
+            tone="call"
+            icon={Phone}
+            label={contact.callLabelBn}
+            href={contact.telHref}
+            onClick={contact.onCall}
+          />
+        ) : (
+          <LoginGateNote listingId={listing.id} />
+        )}
       </div>
 
       {contact.mode === 'unavailable' && (
@@ -265,6 +271,43 @@ export function ContactActionsPanel({
         </p>
       )}
     </section>
+  );
+}
+
+/**
+ * The stand-in for the "কল করুন" button when the reader is not signed in.
+ *
+ * The owner's number is only passed on to an account that can be held to it, so
+ * a guest gets the reason and a login link in place of the button — never a
+ * number. WhatsApp stays available either way: the owner publishes that number
+ * precisely so a tenant can message them, and a message is not a call.
+ */
+export function LoginGateNote({
+  listingId,
+  className,
+}: {
+  listingId: string;
+  className?: string;
+}) {
+  return (
+    <p
+      className={cn(
+        'flex items-start gap-1.5 rounded-lg border border-brand-100 bg-mist-50 px-2.5 py-2 text-[11.5px] leading-relaxed text-ink-600',
+        className
+      )}
+    >
+      <Lock className="mt-px h-3.5 w-3.5 shrink-0 text-brand-600" aria-hidden="true" />
+      <span>
+        সরাসরি কল করতে{' '}
+        <Link
+          href={`/login?next=${encodeURIComponent(`/tolet/${listingId}`)}`}
+          className="font-bold text-brand-700 underline underline-offset-2"
+        >
+          লগইন করুন
+        </Link>
+        । লগইন করলেই “কল করুন” বাটনটি দেখা যাবে।
+      </span>
+    </p>
   );
 }
 

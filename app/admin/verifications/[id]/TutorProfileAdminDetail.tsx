@@ -72,8 +72,7 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
     preferredAreas: stringList(row.preferred_areas),
     preferredClasses: stringList(row.preferred_classes),
     preferredSubjects: stringList(row.preferred_subjects),
-    expectedSalaryMin: number(row.expected_salary_min),
-    expectedSalaryMax: number(row.expected_salary_max),
+    expectedSalary: number(row.expected_salary),
     daysPerWeek: number(row.days_per_week) || 1,
     classDurationMinutes: row.class_duration_minutes == null ? null : number(row.class_duration_minutes),
     preferredStudentType: text(row.preferred_student_type),
@@ -137,7 +136,7 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
   return (
     <div className="space-y-4">
       <PageHeader
-        title={text(row.full_name) || 'গৃহশিক্ষক প্রোফাইল'}
+        title={text(row.full_name) || 'গৃহ শিক্ষক প্রোফাইল'}
         description="শিক্ষকের তথ্য, ব্যক্তিগত যোগাযোগ এবং মডারেশন অবস্থা।"
         count={`প্রোফাইল ID: ${id}`}
         actions={<span className="rounded-full border border-admin-border bg-white px-3 py-2 text-xs font-semibold text-admin-text">{profileStatus}</span>}
@@ -210,8 +209,7 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
             ))}
             <label className="text-xs font-semibold text-admin-muted">অভিজ্ঞতা (বছর)<input type="number" min={0} max={60} value={form.experienceYears} onChange={(event) => update('experienceYears', Number(event.target.value))} className="mt-1 h-11 w-full rounded-lg border border-admin-border bg-white px-3 text-sm text-admin-text" /></label>
             <label className="text-xs font-semibold text-admin-muted">সপ্তাহে দিন<input type="number" min={1} max={7} value={form.daysPerWeek} onChange={(event) => update('daysPerWeek', Number(event.target.value))} className="mt-1 h-11 w-full rounded-lg border border-admin-border bg-white px-3 text-sm text-admin-text" /></label>
-            <label className="text-xs font-semibold text-admin-muted">সর্বনিম্ন বেতন<input type="number" min={0} value={form.expectedSalaryMin} onChange={(event) => update('expectedSalaryMin', Number(event.target.value))} className="mt-1 h-11 w-full rounded-lg border border-admin-border bg-white px-3 text-sm text-admin-text" /></label>
-            <label className="text-xs font-semibold text-admin-muted">সর্বোচ্চ বেতন<input type="number" min={0} value={form.expectedSalaryMax} onChange={(event) => update('expectedSalaryMax', Number(event.target.value))} className="mt-1 h-11 w-full rounded-lg border border-admin-border bg-white px-3 text-sm text-admin-text" /></label>
+            <label className="text-xs font-semibold text-admin-muted">প্রত্যাশিত মাসিক বেতন<input type="number" min={0} value={form.expectedSalary} onChange={(event) => update('expectedSalary', Number(event.target.value))} className="mt-1 h-11 w-full rounded-lg border border-admin-border bg-white px-3 text-sm text-admin-text" /></label>
             <label className="text-xs font-semibold text-admin-muted">ক্লাসের সময় (মিনিট)<input type="number" min={15} max={480} value={form.classDurationMinutes ?? ''} onChange={(event) => update('classDurationMinutes', event.target.value ? Number(event.target.value) : null)} className="mt-1 h-11 w-full rounded-lg border border-admin-border bg-white px-3 text-sm text-admin-text" /></label>
             <label className="text-xs font-semibold text-admin-muted">পছন্দের শিক্ষার্থী<input value={form.preferredStudentType ?? ''} onChange={(event) => update('preferredStudentType', event.target.value)} className="mt-1 h-11 w-full rounded-lg border border-admin-border bg-white px-3 text-sm text-admin-text" /></label>
             {([
@@ -229,7 +227,7 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
             <DetailField label="প্রতিষ্ঠান">{text(row.institution) || '—'}</DetailField>
             <DetailField label="বিভাগ">{text(row.department) || '—'}</DetailField>
             <DetailField label="অভিজ্ঞতা">{number(row.experience_years).toLocaleString('bn-BD')} বছর</DetailField>
-            <DetailField label="বেতন">৳{number(row.expected_salary_min).toLocaleString('bn-BD')}–৳{number(row.expected_salary_max).toLocaleString('bn-BD')}</DetailField>
+            <DetailField label="প্রত্যাশিত বেতন">৳{number(row.expected_salary).toLocaleString('bn-BD')}</DetailField>
             <DetailField label="পছন্দের এলাকা">{areas.join(' · ') || '—'}</DetailField>
             <DetailField label="শ্রেণি">{stringList(row.preferred_classes).join(' · ') || '—'}</DetailField>
             <DetailField label="বিষয়">{stringList(row.preferred_subjects).join(' · ') || '—'}</DetailField>

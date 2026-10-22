@@ -130,7 +130,7 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
 
         {/* The fee, first and largest. It is the comparison number. */}
         <p className="mt-2.5 text-[13.5px] font-black leading-tight text-brand-800">
-          {formatTutorFee(tutor.expectedSalaryMin, tutor.expectedSalaryMax)}
+          {formatTutorFee(tutor.expectedSalary)}
         </p>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">

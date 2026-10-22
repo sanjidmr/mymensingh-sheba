@@ -43,6 +43,23 @@ function toSnakeObject(obj: Record<string, unknown>): Record<string, unknown> {
   return out;
 }
 
+function authUserHasPassword(authUser: {
+  email?: string | null;
+  identities?: Array<{ provider: string }> | null;
+  app_metadata?: { provider?: string; providers?: string[] };
+}): boolean {
+  const providers = new Set([
+    ...(authUser.identities ?? []).map((identity) => identity.provider),
+    ...(authUser.app_metadata?.providers ?? []),
+    ...(authUser.app_metadata?.provider ? [authUser.app_metadata.provider] : []),
+  ]);
+  if (providers.has('email')) return true;
+  if (providers.size > 0) return false;
+  // When provider metadata is unavailable, fail closed for email accounts and
+  // require verification rather than accidentally allowing an unverified change.
+  return Boolean(authUser.email);
+}
+
 /** Builds a sensible in-app link for a notification based on its type/id. */
 function notificationLink(n: {
   targetRole: string;
@@ -81,6 +98,7 @@ interface AuthContextType {
   isLoading: boolean;
   isAdmin: boolean;
   isConfiguredWithSupabase: boolean;
+  hasPassword: boolean;
   login: (email: string, pass: string) => Promise<{ success: boolean; error?: string; role?: AppRole }>;
   signInWithGoogle: (next?: string | null) => Promise<{ success: boolean; error?: string }>;
   sendOtp: (phone: string) => Promise<{ success: boolean; error?: string }>;
@@ -98,7 +116,7 @@ interface AuthContextType {
   /** Upload a new profile photo to the owner-scoped `avatars` bucket. */
   uploadAvatar: (file: File) => Promise<{ success: boolean; error?: string; url?: string }>;
   /** Change the signed-in user's password via Supabase Auth. */
-  changePassword: (newPassword: string) => Promise<{ success: boolean; error?: string }>;
+  changePassword: (newPassword: string, currentPassword?: string) => Promise<{ success: boolean; error?: string }>;
   markNotificationRead: (notificationId: string) => Promise<{ success: boolean; error?: string }>;
   markNotificationsReadAll: () => Promise<{ success: boolean; error?: string }>;
   activateToletProfile: (details: Omit<ToletProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'totalListingsCount' | 'status'>) => Promise<void>;
@@ -130,12 +148,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const [hasPassword, setHasPassword] = useState(false);
   // Keep the server render and the browser's first render identical. Whether
   // Supabase is configured is resolved after hydration in the effect below.
   const [isLoading, setIsLoading] = useState(true);
 
   const clearSessionState = useCallback(() => {
     setUser(null);
+    setHasPassword(false);
     setToletProfile(null);
     setHomeTutorProfile(null);
     setBloodDonorProfile(null);
@@ -151,8 +171,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const refreshUserData = useCallback(
     async (
       client: NonNullable<ReturnType<typeof createClient>>,
-      userId: string
+      userId: string,
+      authUser?: {
+        id: string;
+        email?: string | null;
+        identities?: Array<{ provider: string }> | null;
+        app_metadata?: { provider?: string; providers?: string[] };
+      }
     ): Promise<{ ok: boolean; blocked?: boolean; role?: AppRole }> => {
+      setHasPassword(
+        authUser?.id === userId ? authUserHasPassword(authUser) : false
+      );
       const { data: profileData } = await client.from('profiles').select('*').eq('id', userId).single();
       if (!profileData) {
         clearSessionState();
@@ -302,7 +331,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     client.auth.getSession().then(async ({ data }) => {
       if (data.session?.user) {
-        const res = await refreshUserData(client, data.session.user.id);
+        const res = await refreshUserData(client, data.session.user.id, data.session.user);
         if (res && !res.ok) {
           await client.auth.signOut();
         }
@@ -311,7 +340,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }).catch(() => setIsLoading(false));
     const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        refreshUserData(client, session.user.id);
+        refreshUserData(client, session.user.id, session.user);
       } else {
         clearSessionState();
       }
@@ -337,7 +366,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: error.message };
       }
       if (data.user) {
-        const res = await refreshUserData(client, data.user.id);
+        const res = await refreshUserData(client, data.user.id, data.user);
         if (res && !res.ok) {
           await client.auth.signOut();
           return {
@@ -436,7 +465,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: `যাচাইকৃত নম্বর প্রোফাইলে সংরক্ষণ করা যায়নি: ${profileError.message}` };
     }
 
-    const refreshed = await refreshUserData(client, data.user.id);
+    const refreshed = await refreshUserData(client, data.user.id, data.user);
     if (!refreshed?.ok) {
       return { success: false, error: 'নম্বর সংরক্ষিত হয়েছে, তবে প্রোফাইল রিফ্রেশ করা যায়নি। পৃষ্ঠা রিলোড করুন।' };
     }
@@ -458,7 +487,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { success: false, error: error.message };
       }
       if (data.user) {
-        const res = await refreshUserData(client, data.user.id);
+        const res = await refreshUserData(client, data.user.id, data.user);
         if (res && !res.ok) {
           await client.auth.signOut();
           return {
@@ -506,7 +535,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (signUpData.session) {
-        const res = await refreshUserData(client, signUpData.user.id);
+        const res = await refreshUserData(client, signUpData.user.id, signUpData.user);
         if (!res?.ok) {
           await client.auth.signOut();
           return {
@@ -586,8 +615,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি; আবার চেষ্টা করুন।' };
     }
 
-    if (updates.phone !== undefined && updates.phone !== user.phone) {
-      return { success: false, error: 'নম্বর বদলাতে প্রোফাইলের যাচাইকরণ কোড ব্যবহার করুন।' };
+    if (updates.phone !== undefined && updates.phone.trim() && !normalizeBangladeshPhone(updates.phone)) {
+      return { success: false, error: 'সঠিক ১১-ডিজিটের বাংলাদেশি মোবাইল নম্বর লিখুন।' };
     }
     if (updates.fullName !== undefined && updates.fullName.trim().length < 2) {
       return { success: false, error: 'নাম কমপক্ষে ২ অক্ষরের লিখুন।' };
@@ -602,7 +631,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: 'ময়মনসিংহ সিটি কর্পোরেশনের একটি এলাকা নির্বাচন করুন।' };
     }
 
-    const updated = { ...user, ...updates, phone: user.phone, updatedAt: new Date().toISOString() };
+    const normalizedPhone = updates.phone === undefined
+      ? user.phone
+      : normalizeBangladeshPhone(updates.phone)?.local ?? '';
+    const updated = { ...user, ...updates, phone: normalizedPhone, updatedAt: new Date().toISOString() };
     const notificationPreferences = updates.notificationPreferences
       ? {
           post_updates: updates.notificationPreferences.postUpdates,
@@ -614,6 +646,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       .from('profiles')
       .update({
         full_name: updated.fullName,
+        phone: updated.phone || null,
         email: updated.email || null,
         avatar_url: updated.avatarUrl || null,
         bio: updated.bio || null,
@@ -679,15 +712,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   /** Sets a new password for the current authenticated session. */
-  const changePassword = async (newPassword: string) => {
+  const changePassword = async (newPassword: string, currentPassword?: string) => {
     if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     const client = createClient();
     if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     if (newPassword.length < 6) {
       return { success: false, error: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' };
     }
+    const { data: authData, error: authError } = await client.auth.getUser();
+    const authUser = authData.user;
+    if (authError || !authUser) {
+      return { success: false, error: 'আপনাকে আগে লগইন করতে হবে।' };
+    }
+    const passwordExists = authUserHasPassword(authUser);
+    if (passwordExists) {
+      if (!currentPassword) {
+        return { success: false, error: 'বর্তমান পাসওয়ার্ড লিখুন।' };
+      }
+      if (!authUser.email) {
+        return { success: false, error: 'বর্তমান পাসওয়ার্ড যাচাই করা যাচ্ছে না।' };
+      }
+      const { error: verificationError } = await client.auth.signInWithPassword({
+        email: authUser.email,
+        password: currentPassword,
+      });
+      if (verificationError) {
+        return { success: false, error: 'বর্তমান পাসওয়ার্ড সঠিক নয়।' };
+      }
+    }
     const { error } = await client.auth.updateUser({ password: newPassword });
-    if (error) return { success: false, error: error.message };
+    if (error) return { success: false, error: `পাসওয়ার্ড সংরক্ষণ করা যায়নি: ${error.message}` };
+    setHasPassword(true);
     return { success: true };
   };
 
@@ -723,6 +778,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     mode: 'draft' | 'submit' = 'submit'
   ): Promise<{ success: boolean; error?: string }> => {
     if (!user) return { success: false, error: 'প্রোফাইল সংরক্ষণ করতে লগইন করুন।' };
+    const validChoices = (items: string[]) =>
+      items.length <= 30 &&
+      items.every((item) => item.trim().length > 0 && item.trim().length <= 60) &&
+      new Set(items.map((item) => item.trim().toLocaleLowerCase())).size === items.length;
+    if (!validChoices(details.preferredClasses) || !validChoices(details.preferredSubjects)) {
+      return { success: false, error: 'শ্রেণি ও বিষয়ের তথ্য সঠিকভাবে লিখুন।' };
+    }
+    if (!Number.isInteger(details.expectedSalary) || details.expectedSalary < 0 ||
+      !Number.isInteger(details.daysPerWeek) || details.daysPerWeek < 1 || details.daysPerWeek > 7) {
+      return { success: false, error: 'প্রত্যাশিত বেতন বা সপ্তাহে পড়ানোর দিনের সংখ্যা সঠিক নয়।' };
+    }
     if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     const client = createClient();
     if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
@@ -748,8 +814,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       preferred_areas: details.preferredAreas,
       preferred_classes: details.preferredClasses,
       preferred_subjects: details.preferredSubjects,
-      expected_salary_min: details.expectedSalaryMin,
-      expected_salary_max: details.expectedSalaryMax,
+      expected_salary: details.expectedSalary,
+      expected_salary_min: details.expectedSalary,
+      expected_salary_max: details.expectedSalary,
       days_per_week: details.daysPerWeek,
       bio: details.bio || null,
       student_id_card_url: details.studentIdCardUrl || null,
@@ -1047,6 +1114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading,
         isAdmin: user?.role === 'admin',
         isConfiguredWithSupabase: isSupabaseConfigured,
+        hasPassword,
         login,
         signInWithGoogle,
         sendOtp,

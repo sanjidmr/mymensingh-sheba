@@ -83,6 +83,7 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
     const closeMenusOnOutsideTap = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
+      if (target instanceof Element && target.closest('[data-admin-menu-portal]')) return;
       document.querySelectorAll<HTMLDetailsElement>('[data-admin-menu][open]').forEach((menu) => {
         if (!menu.contains(target)) menu.open = false;
       });

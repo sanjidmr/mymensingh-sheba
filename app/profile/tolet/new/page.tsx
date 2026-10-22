@@ -7,6 +7,7 @@ import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createListing, uploadListingPhotos } from '@/lib/tolet-service';
 import type { ToletListingInput } from '@/lib/tolet-types';
+import { normalizeBdPhone } from '@/lib/contact-types';
 import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -14,6 +15,12 @@ import Footer from '@/components/Footer';
 export default function NewToletListingPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
+  const ownerPhone = normalizeBdPhone(
+    (user?.phone || '').replace(/[০-৯]/g, (digit) =>
+      String('০১২৩৪৫৬৭৮৯'.indexOf(digit))
+    )
+  );
+  const hasValidOwnerPhone = /^01[3-9]\d{8}$/.test(ownerPhone);
 
   if (isLoading || !user) {
     return (
@@ -37,6 +44,13 @@ export default function NewToletListingPage() {
   };
 
   const handleSubmit = async (input: ToletListingInput, draft: boolean) => {
+    if (!hasValidOwnerPhone) {
+      const message =
+        'বাসা ভাড়ার বিজ্ঞাপন জমা দিতে প্রোফাইলে নিজের সঠিক মোবাইল নম্বর যোগ করুন।';
+      window.alert(message);
+      return { success: false, error: message };
+    }
+
     const result = await createListing(
       user.id,
       user.fullName,
@@ -70,12 +84,17 @@ export default function NewToletListingPage() {
         <div className="mb-5 rounded-xl border border-brand-100 bg-white px-4 py-3 text-xs text-ink-600">
           <p className="font-semibold text-ink-800">মালিকের পরিচিতি</p>
           <p className="mt-1">
-            {user.fullName} <span className="mx-1 text-ink-300">•</span> {user.phone}
+            {user.fullName} <span className="mx-1 text-ink-300">•</span> {user.phone || 'মোবাইল নম্বর যোগ করা হয়নি'}
           </p>
           <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
-            এই প্রোফাইলের নাম ও ফোন বিজ্ঞাপনের মালিক হিসেবে সংযুক্ত থাকবে। ফোন নম্বর ওয়েবসাইটে লেখা হিসেবে
+            এই প্রোফাইলের নাম ও ফোন বিজ্ঞাপনের মালিক হিসেবে সংযুক্ত থাকবে। নিজের সঠিক মোবাইল নম্বর প্রোফাইলে যোগ করা আবশ্যক। ফোন নম্বর ওয়েবসাইটে লেখা হিসেবে
             দেখানো হবে না; অনুমোদিত বিজ্ঞাপনের “কল করুন” বোতাম থেকে সরাসরি ডায়াল করা যাবে।
           </p>
+          {!hasValidOwnerPhone && (
+            <p className="mt-2 text-[11px] font-semibold text-rose-700">
+              বিজ্ঞাপন জমা দেওয়ার আগে <Link href="/profile" className="underline">প্রোফাইলে নিজের নম্বর যোগ করুন</Link>।
+            </p>
+          )}
         </div>
 
         <ToletListingForm

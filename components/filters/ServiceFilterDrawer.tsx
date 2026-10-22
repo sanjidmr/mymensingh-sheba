@@ -52,6 +52,7 @@ interface ServiceFilterDrawerProps {
   onApplyFilters: (newFilters: Record<string, unknown>) => void;
   onResetFilters: () => void;
   resultCount?: number;
+  subjectOptions?: { id: string; labelBn: string }[];
 }
 
 /** Reusable block for staff services: experience + availability (electrician/plumber). */
@@ -126,6 +127,7 @@ function ServiceFilterDrawerModal({
   onApplyFilters,
   onResetFilters,
   resultCount,
+  subjectOptions,
 }: Omit<ServiceFilterDrawerProps, 'isOpen'>) {
   // Local state inside drawer initialized cleanly upon mount
   const [draftFilters, setDraftFilters] = React.useState<Record<string, unknown>>(filterValues);
@@ -775,7 +777,7 @@ function ServiceFilterDrawerModal({
                   নির্দিষ্ট বিষয়
                 </label>
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                  {TUTOR_SUBJECTS.map((sub) => {
+                  {(subjectOptions ?? TUTOR_SUBJECTS).map((sub) => {
                     const isSelected = (draftFilters.subject || 'all') === sub.id;
                     return (
                       <button

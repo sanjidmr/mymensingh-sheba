@@ -27,7 +27,7 @@ export function LocationSelector({
   selectedAreaId,
   onSelectArea,
   label = 'এলাকা (ময়মনসিংহ সিটি কর্পোরেশন)',
-  placeholder = 'এলাকা নির্বাচন করুন',
+  placeholder = 'আপনার এলাকা নির্বাচন করুন',
   className,
   error,
   source = MCC_AREA_SOURCE,
@@ -198,15 +198,7 @@ export function LocationSelector({
                       )}
                     >
                       <div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{area.nameBn}</span>
-                          <span className="text-[11px] text-slate-400">{area.nameEn}</span>
-                        </div>
-                        {area.popularFor && (
-                          <div className="text-[11px] text-slate-500 mt-0.5">
-                            {area.popularFor}
-                          </div>
-                        )}
+                        <span className="text-sm font-medium">{area.nameBn}</span>
                       </div>
 
                       {isSelected && (

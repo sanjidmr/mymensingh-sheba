@@ -6,6 +6,7 @@ import { MCC_AREA_SOURCE, type AreaSource, type MCCArea } from '@/lib/locations'
 import LocationPickerModal from './LocationPickerModal';
 
 interface LocationSelectInputProps {
+  id?: string;
   value?: string | null; // areaId
   onChange: (areaId: string | null, area?: MCCArea | null) => void;
   placeholder?: string;
@@ -19,9 +20,10 @@ interface LocationSelectInputProps {
 }
 
 export default function LocationSelectInput({
+  id,
   value,
   onChange,
-  placeholder = 'আপনার এলাকা বেছে নিন',
+  placeholder = 'আপনার এলাকা নির্বাচন করুন',
   label,
   error,
   allowClear = true,
@@ -61,6 +63,7 @@ export default function LocationSelectInput({
       )}
 
       <div
+        id={id}
         role="button"
         tabIndex={0}
         onClick={() => setIsModalOpen(true)}
@@ -130,7 +133,7 @@ export default function LocationSelectInput({
         onClose={() => setIsModalOpen(false)}
         selectedAreaId={value}
         onSelectArea={handleSelectArea}
-        title={label || 'আপনার এলাকা বেছে নিন'}
+        title={label || 'আপনার এলাকা নির্বাচন করুন'}
         allowClear={allowClear}
         source={source}
       />

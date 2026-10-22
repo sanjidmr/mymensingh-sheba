@@ -12,10 +12,7 @@
  * gradient, not in a badge, not with a strikethrough "was" price. A tutor's fee
  * is a quote, and quotes should look like quotes.
  *
- * Three fee shapes render, all from `formatTutorFee`:
- *   - a band  "৳৫,০০০ – ৳৭,০০০ (মাসিক)"
- *   - fixed   "৳৫,০০০ (মাসিক)"          (min === max)
- *   - open    "আলোচনা সাপেক্ষে"          (nothing recorded)
+ * One expected monthly amount renders through `formatTutorFee`.
  *
  * The "open" case is a real state, not an error: plenty of tutors genuinely
  * decide the fee after seeing the student. It says so plainly rather than
@@ -29,7 +26,7 @@ import { formatTutorFee, formatClassDuration } from '@/lib/home-tutor-types';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 
 export function TutorSalaryCard({ tutor }: { tutor: HomeTutorProfile }) {
-  const fee = formatTutorFee(tutor.expectedSalaryMin, tutor.expectedSalaryMax);
+  const fee = formatTutorFee(tutor.expectedSalary);
   const duration = formatClassDuration(tutor.classDurationMinutes);
 
   // The honest per-class figure, when both halves of it exist. A parent budgets
@@ -80,18 +77,14 @@ export function TutorSalaryCard({ tutor }: { tutor: HomeTutorProfile }) {
  * because the months with 30 days quietly cost more.
  */
 function derivePerClass(tutor: HomeTutorProfile): string | null {
-  const { expectedSalaryMin: min, expectedSalaryMax: max, daysPerWeek, classDurationMinutes } =
-    tutor;
-  if (!min && !max) return null;
+  const { expectedSalary, daysPerWeek, classDurationMinutes } = tutor;
+  if (!expectedSalary) return null;
   if (!daysPerWeek || daysPerWeek <= 0) return null;
   if (!classDurationMinutes || classDurationMinutes <= 0) return null;
 
-  // Use the top of the band: quoting the lower end as "the" per-class cost
-  // would be the number that turns out wrong.
-  const monthly = max || min || 0;
   const classesPerMonth = daysPerWeek * 4;
   if (classesPerMonth <= 0) return null;
-  const perClass = Math.round(monthly / classesPerMonth);
+  const perClass = Math.round(expectedSalary / classesPerMonth);
   if (!Number.isFinite(perClass) || perClass <= 0) return null;
   return `৳${toBengaliDigits(perClass.toLocaleString('bn-BD'))}`;
 }

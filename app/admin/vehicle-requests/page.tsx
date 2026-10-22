@@ -34,16 +34,17 @@ const columns: AdminColumn<AdminVehicleRequestRow>[] = [
     key: 'vehicle',
     header: 'নির্বাচিত যানবাহন',
     mobilePrimary: true,
+    // This is the row's primary column, so AdminTable already wraps it in the
+    // link to the request detail page. Keep the cell plain markup: a nested
+    // <Link> here would nest anchors, and an `onClick` cannot be serialised
+    // from a Server Component to a Client Component at all.
     render: (row) => (
       <span className="block">
-        {row.vehicle_title && row.vehicle_slug && row.vehicle_is_active ? (
-          <Link href={`/gari-auto-cng/${row.vehicle_slug}`} className="block font-semibold text-brand-700 hover:underline" onClick={(event) => event.stopPropagation()}>
+        {row.vehicle_title ? (
+          <span className="block font-semibold">
             {row.vehicle_title}
-          </Link>
-        ) : row.vehicle_title && row.vehicle_listing_id ? (
-          <Link href={`/admin/directories/vehicle/${row.vehicle_listing_id}/edit`} className="block font-semibold text-admin-text hover:underline" onClick={(event) => event.stopPropagation()}>
-            {row.vehicle_title} <span className="text-xs font-normal text-admin-muted">(অপ্রকাশিত)</span>
-          </Link>
+            {row.vehicle_is_active ? null : <span className="text-xs font-normal text-admin-muted"> (অপ্রকাশিত)</span>}
+          </span>
         ) : (
           <span className="block font-semibold">{row.vehicle_name || KIND_LABEL[row.vehicle_kind] || row.vehicle_kind}</span>
         )}

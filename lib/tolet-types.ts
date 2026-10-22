@@ -80,6 +80,8 @@ export interface ToletListing {
   bedrooms: number;
   bathrooms: number;
   balconies: number;
+  hasDrawingRoom?: boolean;
+  hasDiningRoom?: boolean;
   floor?: string;
   totalRooms?: number;
   availableFrom?: string;
@@ -109,6 +111,8 @@ export interface ToletListingInput {
   bedrooms: number;
   bathrooms: number;
   balconies: number;
+  hasDrawingRoom?: boolean;
+  hasDiningRoom?: boolean;
   floor?: string;
   totalRooms?: number;
   availableFrom?: string;

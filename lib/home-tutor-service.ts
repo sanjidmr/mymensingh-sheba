@@ -66,7 +66,7 @@ export interface AdminTutorRequest {
 
 // PRIVACY: deliberately no private_phone / nid_number here.
 const PUBLIC_TUTOR_COLUMNS =
-  'id, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary_min, expected_salary_max, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at, educations, current_activity, class_duration_minutes, preferred_student_type';
+  'id, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at, educations, current_activity, class_duration_minutes, preferred_student_type';
 
 function mapTutorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {}): HomeTutorProfile {
   const c = toCamelObject(row) as Record<string, unknown>;
@@ -83,8 +83,7 @@ function mapTutorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {
     preferredAreas: Array.isArray(c.preferredAreas) ? (c.preferredAreas as string[]) : [],
     preferredClasses: Array.isArray(c.preferredClasses) ? (c.preferredClasses as string[]) : [],
     preferredSubjects: Array.isArray(c.preferredSubjects) ? (c.preferredSubjects as string[]) : [],
-    expectedSalaryMin: Number(c.expectedSalaryMin ?? 0),
-    expectedSalaryMax: Number(c.expectedSalaryMax ?? 0),
+    expectedSalary: Number(c.expectedSalary ?? 0),
     daysPerWeek: Number(c.daysPerWeek ?? 0),
     bio: (c.bio as string) || undefined,
     studentIdCardUrl: (c.studentIdCardUrl as string) || undefined,
@@ -127,6 +126,29 @@ function mapReviewRow(row: Record<string, unknown>): TutorReview {
     createdAt: (c.createdAt as string) || '',
     customerName: customer?.fullName || undefined,
   };
+}
+
+export async function deleteOwnTutorProfile(
+  profileId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)) {
+    return { success: false, error: 'প্রোফাইলের পরিচয় সঠিক নয়।' };
+  }
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযুক্ত নেই।' };
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase সংযুক্ত নেই।' };
+  const { data: authData, error: authError } = await client.auth.getUser();
+  if (authError || !authData.user) return { success: false, error: 'এই কাজটি করতে আগে লগইন করুন।' };
+  const { data, error } = await client
+    .from('home_tutor_profiles')
+    .delete()
+    .eq('id', profileId)
+    .eq('user_id', authData.user.id)
+    .select('id')
+    .maybeSingle();
+  if (error) return { success: false, error: `প্রোফাইল মুছতে ব্যর্থ হয়েছে: ${error.message}` };
+  if (!data) return { success: false, error: 'প্রোফাইলটি পাওয়া যায়নি বা মুছার অনুমতি নেই।' };
+  return { success: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -364,7 +386,7 @@ export async function adminUpdateTutorProfile(
   if (patch.status && ownerRow?.user_id) {
     notifyCustomer({
       userId: ownerRow.user_id,
-      title: `গৃহশিক্ষক প্রোফাইলের অবস্থা: ${TUTOR_STATUS_META[patch.status]?.labelBn || patch.status}`,
+      title: `গৃহ শিক্ষক প্রোফাইলের অবস্থা: ${TUTOR_STATUS_META[patch.status]?.labelBn || patch.status}`,
       body: 'আপনার প্রোফাইলের পর্যালোচনা সম্পন্ন হয়েছে।',
       type: patch.status === 'approved' ? 'success' : 'warning',
       relatedType: 'home_tutor_profile',
@@ -373,7 +395,7 @@ export async function adminUpdateTutorProfile(
   }
   if (patch.status) {
     notifyAdminHub({
-      title: 'গৃহশিক্ষক প্রোফাইল আপডেট',
+      title: 'গৃহ শিক্ষক প্রোফাইল আপডেট',
       body: `প্রোফাইল ${id} এর অবস্থা "${patch.status}" হয়েছে।`,
       type: patch.status === 'approved' ? 'success' : 'info',
       relatedType: 'tutor_profile',

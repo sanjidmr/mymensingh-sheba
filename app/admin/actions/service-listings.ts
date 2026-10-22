@@ -26,6 +26,11 @@ function validate(category: ServiceCategory, input: ServiceListingInput): string
   if ((input.driverNameBn?.trim().length ?? 0) > 120) return 'চালকের নাম সর্বোচ্চ ১২০ অক্ষরের মধ্যে লিখুন।';
   if (!input.isActive && input.isFeatured) return 'নিষ্ক্রিয় তালিকাকে ফিচার করা যাবে না।';
   if (!Array.isArray(input.areaIds) || input.areaIds.length > 100 || input.areaIds.some((id) => typeof id !== 'string' || id.length > 100)) return 'এলাকার তালিকা সঠিক নয়।';
+  if (category === 'coaching' &&
+      (!['class_1_8', 'ssc', 'hsc', 'admission'].includes(input.coachingCategory ?? '') ||
+       input.areaIds.length === 0)) {
+    return 'কোচিং ক্যাটাগরি ও অন্তত একটি এলাকা বেছে নিন।';
+  }
   if (!Array.isArray(input.tags) || input.tags.length > 60 || input.tags.some((tag) => typeof tag !== 'string' || !tag.trim() || tag.length > 120)) return 'সেবা/প্যাকেজ/সুবিধার তালিকা সঠিক নয়।';
   const amounts = [
     input.monthlyFeeMin, input.monthlyFeeMax, input.priceMin, input.priceMax,
@@ -81,6 +86,7 @@ function databaseInput(input: ServiceListingInput) {
     description_bn: input.descriptionBn?.trim() || null,
     image_url: input.imageUrl?.trim() || null,
     logo_url: input.logoUrl?.trim() || null,
+    coaching_category: input.category === 'coaching' ? input.coachingCategory ?? null : null,
     area_ids: input.areaIds,
     tags: input.tags.map((tag) => tag.trim()),
     monthly_fee_min: input.monthlyFeeMin ?? null,

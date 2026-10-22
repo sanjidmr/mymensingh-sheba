@@ -26,6 +26,7 @@ import type { FilterGroup } from '@/lib/directory-filters';
 import type { SearchableFields } from '@/lib/directory-search';
 import { getAreaById } from '@/lib/locations';
 import {
+  COACHING_CATEGORIES,
   categoryGridClass,
   tagLabels,
   type CategoryUiConfig,
@@ -85,7 +86,16 @@ export default function CatalogDirectory({
       // Facets store the taxonomy slug, so the index has to carry the Bangla
       // label too — otherwise searching "গণিত" would miss a centre tagged
       // `math`. Both are included: slug for typed English, label for Bangla.
-      tags: [...item.tags, ...tagLabels(item.tags)],
+      tags: [
+        ...item.tags,
+        ...tagLabels(item.tags),
+        ...(item.coachingCategory
+          ? [
+              item.coachingCategory,
+              COACHING_CATEGORIES.find((category) => category.id === item.coachingCategory)?.labelBn ?? '',
+            ]
+          : []),
+      ],
       description: item.descriptionBn ?? item.summaryBn ?? '',
       // Operator, street address and route text are free text an admin typed, so
       // "শ্যামলী" finds a bus by its company and "চরপাড়া" finds a centre by its
@@ -126,7 +136,7 @@ export default function CatalogDirectory({
         // selection and ignores a `chemistry` one.
         class: item.tags,
         subject: item.tags,
-        category: item.tags,
+        category: item.coachingCategory ?? item.tags,
         busType: item.tags,
         // Vehicle kind is written into `tags` as its Bengali label, so the facet
         // ids are those labels.
@@ -294,7 +304,6 @@ export function tagFacet(
     id,
     labelBn,
     type: 'multi',
-    compact: true,
     optionsAreTaxonomy: true,
     options: taxonomy.map((t) => ({ id: t.id, labelBn: t.labelBn })),
   };
@@ -328,7 +337,6 @@ export function distinctTextGroup(
     id,
     labelBn,
     type: 'multi',
-    compact: true,
     options: unique.map((v) => ({ id: v, labelBn: v })),
   };
 }

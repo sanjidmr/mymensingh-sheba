@@ -213,7 +213,7 @@ function RegisterForm() {
             error={emailError}
           />
           <AuthField
-            label="পাসওয়ার্ড"
+            label="আপনার পাসওয়ার্ড সেট করুন"
             value={password}
             onChange={(value) => {
               setPassword(value);

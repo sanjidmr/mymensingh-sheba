@@ -5,10 +5,12 @@ import CatalogDetailView, {
   CatalogDetailMissing,
   ContactBlock,
   DetailSkeleton,
+  RelatedListings,
   type DetailFact,
 } from '@/components/catalog/CatalogDetailView';
 import CoachingDetailSections from '@/components/catalog/CoachingDetailSections';
-import { fetchServiceListingForContact } from '@/lib/catalog-service';
+import DirectoryReviews from '@/components/catalog/DirectoryReviews';
+import { fetchServiceListingForContact, fetchServiceListings } from '@/lib/catalog-service';
 import {
   areaNames,
   bnTakaRange,
@@ -23,7 +25,7 @@ import {
 const ui = CATEGORY_UI.coaching;
 
 /**
- * Resolves a taxonomy facet into the labels a listing was actually tagged with.
+ * Resolves class and subject tags, plus the persisted centre category.
  *
  * Only facets that produced a hit are shown, so a centre that teaches only
  * primary classes does not get a "বিষয়: —" row on its detail page.
@@ -32,9 +34,11 @@ function taxonomyFacts(listing: ServiceListing): DetailFact[] {
   const groups: [string, { id: string; labelBn: string }[]][] = [
     ['ক্লাস', COACHING_CLASSES],
     ['বিষয়', COACHING_SUBJECTS],
-    ['ক্যাটাগরি', COACHING_CATEGORIES],
   ];
-  const facts: DetailFact[] = [];
+  const categoryLabel = COACHING_CATEGORIES.find((item) => item.id === listing.coachingCategory)?.labelBn;
+  const facts: DetailFact[] = categoryLabel
+    ? [{ label: 'ক্যাটাগরি', value: categoryLabel }]
+    : [];
   for (const [label, taxonomy] of groups) {
     const hit = taxonomy.filter((t) => listing.tags.includes(t.id)).map((t) => t.labelBn);
     if (hit.length > 0) facts.push({ label, value: hit.join(', ') });
@@ -44,15 +48,22 @@ function taxonomyFacts(listing: ServiceListing): DetailFact[] {
 
 export default function CoachingDetail({ slug }: { slug: string }) {
   const [listing, setListing] = useState<ServiceListing | null>(null);
+  const [related, setRelated] = useState<ServiceListing[]>([]);
   const [loading, setLoading] = useState(true);
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const data = await fetchServiceListingForContact('coaching', slug);
-        if (active) setListing(data);
+        const [data, rows] = await Promise.all([
+          fetchServiceListingForContact('coaching', slug),
+          // Hard-scoped to `coaching`: WiFi providers are never recommended
+          // from a coaching page.
+          fetchServiceListings('coaching'),
+        ]);
+        if (!active) return;
+        setListing(data);
+        setRelated(rows.filter((row) => row.slug !== slug).slice(0, 3));
       } finally {
         if (active) setLoading(false);
       }
@@ -90,32 +101,17 @@ export default function CoachingDetail({ slug }: { slug: string }) {
       ui={ui}
       listing={listing}
       facts={facts}
-      body={
-        <CoachingDetailSections
+      body={<CoachingDetailSections listingId={listing.id} />}
+      action={<ContactBlock phone={contactPhone} hideRequestFallback />}
+      reviews={
+        <DirectoryReviews
+          category="coaching"
           listingId={listing.id}
           ratingAvg={listing.ratingAvg}
           ratingCount={listing.ratingCount}
         />
       }
-      action={
-        <ContactBlock
-          phone={contactPhone}
-          hideRequestFallback
-          onCopy={() => {
-            if (!contactPhone) return;
-            void navigator.clipboard?.writeText(contactPhone);
-            setCopied(true);
-            window.setTimeout(() => setCopied(false), 2000);
-          }}
-        />
-      }
-    >
-      {copied && (
-        <p className="rounded-lg border border-brand-100 bg-mist-50 px-3 py-2 text-center text-[12px] font-semibold text-brand-700">
-          নম্বর কপি হয়েছে
-        </p>
-      )}
-    </CatalogDetailView>
+      related={<RelatedListings title="আরও কোচিং সেন্টার" listings={related} />}
+    />
   );
 }
-

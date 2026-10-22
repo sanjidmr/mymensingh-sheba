@@ -14,12 +14,20 @@
  */
 import React from 'react';
 import Link from 'next/link';
-import { ArrowLeft, MapPin, Phone } from 'lucide-react';
+import { ArrowLeft, MapPin, MessageCircle, Phone } from 'lucide-react';
 import DirectoryShell from '@/components/directory/DirectoryShell';
-import { ListingMedia } from '@/components/catalog/CatalogCards';
+import { ListingMedia, TileCard } from '@/components/catalog/CatalogCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
-import type { CategoryUiConfig, ServiceListing } from '@/lib/catalog-types';
+import {
+  areaNames,
+  bnTakaRange,
+  COACHING_CATEGORIES,
+  tagLabels,
+  toBn,
+  type CategoryUiConfig,
+  type ServiceListing,
+} from '@/lib/catalog-types';
 
 export interface DetailFact {
   label: string;
@@ -46,6 +54,13 @@ export interface CatalogDetailViewProps {
    * reviews) so they read as part of the listing rather than as sidebar widgets.
    */
   body?: React.ReactNode;
+  /**
+   * Reviews belong after the main information and the contact actions, so on a
+   * phone a reader can call before scrolling through feedback.
+   */
+  reviews?: React.ReactNode;
+  /** Same-category suggestions, rendered at the very bottom of the page. */
+  related?: React.ReactNode;
   /** Optional block rendered under the facts (e.g. a rental request form). */
   children?: React.ReactNode;
   /** Labels for the call-to-action, e.g. "ভাড়ার অনুরোধ". */
@@ -57,6 +72,8 @@ export default function CatalogDetailView({
   listing,
   facts,
   body,
+  reviews,
+  related,
   children,
   action,
 }: CatalogDetailViewProps) {
@@ -138,7 +155,8 @@ export default function CatalogDetailView({
               </p>
             )}
 
-            {listing.photos?.filter((photo) => photo && photo !== listing.imageUrl).length ? (
+            {listing.category !== 'coaching' && listing.category !== 'wifi' &&
+            listing.photos?.filter((photo) => photo && photo !== listing.imageUrl).length ? (
               <section className="mt-5" aria-label="তালিকার আরও ছবি">
                 <h2 className="mb-2 text-sm font-extrabold text-ink-900">আরও ছবি</h2>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
@@ -163,9 +181,12 @@ export default function CatalogDetailView({
             )}
 
             {listing.areaIds.length > 0 && (
-              <p className="mt-4 flex items-start gap-1.5 text-[12.5px] text-ink-500 sm:text-sm">
+              <p className="mt-4 flex items-start gap-1.5 text-[12.5px] leading-relaxed text-ink-500 sm:text-sm">
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
-                <span>এলাকা</span>
+                <span className="min-w-0 break-words">
+                  <span className="font-semibold text-ink-600">এলাকা: </span>
+                  {areaNames(listing.areaIds)}
+                </span>
               </p>
             )}
           </div>
@@ -185,7 +206,78 @@ export default function CatalogDetailView({
           </Link>
         </aside>
       </div>
+
+      {reviews ? <div className="mt-4">{reviews}</div> : null}
+      {related ? <div className="mt-6">{related}</div> : null}
     </DirectoryShell>
+  );
+}
+
+/**
+ * Same-category suggestions for a curated listing.
+ *
+ * The caller passes only rows from its own category query, so a WiFi page can
+ * never recommend a coaching centre (and the reverse). Cards reuse `TileCard`,
+ * which is the card the directory itself uses — no second visual language.
+ */
+export function RelatedListings({
+  title,
+  listings,
+}: {
+  title: string;
+  listings: ServiceListing[];
+}) {
+  if (listings.length === 0) return null;
+
+  return (
+    <section aria-labelledby="related-listings-heading">
+      <h2
+        id="related-listings-heading"
+        className="mb-2.5 text-[15px] font-extrabold text-ink-900"
+      >
+        {title}
+      </h2>
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4">
+        {listings.map((listing) => {
+          const wifi = listing.category === 'wifi';
+          const price = wifi
+            ? listing.priceMin != null
+              ? bnTakaRange(listing.priceMin, listing.priceMax)
+              : undefined
+            : bnTakaRange(listing.monthlyFeeMin, listing.monthlyFeeMax);
+          const chips = wifi
+            ? [
+                listing.speedMbps != null ? `${toBn(listing.speedMbps)} Mbps` : '',
+                ...tagLabels(listing.tags).slice(0, 1),
+              ].filter(Boolean)
+            : [
+                COACHING_CATEGORIES.find((item) => item.id === listing.coachingCategory)?.labelBn,
+                ...tagLabels(listing.tags).filter(
+                  (tag) => !['general', 'hsc', 'admission', 'university', 'government'].includes(tag)
+                ).slice(0, 1),
+              ].filter((chip): chip is string => Boolean(chip));
+
+          return (
+            <TileCard
+              key={listing.id}
+              href={`/${listing.category}/${listing.slug}`}
+              title={listing.titleBn}
+              subtitle={listing.subtitleBn}
+              imageUrl={
+                wifi ? listing.logoUrl || listing.imageUrl : listing.imageUrl || listing.logoUrl
+              }
+              priceLabel={price}
+              priceSuffix={price ? '/মাস' : undefined}
+              areaLabel={areaNames(listing.areaIds)}
+              chips={chips}
+              badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
+              actionLabel="বিস্তারিত দেখুন"
+              mobileMinimal
+            />
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -223,11 +315,9 @@ export function CatalogDetailMissing({ ui }: { ui: CategoryUiConfig }) {
  */
 export function ContactBlock({
   phone,
-  onCopy,
   hideRequestFallback = false,
 }: {
   phone?: string;
-  onCopy?: (value: string) => void;
   /**
    * When true and there is no number, show a neutral note instead of the
    * /contact request call-to-action. The member-facing coaching/wifi pages use
@@ -256,29 +346,37 @@ export function ContactBlock({
     );
   }
 
+  // `tel:` keeps a leading + and digits only. The number itself is never
+  // printed: both actions are links, so the contact stays a deliberate tap
+  // rather than text a scraper (or a passer-by) can lift off the page.
   const tel = phone.replace(/[^\d+]/g, '');
+  const whatsapp = phone.replace(/[^\d]/g, '');
   return (
     <div className="rounded-xl border border-brand-100 bg-white p-3.5 sm:p-4">
       <h2 className="text-[14px] font-bold text-ink-900 sm:text-base">যোগাযোগ</h2>
-      <a
-        href={`tel:${tel}`}
-        className={`mt-2.5 inline-flex min-h-[48px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-[15px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
-      >
-        <Phone className="h-4 w-4" aria-hidden="true" />
-        <span>কল করুন</span>
-      </a>
-      <p className="mt-1.5 text-center text-[12.5px] font-semibold tracking-wide text-ink-600">
-        {phone}
+      <p className="mt-1 text-[11.5px] leading-relaxed text-ink-500">
+        সরাসরি কল করুন অথবা WhatsApp-এ মেসেজ দিন — নম্বর আলাদা করে দেখানো হয় না।
       </p>
-      {onCopy && (
-        <button
-          type="button"
-          onClick={() => onCopy(phone)}
-          className={`mt-2 min-h-[40px] w-full rounded-lg border border-brand-200 bg-white px-3 text-[13px] font-bold text-brand-700 transition-colors hover:bg-mist-50 ${LIGHT_FOCUS}`}
+      <div className="mt-2.5 grid grid-cols-2 gap-2">
+        <a
+          href={`tel:${tel}`}
+          className={`inline-flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-3 text-[14px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
         >
-          নম্বর কপি করুন
-        </button>
-      )}
+          <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
+          <span>কল করুন</span>
+        </a>
+        {whatsapp && (
+          <a
+            href={`https://wa.me/${whatsapp}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={`inline-flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-50 px-3 text-[14px] font-extrabold text-emerald-800 transition-colors hover:bg-emerald-100 ${LIGHT_FOCUS}`}
+          >
+            <MessageCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span>WhatsApp</span>
+          </a>
+        )}
+      </div>
     </div>
   );
 }

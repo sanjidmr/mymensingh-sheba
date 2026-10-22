@@ -367,6 +367,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
         <StickyContactBar
           listing={listing}
           userId={user?.id ?? null}
+          isLoggedIn={Boolean(user)}
         />
       )}
 

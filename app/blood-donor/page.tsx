@@ -10,7 +10,7 @@
 
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Droplets, Loader2, Lock, PlusCircle, ShieldCheck } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -18,21 +18,20 @@ import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
 import EmptyFilterResults from '@/components/filters/EmptyFilterResults';
 import DonorCard from '@/components/blood-donor/DonorCard';
 import { fetchPublishedDonors } from '@/lib/blood-donor-service';
-import { getAreaById } from '@/lib/locations';
 import type { BloodDonorProfile } from '@/lib/supabase/types';
 
 function BloodDonorContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
 
+  // Blood group is the only filter on this page — see the dedicated control in
+  // `ServiceFilterBar`. Area/availability were removed from this surface so the
+  // emergency path stays one tap.
   const initialGroup = searchParams.get('group') || searchParams.get('bloodGroup') || 'all';
-  const initialArea = searchParams.get('area') || searchParams.get('areaId') || undefined;
   /** Set by the `/blood-donor/[id]` redirect — which card to bring into view. */
   const focusDonorId = searchParams.get('donor');
 
   const [filterValues, setFilterValues] = useState<Record<string, unknown>>({
     bloodGroup: initialGroup !== 'all' ? initialGroup : undefined,
-    areaId: initialArea,
   });
   const [donors, setDonors] = useState<BloodDonorProfile[] | null>(null);
   const [loading, setLoading] = useState(true);
@@ -68,25 +67,35 @@ function BloodDonorContent() {
     return () => window.clearTimeout(timer);
   }, [loading, focusDonorId, donors]);
 
+  /**
+   * Keep the address bar in step with the filter.
+   *
+   * This page is a static shell that filters in the browser, so a router
+   * navigation to the same route with a new query string is swallowed: the
+   * RSC payload is identical, the address bar never changes, and a reader who
+   * reloads — or copies the link — loses the group they picked. The native
+   * History API is integrated with `useSearchParams`, so the URL and the page
+   * state move together without a server round trip.
+   */
+  const syncUrl = (query: string) => {
+    window.history.replaceState(null, '', `/blood-donor${query ? `?${query}` : ''}`);
+  };
+
   const handleFilterChange = (newFilters: Record<string, unknown>) => {
     setFilterValues(newFilters);
     const params = new URLSearchParams();
     if (newFilters.bloodGroup && newFilters.bloodGroup !== 'all') {
       params.set('group', String(newFilters.bloodGroup));
     }
-    if (newFilters.areaId) {
-      params.set('area', String(newFilters.areaId));
-    }
     // The filter sheet's own reset clears `?donor`, which is right: a reader who
     // has changed the filters is no longer looking at the linked card.
     if (focusDonorId && !params.toString()) params.set('donor', focusDonorId);
-    const query = params.toString();
-    router.replace(`/blood-donor${query ? `?${query}` : ''}`, { scroll: false });
+    syncUrl(params.toString());
   };
 
   const handleResetFilters = () => {
     setFilterValues({});
-    router.replace('/blood-donor', { scroll: false });
+    syncUrl('');
   };
 
   const filteredDonors = useMemo(() => {
@@ -95,15 +104,9 @@ function BloodDonorContent() {
       if (filterValues.bloodGroup && filterValues.bloodGroup !== 'all') {
         if (d.bloodGroup !== filterValues.bloodGroup) return false;
       }
-      if (filterValues.areaId && d.areaId !== filterValues.areaId) return false;
-      if (filterValues.isAvailableNow && !d.isAvailable) return false;
       return true;
     });
   }, [donors, filterValues]);
-
-  const activeArea = getAreaById(
-    typeof filterValues.areaId === 'string' ? filterValues.areaId : undefined
-  );
 
   // Every row is a sample profile while the live directory is empty — the
   // fallback swaps wholesale, so this is all-or-nothing rather than per-card.
@@ -136,10 +139,21 @@ function BloodDonorContent() {
             রক্তদাতা ডিরেক্টরি — ময়মনসিংহ
           </h1>
           <p className="mt-2 text-[13.5px] leading-relaxed text-ink-500">
-            রক্তের গ্রুপ ও এলাকা বেছে নিন। অনুমোদিত রক্তদাতার কার্ড বা “কল করুন” বাটনে চাপ
-            দিলে সরাসরি ফোন কল চলে যায়।
+            রক্তের গ্রুপ বেছে নিন। অনুমোদিত রক্তদাতার কার্ডে বা “কল করুন” বাটনে চাপ দিলে
+            সরাসরি ফোন কল চলে যায়।
           </p>
         </header>
+
+        {/* The group picker comes before the privacy note on a phone: the filter
+            is the reason the reader is here, and it must be visible without
+            scrolling past a full-width explainer. */}
+        <ServiceFilterBar
+          serviceType="blood-donor"
+          filterValues={filterValues}
+          onFilterChange={handleFilterChange}
+          onResetFilters={handleResetFilters}
+          totalResults={filteredDonors.length}
+        />
 
         {/* The privacy contract, stated once, plainly. The number is not printed
             anywhere on the page; the card only carries it inside a `tel:` link. */}
@@ -165,14 +179,6 @@ function BloodDonorContent() {
           </Link>
         </div>
 
-        <ServiceFilterBar
-          serviceType="blood-donor"
-          filterValues={filterValues}
-          onFilterChange={handleFilterChange}
-          onResetFilters={handleResetFilters}
-          totalResults={filteredDonors.length}
-        />
-
         {isShowcase && (
           <p className="mt-4 flex items-start gap-2 rounded-xl border border-accent-200 bg-accent-100/50 p-3 text-[12.5px] leading-relaxed text-accent-700">
             <Droplets className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
@@ -188,15 +194,14 @@ function BloodDonorContent() {
           {filteredDonors.length === 0 ? (
             <EmptyFilterResults
               onResetFilters={handleResetFilters}
-              areaName={activeArea?.nameBn}
-              customMessage="নির্বাচিত গ্রুপের কোনো প্রস্তুত রক্তদাতা পাওয়া যায়নি। অন্য এলাকা বা গ্রুপ সিলেক্ট করে দেখুন।"
+              customMessage="নির্বাচিত গ্রুপের কোনো রক্তদাতা পাওয়া যায়নি। অন্য গ্রুপ সিলেক্ট করে দেখুন বা সব গ্রুপ দেখুন।"
             />
           ) : (
             // One-up on a phone. Unlike a two-up marketplace grid, this card
             // has to stay readable at a glance: a reader is comparing blood
             // groups and recovery windows, and a 160px-wide card makes the
             // group token and the status line wrap into noise.
-            <div className="grid grid-cols-1 gap-3 max-sm:grid-cols-2 max-sm:gap-2.5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
               {filteredDonors.map((donor) => (
                 <div
                   key={donor.id}

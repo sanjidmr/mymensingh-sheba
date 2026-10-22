@@ -62,7 +62,7 @@ export async function moderateTutorProfile(input: {
       {
         user_id: tutor.user_id,
         target_role: 'customer',
-        title: `গৃহশিক্ষক প্রোফাইলের অবস্থা: ${statusLabel}`,
+        title: `গৃহ শিক্ষক প্রোফাইলের অবস্থা: ${statusLabel}`,
         body: input.status === 'rejected' ? input.reason!.trim() : 'আপনার প্রোফাইলের পর্যালোচনা সম্পন্ন হয়েছে।',
         type: input.status === 'approved' ? 'success' : 'warning',
         related_type: 'home_tutor_profile',
@@ -71,7 +71,7 @@ export async function moderateTutorProfile(input: {
       {
         user_id: null,
         target_role: 'admin',
-        title: 'গৃহশিক্ষক প্রোফাইল আপডেট',
+        title: 'গৃহ শিক্ষক প্রোফাইল আপডেট',
         body: `প্রোফাইল ${input.id} এর অবস্থা "${input.status}" হয়েছে।`,
         type: input.status === 'approved' ? 'success' : 'info',
         related_type: 'tutor_profile',
@@ -100,8 +100,7 @@ export interface TutorProfileEdit {
   preferredAreas: string[];
   preferredClasses: string[];
   preferredSubjects: string[];
-  expectedSalaryMin: number;
-  expectedSalaryMax: number;
+  expectedSalary: number;
   daysPerWeek: number;
   classDurationMinutes?: number | null;
   preferredStudentType?: string;
@@ -120,8 +119,7 @@ export async function editTutorProfile(
     }
     if (
       !Number.isInteger(input.experienceYears) || input.experienceYears < 0 || input.experienceYears > 60 ||
-      !Number.isInteger(input.expectedSalaryMin) || input.expectedSalaryMin < 0 ||
-      !Number.isInteger(input.expectedSalaryMax) || input.expectedSalaryMax < input.expectedSalaryMin ||
+      !Number.isInteger(input.expectedSalary) || input.expectedSalary < 0 ||
       !Number.isInteger(input.daysPerWeek) || input.daysPerWeek < 1 || input.daysPerWeek > 7 ||
       (input.classDurationMinutes != null && (!Number.isInteger(input.classDurationMinutes) || input.classDurationMinutes < 15 || input.classDurationMinutes > 480))
     ) {
@@ -149,8 +147,9 @@ export async function editTutorProfile(
         preferred_areas: input.preferredAreas.map((value) => value.trim()).filter(Boolean),
         preferred_classes: input.preferredClasses.map((value) => value.trim()).filter(Boolean),
         preferred_subjects: input.preferredSubjects.map((value) => value.trim()).filter(Boolean),
-        expected_salary_min: input.expectedSalaryMin,
-        expected_salary_max: input.expectedSalaryMax,
+        expected_salary: input.expectedSalary,
+        expected_salary_min: input.expectedSalary,
+        expected_salary_max: input.expectedSalary,
         days_per_week: input.daysPerWeek,
         class_duration_minutes: input.classDurationMinutes ?? null,
         preferred_student_type: input.preferredStudentType?.trim() || null,

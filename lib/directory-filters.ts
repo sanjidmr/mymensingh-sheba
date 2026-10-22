@@ -17,6 +17,14 @@ export interface FilterOption {
   /** Numeric bounds for range-style options (budget, counts). */
   min?: number;
   max?: number;
+  /**
+   * Extra strings the picker's search matches on, on top of `labelBn` and
+   * `id`. A facet carries these when its option names are Bengali but readers
+   * type the English name or a transliteration — an area's `nameEn` and
+   * `aliases`, for instance. Omitting it leaves the picker matching the
+   * visible label only.
+   */
+  searchTerms?: string[];
 }
 
 export type FilterGroupType = 'single' | 'multi' | 'range';
@@ -26,8 +34,6 @@ export interface FilterGroup {
   labelBn: string;
   type: FilterGroupType;
   options: FilterOption[];
-  /** Rendered as a horizontal chip row instead of stacked rows. */
-  compact?: boolean;
   /**
    * A fixed, vocabulary-backed group whose options are the ids a record stores
    * (a news desk's `category`, a coaching centre's `subject`).
@@ -36,6 +42,14 @@ export interface FilterGroup {
    * as an empty section, so every real group should have at least one.
    */
   optionsAreTaxonomy?: boolean;
+  /**
+   * The button that opens this facet's picker, e.g. "এলাকা নির্বাচন করুন".
+   *
+   * Every facet is offered as one button rather than a printed list, so a page
+   * with 48 areas never fills the filter sheet with names. Defaults to
+   * `${labelBn} নির্বাচন করুন` when a caller does not need the wording.
+   */
+  pickerLabelBn?: string;
 }
 
 /** MCC area list, reshaped as a single-select facet. */
@@ -45,9 +59,10 @@ export function areaFilterGroup(): FilterGroup {
     id: 'area',
     labelBn: 'এলাকা',
     type: 'single',
+    pickerLabelBn: 'এলাকা নির্বাচন করুন',
     options: [
       { id: 'all', labelBn: 'সব এলাকা' },
-      ...areas.map((a) => ({ id: a.id, labelBn: a.nameBn })),
+      ...areas.map((a) => ({ id: a.id, labelBn: a.nameBn, searchTerms: areaSearchTerms(a) })),
     ],
   };
 }
@@ -58,8 +73,8 @@ export function areaFilterGroupMulti(): FilterGroup {
     id: 'areas',
     labelBn: 'এলাকা',
     type: 'multi',
-    compact: true,
-    options: areas.map((a) => ({ id: a.id, labelBn: a.nameBn })),
+    pickerLabelBn: 'এলাকা নির্বাচন করুন',
+    options: areas.map((a) => ({ id: a.id, labelBn: a.nameBn, searchTerms: areaSearchTerms(a) })),
   };
 }
 
@@ -74,11 +89,22 @@ export function toletAreaFilterGroup(): FilterGroup {
     id: 'area',
     labelBn: 'এলাকা',
     type: 'single',
+    pickerLabelBn: 'এলাকা নির্বাচন করুন',
     options: [
       { id: 'all', labelBn: 'সব এলাকা' },
-      ...areas.map((a) => ({ id: a.id, labelBn: a.nameBn })),
+      ...areas.map((a) => ({ id: a.id, labelBn: a.nameBn, searchTerms: areaSearchTerms(a) })),
     ],
   };
+}
+
+/**
+ * Everything the picker should match when a reader searches an area: the
+ * English name plus the recorded transliterations and spelling variants, so
+ * "charpara", "Char Para" and "চরপাড়া" all land on the same option. The
+ * Bengali label itself is matched by the picker already.
+ */
+function areaSearchTerms(area: { nameEn: string; aliases: string[] }): string[] {
+  return [area.nameEn, ...area.aliases];
 }
 
 export interface FilterState {

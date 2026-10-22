@@ -17,7 +17,7 @@ import { useToast } from '@/components/admin/ToastProvider';
 const KIND_LABEL: Record<AdminApprovalKind, string> = {
   post: 'কমিউনিটি পোস্ট',
   tolet_listing: 'বাসা ভাড়া বিজ্ঞাপন',
-  tutor_profile: 'গৃহশিক্ষক প্রোফাইল',
+  tutor_profile: 'গৃহ শিক্ষক প্রোফাইল',
   donor_profile: 'রক্তদাতা প্রোফাইল',
   service_listing: 'সার্ভিস তালিকা',
   tolet_profile: 'বাসা মালিক প্রোফাইল',

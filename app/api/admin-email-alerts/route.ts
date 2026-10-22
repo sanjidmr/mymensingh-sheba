@@ -64,15 +64,12 @@ export async function POST(request: Request) {
     try {
       const result = await sendAdminTestEmail(admin.userId);
       if (result.status === 'unconfigured') {
-        return Response.json({ error: 'Email alert service is not configured.' }, { status: 503 });
-      }
-      if (result.status === 'rate_limited') {
-        return Response.json({ error: 'Email alert rate limit reached.' }, { status: 429 });
+        return Response.json({ error: 'Email alert queue is not configured.' }, { status: 503 });
       }
       if (result.status === 'failed') {
-        return Response.json({ error: 'Email alert delivery failed.' }, { status: 503 });
+        return Response.json({ error: 'Email alert could not be queued.' }, { status: 503 });
       }
-      return Response.json({ status: result.status }, { status: 200 });
+      return Response.json({ status: result.status }, { status: 202 });
     } catch {
       console.error('Admin email test could not be processed.');
       return Response.json({ error: 'Email test could not be processed.' }, { status: 503 });
@@ -91,15 +88,21 @@ export async function POST(request: Request) {
   try {
     const result = await sendAdminEmailAlert(type as AdminEmailAlertType, eventId);
     if (result.status === 'unconfigured') {
-      return Response.json({ error: 'Email alert service is not configured.' }, { status: 503 });
-    }
-    if (result.status === 'rate_limited') {
-      return Response.json({ error: 'Email alert rate limit reached.' }, { status: 429 });
+      return Response.json({ error: 'Email alert queue is not configured.' }, { status: 503 });
     }
     if (result.status === 'failed') {
-      return Response.json({ error: 'Email alert delivery failed.' }, { status: 503 });
+      return Response.json({ error: 'Email alert queue could not be checked.' }, { status: 503 });
     }
-    return Response.json({ status: result.status }, { status: 200 });
+    return Response.json(
+      {
+        status: result.status,
+        message:
+          result.status === 'queued'
+            ? 'The durable email job is stored; provider acceptance and delivery are tracked separately.'
+            : 'No durable email job exists for this event.',
+      },
+      { status: result.status === 'queued' ? 202 : 200 }
+    );
   } catch {
     console.error('Admin email alert processing failed.', { type });
     return Response.json({ error: 'Email alert could not be processed.' }, { status: 503 });

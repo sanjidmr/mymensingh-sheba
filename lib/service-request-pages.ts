@@ -21,12 +21,6 @@
  * to browse: the user arrives with a problem and wants a request sent.
  */
 
-import {
-  ELECTRICIAN_SERVICE_TYPES,
-  KAJER_BUA_WORK_TYPES,
-  PLUMBING_SERVICE_TYPES,
-} from '@/lib/filter-definitions';
-
 export type RequestServiceSlug =
   | 'kajer-bua'
   | 'electrician'
@@ -128,15 +122,16 @@ export interface ServiceRequestPageConfig {
   /** When false, the shared সময় (time-of-day) select is hidden. */
   showTimeField: boolean;
   dateLabel: string;
+  /** Render a compact form-only page with an open-ended work description. */
+  minimalForm?: boolean;
+  /** Require customers to explain the requested work in their own words. */
+  requireDetails?: boolean;
 
   detailsLabel: string;
   detailsPlaceholder: string;
   detailsHint: string;
   photoHint: string;
 }
-
-const withoutAll = (options: { id: string; labelBn: string }[]) =>
-  options.filter((option) => option.id !== 'all');
 
 /* -------------------------------------------------------------------------- */
 /* Shared option lists                                                        */
@@ -253,9 +248,8 @@ const KAJER_BUA: ServiceRequestPageConfig = {
     },
     REQUEST_INBOX_TRUST,
   ],
-  serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
-  serviceTypes: withoutAll(KAJER_BUA_WORK_TYPES),
-  allowCustomServiceType: true,
+  serviceTypesLabel: 'কাজের বিবরণ',
+  serviceTypes: [],
   locations: [
     {
       key: 'work',
@@ -264,68 +258,14 @@ const KAJER_BUA: ServiceRequestPageConfig = {
       required: true,
     },
   ],
-  fields: [
-    {
-      name: 'shift',
-      label: 'কাজের সময় কোন সময়টা?',
-      kind: 'radio',
-      required: true,
-      allowCustom: true,
-      options: [
-        { value: 'morning', label: 'সকাল শিফট', hint: '৭টা – ১০টা' },
-        { value: 'afternoon', label: 'দুপুর শিফট', hint: '১০টা – ২টা' },
-        { value: 'full_time', label: 'ফুল-টাইম', hint: '৮টা – ৫টা' },
-        { value: 'live_in', label: 'বাসায় থেকে কাজ', hint: '২৪ ঘণ্টা' },
-      ],
-    },
-    {
-      name: 'duration',
-      label: 'কত ঘণ্টা বা কতদিন লাগবে?',
-      kind: 'select',
-      required: true,
-      allowCustom: true,
-      options: [
-        { value: 'daily_short', label: 'প্রতিদিন ২–৩ ঘণ্টা' },
-        { value: 'daily_long', label: 'প্রতিদিন ৪–৬ ঘণ্টা' },
-        { value: 'week_2_3', label: 'সপ্তাহে ২–৩ দিন' },
-        { value: 'week_5_6', label: 'সপ্তাহে ৫–৬ দিন' },
-        { value: 'full_month', label: 'সারা মাস' },
-        { value: 'fixed_days', label: 'ঠিক কয়েক দিন' },
-      ],
-    },
-    {
-      name: 'familySize',
-      label: 'বাড়িতে কতজনের কাজ?',
-      kind: 'select',
-      hint: 'জানা থাকলে দিলে কাজের ধরন বোঝা সহজ হয়।',
-      options: [
-        { value: '1_2', label: '১–২ জন' },
-        { value: '3_4', label: '৩–৪ জন' },
-        { value: '5_6', label: '৫–৬ জন' },
-        { value: '7_plus', label: '৭ জনের বেশি' },
-      ],
-    },
-    {
-      name: 'extras',
-      label: 'অতিরিক্ত কোনো প্রয়োজন আছে?',
-      kind: 'checkboxes',
-      hint: 'একাধিকটি বেছে নিতে পারেন।',
-      options: [
-        { value: 'baby_care', label: 'ছোট বাচ্চার দেখাশোনা' },
-        { value: 'cooking', label: 'রান্না ও থালাবাসন ধোয়া' },
-        { value: 'fish_meat', label: 'মাছ-মাংস কাটা' },
-        { value: 'outdoor', label: 'বাগান বা ছাদ ধোয়া' },
-        { value: 'ironing', label: 'ভাঙা কাপড় ইস্ত্রি করা' },
-        { value: 'other', label: 'অন্য কিছু' },
-      ],
-    },
-  ],
-  showTimeField: false,
+  fields: [],
+  showTimeField: true,
   dateLabel: 'কখন থেকে প্রয়োজন?',
+  minimalForm: true,
+  requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
-  detailsPlaceholder:
-    'যেমন—সমস্যাটি কী, কখন থেকে হচ্ছে, কী ধরনের কাজ প্রয়োজন ইত্যাদি লিখুন...',
-  detailsHint: 'যা লিখবেন, সেই অনুযায়ী সংশ্লিষ্ট কাজের লোকের সাথে মেলানো সহজ হয়।',
+  detailsPlaceholder: 'কী কাজ দরকার এবং আপনার বিশেষ কোনো নির্দেশনা থাকলে নিজের ভাষায় লিখুন।',
+  detailsHint: 'আপনার প্রয়োজনীয় কাজটি নিজের ভাষায় লিখুন।',
   photoHint: 'কাজের বাসার ছবি দিলে জায়গা ও পরিবেশ বুঝতে সাহায্য হয়',
 };
 
@@ -370,7 +310,7 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
-  serviceTypes: withoutAll(ELECTRICIAN_SERVICE_TYPES),
+  serviceTypes: [],
   allowCustomServiceType: true,
   locations: [
     {
@@ -412,11 +352,12 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
   ],
   showTimeField: true,
   dateLabel: 'কবে দরকার?',
+  minimalForm: true,
+  requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
-  detailsPlaceholder:
-    'যেমন—সমস্যাটি কী, কখন থেকে হচ্ছে, কী ধরনের কাজ প্রয়োজন ইত্যাদি লিখুন...',
-  detailsHint: 'ঘরের কোন অংশে সমস্যা, কতদিন ধরে — এসব লিখলে ভুল অনুমান কমে।',
-  photoHint: 'সমস্যার ছবি দিলে আসার আগেই কী লাগবে বোঝা যায়',
+  detailsPlaceholder: 'সমস্যা এবং কী ধরনের কাজ দরকার তা নিজের ভাষায় লিখুন।',
+  detailsHint: 'আপনার সমস্যা ও প্রয়োজনীয় কাজটি নিজের ভাষায় লিখুন।',
+  photoHint: 'সমস্যার ছবি থাকলে ঐচ্ছিকভাবে যুক্ত করুন।',
 };
 
 /* -------------------------------------------------------------------------- */
@@ -459,7 +400,7 @@ const PLUMBER: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
-  serviceTypes: withoutAll(PLUMBING_SERVICE_TYPES),
+  serviceTypes: [],
   allowCustomServiceType: true,
   locations: [
     {
@@ -500,11 +441,12 @@ const PLUMBER: ServiceRequestPageConfig = {
   ],
   showTimeField: true,
   dateLabel: 'কবে দরকার?',
+  minimalForm: true,
+  requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
-  detailsPlaceholder:
-    'যেমন—সমস্যাটি কী, কখন থেকে হচ্ছে, কী ধরনের কাজ প্রয়োজন ইত্যাদি লিখুন...',
-  detailsHint: 'সমস্যা কোন তলায় বা কোন ঘরে, সেটা লিখে দিলে দ্রুত কাজ হয়।',
-  photoHint: 'লিক বা ব্লকের ছবি দিলে সঠিক যন্ত্র নিয়ে যাওয়া যায়',
+  detailsPlaceholder: 'সমস্যা এবং কী ধরনের কাজ দরকার তা নিজের ভাষায় লিখুন।',
+  detailsHint: 'আপনার সমস্যা ও প্রয়োজনীয় কাজটি নিজের ভাষায় লিখুন।',
+  photoHint: 'সমস্যার ছবি থাকলে ঐচ্ছিকভাবে যুক্ত করুন।',
 };
 
 /* -------------------------------------------------------------------------- */
@@ -674,17 +616,7 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
-  allowCustomServiceType: true,
-  serviceTypes: [
-    { id: 'ac_servicing', labelBn: 'এসি সার্ভিসিং' },
-    { id: 'ac_gas_charge', labelBn: 'এসি-তে গ্যাস চার্জ' },
-    { id: 'ac_not_cooling', labelBn: 'এসি ঠান্ডা করছে না' },
-    { id: 'ac_water_leak', labelBn: 'এসি থেকে পানি পড়ছে' },
-    { id: 'ac_installation', labelBn: 'নতুন এসি স্থাপন' },
-    { id: 'fridge_repair', labelBn: 'ফ্রিজ মেরামত' },
-    { id: 'fridge_gas_charge', labelBn: 'ফ্রিজে গ্যাস চার্জ' },
-    { id: 'deep_clean', labelBn: 'ফ্রিজ ও এসি ভেতরে পরিষ্কার' },
-  ],
+  serviceTypes: [],
   locations: [
     {
       key: 'work',
@@ -757,11 +689,12 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
   ],
   showTimeField: true,
   dateLabel: 'কবে দরকার?',
+  minimalForm: true,
+  requireDetails: true,
   detailsLabel: 'আপনার কাজ সম্পর্কে বিস্তারিত লিখুন',
-  detailsPlaceholder:
-    'যেমন—সমস্যাটি কী, কখন থেকে হচ্ছে, কী ধরনের কাজ প্রয়োজন ইত্যাদি লিখুন...',
-  detailsHint: 'কোন ঘরে, কত তলায়, দুপুর না রাতে বেশি সমস্যা — এসব লিখে দিন।',
-  photoHint: 'ইউনিটের ছবি ও নিচে জমে থাকা পানির ছবি দিলে কাজ দ্রুত হয়',
+  detailsPlaceholder: 'এসি বা ফ্রিজের সমস্যা এবং কী কাজ দরকার তা নিজের ভাষায় লিখুন।',
+  detailsHint: 'যন্ত্রের মডেল বা সমস্যা সম্পর্কে যা জানেন নিজের ভাষায় লিখুন।',
+  photoHint: 'যন্ত্রের ছবি থাকলে ঐচ্ছিকভাবে যুক্ত করুন।',
 };
 
 /* -------------------------------------------------------------------------- */

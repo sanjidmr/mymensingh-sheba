@@ -11,18 +11,15 @@
  *
  *   | # | id              | role                 | levels              | fee           |
  *   |---|-----------------|----------------------|---------------------|---------------|
- *   | 1 | demo-tutor-01   | university student   | HSC                 | ৳5,000–7,000  |
+ *   | 1 | demo-tutor-01   | university student   | HSC                 | ৳6,000        |
  *   | 2 | demo-tutor-02   | experienced teacher  | SSC + HSC           | ৳8,000 (fixed)|
- *   | 3 | demo-tutor-03   | female, primary desk | ১ম–৫ম + ভর্তি        | ৳4,000–6,000  |
+ *   | 3 | demo-tutor-03   | female, primary desk | ১ম–৫ম + ভর্তি        | ৳5,000        |
  *   | 4 | demo-tutor-04   | school teacher       | ৬ষ্ঠ–৮ম              | ৳6,000 (fixed)|
- *   | 5 | demo-tutor-05   | subject specialist   | ভর্তি + HSC English | ৳9,000–12,000 |
- *   | 6 | demo-tutor-06   | student, junior desk | ১ম–৮ম               | ৳3,500–5,000  |
+ *   | 5 | demo-tutor-05   | subject specialist   | ভর্তি + HSC English | ৳10,500       |
+ *   | 6 | demo-tutor-06   | student, junior desk | ১ম–৮ম               | ৳4,250        |
  *
- * Fee is the field most likely to be faked, so note what is actually varied
- * here: two profiles carry a fixed amount (min === max) and four carry a band.
- * `formatTutorFee` collapses the fixed case to a single number, and the design
- * has to hold for both — a range is a real answer, a fixed number is a real
- * answer, and inventing either one would be the actual harm.
+ * Every sample now stores one expected monthly amount, matching the tutor
+ * profile form and public fee display.
  *
  * Privacy contract
  * ----------------
@@ -110,8 +107,7 @@ interface TutorSeed {
   daysPerWeek: number;
   classDurationMinutes?: number;
   preferredStudentType?: string;
-  salaryMin: number;
-  salaryMax: number;
+  salary: number;
   ratingAvg: number;
   ratingCount: number;
   /**
@@ -170,8 +166,7 @@ const SEEDS: TutorSeed[] = [
     daysPerWeek: 3,
     classDurationMinutes: 120,
     preferredStudentType: 'ছেলে ও মেয়ে — উভয়',
-    salaryMin: 5000,
-    salaryMax: 7000,
+    salary: 6000,
     ratingAvg: 4.6,
     ratingCount: 5,
     headlineQualification: 'বিএস (অনার্স) তৃতীয় বর্ষ, গণিত',
@@ -224,8 +219,7 @@ const SEEDS: TutorSeed[] = [
     daysPerWeek: 4,
     classDurationMinutes: 120,
     preferredStudentType: 'মেয়ে',
-    salaryMin: 8000,
-    salaryMax: 8000,
+    salary: 8000,
     ratingAvg: 4.9,
     ratingCount: 11,
     headlineQualification: 'এমএস (রসায়ন)',
@@ -271,8 +265,7 @@ const SEEDS: TutorSeed[] = [
     daysPerWeek: 5,
     classDurationMinutes: 90,
     preferredStudentType: 'মেয়ে',
-    salaryMin: 4000,
-    salaryMax: 6000,
+    salary: 5000,
     ratingAvg: 4.7,
     ratingCount: 8,
     headlineQualification: 'বিএ (চলতে), বাংলা',
@@ -318,8 +311,7 @@ const SEEDS: TutorSeed[] = [
     daysPerWeek: 4,
     classDurationMinutes: 90,
     preferredStudentType: 'ছেলে',
-    salaryMin: 6000,
-    salaryMax: 6000,
+    salary: 6000,
     ratingAvg: 4.5,
     ratingCount: 14,
     headlineQualification: 'বিএস (অনার্স), গণিত',
@@ -364,8 +356,7 @@ const SEEDS: TutorSeed[] = [
     daysPerWeek: 5,
     classDurationMinutes: 120,
     preferredStudentType: 'যেকোনো',
-    salaryMin: 9000,
-    salaryMax: 12000,
+    salary: 10500,
     ratingAvg: 4.8,
     ratingCount: 9,
     headlineQualification: 'এমএ (ইংরেজি)',
@@ -411,8 +402,7 @@ const SEEDS: TutorSeed[] = [
     daysPerWeek: 3,
     classDurationMinutes: 60,
     preferredStudentType: 'যেকোনো',
-    salaryMin: 3500,
-    salaryMax: 5000,
+    salary: 4250,
     ratingAvg: 4.4,
     ratingCount: 3,
     headlineQualification: 'বিএস (অনার্স) দ্বিতীয় বর্ষ, প্রাথমিক শিক্ষা',
@@ -439,8 +429,7 @@ export const DEMO_TUTOR_PROFILES: TutorDemoProfile[] = SEEDS.map((seed, index) =
   preferredAreas: seed.areas,
   preferredClasses: seed.classes,
   preferredSubjects: seed.subjects,
-  expectedSalaryMin: seed.salaryMin,
-  expectedSalaryMax: seed.salaryMax,
+  expectedSalary: seed.salary,
   daysPerWeek: seed.daysPerWeek,
   bio: seed.intro,
   // A student id card is a private document; demo content never has one.

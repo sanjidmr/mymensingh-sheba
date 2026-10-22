@@ -1,14 +1,17 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SlidersHorizontal,
   X,
   MapPin,
   ArrowUpDown,
   RotateCcw,
+  ChevronDown,
+  Droplets,
+  Check,
 } from 'lucide-react';
-import { ServiceType, SortOption } from '@/lib/filter-definitions';
+import { BLOOD_GROUPS, ServiceType, SortOption } from '@/lib/filter-definitions';
 import {
   TUTOR_CLASSES,
   TUTOR_SUBJECTS,
@@ -32,6 +35,7 @@ interface ServiceFilterBarProps {
   sortOptions?: SortOption[];
   currentSort?: string;
   onSortChange?: (sortId: string) => void;
+  subjectOptions?: { id: string; labelBn: string }[];
 }
 
 export default function ServiceFilterBar({
@@ -43,9 +47,29 @@ export default function ServiceFilterBar({
   sortOptions,
   currentSort = 'newest',
   onSortChange,
+  subjectOptions,
 }: ServiceFilterBarProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
+  const [isBloodGroupOpen, setIsBloodGroupOpen] = useState(false);
+
+  // The blood-group picker is a bottom sheet on a phone, so it owns the
+  // viewport while it is open: Escape closes it and the page behind it must not
+  // scroll. Without the scroll lock the sheet looked clipped on iOS because the
+  // page kept moving underneath a `fixed` element.
+  useEffect(() => {
+    if (!isBloodGroupOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setIsBloodGroupOpen(false);
+    };
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    window.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener('keydown', onKeyDown);
+    };
+  }, [isBloodGroupOpen]);
 
   // Calculate active filter count (excluding default 'all' and undefined)
   const activeChips: { key: string; label: string }[] = [];
@@ -216,7 +240,7 @@ export default function ServiceFilterBar({
       });
     }
     if (filterValues.subject && filterValues.subject !== 'all') {
-      const sub = TUTOR_SUBJECTS.find((s) => s.id === filterValues.subject);
+      const sub = (subjectOptions ?? TUTOR_SUBJECTS).find((s) => s.id === filterValues.subject);
       activeChips.push({
         key: 'subject',
         label: sub?.labelBn || 'বিষয় ফিল্টার',
@@ -278,6 +302,151 @@ export default function ServiceFilterBar({
     }
     onFilterChange(updated);
   };
+
+  /*
+   * Blood donors get ONE control: the blood group.
+   *
+   * The shared bar used to show a general "ফিল্টার" drawer and a separate area
+   * picker. Neither belongs on an emergency screen — a reader arrives knowing
+   * the group, and the extra chrome pushed the actual filter off the first
+   * screen on a phone. The picker is a single full-width button that opens a
+   * viewport-anchored bottom sheet, so it can never be clipped or pushed below
+   * the fold by the header above it.
+   */
+  if (serviceType === 'blood-donor') {
+    const selectedGroup =
+      typeof filterValues.bloodGroup === 'string' && filterValues.bloodGroup
+        ? filterValues.bloodGroup
+        : 'all';
+    const selectedLabel =
+      BLOOD_GROUPS.find((group) => group.id === selectedGroup)?.labelBn ?? 'সকল গ্রুপ';
+
+    const chooseGroup = (groupId: string) => {
+      const next: Record<string, unknown> = { ...filterValues };
+      if (groupId === 'all') delete next.bloodGroup;
+      else next.bloodGroup = groupId;
+      onFilterChange(next);
+      setIsBloodGroupOpen(false);
+    };
+
+    return (
+      <div className="mb-6">
+        <div className="rounded-2xl border border-brand-100 bg-white p-3 shadow-[0_1px_3px_rgba(7,39,31,0.06)] sm:p-4">
+          <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+            <button
+              type="button"
+              onClick={() => setIsBloodGroupOpen(true)}
+              aria-haspopup="dialog"
+              aria-expanded={isBloodGroupOpen}
+              className="flex min-h-[52px] w-full items-center justify-between gap-3 rounded-xl border-2 border-rose-200 bg-rose-50 px-3.5 text-left transition-colors hover:border-rose-300 hover:bg-rose-100/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2 sm:w-auto sm:min-w-[280px]"
+            >
+              <span className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-700 text-white">
+                  <Droplets className="h-4.5 w-4.5" strokeWidth={2.25} aria-hidden="true" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-[11px] font-bold text-rose-700">
+                    রক্তের গ্রুপ
+                  </span>
+                  <span className="block truncate text-[15px] font-black text-rose-950">
+                    {selectedLabel}
+                  </span>
+                </span>
+              </span>
+              <ChevronDown
+                className={`h-4 w-4 shrink-0 text-rose-700 transition-transform ${
+                  isBloodGroupOpen ? 'rotate-180' : ''
+                }`}
+                aria-hidden="true"
+              />
+            </button>
+
+            <div className="flex items-center justify-between gap-3 sm:justify-end">
+              <span className="text-[12.5px] font-medium text-ink-500">
+                মোট <strong className="font-extrabold text-ink-900">{totalResults}</strong> জন
+                রক্তদাতা
+              </span>
+              {selectedGroup !== 'all' && (
+                <button
+                  type="button"
+                  onClick={onResetFilters}
+                  className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg px-2 text-[12px] font-bold text-rose-700 transition-colors hover:bg-rose-50 hover:text-rose-800"
+                >
+                  <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                  সব গ্রুপ
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {isBloodGroupOpen && (
+          <div
+            className="fixed inset-0 z-[80] flex items-end justify-center sm:items-center"
+            role="dialog"
+            aria-modal="true"
+            aria-label="রক্তের গ্রুপ নির্বাচন"
+          >
+            <button
+              type="button"
+              onClick={() => setIsBloodGroupOpen(false)}
+              aria-label="গ্রুপ নির্বাচন বন্ধ করুন"
+              className="absolute inset-0 cursor-default bg-slate-950/55 backdrop-blur-[2px]"
+            />
+
+            <div className="relative flex max-h-[85dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:max-h-[80dvh] sm:rounded-3xl">
+              <div className="flex items-center justify-between gap-3 border-b border-mist-100 px-4 py-3.5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-9 w-9 items-center justify-center rounded-full bg-rose-100 text-rose-700">
+                    <Droplets className="h-4.5 w-4.5" strokeWidth={2.25} aria-hidden="true" />
+                  </span>
+                  <div>
+                    <h2 className="text-[14.5px] font-extrabold text-ink-900">রক্তের গ্রুপ</h2>
+                    <p className="text-[11.5px] text-ink-500">যে গ্রুপ দরকার সেটি বেছে নিন</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsBloodGroupOpen(false)}
+                  className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-mist-50 text-ink-500 transition-colors hover:bg-mist-100 hover:text-ink-900"
+                  aria-label="বন্ধ করুন"
+                >
+                  <X className="h-4.5 w-4.5" aria-hidden="true" />
+                </button>
+              </div>
+
+              <div
+                className="grid grid-cols-3 gap-2 overflow-y-auto p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:grid-cols-4"
+                role="listbox"
+                aria-label="রক্তের গ্রুপসমূহ"
+              >
+                {BLOOD_GROUPS.map((group) => {
+                  const active = selectedGroup === group.id;
+                  return (
+                    <button
+                      key={group.id}
+                      type="button"
+                      role="option"
+                      aria-selected={active}
+                      onClick={() => chooseGroup(group.id)}
+                      className={`flex min-h-[52px] items-center justify-center gap-1.5 rounded-xl border-2 px-2 text-[14px] font-extrabold transition-all ${
+                        active
+                          ? 'border-rose-700 bg-rose-700 text-white shadow-sm'
+                          : 'border-mist-200 bg-white text-ink-700 hover:border-rose-200 hover:bg-rose-50'
+                      }`}
+                    >
+                      {active && <Check className="h-3.5 w-3.5" aria-hidden="true" />}
+                      {group.labelBn}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const selectedArea = getAreaById(
     typeof filterValues.areaId === 'string' ? filterValues.areaId : undefined
@@ -408,6 +577,7 @@ export default function ServiceFilterBar({
         onApplyFilters={onFilterChange}
         onResetFilters={onResetFilters}
         resultCount={totalResults}
+        subjectOptions={subjectOptions}
       />
 
       {/* Quick Location Picker Modal */}

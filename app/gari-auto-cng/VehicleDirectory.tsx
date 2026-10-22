@@ -93,7 +93,6 @@ export default function VehicleDirectory() {
         id: 'kind',
         labelBn: 'যানের ধরন',
         type: 'multi',
-        compact: true,
         options: VEHICLE_KINDS.map((k) => ({ id: k, labelBn: k })),
       },
       providerGroup(listings),

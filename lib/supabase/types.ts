@@ -120,8 +120,7 @@ export interface HomeTutorProfile {
   preferredAreas: string[]; // MCC Area IDs
   preferredClasses: string[];
   preferredSubjects: string[];
-  expectedSalaryMin: number;
-  expectedSalaryMax: number;
+  expectedSalary: number;
   daysPerWeek: number;
   bio?: string;
   studentIdCardUrl?: string;

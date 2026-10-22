@@ -76,7 +76,7 @@ export default async function AdminTutorRequestsPage({
     <>
       <PageHeader
         title="টিউটর অনুরোধ ও আবেদন"
-        description="গৃহশিক্ষক প্রোফাইলের বিস্তারিত পৃষ্ঠা থেকে জমা হওয়া প্রকৃত service_requests পর্যালোচনা করুন। অবস্থা পরিবর্তন যোগাযোগ সম্পন্ন হয়েছে এমন দাবি করে না।"
+        description="গৃহ শিক্ষক প্রোফাইলের বিস্তারিত পৃষ্ঠা থেকে জমা হওয়া প্রকৃত service_requests পর্যালোচনা করুন। অবস্থা পরিবর্তন যোগাযোগ সম্পন্ন হয়েছে এমন দাবি করে না।"
         count={`মোট ${result.total.toLocaleString('bn-BD')} টি অনুরোধ`}
         actions={<Link href="/admin/verifications" className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-admin-border bg-white px-3 text-xs font-semibold text-admin-text"><ClipboardList className="h-4 w-4" />টিউটর প্রোফাইল</Link>}
       />

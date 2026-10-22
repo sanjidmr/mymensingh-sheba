@@ -16,6 +16,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import DirectoryShell from '@/components/directory/DirectoryShell';
 import { ContactRow } from '@/components/catalog/CatalogCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import { fetchEmergencyContacts } from '@/lib/catalog-service';
 import {
   areaNames,
@@ -122,19 +123,13 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
         <label htmlFor={`${service}-area`} className="sr-only">
           এলাকা
         </label>
-        <select
+        <LocationSelectInput
           id={`${service}-area`}
-          value={selectedArea}
-          onChange={(e) => selectArea(e.target.value)}
-          className={`min-h-[44px] rounded-lg border border-brand-100 bg-white px-2.5 text-sm font-medium text-ink-700 outline-none transition-colors focus:border-brand-500 ${LIGHT_FOCUS}`}
-        >
-          <option value="">সব এলাকা</option>
-          {areaGroup.options.map((area) => (
-            <option key={area.id} value={area.id}>
-              {area.labelBn}
-            </option>
-          ))}
-        </select>
+          value={selectedArea || null}
+          onChange={(areaId) => selectArea(areaId ?? '')}
+          placeholder="সব এলাকা"
+          size="sm"
+        />
       </div>
 
       {loading ? (

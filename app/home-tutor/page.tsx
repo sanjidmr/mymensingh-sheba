@@ -14,6 +14,7 @@ import type { HomeTutorProfile } from '@/lib/supabase/types';
 import {
   TUTOR_EXPERIENCE_OPTIONS,
   TUTOR_FEE_PRESETS,
+  TUTOR_SUBJECTS,
   type SortOption,
 } from '@/lib/filter-definitions';
 import { getAreaById } from '@/lib/locations';
@@ -117,9 +118,7 @@ function HomeTutorContent() {
         if (preset) {
           const low = preset.min ?? 0;
           const high = preset.max ?? Number.POSITIVE_INFINITY;
-          // overlapping ranges: the tutor's expected fee band overlaps the preset
-          const overlap = t.expectedSalaryMax >= low && t.expectedSalaryMin <= high;
-          if (!overlap) return false;
+          if (t.expectedSalary < low || t.expectedSalary > high) return false;
         }
       }
       if (filterValues.availability && filterValues.availability !== 'all') {
@@ -134,7 +133,7 @@ function HomeTutorContent() {
         (a, b) => Number(b.ratingCount ?? 0) - Number(a.ratingCount ?? 0)
       );
     } else if (sortBy === 'fee_low') {
-      result = [...result].sort((a, b) => a.expectedSalaryMin - b.expectedSalaryMin);
+      result = [...result].sort((a, b) => a.expectedSalary - b.expectedSalary);
     } else {
       result = [...result].sort((a, b) =>
         (b.publishedAt || b.createdAt || '').localeCompare(a.publishedAt || a.createdAt || '')
@@ -142,6 +141,26 @@ function HomeTutorContent() {
     }
     return result;
   }, [tutors, filterValues, sortBy]);
+
+  const subjectOptions = useMemo(() => {
+    const customSubjects = new Map<string, string>();
+    tutors.forEach((tutor) => {
+      tutor.preferredSubjects.forEach((subject) => {
+        const isStandardSubject = TUTOR_SUBJECTS.some((option) =>
+          option.id !== 'all' && tutorSubjectMatches(option.id, [subject])
+        );
+        if (!isStandardSubject) {
+          customSubjects.set(subject.toLocaleLowerCase(), subject);
+        }
+      });
+    });
+    return [
+      ...TUTOR_SUBJECTS,
+      ...Array.from(customSubjects.values())
+        .sort((a, b) => a.localeCompare(b, 'bn'))
+        .map((subject) => ({ id: subject, labelBn: subject })),
+    ];
+  }, [tutors]);
 
   const activeArea = getAreaById(
     typeof filterValues.areaId === 'string' ? filterValues.areaId : undefined
@@ -166,7 +185,7 @@ function HomeTutorContent() {
             শিক্ষার্থী ও অভিজ্ঞ গৃহশিক্ষক খুঁজুন অথবা পড়াতে প্রোফাইল খুলুন
           </h2>
           <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-ink-500">
-            একই অ্যাকাউন্ট ব্যবহার করে গৃহশিক্ষক প্রোফাইল তৈরি ও আপডেট করতে পারবেন।
+            একই অ্যাকাউন্ট ব্যবহার করে গৃহ শিক্ষক প্রোফাইল তৈরি ও আপডেট করতে পারবেন।
           </p>
         </div>
 
@@ -175,7 +194,7 @@ function HomeTutorContent() {
           className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-xl bg-brand-700 px-4 text-[12.5px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:self-auto ${LIGHT_FOCUS}`}
         >
           <PlusCircle className="w-4 h-4" />
-          <span>গৃহশিক্ষক প্রোফাইল খুলুন</span>
+          <span>গৃহ শিক্ষক প্রোফাইল খুলুন</span>
         </Link>
       </div>
 
@@ -189,6 +208,7 @@ function HomeTutorContent() {
         sortOptions={TUTOR_SORT_OPTIONS}
         currentSort={sortBy}
         onSortChange={setSortBy}
+        subjectOptions={subjectOptions}
       />
 
       {loading ? (

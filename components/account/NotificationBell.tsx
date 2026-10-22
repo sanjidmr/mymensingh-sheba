@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { createPortal } from 'react-dom';
 import { Bell, CheckCircle2, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { bnRelativeTime } from '@/lib/catalog-types';
@@ -28,6 +29,20 @@ export default function NotificationBell() {
     useAuth();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+
+  const updatePosition = () => {
+    const trigger = triggerRef.current;
+    if (!trigger) return;
+    const rect = trigger.getBoundingClientRect();
+    const width = Math.min(320, window.innerWidth - 24);
+    setPosition({
+      top: rect.bottom + 8,
+      left: Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12)),
+    });
+  };
 
   const unreadCount = notifications.filter((notification) => !notification.isRead).length;
   const unreadLabel = unreadCount > 9 ? '9+' : String(unreadCount);
@@ -37,6 +52,7 @@ export default function NotificationBell() {
   // keep showing after the owner has looked at the list.
   const toggleOpen = () => {
     const next = !open;
+    if (next) updatePosition();
     setOpen(next);
     if (next && unreadCount > 0) void markNotificationsReadAll();
   };
@@ -44,24 +60,33 @@ export default function NotificationBell() {
   useEffect(() => {
     if (!open) return;
     const onPointerDown = (event: MouseEvent | TouchEvent) => {
-      if (!containerRef.current?.contains(event.target as Node)) setOpen(false);
+      const target = event.target as Node;
+      if (!containerRef.current?.contains(target) && !panelRef.current?.contains(target)) {
+        setOpen(false);
+      }
     };
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setOpen(false);
     };
+    const reposition = () => updatePosition();
     document.addEventListener('mousedown', onPointerDown);
     document.addEventListener('touchstart', onPointerDown);
     document.addEventListener('keydown', onKeyDown);
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
     return () => {
       document.removeEventListener('mousedown', onPointerDown);
       document.removeEventListener('touchstart', onPointerDown);
       document.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
     };
   }, [open]);
 
   return (
     <div ref={containerRef} className="relative shrink-0">
       <button
+        ref={triggerRef}
         type="button"
         onClick={toggleOpen}
         aria-haspopup="dialog"
@@ -79,11 +104,13 @@ export default function NotificationBell() {
         )}
       </button>
 
-      {open && (
+      {open && position && typeof document !== 'undefined' && createPortal(
         <div
+          ref={panelRef}
           role="dialog"
           aria-label="সাম্প্রতিক নোটিফিকেশন"
-          className="absolute right-0 z-50 mt-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl border border-brand-100 bg-white shadow-lg shadow-brand-900/5"
+          style={{ position: 'fixed', top: position.top, left: position.left, width: 'min(20rem, calc(100vw - 1.5rem))', maxHeight: `calc(100dvh - ${position.top + 12}px)` }}
+          className="z-[1000] overflow-y-auto overscroll-contain rounded-2xl border border-brand-100 bg-white shadow-lg shadow-brand-900/5"
         >
           <div className="flex items-center justify-between gap-2 border-b border-brand-100 px-4 py-3">
             <span className="text-[13px] font-extrabold text-ink-900">নোটিফিকেশন</span>
@@ -161,7 +188,8 @@ export default function NotificationBell() {
               আরও দেখুন
             </Link>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

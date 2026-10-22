@@ -1,10 +1,10 @@
 'use client';
 
-import React, { useEffect, useRef, useSyncExternalStore } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, RotateCcw } from 'lucide-react';
+import { X, Check, RotateCcw, Search, ChevronDown } from 'lucide-react';
 import { LIGHT_FOCUS, DARK_FOCUS } from '@/components/about/AboutSectionBits';
-import type { FilterGroup, FilterState } from '@/lib/directory-filters';
+import type { FilterGroup, FilterOption, FilterState } from '@/lib/directory-filters';
 import { countActiveFilters, getSelected, optionLabel } from '@/lib/directory-filters';
 
 export interface FilterSheetProps {
@@ -27,9 +27,19 @@ export interface FilterSheetProps {
  * Rendered into `document.body` via a portal so it is never clipped by a
  * page's `overflow-x-clip` container, and it owns body scroll lock plus
  * Escape-to-close, matching the behaviour of the other modal surfaces on the
- * site. Groups render as stacked rows on a phone and as a two-column grid from
- * `sm`, with a hard cap on group height so a long facet list scrolls inside
- * the sheet rather than pushing the apply button off-screen.
+ * site.
+ *
+ * Every facet is ONE button rather than a printed list of its options. A page
+ * with 48 areas (or a provider list that grows with the database) would
+ * otherwise bury the rest of the filters under names, and on a phone a wall of
+ * chips is unusable. Tapping the button expands a search field over that
+ * facet's options in place — a "এলাকা নির্বাচন করুন" / "সুবিধা নির্বাচন করুন"
+ * control that only then shows what it can offer.
+ *
+ * The picker expands inline rather than as a nested modal on purpose: this
+ * panel animates with a `transform`, and a transformed ancestor becomes the
+ * containing block for a `position: fixed` overlay, so a nested modal would be
+ * anchored to the sheet instead of the viewport.
  */
 export default function FilterSheet({
   open,
@@ -44,6 +54,15 @@ export default function FilterSheet({
   applyLabel,
 }: FilterSheetProps) {
   const panelRef = useRef<HTMLDivElement | null>(null);
+
+  /** Which facet's picker is expanded, and the search text inside it. */
+  const [openFacet, setOpenFacet] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const closeSheet = useCallback(() => {
+    setOpenFacet(null);
+    setQuery('');
+    onClose();
+  }, [onClose]);
 
   // A portal can only be created in the browser, but that is not enough on its
   // own: a `typeof document === 'undefined'` guard makes the *server* render
@@ -73,12 +92,15 @@ export default function FilterSheet({
     };
   }, [open]);
 
-  // Escape closes, and focus moves into the panel so keyboard users are not
-  // left behind on the trigger.
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key !== 'Escape') return;
+      if (openFacet) {
+        setOpenFacet(null);
+        return;
+      }
+      closeSheet();
     };
     document.addEventListener('keydown', onKey);
     const raf = requestAnimationFrame(() => panelRef.current?.focus());
@@ -86,7 +108,7 @@ export default function FilterSheet({
       document.removeEventListener('keydown', onKey);
       cancelAnimationFrame(raf);
     };
-  }, [open, onClose]);
+  }, [open, closeSheet, openFacet]);
 
   if (!mounted) return null;
 
@@ -106,6 +128,18 @@ export default function FilterSheet({
     onDraftChange({ ...draft, [group.id]: current[0] === optionId ? undefined : optionId });
   };
 
+  const clearGroup = (group: FilterGroup) => {
+    onDraftChange({
+      ...draft,
+      [group.id]: group.type === 'multi' ? [] : undefined,
+    });
+  };
+
+  const openPicker = (group: FilterGroup) => {
+    setOpenFacet(group.id);
+    setQuery('');
+  };
+
   return createPortal(
     <div
       className={`fixed inset-0 z-[90] flex items-end justify-center sm:items-center ${
@@ -114,7 +148,7 @@ export default function FilterSheet({
       aria-hidden={!open}
     >
       <div
-        onClick={onClose}
+        onClick={closeSheet}
         className={`absolute inset-0 bg-brand-950/45 transition-opacity duration-300 ${
           open ? 'opacity-100' : 'opacity-0'
         }`}
@@ -136,7 +170,7 @@ export default function FilterSheet({
           <h2 className="text-base font-extrabold text-ink-900">ফিল্টার</h2>
           <button
             type="button"
-            onClick={onClose}
+            onClick={closeSheet}
             aria-label="ফিল্টার বন্ধ করুন"
             className={`flex h-9 w-9 items-center justify-center rounded-lg text-ink-500 transition-colors hover:bg-mist-50 hover:text-ink-900 ${LIGHT_FOCUS}`}
           >
@@ -147,54 +181,73 @@ export default function FilterSheet({
         {/* Facets */}
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-3">
           {groups.map((group) => {
-            const selected = getSelected(group, draft);
+            const selected = getSelected(group, draft).filter((id) => id !== 'all');
+            const isPickerOpen = openFacet === group.id;
+            const buttonLabel = selected.length > 0
+              ? 'পরিবর্তন করুন'
+              : (group.pickerLabelBn ?? `${group.labelBn} নির্বাচন করুন`);
+
             return (
               <fieldset key={group.id} className="border-b border-brand-100/80 py-3 first:pt-0 last:border-0">
-                <legend className="mb-2 text-[13px] font-extrabold text-ink-800">
+                <legend className="mb-1.5 text-[13px] font-extrabold text-ink-800">
                   {group.labelBn}
                 </legend>
 
-                <div
-                  className={
-                    group.compact
-                      ? 'flex flex-wrap gap-1.5'
-                      : 'grid gap-1.5 sm:grid-cols-2 sm:gap-x-3'
-                  }
-                >
-                  {group.options.map((option) => {
-                    const isSelected = selected.includes(option.id);
-                    return (
+                {/* What is already chosen stays visible and removable, so the
+                    sheet never hides a filter the reader set a moment ago. */}
+                {selected.length > 0 && (
+                  <div className="mb-1.5 flex flex-wrap gap-1.5">
+                    {selected.map((id) => (
                       <button
-                        key={option.id}
+                        key={id}
                         type="button"
-                        role={group.type === 'multi' ? 'checkbox' : 'radio'}
-                        aria-checked={isSelected}
-                        onClick={() => toggle(group, option.id)}
-                        className={`flex min-h-[40px] w-full items-center gap-2 rounded-lg border px-2.5 text-left text-[13px] font-medium transition-colors ${
-                          group.compact ? 'w-auto' : ''
-                        } ${
-                          isSelected
-                            ? 'border-brand-600 bg-brand-50 text-brand-800 font-bold'
-                            : 'border-brand-100 bg-white text-ink-600 hover:border-brand-200 hover:bg-mist-50'
-                        } ${LIGHT_FOCUS}`}
+                        onClick={() => toggle(group, id)}
+                        className={`inline-flex max-w-full items-center gap-1 rounded-md border border-brand-300 bg-brand-50 py-1 pl-2 pr-1 text-[11px] font-semibold text-brand-800 transition-colors hover:border-brand-400 hover:bg-brand-100 ${LIGHT_FOCUS}`}
                       >
-                        <span
-                          aria-hidden="true"
-                          className={`flex h-4 w-4 shrink-0 items-center justify-center border transition-colors ${
-                            group.type === 'multi' ? 'rounded-[4px]' : 'rounded-full'
-                          } ${
-                            isSelected
-                              ? 'border-brand-600 bg-brand-600 text-white'
-                              : 'border-brand-200 bg-white'
-                          }`}
-                        >
-                          {isSelected && <Check className="h-3 w-3" strokeWidth={3} />}
-                        </span>
-                        <span className="truncate">{option.labelBn}</span>
+                        <span className="max-w-[170px] truncate">{optionLabel(group, id)}</span>
+                        <X className="h-3 w-3 shrink-0" aria-hidden="true" />
+                        <span className="sr-only">— {group.labelBn} ফিল্টার সরান</span>
                       </button>
-                    );
-                  })}
-                </div>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => openPicker(group)}
+                  aria-expanded={isPickerOpen}
+                  className={`inline-flex min-h-[44px] w-full items-center justify-between gap-2 rounded-lg border px-3 text-left text-[13px] font-semibold transition-colors ${LIGHT_FOCUS} ${
+                    isPickerOpen
+                      ? 'border-brand-600 bg-brand-50 text-brand-800'
+                      : selected.length > 0
+                      ? 'border-brand-200 bg-brand-50/60 text-brand-800 hover:bg-brand-50'
+                      : 'border-brand-200 bg-white text-ink-600 hover:border-brand-300 hover:bg-mist-50'
+                  }`}
+                >
+                  <span className="min-w-0 flex-1 truncate">{buttonLabel}</span>
+                  {selected.length > 0 && (
+                    <span className="inline-flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-accent-400 px-1 text-[11px] font-extrabold text-brand-950">
+                      {selected.length}
+                    </span>
+                  )}
+                  <ChevronDown
+                    className={`h-4 w-4 shrink-0 text-ink-400 transition-transform duration-150 ${
+                      isPickerOpen ? 'rotate-180' : ''
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+
+                {isPickerOpen && (
+                  <FacetPickerList
+                    group={group}
+                    selected={getSelected(group, draft)}
+                    query={query}
+                    onQueryChange={setQuery}
+                    onToggle={(optionId) => toggle(group, optionId)}
+                    onClear={() => clearGroup(group)}
+                  />
+                )}
               </fieldset>
             );
           })}
@@ -232,6 +285,120 @@ export default function FilterSheet({
     </div>,
     document.body
   );
+}
+
+/**
+ * The expanded half of one facet: a search field over that facet's options.
+ *
+ * Search runs over the visible label, the option id and any `searchTerms` the
+ * facet declared (an area's English name and transliterations, for example),
+ * so typing "charpara" finds "চরপাড়া" without the caller duplicating a search
+ * index here.
+ */
+function FacetPickerList({
+  group,
+  selected,
+  query,
+  onQueryChange,
+  onToggle,
+  onClear,
+}: {
+  group: FilterGroup;
+  selected: string[];
+  query: string;
+  onQueryChange: (value: string) => void;
+  onToggle: (optionId: string) => void;
+  onClear: () => void;
+}) {
+  const matches = useMemo(
+    () => group.options.filter((option) => optionMatches(option, query)),
+    [group, query]
+  );
+
+  return (
+    <div className="mt-2 space-y-2">
+      <div className="relative">
+        <Search
+          className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400"
+          aria-hidden="true"
+        />
+        <input
+          type="search"
+          value={query}
+          onChange={(e) => onQueryChange(e.target.value)}
+          placeholder="নাম লিখে খুঁজুন…"
+          aria-label={`${group.labelBn} নির্বাচন করুন`}
+          className={`min-h-[44px] w-full rounded-lg border border-brand-200 bg-white pl-9 pr-8 text-[13px] text-ink-900 placeholder:text-ink-400 focus:border-brand-500 focus:outline-none ${LIGHT_FOCUS}`}
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => onQueryChange('')}
+            aria-label="খুঁজা মুছুন"
+            className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full text-ink-400 hover:bg-mist-50"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <div className="max-h-64 space-y-1 overflow-y-auto rounded-lg border border-brand-100">
+        {group.type === 'multi' && selected.length > 0 && (
+          <button
+            type="button"
+            onClick={onClear}
+            className="w-full px-3 py-2.5 text-left text-[12.5px] font-bold text-ink-400 transition-colors hover:bg-mist-50 hover:text-ink-700"
+          >
+            সব মুছুন
+          </button>
+        )}
+
+        {matches.length === 0 ? (
+          <p className="px-3 py-3 text-[12px] text-ink-500">
+            কোনো {group.labelBn} পাওয়া যায়নি। নাম একটু ভিন্ন লিখে দেখুন।
+          </p>
+        ) : (
+          matches.map((option) => {
+            const isSelected = selected.includes(option.id);
+            return (
+              <button
+                key={option.id}
+                type="button"
+                role={group.type === 'multi' ? 'checkbox' : 'radio'}
+                aria-checked={isSelected}
+                onClick={() => onToggle(option.id)}
+                className={`flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left text-[13px] font-semibold transition-colors ${
+                  isSelected ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-mist-50'
+                }`}
+              >
+                <span className="truncate">{option.labelBn}</span>
+                {isSelected && (
+                  <Check
+                    className="h-3.5 w-3.5 shrink-0 text-brand-600"
+                    strokeWidth={3}
+                    aria-hidden="true"
+                  />
+                )}
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * Whether an option matches the picker's search text. An empty query matches
+ * everything, which is what shows the full facet before the reader types.
+ */
+function optionMatches(option: FilterOption, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const haystacks = [option.labelBn, option.id, ...(option.searchTerms ?? [])].map((term) =>
+    term.toLowerCase()
+  );
+  return haystacks.some((term) => term.includes(q));
 }
 
 /** Re-exported so pages can show a chip label without importing two modules. */

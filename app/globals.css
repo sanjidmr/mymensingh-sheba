@@ -334,8 +334,19 @@
   .mms-fade-in {
     animation: mms-fade-in 150ms ease-out both;
   }
+  @keyframes mms-live-marquee {
+    to { transform: translateX(-50%); }
+  }
+  @media (max-width: 1023px) {
+    .mms-live-marquee-track {
+      animation: mms-live-marquee 38s linear infinite;
+    }
+  }
   @media (prefers-reduced-motion: reduce) {
     .mms-fade-in {
+      animation: none;
+    }
+    .mms-live-marquee-track {
       animation: none;
     }
   }

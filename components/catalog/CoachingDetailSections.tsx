@@ -2,7 +2,11 @@
 
 /**
  * CoachingDetailSections — the coaching-only body of the detail page:
- * teachers, batch announcements, then the shared review section.
+ * teachers and batch announcements.
+ *
+ * Reviews deliberately live outside this component (see `CoachingDetail`), so
+ * on a phone the call/WhatsApp actions appear before the feedback and the
+ * related centres stay at the very bottom.
  *
  * It is fetched client-side (like the rest of the curated directories) so the
  * detail page keeps its data-access contract and stays honest: if the tables
@@ -11,18 +15,20 @@
  */
 import React, { useEffect, useState } from 'react';
 import { CalendarDays, Clock, GraduationCap, Loader2, UserRound } from 'lucide-react';
-import DirectoryReviews from '@/components/catalog/DirectoryReviews';
 import { fetchCoachingBatches, fetchCoachingTeachers } from '@/lib/catalog-service';
-import { bnDate, tagLabel, type CoachingBatch, type CoachingTeacher } from '@/lib/catalog-types';
+import {
+  bnDate,
+  coachingTimeRange,
+  coachingWeekdayLabel,
+  tagLabel,
+  type CoachingBatch,
+  type CoachingTeacher,
+} from '@/lib/catalog-types';
 
 export default function CoachingDetailSections({
   listingId,
-  ratingAvg,
-  ratingCount,
 }: {
   listingId: string;
-  ratingAvg?: number;
-  ratingCount?: number;
 }) {
   const [teachers, setTeachers] = useState<CoachingTeacher[]>([]);
   const [batches, setBatches] = useState<CoachingBatch[]>([]);
@@ -93,7 +99,7 @@ export default function CoachingDetailSections({
       {/* --- batches --- */}
       <section className="mt-6" aria-labelledby="coaching-batches-heading">
         <h2 id="coaching-batches-heading" className="flex items-center gap-2 text-[15px] font-extrabold text-ink-900 sm:text-base">
-          <CalendarDays className="h-4 w-4 text-brand-600" aria-hidden="true" /> নতুন ব্যাচের ঘোষণা
+          <CalendarDays className="h-4 w-4 text-brand-600" aria-hidden="true" /> নতুন ব্যাচ
         </h2>
         {loading ? (
           <p className="mt-2 flex items-center gap-2 text-[12.5px] text-ink-500">
@@ -105,7 +111,7 @@ export default function CoachingDetailSections({
           <ul className="mt-2 space-y-2">
             {batches.map((b) => (
               <li key={b.id} className="rounded-xl border border-brand-100 bg-white p-3">
-                <p className="text-[13.5px] font-bold text-ink-900">{b.titleBn}</p>
+                <p className="text-[13.5px] font-bold text-ink-900">নতুন ব্যাচ</p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-ink-500">
                   {bnDate(b.startDate) && (
                     <span className="inline-flex items-center gap-1">
@@ -113,10 +119,13 @@ export default function CoachingDetailSections({
                       শুরু: {bnDate(b.startDate)}
                     </span>
                   )}
-                  {b.startTime && (
+                  {b.weekdayIds.length > 0 && <span>{coachingWeekdayLabel(b.weekdayIds)}</span>}
+                  {(b.startTimeLocal || b.startTime) && (
                     <span className="inline-flex items-center gap-1">
                       <Clock className="h-3.5 w-3.5 text-brand-500" aria-hidden="true" />
-                      {b.startTime}
+                      {b.startTimeLocal && b.endTimeLocal
+                        ? coachingTimeRange(b.startTimeLocal, b.endTimeLocal)
+                        : b.startTime}
                     </span>
                   )}
                 </div>
@@ -126,13 +135,6 @@ export default function CoachingDetailSections({
           </ul>
         )}
       </section>
-
-      <DirectoryReviews
-        category="coaching"
-        listingId={listingId}
-        ratingAvg={ratingAvg}
-        ratingCount={ratingCount}
-      />
     </>
   );
 }

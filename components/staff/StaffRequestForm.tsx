@@ -9,7 +9,7 @@ import { STAFF_PREFERRED_TIMES } from '@/lib/staff-types';
 import type { StaffProfile, StaffServiceUiConfig } from '@/lib/staff-types';
 import { STAFF_ACCENT_CLASSES } from '@/lib/staff-labels';
 import { uploadRequestAttachment } from '@/lib/staff-service';
-import { getAllMCCAreas } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import { trackFormSubmit } from '@/lib/site-analytics';
 
 const WORK_TYPE_OPTIONS: Record<string, Array<{ id: string; labelBn: string }>> = {
@@ -160,19 +160,14 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
 
           <div>
             <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">আপনার এলাকা:</label>
-            <select
-              required
+            <LocationSelectInput
+              id="staff-request-area"
               value={visitorArea}
-              onChange={(e) => setVisitorArea(e.target.value)}
-              className="w-full px-3 py-2.5 min-h-11 bg-slate-50 border border-slate-200 rounded-xl text-[16px] sm:min-h-0 sm:text-xs"
-            >
-              <option value="">এলাকা নির্বাচন করুন</option>
-              {getAllMCCAreas({ activeOnly: true }).map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nameBn}
-                </option>
-              ))}
-            </select>
+              onChange={(areaId) => setVisitorArea(areaId ?? '')}
+              placeholder="আপনার এলাকা নির্বাচন করুন"
+              allowClear={false}
+              size="sm"
+            />
           </div>
 
           <div>

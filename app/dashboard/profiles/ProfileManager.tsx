@@ -4,21 +4,28 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
-  BookOpen,
   CircleAlert,
   GraduationCap,
   Heart,
   Pencil,
   Plus,
   RefreshCw,
+  Trash2,
   School,
   ShieldCheck,
   Wifi,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { fetchMyServiceListings } from '@/lib/catalog-service';
+import { deleteCustomerServiceListing, fetchMyServiceListings } from '@/lib/catalog-service';
+import { deleteOwnTutorProfile } from '@/lib/home-tutor-service';
+import { deleteOwnBloodDonorProfile } from '@/lib/blood-donor-service';
+import { TutorAvatar } from '@/components/home-tutor/TutorCard';
+import { DonorAvatar } from '@/components/blood-donor/DonorCard';
+import { getAreaById } from '@/lib/locations';
 import {
-  bnRelativeTime,
+  areaNames,
+  bnTakaRange,
+  COACHING_CATEGORIES,
   SERVICE_LISTING_STATUS_META,
   toBn,
   type ServiceListing,
@@ -32,26 +39,14 @@ import {
   StatusBadge,
   statusTone,
   TEXT_LINK,
-  type StatusTone,
 } from '@/components/account/ProfileUI';
 
-interface OpenInfo {
-  statusLabel: string;
-  tone: StatusTone;
-  count: number;
-  latestDate: string;
-}
-
 interface ProfileCard {
-  key: string;
+  key: 'tutor' | 'donor' | 'wifi' | 'coaching';
   href: string;
   icon: LucideIcon;
   title: string;
   description: string;
-  actionLabel: string;
-  actionIcon: LucideIcon;
-  open: OpenInfo | null;
-  note?: string;
 }
 
 function firstError(reason: unknown, fallback: string) {
@@ -64,6 +59,8 @@ export default function ProfileManager() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [reloadKey, setReloadKey] = useState(0);
+  const [actionError, setActionError] = useState('');
+  const [deletingId, setDeletingId] = useState('');
 
   useEffect(() => {
     let active = true;
@@ -77,7 +74,7 @@ export default function ProfileManager() {
       } catch (cause) {
         if (active) {
           setServiceListings([]);
-          setError(firstError(cause, 'WiFi ও কোচিং তালিকা লোড করা যায়নি।'));
+          setError(firstError(cause, 'ওয়াইফাই ও কোচিং প্রোফাইল লোড করা যায়নি।'));
         }
       } finally {
         if (active) setLoading(false);
@@ -90,96 +87,34 @@ export default function ProfileManager() {
     };
   }, [reloadKey]);
 
-  const latestServiceOpen = (category: 'wifi' | 'coaching'): OpenInfo | null => {
-    const matches = serviceListings
-      .filter((row) => row.category === category)
-      .sort(
-        (a, b) =>
-          new Date(b.updatedAt || b.createdAt).getTime() -
-          new Date(a.updatedAt || a.createdAt).getTime()
-      );
-    if (matches.length === 0) return null;
-    const latest = matches[0];
-    const meta = SERVICE_LISTING_STATUS_META[latest.status ?? 'draft'];
-    return {
-      statusLabel: meta.labelBn,
-      tone: statusTone(latest.status ?? 'draft'),
-      count: matches.length,
-      latestDate: latest.updatedAt || latest.createdAt,
-    };
-  };
-
-  const serviceHref = (category: 'wifi' | 'coaching', open: OpenInfo | null) =>
-    open || error ? '/dashboard/service-listings' : `/dashboard/${category}/new`;
-
-  const wifiOpen = latestServiceOpen('wifi');
-  const coachingOpen = latestServiceOpen('coaching');
-
   const entries: ProfileCard[] = [
     {
       key: 'tutor',
-      href: '/profile/home-tutor',
+      href: '/profile/home-tutor/setup',
       icon: GraduationCap,
-      title: 'গৃহশিক্ষক',
-      description: 'ক্লাস, বিষয়, অভিজ্ঞতা ও পড়ানোর সময়সূচি দিয়ে শিক্ষক প্রোফাইল তৈরি করুন।',
-      actionLabel: homeTutorProfile ? 'প্রোফাইল পরিচালনা করুন' : 'প্রোফাইল খুলুন',
-      actionIcon: homeTutorProfile ? Pencil : Plus,
-      open: homeTutorProfile
-        ? {
-            statusLabel: TUTOR_STATUS_META[homeTutorProfile.status].labelBn,
-            tone: statusTone(homeTutorProfile.status),
-            count: 1,
-            latestDate: homeTutorProfile.updatedAt || homeTutorProfile.createdAt,
-          }
-        : null,
+      title: 'GRS শিক্ষক অ্যাকাউন্ট খুলুন',
+      description: 'শিক্ষাগত যোগ্যতা, পড়ানোর বিষয় ও পছন্দের এলাকা দিয়ে শিক্ষক প্রোফাইল পরিচালনা করুন।',
     },
     {
       key: 'donor',
-      href: '/profile/blood-donor',
+      href: '/profile/blood-donor/setup',
       icon: Heart,
-      title: 'রক্তদাতা',
-      description:
-        'রক্তের গ্রুপ ও এলাকা দিয়ে রক্তদাতা প্রোফাইল তৈরি করুন। আপনার ফোন নম্বর প্রকাশ্যে যায় না।',
-      actionLabel: bloodDonorProfile ? 'প্রোফাইল পরিচালনা করুন' : 'প্রোফাইল খুলুন',
-      actionIcon: bloodDonorProfile ? Pencil : Plus,
-      open: bloodDonorProfile
-        ? {
-            statusLabel: DONOR_STATUS_META[bloodDonorProfile.status].labelBn,
-            tone: statusTone(bloodDonorProfile.status),
-            count: 1,
-            latestDate: bloodDonorProfile.updatedAt || bloodDonorProfile.createdAt,
-          }
-        : null,
+      title: 'রক্তদাতা অ্যাকাউন্ট খুলুন',
+      description: 'রক্তের গ্রুপ ও এলাকা দিয়ে রক্তদাতা প্রোফাইল পরিচালনা করুন; ব্যক্তিগত নম্বর গোপন থাকে।',
     },
     {
       key: 'wifi',
-      href: serviceHref('wifi', wifiOpen),
+      href: '/dashboard/wifi/new',
       icon: Wifi,
-      title: 'WiFi',
-      description: 'আপনার ইন্টারনেট প্যাকেজ, গতি, এলাকা ও যোগাযোগের তথ্য যোগ করুন।',
-      actionLabel: wifiOpen
-        ? 'তালিকা পরিচালনা করুন'
-        : error
-          ? 'তালিকা দেখুন'
-          : 'WiFi তথ্য যোগ করুন',
-      actionIcon: wifiOpen ? Pencil : error ? BookOpen : Plus,
-      open: wifiOpen,
-      note: error ? 'অবস্থা লোড করা যায়নি; তালিকা পেজে দেখুন।' : undefined,
+      title: 'ওয়াইফাই অ্যাকাউন্ট খুলুন',
+      description: 'ইন্টারনেট প্যাকেজ, গতি, সেবা এলাকা ও যোগাযোগের তথ্য পরিচালনা করুন।',
     },
     {
       key: 'coaching',
-      href: serviceHref('coaching', coachingOpen),
+      href: '/dashboard/coaching/new',
       icon: School,
-      title: 'কোচিং সেন্টার',
-      description: 'কোচিং সেন্টারের ঠিকানা, ক্লাস, বিষয় ও ফি যোগ করুন।',
-      actionLabel: coachingOpen
-        ? 'তালিকা পরিচালনা করুন'
-        : error
-          ? 'তালিকা দেখুন'
-          : 'কোচিং তথ্য যোগ করুন',
-      actionIcon: coachingOpen ? Pencil : error ? BookOpen : Plus,
-      open: coachingOpen,
-      note: error ? 'অবস্থা লোড করা যায়নি; তালিকা পেজে দেখুন।' : undefined,
+      title: 'কোচিং সেন্টার অ্যাকাউন্ট খুলুন',
+      description: 'কোচিং ক্যাটাগরি, এলাকা, ক্লাস, বিষয় ও ফি দিয়ে প্রতিষ্ঠানের তথ্য পরিচালনা করুন।',
     },
   ];
 
@@ -209,6 +144,31 @@ export default function ProfileManager() {
 
   const reload = () => setReloadKey((key) => key + 1);
 
+  const removeProfile = async (kind: ProfileCard['key'], id: string, label: string) => {
+    const confirmation = kind === 'donor'
+      ? `“${label}” রক্তদাতা প্রোফাইলটি স্থায়ীভাবে মুছবেন? সম্পর্কিত রিপোর্ট ও যোগাযোগের রেকর্ডও মুছে যেতে পারে।`
+      : `“${label}” প্রোফাইলটি স্থায়ীভাবে মুছবেন? এই কাজ ফেরানো যাবে না।`;
+    if (!window.confirm(confirmation)) return;
+    setDeletingId(id);
+    setActionError('');
+    try {
+      const result = kind === 'tutor'
+        ? await deleteOwnTutorProfile(id)
+        : kind === 'donor'
+          ? await deleteOwnBloodDonorProfile(id)
+          : await deleteCustomerServiceListing(id);
+      if (!result.success) {
+        setActionError(result.error || 'প্রোফাইলটি মুছতে ব্যর্থ হয়েছে।');
+        return;
+      }
+      window.location.reload();
+    } catch (cause) {
+      setActionError(firstError(cause, 'প্রোফাইলটি মুছতে ব্যর্থ হয়েছে।'));
+    } finally {
+      setDeletingId('');
+    }
+  };
+
   return (
     <div className="space-y-4 sm:space-y-5">
       <header>
@@ -216,7 +176,7 @@ export default function ProfileManager() {
           সেবা প্রোফাইল
         </h1>
         <p className="mt-1.5 max-w-2xl text-[12px] leading-relaxed text-ink-500">
-          গৃহশিক্ষক, রক্তদাতা, WiFi ও কোচিং—আপনার সেবা প্রোফাইল এক জায়গায় তৈরি ও পরিচালনা করুন।
+          শিক্ষক, রক্তদাতা, ওয়াইফাই ও কোচিং—আপনার সেবা প্রোফাইল এক জায়গায় তৈরি ও পরিচালনা করুন।
           সাধারণ পোস্ট আলাদা;{' '}
           <Link
             href="/dashboard/new"
@@ -253,7 +213,7 @@ export default function ProfileManager() {
           <div className="flex min-w-0 items-start gap-2.5">
             <CircleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
             <p className="text-[12px] leading-relaxed text-amber-900">
-              WiFi ও কোচিং তালিকার অবস্থা লোড করা যায়নি। আপনার গৃহশিক্ষক ও রক্তদাতা প্রোফাইল ঠিক আছে।
+              ওয়াইফাই ও কোচিং প্রোফাইলের অবস্থা লোড করা যায়নি। শিক্ষক ও রক্তদাতা প্রোফাইল ঠিক আছে।
             </p>
           </div>
           <button type="button" onClick={reload} className={cn(SECONDARY_BUTTON, 'shrink-0 border-amber-200 text-amber-900 hover:bg-amber-50')}>
@@ -262,133 +222,173 @@ export default function ProfileManager() {
           </button>
         </div>
       )}
+      {actionError && (
+        <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-[12px] leading-relaxed text-rose-800">
+          {actionError}
+        </p>
+      )}
 
       {loading ? (
         <ProfileCardsSkeleton />
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
-          {entries.map((card) => {
-            const Icon = card.icon;
-            const ActionIcon = card.actionIcon;
-            const latestLabel = card.open ? bnRelativeTime(card.open.latestDate) : undefined;
-            const note =
-              card.note ??
-              (card.open
-                ? card.open.count > 1
-                  ? `${toBn(card.open.count)}টি তালিকা`
-                  : latestLabel
-                    ? `সর্বশেষ হালনাগাদ ${latestLabel}`
-                    : undefined
-                : undefined);
-
-            return (
-              <li key={card.key} className="min-w-0">
-                <Link
-                  href={card.href}
-                  className={cn(
-                    'group flex h-full min-w-0 flex-col rounded-xl border border-ink-900/[0.08] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,20,0.03)] transition-colors hover:border-ink-900/20 hover:bg-mist-50/30 sm:p-5',
-                    LIGHT_FOCUS
-                  )}
-                >
-                  <span className="flex items-start justify-between gap-3">
-                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-ink-900/[0.05] bg-mist-50 text-ink-600">
-                      <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                    </span>
-                    {card.open && (
-                      <StatusBadge label={card.open.statusLabel} tone={card.open.tone} />
-                    )}
-                  </span>
-
-                  <span className="mt-3 block break-words text-[14px] font-bold text-ink-900">
-                    {card.title}
-                  </span>
-                  <span className="mt-1 block text-[12px] leading-relaxed text-ink-500">
-                    {card.description}
-                  </span>
-                  {note && (
-                    <span className="mt-2 block text-[11.5px] leading-relaxed text-ink-500">
-                      {note}
-                    </span>
-                  )}
-
-                  <span className="mt-auto flex items-center gap-1.5 border-t border-ink-900/[0.06] pt-3 text-[12px] font-semibold text-ink-800">
-                    <ActionIcon className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
-                    <span className="min-w-0 break-words">{card.actionLabel}</span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-
-      <ApprovalExplainer />
-
-      {!loading && !error && serviceListings.length > 0 && (
-        <section aria-labelledby="service-list-heading">
-          <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <h2 id="service-list-heading" className="text-[13.5px] font-bold text-ink-900">
-                WiFi ও কোচিং তালিকা
-              </h2>
-              <p className="mt-0.5 text-[12px] text-ink-500">
-                আপনার সব তালিকার সর্বশেষ অবস্থা ও সম্পাদনার লিংক।
-              </p>
-            </div>
-            <Link href="/dashboard/service-listings" className={cn(TEXT_LINK, 'shrink-0')}>
-              সব তালিকা
-            </Link>
+        <section aria-labelledby="profile-options-heading">
+          <div className="mb-2">
+            <h2 id="profile-options-heading" className="text-[14px] font-bold text-ink-900">
+              নতুন প্রোফাইল খুলুন
+            </h2>
+            <p className="mt-0.5 text-[12px] text-ink-500">
+              প্রতিটি সেবার একটি অ্যাকাউন্ট এখান থেকে পরিচালনা করুন।
+            </p>
           </div>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {entries.map((card) => {
+              const Icon = card.icon;
+              const tutor = card.key === 'tutor' ? homeTutorProfile : null;
+              const donor = card.key === 'donor' ? bloodDonorProfile : null;
+              const serviceRows = card.key === 'wifi' || card.key === 'coaching'
+                ? sortedServiceListings.filter((listing) => listing.category === card.key)
+                : [];
+              const hasProfile = Boolean(tutor || donor || serviceRows.length > 0);
+              const latestStatus = tutor
+                ? { label: TUTOR_STATUS_META[tutor.status].labelBn, tone: statusTone(tutor.status) }
+                : donor
+                  ? { label: DONOR_STATUS_META[donor.status].labelBn, tone: statusTone(donor.status) }
+                  : serviceRows[0]
+                    ? {
+                        label: SERVICE_LISTING_STATUS_META[serviceRows[0].status ?? 'draft'].labelBn,
+                        tone: statusTone(serviceRows[0].status ?? 'draft'),
+                      }
+                    : null;
+              const displayTitle = hasProfile
+                ? card.title.replace(' অ্যাকাউন্ট খুলুন', ' অ্যাকাউন্ট')
+                : card.title;
 
-          <ul className="mt-2.5 divide-y divide-ink-900/[0.05] overflow-hidden rounded-xl border border-ink-900/[0.08] bg-white">
-            {sortedServiceListings.slice(0, 6).map((listing) => {
-              const meta = SERVICE_LISTING_STATUS_META[listing.status ?? 'draft'];
-              const Icon = listing.category === 'wifi' ? Wifi : BookOpen;
-              const updated = listing.updatedAt || listing.createdAt;
               return (
-                <li key={listing.id}>
-                  <Link
-                    href={`/dashboard/${listing.category}/${listing.id}/edit`}
-                    className={cn(
-                      'flex min-w-0 flex-wrap items-start gap-3 px-4 py-3 transition-colors hover:bg-mist-50/70 sm:flex-nowrap sm:items-center sm:px-5',
-                      LIGHT_FOCUS
+                <li key={card.key} className="min-w-0">
+                  <article className="flex h-full min-w-0 flex-col rounded-xl border border-ink-900/[0.08] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,20,0.03)] sm:p-5">
+                    <div className="flex items-start justify-between gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-ink-900/[0.05] bg-mist-50 text-ink-600">
+                        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                      </span>
+                      {latestStatus && <StatusBadge label={latestStatus.label} tone={latestStatus.tone} />}
+                    </div>
+                    <h3 className="mt-3 break-words text-[14px] font-bold text-ink-900">{displayTitle}</h3>
+                    <p className="mt-1 text-[12px] leading-relaxed text-ink-500">{card.description}</p>
+
+                    {tutor && (
+                      <div className="mt-3 rounded-lg border border-ink-900/[0.06] bg-mist-50/50 p-3">
+                        <div className="flex items-center gap-3">
+                          <TutorAvatar tutor={tutor} className="h-12 w-12 text-base" />
+                          <div className="min-w-0">
+                            <p className="break-words text-[13px] font-bold text-ink-900">{tutor.fullName}</p>
+                            <p className="mt-0.5 break-words text-[11.5px] text-ink-500">
+                              {tutor.qualification || tutor.institution}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-600">
+                          বিষয়: {tutor.preferredSubjects.join(' · ') || 'উল্লেখ নেই'}
+                        </p>
+                        <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600">
+                          এলাকা: {tutor.preferredAreas.map((id) => getAreaById(id)?.nameBn ?? id).join(' · ') || 'উল্লেখ নেই'}
+                        </p>
+                        <ProfileActionLinks
+                          editHref="/profile/home-tutor/setup"
+                          deleting={deletingId === tutor.id}
+                          onDelete={() => void removeProfile('tutor', tutor.id, tutor.fullName)}
+                        />
+                      </div>
                     )}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ink-900/[0.05] bg-mist-50 text-ink-500">
-                      <Icon className="h-4 w-4" aria-hidden="true" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                        <span className="break-words text-[12.5px] font-semibold text-ink-900">
-                          {listing.titleBn}
-                        </span>
-                        <StatusBadge label={meta.labelBn} tone={statusTone(listing.status ?? 'draft')} />
-                      </span>
-                      <span className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11.5px] text-ink-500">
-                        <span>{listing.category === 'wifi' ? 'WiFi' : 'কোচিং'}</span>
-                        {bnRelativeTime(updated) && <span>· {bnRelativeTime(updated)}</span>}
-                      </span>
-                    </span>
-                    <span className="inline-flex w-full shrink-0 items-center gap-1.5 pl-12 text-[11.5px] font-semibold text-ink-500 sm:w-auto sm:pl-0">
-                      <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
-                      সম্পাদনা
-                    </span>
-                  </Link>
+
+                    {donor && (
+                      <div className="mt-3 rounded-lg border border-ink-900/[0.06] bg-mist-50/50 p-3">
+                        <div className="flex items-center gap-3">
+                          <DonorAvatar donor={donor} className="h-12 w-12 text-base" />
+                          <div className="min-w-0">
+                            <p className="break-words text-[13px] font-bold text-ink-900">{donor.fullName}</p>
+                            <p className="mt-0.5 text-[11.5px] text-ink-500">
+                              {donor.bloodGroup} · {getAreaById(donor.areaId)?.nameBn ?? donor.areaId}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="mt-2 text-[11.5px] text-ink-600">
+                          {donor.isAvailable ? 'রক্তদানে প্রস্তুত' : 'বর্তমানে রক্তদানে বিরতিতে'}
+                        </p>
+                        <ProfileActionLinks
+                          editHref="/profile/blood-donor/setup"
+                          deleting={deletingId === donor.id}
+                          onDelete={() => void removeProfile('donor', donor.id, donor.fullName)}
+                        />
+                      </div>
+                    )}
+
+                    {serviceRows.map((listing) => {
+                      const status = listing.status ?? 'draft';
+                      const profileImage = listing.imageUrl || listing.logoUrl;
+                      const categoryLabel = COACHING_CATEGORIES.find(
+                        (item) => item.id === listing.coachingCategory
+                      )?.labelBn;
+                      const price = listing.category === 'wifi'
+                        ? bnTakaRange(listing.priceMin, listing.priceMax)
+                        : bnTakaRange(listing.monthlyFeeMin, listing.monthlyFeeMax);
+                      return (
+                        <div key={listing.id} className="mt-3 rounded-lg border border-ink-900/[0.06] bg-mist-50/50 p-3">
+                          <div className="flex items-center gap-3">
+                            <div
+                              role={profileImage ? 'img' : undefined}
+                              aria-label={profileImage ? listing.titleBn : undefined}
+                              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-ink-900/[0.06] bg-white bg-cover bg-center text-ink-500"
+                              style={profileImage ? { backgroundImage: `url(${JSON.stringify(profileImage)})` } : undefined}
+                            >
+                              {!profileImage && <Icon className="h-5 w-5" aria-hidden="true" />}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="break-words text-[13px] font-bold text-ink-900">{listing.titleBn}</p>
+                              <p className="mt-0.5 text-[11.5px] text-ink-500">
+                                {listing.category === 'coaching' ? categoryLabel || 'কোচিং সেন্টার' : 'ইন্টারনেট সেবা'}
+                                {price ? ` · ${price}${listing.category === 'coaching' ? '/মাস' : ''}` : ''}
+                              </p>
+                            </div>
+                            <StatusBadge label={SERVICE_LISTING_STATUS_META[status].labelBn} tone={statusTone(status)} />
+                          </div>
+                          <p className="mt-2 text-[11.5px] leading-relaxed text-ink-600">
+                            এলাকা: {areaNames(listing.areaIds) || 'উল্লেখ নেই'}
+                          </p>
+                          <ProfileActionLinks
+                            editHref={`/dashboard/${listing.category}/${listing.id}/edit`}
+                            deleting={deletingId === listing.id}
+                            onDelete={() => void removeProfile(card.key, listing.id, listing.titleBn)}
+                          />
+                        </div>
+                      );
+                    })}
+
+                    {!hasProfile && (card.key === 'tutor' || card.key === 'donor' || !error) && (
+                      <Link
+                        href={card.href}
+                        className={cn(
+                          'mt-auto inline-flex min-h-11 items-center gap-1.5 border-t border-ink-900/[0.06] pt-3 text-[12px] font-semibold text-ink-800',
+                          LIGHT_FOCUS
+                        )}
+                      >
+                        <Plus className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
+                        {card.title}
+                      </Link>
+                    )}
+                    {!hasProfile && error && (card.key === 'wifi' || card.key === 'coaching') && (
+                      <p role="status" className="mt-3 text-[11.5px] text-amber-800">
+                        আগে প্রোফাইলের অবস্থা লোড করুন; এরপর নতুন অ্যাকাউন্ট খোলা যাবে।
+                      </p>
+                    )}
+                  </article>
                 </li>
               );
             })}
           </ul>
-
-          {sortedServiceListings.length > 6 && (
-            <Link
-              href="/dashboard/service-listings"
-              className={cn('mt-2 inline-flex min-h-9 items-center text-[11.5px] font-semibold text-ink-500 hover:text-ink-900', LIGHT_FOCUS)}
-            >
-              আরও {toBn(sortedServiceListings.length - 6)}টি তালিকা দেখুন
-            </Link>
-          )}
         </section>
       )}
+
+      <ApprovalExplainer />
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-ink-900/[0.06] pt-4 text-[12px] text-ink-500">
         <span>সাধারণ পোস্ট (সংবাদ, চাকরি, কেনাবেচা) আলাদা পেজে তৈরি হয়।</span>
@@ -415,6 +415,37 @@ function SummaryValue({
       <span className="text-[15px] font-semibold leading-none text-ink-900">{value}</span>
       <span className="text-[11.5px] text-ink-500">{label}</span>
     </span>
+  );
+}
+
+function ProfileActionLinks({
+  editHref,
+  deleting,
+  onDelete,
+}: {
+  editHref: string;
+  deleting: boolean;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="mt-3 flex flex-wrap gap-2 border-t border-ink-900/[0.06] pt-3">
+      <Link
+        href={editHref}
+        className={cn(SECONDARY_BUTTON, 'min-h-9 px-3 text-[11.5px]', LIGHT_FOCUS)}
+      >
+        <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+        সম্পাদনা
+      </Link>
+      <button
+        type="button"
+        disabled={deleting}
+        onClick={onDelete}
+        className="inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-rose-200 px-3 text-[11.5px] font-semibold text-rose-700 transition-colors hover:bg-rose-50 disabled:cursor-wait disabled:opacity-60"
+      >
+        <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
+        {deleting ? 'মুছে ফেলা হচ্ছে…' : 'মুছুন'}
+      </button>
+    </div>
   );
 }
 

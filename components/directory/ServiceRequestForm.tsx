@@ -18,7 +18,8 @@ import {
   ImagePlus,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getAllMCCAreas, getAreaById } from '@/lib/locations';
+import { createAreaSource, getAllMCCAreas, getAreaById } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import { submitServiceRequest, type ServiceRequestDraft } from '@/lib/service-request-service';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 
@@ -311,25 +312,22 @@ export default function ServiceRequestForm({
           id={`${serviceSlug}-area`}
           label={areaPrompt}
           required
-          error={fieldErrors.areaId}
           icon={<MapPin className="h-3.5 w-3.5" aria-hidden="true" />}
         >
-          <select
+          <LocationSelectInput
             id={`${serviceSlug}-area`}
             value={form.areaId}
-            onChange={(e) => {
-              set('areaId')(e.target.value);
-              set('addressLine')(e.target.value ? getAreaById(e.target.value)?.nameBn ?? '' : '');
+            onChange={(areaId) => {
+              const selectedId = areaId ?? '';
+              set('areaId')(selectedId);
+              set('addressLine')(selectedId ? getAreaById(selectedId)?.nameBn ?? '' : '');
             }}
-            className={inputClass(fieldErrors.areaId)}
-          >
-            <option value="">এলাকা নির্বাচন করুন</option>
-            {areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.nameBn}
-              </option>
-            ))}
-          </select>
+            placeholder="আপনার এলাকা নির্বাচন করুন"
+            source={createAreaSource(areas)}
+            error={fieldErrors.areaId}
+            allowClear={false}
+            size="sm"
+          />
         </Field>
 
         <Field

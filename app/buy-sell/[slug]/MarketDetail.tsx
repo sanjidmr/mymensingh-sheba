@@ -394,24 +394,6 @@ export default function MarketDetail({ slug }: { slug: string }) {
               )}
             </div>
 
-            {/* Similar items. Without this, a reader whose buyer bought this one
-                has to go back and start again. */}
-            {similar.length > 0 && (
-              <section className="mt-4">
-                <h2 className="mb-2.5 flex items-center gap-2 text-[15px] font-extrabold text-ink-900">
-                  <Tag className="h-4 w-4 text-brand-600" aria-hidden="true" />
-                  আরও কিছু পণ্য
-                </h2>
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-4">
-                  {similar.map((item) => (
-                    <ProductCard key={item.id} post={item} now={now} />
-                  ))}
-                </div>
-              </section>
-            )}
-            {similarError && (
-              <p role="alert" className="mt-3 text-xs text-rose-700">{similarError}</p>
-            )}
           </div>
 
           {/* ---------------------------------------------------------------
@@ -506,6 +488,28 @@ export default function MarketDetail({ slug }: { slug: string }) {
             ))}
           </ul>
         </section>
+
+        {/* Suggestions sit at the very bottom, after the seller card and the
+            safety note, on every screen size. On a phone the old order put
+            "আরও কিছু পণ্য" between the item details and the call/WhatsApp
+            buttons — the reader had to scroll past other listings to reach the
+            seller. */}
+        {similar.length > 0 && (
+          <section className="mt-6 border-t border-mist-200 pt-5">
+            <h2 className="mb-2.5 flex items-center gap-2 text-[15px] font-extrabold text-ink-900">
+              <Tag className="h-4 w-4 text-brand-600" aria-hidden="true" />
+              আরও কিছু পণ্য
+            </h2>
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-4">
+              {similar.map((item) => (
+                <ProductCard key={item.id} post={item} now={now} />
+              ))}
+            </div>
+          </section>
+        )}
+        {similarError && (
+          <p role="alert" className="mt-3 text-xs text-rose-700">{similarError}</p>
+        )}
 
         <div className="mt-4 flex items-center gap-2">
           <Link

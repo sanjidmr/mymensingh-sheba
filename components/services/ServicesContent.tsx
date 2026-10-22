@@ -3,10 +3,11 @@
 import React, { useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { MapPin, Search } from 'lucide-react';
+import { Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import CommunityBandSection from '@/components/services/CommunityBandSection';
-import { getAllMCCAreas } from '@/lib/locations';
+import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import type { ServiceCategory } from '@/lib/services-data';
 
 const EMERGENCY_ROUTES: Record<string, string> = {
@@ -14,6 +15,22 @@ const EMERGENCY_ROUTES: Record<string, string> = {
   police: '/police',
   ambulance: '/ambulance',
   'fire-service': '/fireservice',
+};
+
+/**
+ * Community categories whose catalog slug is not their route.
+ *
+ * `buysell` is the catalog id but the public listing page is `/buy-sell`;
+ * without this map the tile linked to `/buysell` and 404'd. Jobs and news are
+ * kept explicit too, so each tile opens the directory that queries ONLY its own
+ * post kind instead of the mixed `/posts` feed.
+ */
+const COMMUNITY_ROUTES: Record<string, string> = {
+  buysell: '/buy-sell',
+  jobs: '/jobs',
+  news: '/news',
+  wifi: '/wifi',
+  coaching: '/coaching',
 };
 
 /**
@@ -74,29 +91,25 @@ export default function ServicesContent({ services }: { services: ServiceCategor
             <label className="mb-1 block text-xs font-semibold text-ink-700">
               এলাকা নির্বাচন:
             </label>
-            <div className="relative">
-              <MapPin className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" />
-              <select
-                value={selectedArea}
-                onChange={(e) => setSelectedArea(e.target.value)}
-                className="w-full appearance-none rounded-xl border border-brand-100 bg-mist-50 py-2.5 pl-10 pr-8 text-sm text-ink-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              >
-                <option value="">ময়মনসিংহ সিটি কর্পোরেশনের সব এলাকা</option>
-                {mccAreas.map((area) => (
-                  <option key={area.id} value={area.id}>
-                    {area.nameBn}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <LocationSelectInput
+              id="services-area"
+              value={selectedArea || null}
+              onChange={(areaId) => setSelectedArea(areaId ?? '')}
+              placeholder="ময়মনসিংহ সিটি কর্পোরেশনের সব এলাকা"
+              source={createAreaSource(mccAreas)}
+            />
           </div>
         </div>
       </div>
 
-      {/* Services Grid — same compact card size as the homepage */}
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      {/* Services Grid — two-up on a phone. Three-up squeezed the Bangla
+          headings into two-word fragments on a 360px screen. */}
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {filteredServices.map((service) => {
-          const route = EMERGENCY_ROUTES[service.slug] ?? `/${service.slug}`;
+          const route =
+            EMERGENCY_ROUTES[service.slug] ??
+            COMMUNITY_ROUTES[service.slug] ??
+            `/${service.slug}`;
           const href = selectedArea ? `${route}?area=${selectedArea}` : route;
 
           const cardClass =
@@ -126,11 +139,11 @@ export default function ServicesContent({ services }: { services: ServiceCategor
           return (
             <Link key={service.id} href={href} className={cardClass}>
               {media}
-              <div className="flex flex-1 flex-col p-2 sm:p-3">
-                <h3 className="line-clamp-2 break-words text-[11px] font-bold leading-snug text-ink-900 sm:line-clamp-1 sm:text-[13px]">
+              <div className="flex flex-1 flex-col p-2.5 sm:p-3">
+                <h3 className="line-clamp-2 break-words text-[12px] font-bold leading-snug text-ink-900 sm:line-clamp-1 sm:text-[13px]">
                   {service.nameBn}
                 </h3>
-                <p className="mt-1 line-clamp-2 break-words text-[10px] leading-snug text-ink-500 sm:mt-1 sm:block sm:text-[11px]">
+                <p className="mt-1 line-clamp-2 break-words text-[10.5px] leading-snug text-ink-500 sm:text-[11px]">
                   {service.shortDesc}
                 </p>
               </div>

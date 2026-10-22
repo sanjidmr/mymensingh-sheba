@@ -5,10 +5,12 @@ import CatalogDetailView, {
   CatalogDetailMissing,
   ContactBlock,
   DetailSkeleton,
+  RelatedListings,
   type DetailFact,
 } from '@/components/catalog/CatalogDetailView';
 import WifiDetailSections from '@/components/catalog/WifiDetailSections';
-import { fetchServiceListingForContact } from '@/lib/catalog-service';
+import DirectoryReviews from '@/components/catalog/DirectoryReviews';
+import { fetchServiceListingForContact, fetchServiceListings } from '@/lib/catalog-service';
 import {
   areaNames,
   bnTaka,
@@ -22,14 +24,22 @@ const ui = CATEGORY_UI.wifi;
 
 export default function WifiDetail({ slug }: { slug: string }) {
   const [listing, setListing] = useState<ServiceListing | null>(null);
+  const [related, setRelated] = useState<ServiceListing[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
-        const data = await fetchServiceListingForContact('wifi', slug);
-        if (active) setListing(data);
+        const [data, rows] = await Promise.all([
+          fetchServiceListingForContact('wifi', slug),
+          // Hard-scoped to `wifi`: this page must never suggest a coaching
+          // centre or any other category.
+          fetchServiceListings('wifi'),
+        ]);
+        if (!active) return;
+        setListing(data);
+        setRelated(rows.filter((row) => row.slug !== slug).slice(0, 3));
       } finally {
         if (active) setLoading(false);
       }
@@ -69,13 +79,20 @@ export default function WifiDetail({ slug }: { slug: string }) {
       body={
         <WifiDetailSections
           listingId={listing.id}
-          ratingAvg={listing.ratingAvg}
-          ratingCount={listing.ratingCount}
           connectionFee={listing.connectionFee}
           termsBn={listing.termsBn}
         />
       }
       action={<ContactBlock phone={contactPhone} hideRequestFallback />}
+      reviews={
+        <DirectoryReviews
+          category="wifi"
+          listingId={listing.id}
+          ratingAvg={listing.ratingAvg}
+          ratingCount={listing.ratingCount}
+        />
+      }
+      related={<RelatedListings title="আরও WiFi প্রোভাইডার" listings={related} />}
     />
   );
 }

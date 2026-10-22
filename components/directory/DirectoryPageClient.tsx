@@ -99,7 +99,6 @@ export default function DirectoryPageClient({
       id: 'workType',
       labelBn: serviceUi.workTypeLabel,
       type: 'multi',
-      compact: true,
       options: workTypes,
     },
     ...(timeSlots
@@ -108,7 +107,6 @@ export default function DirectoryPageClient({
             id: 'timeSlot',
             labelBn: 'পছন্দের সময়',
             type: 'single' as const,
-            compact: true,
             options: timeSlots,
           },
         ]

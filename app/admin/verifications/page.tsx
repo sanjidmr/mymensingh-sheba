@@ -58,8 +58,8 @@ const columns: AdminColumn<AdminTutorListRow>[] = [
   {
     key: 'salary',
     header: 'প্রত্যাশিত বেতন',
-    render: (row) => row.expected_salary_min || row.expected_salary_max
-      ? `৳${Number(row.expected_salary_min ?? 0).toLocaleString('bn-BD')}–${Number(row.expected_salary_max ?? 0).toLocaleString('bn-BD')}`
+    render: (row) => row.expected_salary
+      ? `৳${Number(row.expected_salary).toLocaleString('bn-BD')}`
       : '—',
   },
   { key: 'status', header: 'অবস্থা', render: (row) => <Status value={row.status} /> },
@@ -146,7 +146,7 @@ export default async function AdminTutorVerificationsPage({
             rows={result.rows}
             getKey={(row) => row.id}
             getHref={(row) => `/admin/verifications/${row.id}`}
-            caption="গৃহশিক্ষক প্রোফাইল"
+            caption="গৃহ শিক্ষক প্রোফাইল"
             empty={<AdminEmpty title="কোনো টিউটর প্রোফাইল নেই" description="এই সার্চ বা ফিল্টারে কোনো রেকর্ড মেলেনি।" icon={<GraduationCap className="h-5 w-5" />} />}
           />
           <TablePager page={result.page} pageSize={result.pageSize} total={result.total} searchParams={resolved} />

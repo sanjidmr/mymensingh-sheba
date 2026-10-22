@@ -148,7 +148,7 @@ function ProfileContent({ detail }: { detail: AdminUserDetail }) {
         )}
 
         {detail.tutorProfile && (
-          <ProfilePanel title="গৃহশিক্ষক প্রোফাইল" fields={[
+          <ProfilePanel title="গৃহ শিক্ষক প্রোফাইল" fields={[
             ['নাম', text(detail.tutorProfile.full_name)],
             ['অবস্থা', text(detail.tutorProfile.status)],
             ['শিক্ষাপ্রতিষ্ঠান', text(detail.tutorProfile.institution)],
@@ -157,7 +157,7 @@ function ProfileContent({ detail }: { detail: AdminUserDetail }) {
             ['এলাকা', list(detail.tutorProfile.preferred_areas)],
             ['শ্রেণি', list(detail.tutorProfile.preferred_classes)],
             ['বিষয়', list(detail.tutorProfile.preferred_subjects)],
-            ['প্রত্যাশিত বেতন', `৳${text(detail.tutorProfile.expected_salary_min) || '০'}–${text(detail.tutorProfile.expected_salary_max) || '০'}`],
+            ['প্রত্যাশিত বেতন', `৳${text(detail.tutorProfile.expected_salary) || '০'}`],
             ['পরিচিতি', text(detail.tutorProfile.bio) || '—'],
           ]} />
         )}

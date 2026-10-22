@@ -84,6 +84,11 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
       render: (row) => row.monthly_fee_min != null ? `৳${row.monthly_fee_min}${row.monthly_fee_max != null ? `–${row.monthly_fee_max}` : '+'}` : 'উল্লেখ নেই',
     });
     columns.push({ key: 'programs', header: 'বিষয়/ক্লাস', render: (row) => row.tags.slice(0, 4).join(', ') || 'উল্লেখ নেই' });
+    columns.push({
+      key: 'coaching_category',
+      header: 'কোচিং ক্যাটাগরি',
+      render: (row) => COACHING_CATEGORIES.find((item) => item.id === row.coaching_category)?.labelBn || 'উল্লেখ নেই',
+    });
   }
   columns.push({
     key: 'review',

@@ -32,8 +32,8 @@ export default function ProfileHomeTutorDashboardPage() {
   if (!homeTutorProfile) {
     return (
       <RoutePlaceholderShell
-        title="আমার গৃহশিক্ষক প্রোফাইল"
-        subtitle="পড়াতে চাইলে এক মিনিটেই গৃহশিক্ষক প্রোফাইল খুলুন।"
+        title="আমার গৃহ শিক্ষক প্রোফাইল"
+        subtitle="পড়াতে চাইলে এক মিনিটেই গৃহ শিক্ষক প্রোফাইল খুলুন।"
         categoryBadge="Home Tutor প্রোফাইল"
         breadcrumbs={[
           { label: 'প্রোফাইল', href: '/profile' },
@@ -56,7 +56,7 @@ export default function ProfileHomeTutorDashboardPage() {
             className="mt-6 inline-flex items-center gap-2 px-5 py-3 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-sm font-semibold"
           >
             <PlusCircle className="w-4 h-4" />
-            গৃহশিক্ষক প্রোফাইল খুলুন
+            গৃহ শিক্ষক প্রোফাইল খুলুন
           </Link>
         </div>
       </RoutePlaceholderShell>
@@ -71,7 +71,7 @@ export default function ProfileHomeTutorDashboardPage() {
 
   return (
     <RoutePlaceholderShell
-      title="আমার গৃহশিক্ষক প্রোফাইল"
+      title="আমার গৃহ শিক্ষক প্রোফাইল"
       subtitle="শিক্ষক হিসেবে আপনার প্রোফাইল ও অবস্থা পরিচালনা করুন।"
       categoryBadge="Home Tutor প্রোফাইল"
       breadcrumbs={[
@@ -159,7 +159,7 @@ export default function ProfileHomeTutorDashboardPage() {
               <div>
                 <span className="block text-[11px] text-ink-400">প্রত্যাশিত বেতন</span>
                 <span className="block text-xs text-ink-800 font-medium">
-                  {formatTutorFee(homeTutorProfile.expectedSalaryMin, homeTutorProfile.expectedSalaryMax)}
+                  {formatTutorFee(homeTutorProfile.expectedSalary)}
                 </span>
               </div>
             </div>

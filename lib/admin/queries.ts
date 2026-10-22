@@ -1293,14 +1293,13 @@ export async function fetchPostCounts(kind?: string): Promise<{
     preferred_areas: string[];
     preferred_classes: string[];
     preferred_subjects: string[];
-    expected_salary_min: number | null;
-    expected_salary_max: number | null;
+    expected_salary: number;
     created_at: string;
     updated_at: string;
   }
 
   const TUTOR_LIST_COLUMNS =
-    'id,user_id,status,full_name,institution,qualification,profile_photo_url,preferred_areas,preferred_classes,preferred_subjects,expected_salary_min,expected_salary_max,created_at,updated_at';
+    'id,user_id,status,full_name,institution,qualification,profile_photo_url,preferred_areas,preferred_classes,preferred_subjects,expected_salary,created_at,updated_at';
 
   export async function fetchTutorProfiles(
     params: ListParams
@@ -2405,7 +2404,7 @@ export async function fetchReports(params: ListParams): Promise<Paged<AdminRepor
   const [listings, staff, tutors, donors, communityPosts] = await Promise.all([
     build('listing_reports', 'listing', () => 'বাসা ভাড়া বিজ্ঞাপন', () => '/admin/tolet'),
     build('staff_profile_reports', 'staff', () => 'কর্মী প্রোফাইল', () => '/admin/services'),
-    build('tutor_reports', 'tutor', () => 'গৃহশিক্ষক প্রোফাইল', () => '/admin/verifications'),
+    build('tutor_reports', 'tutor', () => 'গৃহ শিক্ষক প্রোফাইল', () => '/admin/verifications'),
     build('blood_donor_reports', 'donor', () => 'রক্তদাতা প্রোফাইল', () => '/admin/blood/donors'),
     build('community_post_reports', 'community_post', () => 'কমিউনিটি পোস্ট', () => '/admin/posts'),
   ]);
@@ -2442,6 +2441,7 @@ export interface AdminServiceListingRow {
   description_bn: string | null;
   image_url: string | null;
   logo_url: string | null;
+  coaching_category: 'class_1_8' | 'ssc' | 'hsc' | 'admission' | null;
   area_ids: string[];
   tags: string[];
   monthly_fee_min: number | null;
@@ -2488,7 +2488,7 @@ export interface AdminServiceListingPage extends Paged<AdminServiceListingRow> {
 }
 
 const SERVICE_LISTING_SELECT =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
+  'id, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
 
 export async function fetchServiceListings(params: ListParams, category?: string): Promise<AdminServiceListingPage> {
   const admin = await getAdminDataClient();
@@ -2538,7 +2538,14 @@ export async function fetchServiceListings(params: ListParams, category?: string
     query = query.eq('status', params.status);
   }
   if (params.area) query = query.contains('area_ids', [params.area]);
-  if (params.kind) query = query.contains('tags', [params.kind]);
+  if (params.kind) {
+    const coachingCategories = ['class_1_8', 'ssc', 'hsc', 'admission'];
+    if (rpcCategory === 'coaching' && coachingCategories.includes(params.kind)) {
+      query = query.eq('coaching_category', params.kind);
+    } else {
+      query = query.contains('tags', [params.kind]);
+    }
+  }
 
   const { data, count, error } = await query;
   if (error || !data) {
@@ -3039,7 +3046,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
         .select('id,status,rejection_reason,owner_name,phone,primary_area_id,address_line,total_listings_count,is_verified,created_at')
         .eq('user_id', userId).maybeSingle(),
       client.from('home_tutor_profiles')
-        .select('id,status,full_name,gender,institution,department,qualification,experience_years,preferred_areas,preferred_classes,preferred_subjects,expected_salary_min,expected_salary_max,days_per_week,bio,teaching_mode,availability,profile_photo_url,educations,current_activity,class_duration_minutes,preferred_student_type,created_at')
+        .select('id,status,full_name,gender,institution,department,qualification,experience_years,preferred_areas,preferred_classes,preferred_subjects,expected_salary,days_per_week,bio,teaching_mode,availability,profile_photo_url,educations,current_activity,class_duration_minutes,preferred_student_type,created_at')
         .eq('user_id', userId).maybeSingle(),
       client.from('blood_donor_profiles')
         .select('id,status,full_name,blood_group,area_id,gender,birth_year,weight_kg,is_available,last_donation_date,donation_count,intro,profile_photo_url,show_readiness,created_at')

@@ -31,7 +31,8 @@ import {
   uploadPostImage,
   type CommunityPostDraft,
 } from '@/lib/catalog-service';
-import { getAllMCCAreas } from '@/lib/locations';
+import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import { normalizeBdPhone } from '@/lib/contact-types';
 import {
   JOB_EXPERIENCE,
@@ -1185,19 +1186,13 @@ export default function PostForm({
           )}
 
           <Field id="areaId" label="এলাকা">
-            <select
+            <LocationSelectInput
               id="field-areaId"
               value={values.areaId}
-              onChange={(e) => set('areaId', e.target.value)}
-              className={inputClass(false)}
-            >
-              <option value="">বেছে নিন</option>
-              {areas.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.nameBn}
-                </option>
-              ))}
-            </select>
+              onChange={(areaId) => set('areaId', areaId ?? '')}
+              placeholder="আপনার এলাকা নির্বাচন করুন"
+              source={createAreaSource(areas)}
+            />
           </Field>
 
           {/* Photos. The first one is the cover the card grid shows; the rest form the

@@ -10,20 +10,19 @@
  * notes, a provider quotes price/speed with a connection fee and terms. The
  * category decides which block renders; nothing is invented for the other.
  *
- * It is deliberately a "listing-only" form. Teachers, batches and packages hang
- * off a listing that must exist first, so they are edited on the saved listing's
- * page (see OwnerCoachingSections / OwnerWifiSections). That split is why an
- * owner can update a batch date or a package offer any time without the form
- * trying to reconcile a diff.
+ * Coaching batch schedules can be added alongside a new listing and are saved
+ * as independent child rows after the parent exists. Saved schedules and WiFi
+ * packages are managed on the listing's page.
  *
  * Mobile-first: every control is full width, tap targets are >= 44px, and the
- * area picker is a searchable checkbox list rather than a multi-select that
- * mobile browsers render badly.
+ * area picker reuses the searchable MCC selector rather than a native multi-select.
  */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import {
+  createOwnCoachingBatch,
   createCustomerServiceListing,
   fetchOwnWifiPackages,
   normalizeBdPhone,
@@ -35,9 +34,13 @@ import {
   COACHING_CATEGORIES,
   COACHING_CLASSES,
   COACHING_SUBJECTS,
+  COACHING_SUBJECTS_BY_CATEGORY,
+  COACHING_WEEKDAY_GROUPS,
   toBn,
+  type CoachingWeekday,
   type CustomerServiceCategory,
   type CustomerServiceListingInput,
+  type CoachingCategory,
   type ServiceListing,
 } from '@/lib/catalog-types';
 
@@ -60,7 +63,6 @@ interface FormState {
   subtitleBn: string;
   descriptionBn: string;
   imageUrl: string;
-  photos: string[];
   addressBn: string;
   contactPhonePublic: string;
   /** coaching */
@@ -72,8 +74,18 @@ interface FormState {
   termsBn: string;
   /** coaching taxonomy slugs */
   tags: string[];
+  coachingCategory: CoachingCategory | '';
   /** wifi free-form facilities, comma separated */
   facilitiesText: string;
+}
+
+interface PendingBatch {
+  key: string;
+  startDate: string;
+  weekdayIds: CoachingWeekday[];
+  startTimeLocal: string;
+  endTimeLocal: string;
+  noteBn: string;
 }
 
 function numToText(v?: number): string {
@@ -85,6 +97,12 @@ function textToNum(v: string): number | undefined {
   if (t === '') return undefined;
   const n = Number(t);
   return Number.isFinite(n) ? n : Number.NaN;
+}
+
+function isValidDateInput(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(`${value}T00:00:00.000Z`);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
 }
 
 function textToTags(text: string): string[] {
@@ -111,8 +129,7 @@ function initialForm(category: CustomerServiceCategory, listing?: ServiceListing
     titleBn: listing?.titleBn ?? '',
     subtitleBn: listing?.subtitleBn ?? '',
     descriptionBn: listing?.descriptionBn ?? '',
-    imageUrl: listing?.imageUrl ?? '',
-    photos: listing?.photos ?? [],
+    imageUrl: listing?.imageUrl ?? listing?.logoUrl ?? '',
     addressBn: listing?.addressBn ?? '',
     contactPhonePublic: listing?.contactPhonePublic ?? '',
     monthlyFee:
@@ -124,6 +141,7 @@ function initialForm(category: CustomerServiceCategory, listing?: ServiceListing
     connectionFee: numToText(listing?.connectionFee),
     termsBn: listing?.termsBn ?? '',
     tags: listing?.tags ?? [],
+    coachingCategory: listing?.coachingCategory ?? '',
     facilitiesText: category === 'wifi' ? tagsToText(listing?.tags ?? []) : '',
   };
 }
@@ -169,6 +187,9 @@ export default function CustomerListingForm({
 }: CustomerListingFormProps) {
   const { user } = useAuth();
   const [form, setForm] = useState<FormState>(() => initialForm(category, initialListing));
+  const [selectedAreaId, setSelectedAreaId] = useState(initialListing?.areaIds[0] ?? '');
+  const [pendingBatches, setPendingBatches] = useState<PendingBatch[]>([]);
+  const [customSubject, setCustomSubject] = useState('');
   const [currentListing, setCurrentListing] = useState(initialListing ?? null);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
@@ -249,6 +270,45 @@ export default function CustomerListingForm({
     setError('');
   };
 
+  const changeCoachingCategory = (coachingCategory: CoachingCategory | '') => {
+    setForm((prev) => {
+      const subjectIds = new Set(COACHING_SUBJECTS.map((subject) => subject.id));
+      const retainedTags = prev.tags.filter((tag) => !subjectIds.has(tag));
+      return {
+        ...prev,
+        coachingCategory,
+        tags: [
+          ...retainedTags,
+          ...(coachingCategory
+            ? prev.tags.filter((tag) =>
+                COACHING_SUBJECTS_BY_CATEGORY[coachingCategory].some((subject) => subject.id === tag)
+              )
+            : []),
+        ],
+      };
+    });
+    setError('');
+  };
+
+  const addCustomSubject = () => {
+    const subject = customSubject.trim();
+    if (!subject) return;
+    if (form.tags.length >= 60) {
+      setError('সর্বোচ্চ ৬০টি ক্লাস ও বিষয় যোগ করা যাবে।');
+      return;
+    }
+    setForm((prev) => {
+      const normalized = subject.toLocaleLowerCase();
+      const isDuplicate = prev.tags.some((tag) =>
+        tag.toLocaleLowerCase() === normalized ||
+        COACHING_SUBJECTS.find((option) => option.id === tag)?.labelBn.toLocaleLowerCase() === normalized
+      );
+      return isDuplicate ? prev : { ...prev, tags: [...prev.tags, subject] };
+    });
+    setCustomSubject('');
+    setError('');
+  };
+
   const onPickImage = async (file: File | undefined) => {
     if (!file) return;
     if (!user) {
@@ -264,36 +324,6 @@ export default function CustomerListingForm({
         return;
       }
       setForm((prev) => ({ ...prev, imageUrl: result.data }));
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  const onPickGallery = async (files: File[]) => {
-    if (!user) {
-      setError('ছবি আপলোড করতে আগে লগইন করুন।');
-      return;
-    }
-    const remaining = 5 - form.photos.length;
-    if (remaining <= 0) {
-      setError('সর্বোচ্চ ৫টি অতিরিক্ত ছবি যোগ করা যাবে।');
-      return;
-    }
-    setUploading(true);
-    setError('');
-    try {
-      const uploaded: string[] = [];
-      for (const file of files.slice(0, remaining)) {
-        const result = await uploadServiceListingImage(user.id, file);
-        if (!result.success) {
-          setError(result.error);
-          break;
-        }
-        uploaded.push(result.data);
-      }
-      setForm((prev) => ({ ...prev, photos: [...prev.photos, ...uploaded] }));
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
     } finally {
@@ -326,16 +356,18 @@ export default function CustomerListingForm({
     const prices = wifiPricingRows.map((row) => row.price);
     return {
       category,
+      coachingCategory: category === 'coaching' ? form.coachingCategory || undefined : undefined,
       titleBn: form.titleBn.trim(),
       subtitleBn: form.subtitleBn.trim() || undefined,
       summaryBn: currentListing?.summaryBn,
       descriptionBn: form.descriptionBn.trim() || undefined,
       imageUrl: form.imageUrl.trim() || undefined,
-      photos: form.photos,
       addressBn: form.addressBn.trim() || undefined,
-      areaIds: currentListing?.areaIds.length
-        ? currentListing.areaIds
-        : user?.primaryAreaId ? [user.primaryAreaId] : [],
+      areaIds: category === 'coaching'
+        ? selectedAreaId ? [selectedAreaId] : []
+        : currentListing?.areaIds.length
+          ? currentListing.areaIds
+          : user?.primaryAreaId ? [user.primaryAreaId] : [],
       contactPhonePublic: form.contactPhonePublic.trim(),
       monthlyFeeMin: category === 'coaching' ? monthlyFee ?? currentListing?.monthlyFeeMin : undefined,
       monthlyFeeMax: category === 'coaching' ? monthlyFee ?? currentListing?.monthlyFeeMax : undefined,
@@ -381,6 +413,42 @@ export default function CustomerListingForm({
       setError('প্রতিষ্ঠানের সম্পূর্ণ ঠিকানা লিখুন।');
       return;
     }
+    if (!form.imageUrl.trim()) {
+      setError('প্রতিষ্ঠানের একটি ছবি যোগ করুন।');
+      return;
+    }
+    if (category === 'coaching' && !form.coachingCategory) {
+      setError('কোচিংয়ের শ্রেণি বা পরীক্ষার ক্যাটাগরি বেছে নিন।');
+      return;
+    }
+    if (category === 'coaching' && !selectedAreaId) {
+      setError('কোচিং সেন্টারের এলাকা বেছে নিন।');
+      return;
+    }
+    if (
+      mode === 'submit' &&
+      category === 'coaching' &&
+      !form.tags.some((tag) =>
+        COACHING_SUBJECTS_BY_CATEGORY[form.coachingCategory as CoachingCategory]?.some(
+          (subject) => subject.id === tag
+        ) ||
+        (!COACHING_SUBJECTS.some((subject) => subject.id === tag) &&
+          !COACHING_CLASSES.some((item) => item.id === tag))
+      )
+    ) {
+      setError('অন্তত একটি বিষয় নির্বাচন বা যোগ করুন।');
+      return;
+    }
+    if (category === 'coaching' && !initialListing && pendingBatches.some((batch) =>
+      !isValidDateInput(batch.startDate) ||
+      batch.weekdayIds.length === 0 ||
+      !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(batch.startTimeLocal) ||
+      !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(batch.endTimeLocal) ||
+      batch.endTimeLocal <= batch.startTimeLocal
+    )) {
+      setError('প্রতিটি ব্যাচে শুরুর তারিখ, সপ্তাহের দিন এবং সঠিক শুরুর ও শেষের সময় দিন।');
+      return;
+    }
     const wifiPricingRows = category === 'wifi' ? parseWifiPricingRows() : [];
     if (wifiPricingRows === null) {
       setError('প্রতিটি WiFi প্যাকেজে সঠিক Mbps স্পিড ও মাসিক দাম লিখুন।');
@@ -424,6 +492,28 @@ export default function CustomerListingForm({
         return;
       }
       setCurrentListing(savedListing);
+      if (category === 'coaching' && pendingBatches.length > 0) {
+        const remaining: PendingBatch[] = [];
+        for (let index = 0; index < pendingBatches.length; index += 1) {
+          const batch = pendingBatches[index];
+          const batchResult = await createOwnCoachingBatch(savedListing.id, {
+            titleBn: 'নতুন ব্যাচ',
+            startDate: batch.startDate,
+            weekdayIds: batch.weekdayIds,
+            startTimeLocal: batch.startTimeLocal,
+            endTimeLocal: batch.endTimeLocal,
+            noteBn: batch.noteBn,
+            isActive: true,
+          });
+          if (!batchResult.success) {
+            remaining.push(...pendingBatches.slice(index));
+            setPendingBatches(remaining);
+            setError(`তালিকা সংরক্ষিত হয়েছে, কিন্তু ব্যাচ সংরক্ষণ হয়নি: ${batchResult.error}`);
+            return;
+          }
+        }
+        setPendingBatches([]);
+      }
       if (category === 'wifi') {
         const packageResult = await saveOwnWifiPricingPackages(savedListing.id, wifiPricingRows);
         if (!packageResult.success) {
@@ -498,10 +588,14 @@ export default function CustomerListingForm({
               {uploading ? 'আপলোড হচ্ছে…' : 'ছবি নির্বাচন করুন'}
               <input
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/avif"
                 className="sr-only"
                 disabled={uploading}
-                onChange={(e) => void onPickImage(e.target.files?.[0])}
+                onChange={(e) => {
+                  const file = e.currentTarget.files?.[0];
+                  e.currentTarget.value = '';
+                  void onPickImage(file);
+                }}
               />
             </label>
             {form.imageUrl && (
@@ -509,26 +603,7 @@ export default function CustomerListingForm({
                 <X className="h-4 w-4" /> ছবি সরান
               </button>
             )}
-            <p className="text-[11.5px] text-ink-400">সর্বোচ্চ ৫MB, JPG/PNG।</p>
-          </div>
-        </div>
-        <div className="mt-3">
-          <p className="text-xs font-bold text-ink-700">আরও ছবি (সর্বোচ্চ ৫টি)</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {form.photos.map((url, index) => (
-              <div key={`${url}-${index}`} className="relative h-20 w-24 overflow-hidden rounded-lg border border-brand-100">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={url} alt={`অতিরিক্ত ছবি ${index + 1}`} className="h-full w-full object-cover" />
-                <button type="button" onClick={() => set('photos', form.photos.filter((_, i) => i !== index))} className="absolute right-1 top-1 rounded bg-white px-1 text-xs font-bold text-rose-700" aria-label={`অতিরিক্ত ছবি ${index + 1} সরান`}>×</button>
-              </div>
-            ))}
-            {form.photos.length < 5 && (
-              <label className={`${ghostBtn} cursor-pointer`}>
-                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <ImagePlus className="h-4 w-4" />}
-                আরও ছবি
-                <input type="file" multiple accept="image/jpeg,image/png,image/webp,image/avif" className="sr-only" disabled={uploading} onChange={(event) => { const files = Array.from(event.target.files ?? []); event.target.value = ''; void onPickGallery(files); }} />
-              </label>
-            )}
+            <p className="text-[11.5px] text-ink-400">একটি ছবি দিন; সর্বোচ্চ ৫MB, JPG/PNG/WebP/AVIF।</p>
           </div>
         </div>
       </section>
@@ -544,6 +619,32 @@ export default function CustomerListingForm({
             placeholder="যেমন: আল-ফুরকান কোচিং সেন্টার"
           />
         </Field>
+        {category === 'coaching' && (
+          <>
+            <Field label="কোচিং ক্যাটাগরি" required>
+              <select
+                required
+                value={form.coachingCategory}
+                onChange={(event) => changeCoachingCategory(event.target.value as CoachingCategory | '')}
+                className={inputClass}
+              >
+                <option value="">ক্যাটাগরি বেছে নিন</option>
+                {COACHING_CATEGORIES.map((item) => (
+                  <option key={item.id} value={item.id}>{item.labelBn}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="কোচিং সেন্টারের এলাকা" required>
+              <LocationSelectInput
+                value={selectedAreaId}
+                onChange={(areaId) => setSelectedAreaId(areaId ?? '')}
+                placeholder="ময়মনসিংহের এলাকা বেছে নিন"
+                allowClear
+                size="sm"
+              />
+            </Field>
+          </>
+        )}
         <Field label="সংক্ষিপ্ত পরিচিতি">
           <input
             value={form.subtitleBn}
@@ -716,27 +817,46 @@ export default function CustomerListingForm({
       <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
         {category === 'coaching' ? (
           <>
-            <h2 className="text-[14px] font-extrabold text-ink-900">ক্লাস, বিষয় ও ক্যাটাগরি</h2>
+            <h2 className="text-[14px] font-extrabold text-ink-900">ক্লাস ও বিষয়</h2>
             <p className="text-[11.5px] leading-relaxed text-ink-400">
               প্রযোজ্য সবগুলো নির্বাচন করুন — এগুলো দিয়েই পাঠকরা ফিল্টার করেন।
             </p>
-            {(
-              [
-                ['ক্লাস', COACHING_CLASSES],
-                ['বিষয়', COACHING_SUBJECTS],
-                ['ক্যাটাগরি', COACHING_CATEGORIES],
-              ] as const
-            ).map(([label, taxonomy]) => (
-              <div key={label}>
-                <span className="mb-1 block text-[12.5px] font-bold text-ink-700">{label}</span>
+            <div>
+              <span className="mb-1 block text-[12.5px] font-bold text-ink-700">ক্লাস</span>
+              <div className="flex flex-wrap gap-1.5">
+                {COACHING_CLASSES.map((item) => {
+                  const checked = form.tags.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => toggleTag(item.id)}
+                      aria-pressed={checked}
+                      className={`min-h-9 rounded-full border px-3 text-[12px] font-semibold transition-colors ${
+                        checked
+                          ? 'border-brand-700 bg-brand-700 text-white'
+                          : 'border-brand-200 bg-white text-ink-600 hover:bg-mist-50'
+                      }`}
+                    >
+                      {item.labelBn}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <span className="mb-1 block text-[12.5px] font-bold text-ink-700">বিষয়</span>
+              {!form.coachingCategory ? (
+                <p className="text-[12px] text-ink-400">আগে কোচিং ক্যাটাগরি নির্বাচন করুন।</p>
+              ) : (
                 <div className="flex flex-wrap gap-1.5">
-                  {taxonomy.map((t) => {
-                    const checked = form.tags.includes(t.id);
+                  {COACHING_SUBJECTS_BY_CATEGORY[form.coachingCategory].map((item) => {
+                    const checked = form.tags.includes(item.id);
                     return (
                       <button
-                        key={t.id}
+                        key={item.id}
                         type="button"
-                        onClick={() => toggleTag(t.id)}
+                        onClick={() => toggleTag(item.id)}
                         aria-pressed={checked}
                         className={`min-h-9 rounded-full border px-3 text-[12px] font-semibold transition-colors ${
                           checked
@@ -744,13 +864,49 @@ export default function CustomerListingForm({
                             : 'border-brand-200 bg-white text-ink-600 hover:bg-mist-50'
                         }`}
                       >
-                        {t.labelBn}
+                        {item.labelBn}
                       </button>
                     );
                   })}
                 </div>
+              )}
+              <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                <input
+                  value={customSubject}
+                  maxLength={120}
+                  onChange={(event) => setCustomSubject(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault();
+                      addCustomSubject();
+                    }
+                  }}
+                  className={inputClass}
+                  placeholder="অন্য বিষয় লিখুন"
+                  aria-label="নতুন বিষয়"
+                />
+                <button type="button" onClick={addCustomSubject} className={ghostBtn}>
+                  <Plus className="h-4 w-4" /> বিষয় যোগ করুন
+                </button>
               </div>
-            ))}
+              {form.tags.filter((tag) =>
+                !COACHING_CLASSES.some((item) => item.id === tag) &&
+                !COACHING_SUBJECTS_BY_CATEGORY[form.coachingCategory as CoachingCategory]?.some(
+                  (item) => item.id === tag
+                ) &&
+                !COACHING_SUBJECTS.some((item) => item.id === tag)
+              ).map((subject) => (
+                <button
+                  key={subject}
+                  type="button"
+                  onClick={() => toggleTag(subject)}
+                  className="mt-2 mr-1 inline-flex min-h-8 items-center gap-1 rounded-full border border-brand-300 bg-brand-50 px-3 text-[12px] font-semibold text-brand-800"
+                  aria-label={`${subject} সরান`}
+                >
+                  {subject}<X className="h-3 w-3" aria-hidden="true" />
+                </button>
+              ))}
+            </div>
           </>
         ) : (
           <>
@@ -767,10 +923,109 @@ export default function CustomerListingForm({
         )}
       </section>
 
+      {category === 'coaching' && !initialListing && (
+        <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
+          <div>
+            <h2 className="text-[14px] font-extrabold text-ink-900">নতুন ব্যাচের সময়সূচি</h2>
+            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-400">
+              প্রতিটি ব্যাচ আলাদাভাবে যোগ করুন। তারিখ, সপ্তাহের দিন এবং শুরু ও শেষের সময় দিন।
+            </p>
+          </div>
+          {pendingBatches.map((batch, index) => (
+            <div key={batch.key} className="space-y-3 rounded-xl border border-brand-100 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-[13px] font-extrabold text-ink-800">ব্যাচ {toBn(index + 1)}</p>
+                <button
+                  type="button"
+                  onClick={() => setPendingBatches((rows) => rows.filter((row) => row.key !== batch.key))}
+                  className="inline-flex min-h-9 items-center gap-1 rounded-md border border-brand-200 px-2 text-[12px] font-bold text-rose-700"
+                >
+                  <Trash2 className="h-3.5 w-3.5" /> সরান
+                </button>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="শুরুর তারিখ" required>
+                  <input
+                    type="date"
+                    value={batch.startDate}
+                    onChange={(event) => setPendingBatches((rows) => rows.map((row) =>
+                      row.key === batch.key ? { ...row, startDate: event.target.value } : row
+                    ))}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+              <div>
+                <span className="mb-1 block text-[12.5px] font-bold text-ink-700">সপ্তাহের দিন *</span>
+                <div className="flex flex-wrap gap-1.5">
+                  {COACHING_WEEKDAY_GROUPS.map((group) => {
+                    const selected = group.weekdayIds.every((day) => batch.weekdayIds.includes(day)) &&
+                      batch.weekdayIds.length === group.weekdayIds.length;
+                    return (
+                      <button
+                        key={group.id}
+                        type="button"
+                        aria-pressed={selected}
+                        onClick={() => setPendingBatches((rows) => rows.map((row) =>
+                          row.key === batch.key
+                            ? { ...row, weekdayIds: selected ? [] : group.weekdayIds }
+                            : row
+                        ))}
+                        className={`min-h-9 rounded-full border px-3 text-[12px] font-semibold ${
+                          selected ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-200 bg-white text-ink-600'
+                        }`}
+                      >
+                        {group.labelBn}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <Field label="শুরুর সময়" required>
+                  <input
+                    type="time"
+                    value={batch.startTimeLocal}
+                    onChange={(event) => setPendingBatches((rows) => rows.map((row) =>
+                      row.key === batch.key ? { ...row, startTimeLocal: event.target.value } : row
+                    ))}
+                    className={inputClass}
+                  />
+                </Field>
+                <Field label="শেষের সময়" required>
+                  <input
+                    type="time"
+                    value={batch.endTimeLocal}
+                    onChange={(event) => setPendingBatches((rows) => rows.map((row) =>
+                      row.key === batch.key ? { ...row, endTimeLocal: event.target.value } : row
+                    ))}
+                    className={inputClass}
+                  />
+                </Field>
+              </div>
+            </div>
+          ))}
+          <button
+            type="button"
+            onClick={() => setPendingBatches((rows) => [...rows, {
+              key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              startDate: '',
+              weekdayIds: [],
+              startTimeLocal: '',
+              endTimeLocal: '',
+              noteBn: '',
+            }])}
+            className={ghostBtn}
+          >
+            <Plus className="h-4 w-4" /> ব্যাচ যোগ করুন
+          </button>
+        </section>
+      )}
+
       <div className="flex flex-col gap-2 sm:flex-row">
         <button type="button" onClick={() => void submit('submit')} disabled={busy} className={primaryBtn}>
           {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {isEditing ? 'হালনাগাদ করে জমা দিন' : 'অনুমোদনের জন্য জমা দিন'}
+          জমা দিন
         </button>
         <button type="button" onClick={() => void submit('draft')} disabled={busy} className={ghostBtn}>
           জমা দেওয়া হয়নি হিসেবে সংরক্ষণ করুন

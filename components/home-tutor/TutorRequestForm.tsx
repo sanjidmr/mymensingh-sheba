@@ -23,8 +23,6 @@ import {
   Loader2,
   GraduationCap,
   Clock,
-  User,
-  Phone,
   AlertCircle,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
@@ -34,6 +32,7 @@ import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { TUTOR_CLASSES, TUTOR_SUBJECTS, TUTOR_TEACHING_MODES } from '@/lib/filter-definitions';
 import { formatTutorFee } from '@/lib/home-tutor-types';
 import { trackFormSubmit } from '@/lib/site-analytics';
+import { normalizeBdPhone } from '@/lib/contact-types';
 
 const TIME_SLOTS = [
   'সকাল (৯টা – ১২টা)',
@@ -62,6 +61,8 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
   const [mode, setMode] = useState('both');
   const [preferredTime, setPreferredTime] = useState(TIME_SLOTS[2]);
   const [note, setNote] = useState('');
+  const [contactName, setContactName] = useState('');
+  const [contactPhone, setContactPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
@@ -107,7 +108,19 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!areaId) return;
+    const normalizedPhone = normalizeBdPhone(contactPhone);
+    if (contactName.trim().length < 3) {
+      setError('আপনার নাম কমপক্ষে ৩ অক্ষরে লিখুন।');
+      return;
+    }
+    if (!/^01[3-9]\d{8}$/.test(normalizedPhone)) {
+      setError('সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।');
+      return;
+    }
+    if (!areaId) {
+      setError('পড়ানোর এলাকা নির্বাচন করুন।');
+      return;
+    }
     setLoading(true);
     const classLabel = TUTOR_CLASSES.find((c) => c.id === classLevel)?.labelBn || classLevel;
     const subjectLabel = TUTOR_SUBJECTS.find((s) => s.id === subject)?.labelBn || subject;
@@ -116,8 +129,8 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
       serviceSlug: 'home-tutor',
       areaId,
       addressLine: '',
-      contactName: user.fullName,
-      contactPhone: user.phone,
+      contactName: contactName.trim(),
+      contactPhone: normalizedPhone,
       preferredTime,
       serviceType: subject,
       profileId: tutor.id,
@@ -160,24 +173,36 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
         প্রকাশ করা হয় না।
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3.5" noValidate>
-        {/* Name and number are read back from the profile rather than asked for
-            again — the account already holds them, and re-typing a phone number
-            on a phone keypad is the single most error-prone step in the flow. */}
+      <form onSubmit={handleSubmit} className="mt-4 space-y-3.5" noValidate autoComplete="off">
         <div>
-          <span className={LABEL_CLASS}>আপনার নাম</span>
-          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3.5 py-2.5 text-[15px] text-ink-800 sm:text-[13.5px]">
-            <User className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
-            <span className="truncate">{user.fullName}</span>
-          </div>
+          <label htmlFor="tutor-request-name" className={LABEL_CLASS}>আপনার নাম *</label>
+          <input
+            id="tutor-request-name"
+            name="contactName"
+            value={contactName}
+            onChange={(event) => { setContactName(event.target.value); setError(''); }}
+            autoComplete="off"
+            minLength={3}
+            maxLength={80}
+            required
+            className={SELECT_CLASS}
+          />
         </div>
 
         <div>
-          <span className={LABEL_CLASS}>যোগাযোগের নম্বর</span>
-          <div className="flex min-h-11 items-center gap-2 rounded-xl border border-mist-200 bg-mist-50 px-3.5 py-2.5 text-[15px] text-ink-800 sm:text-[13.5px]">
-            <Phone className="h-4 w-4 shrink-0 text-ink-400" aria-hidden="true" />
-            <span className="truncate">{user.phone}</span>
-          </div>
+          <label htmlFor="tutor-request-phone" className={LABEL_CLASS}>যোগাযোগের নম্বর *</label>
+          <input
+            id="tutor-request-phone"
+            name="contactPhone"
+            type="tel"
+            inputMode="tel"
+            value={contactPhone}
+            onChange={(event) => { setContactPhone(event.target.value); setError(''); }}
+            autoComplete="off"
+            placeholder="০১৭১২৩৪৫৬৭৮"
+            required
+            className={SELECT_CLASS}
+          />
         </div>
 
         <div>
@@ -267,7 +292,7 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
         <p className="rounded-xl bg-mist-50 px-3.5 py-2.5 text-[12px] text-ink-600">
           শিক্ষকের প্রত্যাশিত বেতন:{' '}
           <strong className="font-bold text-ink-800">
-            {formatTutorFee(tutor.expectedSalaryMin, tutor.expectedSalaryMax)}
+            {formatTutorFee(tutor.expectedSalary)}
           </strong>
         </p>
 

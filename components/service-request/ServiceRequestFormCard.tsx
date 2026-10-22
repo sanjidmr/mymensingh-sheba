@@ -10,8 +10,6 @@ import {
   CheckCircle2,
   ClipboardCheck,
   Copy,
-  Crosshair,
-  ExternalLink,
   ImagePlus,
   Loader2,
   Lock,
@@ -22,7 +20,8 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getAllMCCAreas, getAreaById, isInsideMCC } from '@/lib/locations';
+import { createAreaSource, getAllMCCAreas, getAreaById } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import {
   REQUEST_TIME_OPTIONS,
   formatAnswersBn,
@@ -81,20 +80,15 @@ function optionClass(active: boolean): string {
 type AnswerValue = string | string[];
 type Answers = Record<string, AnswerValue>;
 
-interface LocationState extends ServiceRequestLocationInput {
-  geo: { lat: number; lng: number } | null;
-}
+type LocationState = ServiceRequestLocationInput;
 
 type LocationMap = Record<ServiceLocationKey, LocationState>;
-
-type GeoState = 'idle' | 'loading' | 'ok' | 'error';
 
 const emptyLocation = (): LocationState => ({
   areaId: '',
   road: '',
   house: '',
   landmark: '',
-  geo: null,
 });
 
 interface FormState {
@@ -136,9 +130,8 @@ export interface ServiceRequestFormCardProps {
  * sign-in prompt. Anon the visitor learns what the service needs, and one tap
  * from the login page returns them here with the answers intact on submit.
  *
- * Geolocation is opt-in and never required. The browser only shares a
- * coordinate if the user taps the button and accepts the prompt; if they
- * decline, nothing else changes.
+ * Addresses remain plain area and text inputs; no location is collected from
+ * the browser or displayed on a map.
  */
 export default function ServiceRequestFormCard({ config }: ServiceRequestFormCardProps) {
   const { user, isLoading: authLoading } = useAuth();
@@ -165,37 +158,11 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
   const [status, setStatus] = useState<Status>('idle');
   const [reference, setReference] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [geo, setGeo] = useState<Record<string, { state: GeoState; message: string }>>({});
 
   const fileRef = useRef<HTMLInputElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
   const fieldRefs = useRef<Record<string, HTMLElement | null>>({});
-  const prefilled = useRef(false);
   const previewUrlRef = useRef<string | null>(null);
-
-  /* -- Prefill from the signed-in account, once --------------------------- */
-  useEffect(() => {
-    if (prefilled.current || !user) return;
-    prefilled.current = true;
-    setForm((prev) => ({
-      ...prev,
-      name: prev.name || user.fullName || '',
-      phone: prev.phone || user.phone || '',
-      locations: {
-        ...prev.locations,
-        work: {
-          ...prev.locations.work,
-          // Only prefill when it is a real MCC area — the picker rejects
-          // anything outside the City Corporation. Note the parentheses: `||`
-          // binds tighter than `?:`, so without them this silently overwrites
-          // an existing selection.
-          areaId:
-            prev.locations.work.areaId ||
-            (isInsideMCC(user.primaryAreaId) ? (user.primaryAreaId ?? '') : ''),
-        },
-      },
-    }));
-  }, [user]);
 
   /* -- Release the object URL when the component unmounts ----------------- */
   useEffect(
@@ -278,43 +245,6 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
     [clearError]
   );
 
-  /* -- Geolocation (opt-in) ----------------------------------------------- */
-
-  const shareLocation = useCallback(
-    (key: ServiceLocationKey) => {
-      if (typeof navigator === 'undefined' || !navigator.geolocation) {
-        setGeo((prev) => ({
-          ...prev,
-          [key]: { state: 'error', message: 'এই ব্রাউজারে লোকেশন পাওয়া যায় না।' },
-        }));
-        return;
-      }
-      setGeo((prev) => ({ ...prev, [key]: { state: 'loading', message: 'আপনার লোকেশন খোঁজা হচ্ছে…' } }));
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const geoValue = {
-            lat: Number(position.coords.latitude.toFixed(6)),
-            lng: Number(position.coords.longitude.toFixed(6)),
-          };
-          setLocation(key, { geo: geoValue });
-          setGeo((prev) => ({
-            ...prev,
-            [key]: { state: 'ok', message: 'আপনার লোকেশন যুক্ত হয়েছে।' },
-          }));
-        },
-        (error) => {
-          const message =
-            error.code === error.PERMISSION_DENIED
-              ? 'অনুমতি না দিলে লোকেশন যুক্ত হবে না। ঠিকানা লিখেও দেওয়া যাবে।'
-              : 'লোকেশন পাওয়া যায়নি। ঠিকানা লিখে দিন।';
-          setGeo((prev) => ({ ...prev, [key]: { state: 'error', message } }));
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 }
-      );
-    },
-    [setLocation]
-  );
-
   /* -- Validation --------------------------------------------------------- */
 
   const validate = useCallback((): Record<string, string> => {
@@ -331,12 +261,14 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
       if (altError) next.altPhone = 'বিকল্প নম্বরটি সঠিক নয় (যেমন ০১৮১২৩৪৫৬৭৮)';
     }
 
-    if (!form.serviceType) next.serviceType = `${config.serviceTypesLabel} একটি বেছে নিন`;
-    if (
-      form.serviceType === CUSTOM_OPTION &&
-      !String(form.answers.serviceTypeCustom ?? '').trim()
-    ) {
-      next.serviceType = `${config.serviceTypesLabel} নিজে লিখুন`;
+    if (!config.minimalForm) {
+      if (!form.serviceType) next.serviceType = `${config.serviceTypesLabel} একটি বেছে নিন`;
+      if (
+        form.serviceType === CUSTOM_OPTION &&
+        !String(form.answers.serviceTypeCustom ?? '').trim()
+      ) {
+        next.serviceType = `${config.serviceTypesLabel} নিজে লিখুন`;
+      }
     }
 
     for (const block of config.locations) {
@@ -351,7 +283,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
       }
     }
 
-    for (const field of config.fields) {
+    for (const field of config.minimalForm ? [] : config.fields) {
       const value = form.answers[field.name];
       const customSelected = Array.isArray(value)
         ? value.includes(CUSTOM_OPTION)
@@ -363,6 +295,9 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
       if ((field.required && empty) || (customSelected && !customValue)) {
         next[field.name] = `${field.label} — একটি বেছে নিন বা লিখুন`;
       }
+    }
+    if (config.requireDetails && !form.details.trim()) {
+      next.details = 'আপনার কাজের বিবরণ লিখুন।';
     }
     if (form.preferredTime === CUSTOM_OPTION && !form.preferredTimeCustom.trim()) {
       next.preferredTime = 'সময়ের বিবরণ লিখুন';
@@ -419,11 +354,14 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
             ? { destination: form.locations.destination }
             : {}),
         },
-        serviceType:
-          form.serviceType === CUSTOM_OPTION
+        serviceType: config.minimalForm
+          ? undefined
+          : form.serviceType === CUSTOM_OPTION
             ? String(form.answers.serviceTypeCustom ?? '').trim()
             : form.serviceType,
-        answers: { ...form.answers, serviceType: form.serviceType },
+        answers: config.minimalForm
+          ? form.answers
+          : { ...form.answers, serviceType: form.serviceType },
         details: form.details,
         preferredDate: form.preferredDate,
         preferredTime:
@@ -455,8 +393,8 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
 
   const reset = () => {
     setForm({
-      name: user?.fullName ?? '',
-      phone: user?.phone ?? '',
+      name: '',
+      phone: '',
       altPhone: '',
       serviceType: '',
       answers: {},
@@ -470,7 +408,6 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
     setFilePreview(null);
     setErrors({});
     setFormError(null);
-    setGeo({});
     setReference(null);
     setCopied(false);
     setStatus('idle');
@@ -509,6 +446,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
       ref={formRef}
       onSubmit={handleSubmit}
       noValidate
+      autoComplete="off"
       aria-describedby="service-request-privacy"
       className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm sm:p-7"
     >
@@ -582,7 +520,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                 id="service-name"
                 name="name"
                 type="text"
-                autoComplete="name"
+                autoComplete="off"
                 value={form.name}
                 onChange={(e) => setTop('name', e.target.value)}
                 onBlur={() => clearError('name')}
@@ -607,7 +545,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                 name="phone"
                 type="tel"
                 inputMode="tel"
-                autoComplete="tel"
+                autoComplete="off"
                 value={form.phone}
                 onChange={(e) => setTop('phone', e.target.value)}
                 onBlur={() => clearError('phone')}
@@ -632,7 +570,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                 name="altPhone"
                 type="tel"
                 inputMode="tel"
-                autoComplete="tel"
+                autoComplete="off"
                 value={form.altPhone}
                 onChange={(e) => setTop('altPhone', e.target.value)}
                 onBlur={() => clearError('altPhone')}
@@ -662,9 +600,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                 areas={areas}
                 value={form.locations[block.key]}
                 errors={errors}
-                geo={geo[block.key]}
                 onChange={(patch) => setLocation(block.key, patch)}
-                onShareLocation={() => shareLocation(block.key)}
                 registerRef={(key, el) => {
                   fieldRefs.current[key] = el;
                 }}
@@ -674,7 +610,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
         </fieldset>
 
         {/* ---------------- 3. সেবার তথ্য ---------------- */}
-        <fieldset className="min-w-0">
+        {!config.minimalForm && <fieldset className="min-w-0">
           <SectionTitle icon={<ClipboardCheck className="h-4 w-4" aria-hidden="true" />}>
             সেবার তথ্য
           </SectionTitle>
@@ -781,7 +717,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
               />
             ))}
           </div>
-        </fieldset>
+        </fieldset>}
 
         {/* ---------------- 4. সময় ---------------- */}
         <fieldset className="min-w-0">
@@ -859,15 +795,20 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
             <Field
               id="service-details"
               label={config.detailsLabel}
+              required={config.requireDetails}
+              error={errors.details}
               hint={config.detailsHint}
             >
               <textarea
                 id="service-details"
                 name="details"
                 rows={5}
+                required={config.requireDetails}
                 value={form.details}
                 onChange={(e) => setTop('details', e.target.value)}
                 placeholder={config.detailsPlaceholder}
+                aria-invalid={Boolean(errors.details)}
+                aria-describedby={errors.details ? 'service-details-error' : undefined}
                 ref={(el) => {
                   fieldRefs.current.details = el;
                 }}
@@ -1092,36 +1033,18 @@ function LocationBlock({
   areas,
   value,
   errors,
-  geo,
   onChange,
-  onShareLocation,
   registerRef,
 }: {
   block: ServiceLocationBlock;
   areas: ReturnType<typeof getAllMCCAreas>;
   value: LocationState;
   errors: Record<string, string>;
-  geo?: { state: GeoState; message: string };
   onChange: (patch: Partial<LocationState>) => void;
-  onShareLocation: () => void;
   registerRef: (key: string, el: HTMLElement | null) => void;
 }) {
   const areaError = errors[`${block.key}.areaId`];
   const addressError = errors[`${block.key}.address`];
-
-  const mapQuery = useMemo(() => {
-    const area = getAreaById(value.areaId);
-    const parts = [area?.nameBn, value.house, value.road, value.landmark]
-      .map((part) => part?.trim())
-      .filter(Boolean);
-    return parts.length > 0 ? parts.join(', ') : '';
-  }, [value.areaId, value.house, value.road, value.landmark]);
-
-  const mapUrl = mapQuery
-    ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-        `${mapQuery}, ময়মনসিংহ`
-      )}`
-    : null;
 
   return (
     <div className="rounded-xl border border-brand-100 bg-mist-50/60 p-4">
@@ -1133,25 +1056,19 @@ function LocationBlock({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id={`${block.key}-area`} label="এলাকা" required error={areaError}>
-          <select
-            id={`${block.key}-area`}
-            name={`${block.key}Area`}
-            value={value.areaId}
-            onChange={(e) => onChange({ areaId: e.target.value })}
-            aria-invalid={Boolean(areaError)}
-            aria-describedby={areaError ? `${block.key}-area-error` : undefined}
-            ref={(el) => registerRef(`${block.key}.areaId`, el)}
-            className={`${controlClass(areaError)} appearance-none bg-[length:16px] bg-[right_0.9rem_center] bg-no-repeat pr-10`}
-            style={CHEVRON_BG}
-          >
-            <option value="">এলাকা নির্বাচন করুন</option>
-            {areas.map((area) => (
-              <option key={area.id} value={area.id}>
-                {area.nameBn}
-              </option>
-            ))}
-          </select>
+        <Field id={`${block.key}-area`} label="এলাকা" required>
+          <div ref={(el) => registerRef(`${block.key}.areaId`, el)}>
+            <LocationSelectInput
+              id={`${block.key}-area`}
+              value={value.areaId}
+              onChange={(areaId) => onChange({ areaId: areaId ?? '' })}
+              placeholder="আপনার এলাকা নির্বাচন করুন"
+              source={createAreaSource(areas)}
+              error={areaError}
+              allowClear={false}
+              size="sm"
+            />
+          </div>
         </Field>
 
         <Field
@@ -1202,50 +1119,6 @@ function LocationBlock({
         </Field>
       </div>
 
-      {/* Map / location. Both options are optional and neither blocks submit:
-          the geolocation button only fills coordinates when the user allows
-          it, and the map link just opens the composed address in Google Maps. */}
-      <div className="mt-3.5 flex flex-col gap-2 sm:flex-row sm:items-center">
-        <button
-          type="button"
-          onClick={onShareLocation}
-          disabled={geo?.state === 'loading'}
-          className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-4 text-[12.5px] font-bold text-brand-700 transition-colors hover:bg-mist-50 disabled:cursor-not-allowed disabled:opacity-60 ${LIGHT_FOCUS}`}
-        >
-          {geo?.state === 'loading' ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
-          ) : (
-            <Crosshair className="h-3.5 w-3.5" aria-hidden="true" />
-          )}
-          আমার বর্তমান লোকেশন যোগ করুন
-        </button>
-
-        {mapUrl && (
-          <a
-            href={mapUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className={`inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg px-3 text-[12.5px] font-bold text-brand-600 underline decoration-brand-300 underline-offset-4 transition-colors hover:text-brand-800 ${LIGHT_FOCUS}`}
-          >
-            মানচিত্রে এই ঠিকানা দেখুন
-            <ExternalLink className="h-3.5 w-3.5" aria-hidden="true" />
-          </a>
-        )}
-
-        {value.geo && (
-          <span className="inline-flex min-h-[44px] items-center gap-1.5 text-[11.5px] font-semibold text-brand-600">
-            <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-            লোকেশন যুক্ত হয়েছে
-          </span>
-        )}
-      </div>
-
-      {geo?.state === 'error' && (
-        <p className="mt-2 text-[11.5px] leading-relaxed text-ink-500">{geo.message}</p>
-      )}
-      {geo?.state === 'ok' && (
-        <p className="mt-2 text-[11.5px] leading-relaxed text-brand-600">{geo.message}</p>
-      )}
     </div>
   );
 }

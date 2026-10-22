@@ -23,7 +23,7 @@ export default function LocationPickerModal({
   onClose,
   selectedAreaId,
   onSelectArea,
-  title = 'আপনার এলাকা বেছে নিন',
+  title = 'আপনার এলাকা নির্বাচন করুন',
   allowClear = true,
   source = MCC_AREA_SOURCE,
 }: LocationPickerModalProps) {
@@ -224,18 +224,7 @@ export default function LocationPickerModal({
                         className={`w-4 h-4 mt-0.5 shrink-0 ${isSelected ? 'text-emerald-700' : 'text-slate-400'}`}
                       />
                       <div className="min-w-0">
-                        <div className="text-sm font-bold flex items-center gap-1.5 flex-wrap">
-                          <span>{area.nameBn}</span>
-                          <span className="text-xs text-slate-400 font-normal">({area.nameEn})</span>
-                        </div>
-                        {area.popularFor && (
-                          <div className="text-xs text-slate-500 mt-0.5 line-clamp-1">{area.popularFor}</div>
-                        )}
-                        {area.prominentLandmarks.length > 0 && (
-                          <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
-                            উল্লেখযোগ্য: {area.prominentLandmarks.join(', ')}
-                          </div>
-                        )}
+                        <div className="text-sm font-bold">{area.nameBn}</div>
                       </div>
                     </div>
                     {isSelected && <Check className="w-4 h-4 text-emerald-700 shrink-0 ml-2" />}

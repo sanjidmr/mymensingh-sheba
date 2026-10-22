@@ -16,7 +16,8 @@ import { adminFetchToletListingMetrics } from '@/lib/tolet-tracking';
 import { TOLET_LISTING_STATUS_INFO, TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
 import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletAnalyticsTable } from '@/components/tolet/admin/ToletAnalytics';
-import { getToletAreas, getToletAreaById } from '@/lib/tolet-areas';
+import { getToletAreaById, TOLET_AREA_SOURCE } from '@/lib/tolet-areas';
+import LocationSelectInput from '@/components/LocationSelectInput';
 
 const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color: string; active: string }> = [
   { key: 'all', label: 'সব', color: 'bg-slate-200 text-slate-700', active: 'bg-slate-800 text-white' },
@@ -351,10 +352,14 @@ export default function AdminToletPage() {
                 <option value="">সব ধরনের বাসা</option>
                 {Object.entries(TOLET_PROPERTY_TYPE_INFO).map(([value, item]) => <option key={value} value={value}>{item.labelBn}</option>)}
               </select>
-              <select aria-label="এলাকা" value={areaId} onChange={(event) => { setAreaId(event.target.value); setPage(1); }} className="min-h-10 rounded-lg border border-slate-200 bg-white px-3 text-xs">
-                <option value="">সব এলাকা</option>
-                {getToletAreas().map((area) => <option key={area.id} value={area.id}>{area.nameBn}</option>)}
-              </select>
+              <LocationSelectInput
+                id="admin-tolet-area"
+                value={areaId || null}
+                onChange={(selectedId) => { setAreaId(selectedId ?? ''); setPage(1); }}
+                placeholder="সব এলাকা"
+                source={TOLET_AREA_SOURCE}
+                size="sm"
+              />
               <label className="flex min-h-10 items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 text-xs text-slate-500">
                 <span className="shrink-0">তারিখ থেকে</span>
                 <input type="date" value={fromDate} max={toDate || undefined} onChange={(event) => { setFromDate(event.target.value); setPage(1); }} className="min-w-0 flex-1 bg-transparent text-slate-800" />

@@ -275,10 +275,90 @@ export default function MymensinghLiveBar() {
     </span>
   );
 
+  const mobileAnnouncement = (clone = false) => (
+    <div
+      aria-hidden={clone || undefined}
+      className="flex shrink-0 items-center gap-3 whitespace-nowrap pr-4"
+    >
+      <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
+        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-400 opacity-75" />
+        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent-400" />
+      </span>
+      <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-accent-300">
+        <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+        লাইভ · ময়মনসিংহ
+      </span>
+      {divider}
+      <span className="text-[11px] text-brand-100/70">
+        {today ? formatBanglaDate(today) : ''}
+      </span>
+      {divider}
+      {clone && !SITE_CONTACT.phone ? (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
+          <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+          ০১৮০০-০০০০০০
+        </span>
+      ) : clone && SITE_CONTACT.phone ? (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
+          <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+          হটলাইন: {SITE_CONTACT.phone}
+        </span>
+      ) : hotline}
+      {weather.value && (
+        <>
+          {divider}
+          <button
+            type="button"
+            onClick={() => setShowWeather(true)}
+            tabIndex={clone ? -1 : undefined}
+            aria-haspopup="dialog"
+            className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] text-brand-100/70"
+          >
+            {weather.value.isDay ? (
+              <Sun className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
+            ) : (
+              <Moon className="h-3.5 w-3.5 text-brand-100/70" aria-hidden="true" />
+            )}
+            <span>আবহাওয়া</span>
+            <span className="font-bold text-white">{toBn(weather.value.temp)}°</span>
+          </button>
+        </>
+      )}
+      {divider}
+      <button
+        type="button"
+        onClick={() => setShowPrayers(true)}
+        tabIndex={clone ? -1 : undefined}
+        aria-haspopup="dialog"
+        title={`নামাজের সময়: ${PRAYER_METHOD_NAME} পদ্ধতি অনুযায়ী`}
+        className="flex items-center gap-2 whitespace-nowrap text-[11px]"
+      >
+        {PRAYER_ORDER.map((meta, i) => {
+          const prayer = prayers.prayers?.[i];
+          const isNext = nextPrayer !== null && prayer?.epoch === nextPrayer.epoch;
+          return (
+            <span key={meta.key} className={isNext ? 'font-bold text-accent-300' : 'text-brand-100/80'}>
+              {meta.nameBn} <span className="font-bold text-white">{prayer ? formatPrayerTime(prayer.epoch) : '–'}</span>
+            </span>
+          );
+        })}
+      </button>
+      {nextPrayer && (
+        <>
+          {divider}
+          <span className="whitespace-nowrap text-[11px] font-semibold text-accent-300">
+            পরবর্তী {nextPrayer.nameBn}
+            {nextIsTomorrow ? ' (কাল)' : ''} · {countdownText(nextEpoch, nowTick)}
+          </span>
+        </>
+      )}
+    </div>
+  );
+
   return (
     <div className="relative z-40 border-b border-brand-900 bg-brand-950 text-brand-100/90">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="no-scrollbar flex h-11 items-center gap-3 overflow-x-auto lg:h-12 lg:justify-center lg:gap-4 lg:overflow-visible">
+        <div className="hidden h-12 items-center justify-center gap-4 lg:flex">
           {/* Live dot + location / date (desktop only) */}
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
             <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
@@ -361,38 +441,11 @@ export default function MymensinghLiveBar() {
             )}
           </div>
 
-          {/* Mobile — compact bar: live text (no dot/icon) + weather & prayer modal buttons */}
-          <div className="flex shrink-0 items-center gap-2 lg:hidden">
-            <span className="whitespace-nowrap text-[10px] font-bold tracking-wide text-brand-100/85">
-              লাইভ · ময়মনসিংহ
-            </span>
-            {divider}
-
-            <button
-              type="button"
-              onClick={() => setShowWeather(true)}
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-brand-100/90 transition-colors hover:bg-white/10 hover:text-white"
-              aria-haspopup="dialog"
-            >
-              {weather.value ? (
-                weather.value.isDay ? (
-                  <Sun className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
-                ) : (
-                  <Moon className="h-3.5 w-3.5 text-brand-100/80" aria-hidden="true" />
-                )
-              ) : null}
-              আবহাওয়া
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setShowPrayers(true)}
-              className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-white/15 bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-brand-100/90 transition-colors hover:bg-white/10 hover:text-white"
-              aria-haspopup="dialog"
-            >
-              নামাজের সময়
-            </button>
-            {hotline}
+        </div>
+        <div className="h-11 overflow-hidden lg:hidden">
+          <div className="mms-live-marquee-track flex h-full w-max items-center">
+            {mobileAnnouncement()}
+            {mobileAnnouncement(true)}
           </div>
         </div>
       </div>

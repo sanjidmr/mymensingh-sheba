@@ -2,7 +2,11 @@
 
 /**
  * WifiDetailSections — the WiFi-only body of the detail page: package
- * comparison, then the shared review section.
+ * comparison and the terms that qualify it.
+ *
+ * Reviews deliberately live outside this component (see `WifiDetail`), because
+ * on a phone they belong after the call/WhatsApp actions, not between the
+ * packages and the contact buttons.
  *
  * Packages are rendered as a comparison table on wide screens and stacked
  * cards on a phone, because "which package is cheapest for 20 Mbps" is exactly
@@ -10,20 +14,15 @@
  */
 import React, { useEffect, useState } from 'react';
 import { Gift, Loader2, Wifi } from 'lucide-react';
-import DirectoryReviews from '@/components/catalog/DirectoryReviews';
 import { fetchWifiPackages } from '@/lib/catalog-service';
 import { bnDate, bnTaka, toBn, type WifiPackage } from '@/lib/catalog-types';
 
 export default function WifiDetailSections({
   listingId,
-  ratingAvg,
-  ratingCount,
   connectionFee,
   termsBn,
 }: {
   listingId: string;
-  ratingAvg?: number;
-  ratingCount?: number;
   connectionFee?: number;
   termsBn?: string;
 }) {
@@ -160,13 +159,6 @@ export default function WifiDetailSections({
           </>
         )}
       </section>
-
-      <DirectoryReviews
-        category="wifi"
-        listingId={listingId}
-        ratingAvg={ratingAvg}
-        ratingCount={ratingCount}
-      />
     </>
   );
 }

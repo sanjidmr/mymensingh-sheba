@@ -3,6 +3,7 @@ import Footer from '@/components/Footer';
 import ServiceRequestHero from '@/components/service-request/ServiceRequestHero';
 import ServiceRequestTrust from '@/components/service-request/ServiceRequestTrust';
 import ServiceRequestFormSection from '@/components/service-request/ServiceRequestFormSection';
+import ServiceRequestFormCard from '@/components/service-request/ServiceRequestFormCard';
 import type { ServiceRequestPageConfig } from '@/lib/service-request-pages';
 
 export interface ServiceRequestPageProps {
@@ -33,6 +34,23 @@ export interface ServiceRequestPageProps {
  * container and does not break `position: sticky` on the navbar.
  */
 export default function ServiceRequestPage({ config }: ServiceRequestPageProps) {
+  if (config.minimalForm) {
+    return (
+      <div className="flex min-h-screen flex-col overflow-x-clip bg-white">
+        <Navbar />
+        <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-7 sm:px-6 sm:py-10 lg:px-8">
+          <header className="mb-5 border-b border-brand-100 pb-4">
+            <h1 className="text-2xl font-extrabold tracking-tight text-ink-900 sm:text-3xl">
+              {config.title}
+            </h1>
+          </header>
+          <ServiceRequestFormCard config={config} />
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">
       <Navbar />

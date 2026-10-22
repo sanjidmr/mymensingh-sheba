@@ -5,7 +5,7 @@ import CatalogDirectory, { providerGroup, rangeGroup } from '@/components/catalo
 import { BannerCard } from '@/components/catalog/CatalogCards';
 import AdminListingLink from '@/components/catalog/AdminListingLink';
 import OwnerListingCta from '@/components/catalog/OwnerListingCta';
-import { areaFilterGroupMulti, type FilterGroup } from '@/lib/directory-filters';
+import { type FilterGroup } from '@/lib/directory-filters';
 import { fetchServiceListings, fetchWifiPackagesForListings } from '@/lib/catalog-service';
 import {
   areaNames,
@@ -59,9 +59,10 @@ export default function WifiDirectory() {
     };
   }, []);
 
+  // WiFi coverage is free-text (address + service tags), so there is no area
+  // facet to filter by here.
   const filterGroups = useMemo<FilterGroup[]>(
     () => [
-      areaFilterGroupMulti(),
       rangeGroup('speed', 'স্পিড', WIFI_SPEED_BANDS),
       rangeGroup('price', 'মাসিক দাম', WIFI_PRICE_BANDS),
       providerGroup(listings),

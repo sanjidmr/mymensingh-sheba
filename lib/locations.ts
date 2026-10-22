@@ -821,6 +821,15 @@ export interface AreaSource {
   byId: (id: string | null | undefined) => MCCArea | undefined;
 }
 
+export function createAreaSource(areas: MCCArea[]): AreaSource {
+  return {
+    all: () => areas,
+    popular: () => getPopularMCCAreas().filter((area) => areas.some((item) => item.id === area.id)),
+    search: (query) => searchAreaList(query, areas),
+    byId: (id) => areas.find((area) => area.id === id) ?? getAreaById(id),
+  };
+}
+
 /** The default, site-wide area source (48 active MCC areas + legacy lookup). */
 export const MCC_AREA_SOURCE: AreaSource = {
   all: () => getAllMCCAreas({ activeOnly: true }),

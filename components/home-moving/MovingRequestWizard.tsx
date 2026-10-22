@@ -37,8 +37,6 @@ export default function MovingRequestWizard() {
   const [photoUrl, setPhotoUrl] = useState('');
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
-  const [contactNameEdited, setContactNameEdited] = useState(false);
-  const [contactPhoneEdited, setContactPhoneEdited] = useState(false);
   const [error, setError] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
@@ -95,8 +93,8 @@ export default function MovingRequestWizard() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
-    const contactNameValue = contactNameEdited ? contactName : contactName || user?.fullName || '';
-    const contactPhoneValue = contactPhoneEdited ? contactPhone : contactPhone || user?.phone || '';
+    const contactNameValue = contactName;
+    const contactPhoneValue = contactPhone;
     const latinPhone = contactPhoneValue.replace(/[০-৯]/g, (digit) =>
       String('০১২৩৪৫৬৭৮৯'.indexOf(digit))
     );
@@ -217,7 +215,7 @@ export default function MovingRequestWizard() {
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+    <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">{error}</p>}
 
       <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-4 sm:grid-cols-2 sm:p-5">
@@ -301,11 +299,11 @@ export default function MovingRequestWizard() {
         <legend className="px-2 text-sm font-extrabold text-slate-900">৪. যোগাযোগ ও অতিরিক্ত তথ্য</legend>
         <div>
           <label htmlFor="moving-contact-name" className={LABEL_CLASS}>আপনার নাম *</label>
-          <input id="moving-contact-name" value={contactNameEdited ? contactName : contactName || user.fullName || ''} onChange={(event) => { setContactNameEdited(true); setContactName(event.target.value); }} className={FIELD_CLASS} autoComplete="name" required />
+          <input id="moving-contact-name" name="contactName" value={contactName} onChange={(event) => setContactName(event.target.value)} className={FIELD_CLASS} autoComplete="off" required />
         </div>
         <div>
           <label htmlFor="moving-contact-phone" className={LABEL_CLASS}>মোবাইল নম্বর *</label>
-          <input id="moving-contact-phone" type="tel" inputMode="tel" value={contactPhoneEdited ? contactPhone : contactPhone || user.phone || ''} onChange={(event) => { setContactPhoneEdited(true); setContactPhone(event.target.value); }} className={FIELD_CLASS} autoComplete="tel" required />
+          <input id="moving-contact-phone" name="contactPhone" type="tel" inputMode="tel" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} className={FIELD_CLASS} autoComplete="off" required />
         </div>
         <div>
           <label htmlFor="moving-description" className={LABEL_CLASS}>আরও কিছু জানাতে চান?</label>

@@ -15,8 +15,10 @@ import {
   COACHING_CLASSES,
   COACHING_FEE_BANDS,
   COACHING_SUBJECTS,
+  COACHING_SUBJECTS_BY_CATEGORY,
   tagLabels,
   type ServiceListing,
+  type CoachingCategory,
 } from '@/lib/catalog-types';
 
 const ui = CATEGORY_UI.coaching;
@@ -39,11 +41,13 @@ const SORTERS = {
   fee_desc: (a: ServiceListing, b: ServiceListing) =>
     (b.monthlyFeeMin ?? -1) - (a.monthlyFeeMin ?? -1),
 };
+const LEGACY_CATEGORY_IDS = new Set(['general', 'hsc', 'admission', 'university', 'government']);
 
 export default function CoachingDirectory() {
   const [listings, setListings] = useState<ServiceListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<CoachingCategory | null>(null);
 
   useEffect(() => {
     let active = true;
@@ -62,22 +66,47 @@ export default function CoachingDirectory() {
     };
   }, []);
 
-  // Class / subject / centre-type are one fixed vocabulary each, so the facets
-  // are static and only the "provider" facet has to wait for real data.
+  // Category is a four-choice selector above the results. Area and the remaining
+  // facets are applied to that category-filtered list by the shared directory.
+  const categoryListings = useMemo(
+    () => selectedCategory
+      ? listings.filter((listing) => listing.coachingCategory === selectedCategory)
+      : listings,
+    [listings, selectedCategory]
+  );
+
+  const subjectOptions = useMemo(() => {
+    const standardSubjects = selectedCategory
+      ? COACHING_SUBJECTS_BY_CATEGORY[selectedCategory]
+      : COACHING_SUBJECTS;
+    const knownSubjectIds = new Set(COACHING_SUBJECTS.map((subject) => subject.id));
+    const classIds = new Set(COACHING_CLASSES.map((item) => item.id));
+    const categoryIds = new Set<string>(COACHING_CATEGORIES.map((item) => item.id));
+    const customSubjects = Array.from(new Set(categoryListings.flatMap((listing) =>
+      listing.tags.filter((tag) =>
+        !knownSubjectIds.has(tag) && !classIds.has(tag) && !categoryIds.has(tag)
+      )
+    ))).sort((a, b) => a.localeCompare(b, 'bn'));
+    return [
+      ...standardSubjects,
+      ...customSubjects.map((subject) => ({ id: subject, labelBn: subject })),
+    ];
+  }, [categoryListings, selectedCategory]);
+
   const filterGroups = useMemo<FilterGroup[]>(
     () => [
       areaFilterGroupMulti(),
       tagFacet('class', 'ক্লাস', COACHING_CLASSES),
-      tagFacet('subject', 'বিষয়', COACHING_SUBJECTS),
-      tagFacet('category', 'ক্যাটাগরি', COACHING_CATEGORIES),
+      tagFacet('subject', 'বিষয়', subjectOptions),
       rangeGroup('monthlyFee', 'মাসিক ফি', COACHING_FEE_BANDS),
       providerGroup(listings),
     ],
-    [listings]
+    [listings, subjectOptions]
   );
 
   const renderCard = useCallback((listing: ServiceListing) => {
     const fee = bnTakaRange(listing.monthlyFeeMin, listing.monthlyFeeMax);
+    const categoryLabel = COACHING_CATEGORIES.find((item) => item.id === listing.coachingCategory)?.labelBn;
     return (
       <BannerCard
         href={`/coaching/${listing.slug}`}
@@ -87,7 +116,11 @@ export default function CoachingDirectory() {
         priceLabel={fee}
         priceSuffix={fee ? '/মাস' : undefined}
         areaLabel={areaNames(listing.areaIds)}
-        chips={[...tagLabels(listing.tags), 'যাচাইয়ের তথ্য নেই']}
+        chips={[
+          ...(categoryLabel ? [categoryLabel] : []),
+          ...tagLabels(listing.tags.filter((tag) => !LEGACY_CATEGORY_IDS.has(tag))),
+          'যাচাইয়ের তথ্য নেই',
+        ]}
         description={listing.summaryBn}
         badge={listing.isFeatured ? 'ফিচার্ড' : undefined}
         ratingAvg={listing.ratingAvg}
@@ -99,14 +132,43 @@ export default function CoachingDirectory() {
   return (
     <CatalogDirectory
       ui={ui}
-      listings={listings}
+      listings={categoryListings}
       loading={loading}
       loadError={loadError}
       filterGroups={filterGroups}
       sortOptions={SORT_OPTIONS}
       sorters={SORTERS}
       renderCard={renderCard}
-      banner={<OwnerListingCta category="coaching" />}
+      banner={
+        <div className="space-y-3">
+          <section aria-labelledby="coaching-categories-heading" className="rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-4">
+            <h2 id="coaching-categories-heading" className="text-sm font-extrabold text-ink-900">
+              কোচিংয়ের ক্যাটাগরি
+            </h2>
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {COACHING_CATEGORIES.map((category) => {
+                const selected = selectedCategory === category.id;
+                return (
+                  <button
+                    key={category.id}
+                    type="button"
+                    aria-pressed={selected}
+                    onClick={() => setSelectedCategory(selected ? null : category.id)}
+                    className={`min-h-11 rounded-xl border px-3 py-2 text-[12px] font-bold transition-colors ${
+                      selected
+                        ? 'border-brand-700 bg-brand-700 text-white'
+                        : 'border-brand-200 bg-white text-ink-700 hover:bg-mist-50'
+                    }`}
+                  >
+                    {category.labelBn}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+          <OwnerListingCta category="coaching" />
+        </div>
+      }
       action={<AdminListingLink category="coaching" label="কোচিং যোগ করুন" />}
     />
   );

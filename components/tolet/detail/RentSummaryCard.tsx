@@ -38,7 +38,7 @@ export function RentSummaryCard({ listing }: { listing: ToletListing }) {
         className="flex items-center gap-1.5 text-[13px] font-extrabold text-ink-900"
       >
         <span aria-hidden="true" className="h-3.5 w-[3px] shrink-0 rounded-full bg-accent-400" />
-        ভাড়া ও মোট পরিমাণ
+        সর্বমোট ভাড়া
       </h2>
 
       <dl className="mt-3 space-y-2">
@@ -59,7 +59,7 @@ export function RentSummaryCard({ listing }: { listing: ToletListing }) {
 
         <div className="border-t border-dashed border-brand-100 pt-2.5">
           <div className="flex items-baseline justify-between gap-3">
-            <dt className="text-[12.5px] font-bold text-ink-900">সর্বমোট</dt>
+            <dt className="text-[12.5px] font-bold text-ink-900">সর্বমোট ভাড়া</dt>
             <dd className="text-[26px] font-black leading-none tracking-tight text-brand-800 sm:text-[28px]">
               ৳{toBengaliDigits(total)}
             </dd>
@@ -69,7 +69,7 @@ export function RentSummaryCard({ listing }: { listing: ToletListing }) {
 
       <p className="mt-3 flex items-start gap-1.5 rounded-lg bg-mist-50 px-2.5 py-2 text-[11.5px] leading-relaxed text-ink-500">
         <Info className="mt-px h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
-        <span>মাসিক ভাড়া ও প্ল্যাটফর্ম ফি যোগ করে সর্বমোট দেখানো হয়েছে।</span>
+        <span>মাসিক ভাড়া + প্ল্যাটফর্ম ফি একসাথে মিলিয়ে মালিকের কাছে জমা দিন।</span>
       </p>
 
       <p className="mt-2 flex items-start gap-1.5 px-0.5 text-[11px] leading-relaxed text-ink-400">

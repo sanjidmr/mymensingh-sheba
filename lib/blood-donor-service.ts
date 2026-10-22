@@ -77,6 +77,29 @@ function mapReportRow(row: Record<string, unknown>): BloodDonorReport {
   };
 }
 
+export async function deleteOwnBloodDonorProfile(
+  profileId: string
+): Promise<{ success: boolean; error?: string }> {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)) {
+    return { success: false, error: 'প্রোফাইলের পরিচয় সঠিক নয়।' };
+  }
+  if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযুক্ত নেই।' };
+  const client = createClient();
+  if (!client) return { success: false, error: 'Supabase সংযুক্ত নেই।' };
+  const { data: authData, error: authError } = await client.auth.getUser();
+  if (authError || !authData.user) return { success: false, error: 'এই কাজটি করতে আগে লগইন করুন।' };
+  const { data, error } = await client
+    .from('blood_donor_profiles')
+    .delete()
+    .eq('id', profileId)
+    .eq('user_id', authData.user.id)
+    .select('id')
+    .maybeSingle();
+  if (error) return { success: false, error: `প্রোফাইল মুছতে ব্যর্থ হয়েছে: ${error.message}` };
+  if (!data) return { success: false, error: 'প্রোফাইলটি পাওয়া যায়নি বা মুছার অনুমতি নেই।' };
+  return { success: true };
+}
+
 // ---------------------------------------------------------------------------
 // Public layer (approved directory — the phone rides along for `tel:` only)
 // ---------------------------------------------------------------------------

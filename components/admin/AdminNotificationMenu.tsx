@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { createPortal } from 'react-dom';
+import { useEffect, useRef, useState } from 'react';
 import { Bell, LoaderCircle } from 'lucide-react';
 import { getRecentAdminNotifications, markAdminNotificationRead } from '@/app/admin/actions/notifications';
 import type { AdminNotificationRow } from '@/lib/admin/queries';
@@ -23,6 +24,39 @@ export default function AdminNotificationMenu({
   const [loaded, setLoaded] = useState(false);
   const [loading, setLoading] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
+  const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
+  const detailsRef = useRef<HTMLDetailsElement>(null);
+  const summaryRef = useRef<HTMLElement>(null);
+
+  const updatePosition = () => {
+    const rect = summaryRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    const width = Math.min(368, window.innerWidth - 24);
+    setPosition({
+      top: rect.bottom + 8,
+      left: Math.max(12, Math.min(rect.right - width, window.innerWidth - width - 12)),
+    });
+  };
+
+  useEffect(() => {
+    if (!open) return;
+    const reposition = () => updatePosition();
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape' && detailsRef.current) {
+        detailsRef.current.open = false;
+        setOpen(false);
+      }
+    };
+    window.addEventListener('resize', reposition);
+    window.addEventListener('scroll', reposition, true);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.removeEventListener('resize', reposition);
+      window.removeEventListener('scroll', reposition, true);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [open]);
 
   const loadRecent = async () => {
     // Refetch on every open so the menu always reflects the latest unread
@@ -69,10 +103,21 @@ export default function AdminNotificationMenu({
   };
 
   return (
-    <details className="admin-menu relative" data-admin-menu onToggle={(event) => {
-      if ((event.currentTarget as HTMLDetailsElement).open) void loadRecent();
-    }}>
+    <details
+      ref={detailsRef}
+      className="admin-menu relative"
+      data-admin-menu
+      onToggle={(event) => {
+        const isOpen = event.currentTarget.open;
+        setOpen(isOpen);
+        if (isOpen) {
+          updatePosition();
+          void loadRecent();
+        }
+      }}
+    >
       <summary
+        ref={summaryRef}
         className="relative flex h-10 w-10 cursor-pointer list-none items-center justify-center rounded-md text-admin-muted hover:bg-admin-page hover:text-admin-navy [&::-webkit-details-marker]:hidden"
         aria-label={unreadCount > 0 ? `নোটিফিকেশন, ${unreadCount}টি অপঠিত` : 'নোটিফিকেশন'}
       >
@@ -83,7 +128,12 @@ export default function AdminNotificationMenu({
           </span>
         )}
       </summary>
-      <div className="absolute right-0 top-12 z-50 w-[min(23rem,calc(100vw-1.5rem))] overflow-hidden rounded-admin-card border border-admin-border bg-white text-left shadow-admin-popover">
+      {open && position && typeof document !== 'undefined' && createPortal(
+      <div
+        data-admin-menu-portal
+        style={{ position: 'fixed', top: position.top, left: position.left, width: 'min(23rem, calc(100vw - 1.5rem))', maxHeight: `calc(100dvh - ${position.top + 12}px)` }}
+        className="z-[1000] overflow-y-auto overscroll-contain rounded-admin-card border border-admin-border bg-white text-left shadow-admin-popover"
+      >
         <div className="flex items-center justify-between border-b border-admin-border px-4 py-3">
           <div>
             <p className="text-sm font-bold text-admin-text">নোটিফিকেশন</p>
@@ -133,7 +183,9 @@ export default function AdminNotificationMenu({
         >
           সব নোটিফিকেশন দেখুন
         </Link>
-      </div>
+      </div>,
+      document.body
+      )}
     </details>
   );
 }

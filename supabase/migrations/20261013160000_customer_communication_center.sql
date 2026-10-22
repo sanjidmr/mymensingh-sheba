@@ -260,7 +260,7 @@ BEGIN
     END IF;
 
     IF TG_TABLE_NAME = 'home_tutor_profiles' THEN
-        profile_label := 'গৃহশিক্ষক প্রোফাইল';
+        profile_label := 'গৃহ শিক্ষক প্রোফাইল';
         related_kind := 'tutor_profile';
     ELSE
         profile_label := 'রক্তদাতা প্রোফাইল';

@@ -49,13 +49,13 @@ export default function ServiceListingEditor({
   return (
     <div className="mx-auto max-w-4xl space-y-5 px-3 py-5 sm:px-5">
       {listing && <div className="rounded-xl border border-brand-100 bg-white p-4"><span className={`whitespace-nowrap rounded-full px-2 py-1 text-xs font-bold ${SERVICE_LISTING_STATUS_META[listing.status ?? 'draft'].className}`}>{SERVICE_LISTING_STATUS_META[listing.status ?? 'draft'].labelBn}</span><p className="mt-2 text-sm text-ink-600">{listing.status === 'approved' ? 'তথ্য পরিবর্তন করে জমা দিলে নতুন পরিবর্তন অনুমোদিত না হওয়া পর্যন্ত প্রকাশিত হবে না।' : SERVICE_LISTING_STATUS_META[listing.status ?? 'draft'].descriptionBn}</p>{listing.rejectionReason && <p className="mt-2 text-sm text-rose-700">প্রত্যাখ্যানের কারণ: {listing.rejectionReason}</p>}</div>}
+      {listing && category === 'coaching' && <OwnerCoachingSections listingId={listing.id} />}
+      {listing && category === 'wifi' && <OwnerWifiPackages listingId={listing.id} />}
       <CustomerListingForm
         category={category}
         initialListing={listing}
         onSaved={() => router.push('/dashboard/service-listings')}
       />
-      {listing && category === 'coaching' && <OwnerCoachingSections listingId={listing.id} />}
-      {listing && category === 'wifi' && <OwnerWifiPackages listingId={listing.id} />}
     </div>
   );
 }

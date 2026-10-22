@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { MessageCircle, Phone } from 'lucide-react';
+import Link from 'next/link';
+import { MessageCircle, Phone, Lock } from 'lucide-react';
 import type { ToletEventSource, ToletListing } from '@/lib/tolet-types';
 import { useListingContact } from '@/components/tolet/detail/ContactActions';
 
@@ -37,9 +38,11 @@ import { useListingContact } from '@/components/tolet/detail/ContactActions';
 export function StickyContactBar({
   listing,
   userId,
+  isLoggedIn,
 }: {
   listing: ToletListing;
   userId?: string | null;
+  isLoggedIn: boolean;
 }) {
   const source: ToletEventSource = 'sticky_bar';
   const contact = useListingContact({
@@ -69,13 +72,25 @@ export function StickyContactBar({
           onClick={contact.onWhatsApp}
           tone="whatsapp"
         />
-        <StickyAction
-          icon={Phone}
-          label={contact.callLabelBn}
-          href={contact.telHref}
-          onClick={contact.onCall}
-          tone="call"
-        />
+        {/* The call action exists only for a signed-in reader; a guest gets a
+            login link in its place instead of a number they were not given. */}
+        {isLoggedIn ? (
+          <StickyAction
+            icon={Phone}
+            label={contact.callLabelBn}
+            href={contact.telHref}
+            onClick={contact.onCall}
+            tone="call"
+          />
+        ) : (
+          <Link
+            href={`/login?next=${encodeURIComponent(`/tolet/${listing.id}`)}`}
+            className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-2 text-[13px] font-extrabold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-1"
+          >
+            <Lock className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="truncate">লগইন করুন</span>
+          </Link>
+        )}
       </div>
     </div>
   );

@@ -25,7 +25,7 @@
  * behaving identically.
  */
 
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   Armchair,
@@ -115,6 +115,16 @@ export default function MarketplaceBrowser() {
   // আগে". Read on the client only; this whole view is client-fetched, so there
   // is no server render to disagree with.
   const [now] = useState(() => Date.now());
+  // Categories stay collapsed by default so the hero + listings own the first
+  // screen. The "ক্যাটাগরি দেখুন" button is the explicit way to open the rail.
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const categoriesRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    if (categoriesOpen) {
+      categoriesRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [categoriesOpen]);
 
   useEffect(() => {
     let active = true;
@@ -263,61 +273,67 @@ export default function MarketplaceBrowser() {
               <PlusCircle className="h-4.5 w-4.5" strokeWidth={2.25} aria-hidden="true" />
               পণ্য বিক্রি করুন
             </Link>
-            <a
-              href="#market-categories"
+            <button
+              type="button"
+              onClick={() => setCategoriesOpen((open) => !open)}
+              aria-expanded={categoriesOpen}
+              aria-controls="market-categories"
               className={`inline-flex min-h-12 items-center gap-2 rounded-xl border border-brand-200 bg-white px-5 text-[14px] font-bold text-brand-700 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
             >
               <Tag className="h-4 w-4" aria-hidden="true" />
-              ক্যাটাগরি দেখুন
-            </a>
+              {categoriesOpen ? 'ক্যাটাগরি লুকান' : 'ক্যাটাগরি দেখুন'}
+            </button>
           </div>
         </section>
 
         {/* -----------------------------------------------------------------
-            Category rail. Tiles, not chips: a chip is a filter control, a tile
-            is a destination, and this is where a first-time reader starts.
+            Category rail. Hidden until the reader asks for it, then shown as
+            compact tiles: icon + name on phones (4 per row), with the item
+            count returning from `sm` upwards where there is room for it.
             ----------------------------------------------------------------- */}
-        <section id="market-categories" className="mt-4 scroll-mt-4">
-          <div className="mb-2.5 flex items-baseline justify-between gap-3">
-            <h2 className="text-[15px] font-extrabold text-ink-900">ক্যাটাগরি</h2>
-            {activeCategory && (
-              <button
-                type="button"
-                onClick={() => selectCategory(null)}
-                className={`text-[12.5px] font-bold text-brand-700 hover:text-brand-800 ${LIGHT_FOCUS}`}
-              >
-                সব পণ্য দেখুন
-              </button>
-            )}
-          </div>
+        {categoriesOpen && (
+          <section
+            id="market-categories"
+            ref={categoriesRef}
+            className="mt-4 scroll-mt-4"
+          >
+            <div className="mb-2.5 flex items-baseline justify-between gap-3">
+              <h2 className="text-[15px] font-extrabold text-ink-900">ক্যাটাগরি</h2>
+              {activeCategory && (
+                <button
+                  type="button"
+                  onClick={() => selectCategory(null)}
+                  className={`text-[12.5px] font-bold text-brand-700 hover:text-brand-800 ${LIGHT_FOCUS}`}
+                >
+                  সব পণ্য দেখুন
+                </button>
+              )}
+            </div>
 
-          {/* 2-up on the narrowest phone. Four or five tiles per row is what a
-              360px screen can hold with a legible Bangla label, and a
-              horizontal scroll rail here would hide eight of the ten categories
-              behind a swipe nobody tries on a first visit. */}
-          <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-            <li>
-              <CategoryTile
-                labelBn="সব পণ্য"
-                Icon={Search}
-                count={posts.length}
-                active={activeCategory === null}
-                onClick={() => selectCategory(null)}
-              />
-            </li>
-            {MARKET_CATEGORIES.map((category) => (
-              <li key={category.id}>
+            <ul className="grid grid-cols-4 gap-1.5 sm:grid-cols-4 sm:gap-2 md:grid-cols-6 lg:grid-cols-8">
+              <li>
                 <CategoryTile
-                  labelBn={category.labelBn}
-                  Icon={CATEGORY_ICON[MARKET_CATEGORY_ICONS[category.id]] ?? Package}
-                  count={countsByCategory.get(category.id) ?? 0}
-                  active={activeCategory === category.id}
-                  onClick={() => selectCategory(category.id)}
+                  labelBn="সব পণ্য"
+                  Icon={Search}
+                  count={posts.length}
+                  active={activeCategory === null}
+                  onClick={() => selectCategory(null)}
                 />
               </li>
-            ))}
-          </ul>
-        </section>
+              {MARKET_CATEGORIES.map((category) => (
+                <li key={category.id}>
+                  <CategoryTile
+                    labelBn={category.labelBn}
+                    Icon={CATEGORY_ICON[MARKET_CATEGORY_ICONS[category.id]] ?? Package}
+                    count={countsByCategory.get(category.id) ?? 0}
+                    active={activeCategory === category.id}
+                    onClick={() => selectCategory(category.id)}
+                  />
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
 
         {/* -----------------------------------------------------------------
             Search + filters.
@@ -430,7 +446,7 @@ function CategoryTile({
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`flex min-h-[76px] w-full flex-col items-start justify-center gap-1 rounded-xl border px-3 py-2.5 text-left transition-colors ${LIGHT_FOCUS} ${
+      className={`flex min-h-[62px] w-full flex-col items-center justify-center gap-1 rounded-lg border px-1 py-2 text-center transition-colors sm:min-h-[76px] sm:items-start sm:rounded-xl sm:px-3 sm:py-2.5 sm:text-left ${LIGHT_FOCUS} ${
         active
           ? 'border-brand-600 bg-brand-700 text-white'
           : empty
@@ -438,19 +454,24 @@ function CategoryTile({
             : 'border-mist-200 bg-white text-ink-800 hover:border-brand-300 hover:bg-brand-50'
       }`}
     >
-      <span className="flex w-full items-center gap-2">
+      <span className="flex w-full flex-col items-center gap-1 sm:flex-row sm:gap-2">
         <Icon
-          className={`h-4.5 w-4.5 shrink-0 ${active ? 'text-accent-300' : 'text-brand-600'}`}
+          className={`h-5 w-5 shrink-0 sm:h-4.5 sm:w-4.5 ${active ? 'text-accent-300' : 'text-brand-600'}`}
           strokeWidth={2}
           aria-hidden="true"
         />
-        <span className="min-w-0 flex-1 truncate text-[12.5px] font-bold leading-snug">
+        <span className="line-clamp-2 w-full text-[10px] font-bold leading-[1.25] sm:min-w-0 sm:flex-1 sm:truncate sm:text-[12.5px] sm:leading-snug">
           {labelBn}
         </span>
-        {active && <ChevronRight className="h-3.5 w-3.5 shrink-0 text-white/70" aria-hidden="true" />}
+        {active && (
+          <ChevronRight
+            className="hidden h-3.5 w-3.5 shrink-0 text-white/70 sm:block"
+            aria-hidden="true"
+          />
+        )}
       </span>
       <span
-        className={`text-[11px] font-semibold ${
+        className={`hidden text-[11px] font-semibold sm:block ${
           active ? 'text-white/75' : empty ? 'text-ink-300' : 'text-ink-400'
         }`}
       >

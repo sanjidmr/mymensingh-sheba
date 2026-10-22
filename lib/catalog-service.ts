@@ -30,6 +30,8 @@ import { requestAdminEmailAlert } from './admin-email-alerts';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
 import {
+  COACHING_WEEKDAYS,
+  isCoachingCategory,
   JOB_TYPES,
   MARKET_CATEGORIES,
   MARKET_CONDITIONS,
@@ -158,7 +160,7 @@ function communityPostWriteError(
  * needs the field, and the owner path reads it through `fn_my_service_listings`.
  */
 const PUBLIC_LISTING_COLUMNS =
-  'id, category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
+  'id, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
 
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
@@ -186,6 +188,13 @@ function strArray(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
 }
 
+function localTime(v: unknown): string | undefined {
+  const value = optStr(v);
+  if (!value) return undefined;
+  const match = value.match(/^([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?$/);
+  return match ? value.slice(0, 5) : undefined;
+}
+
 function isServiceListingStatus(v: unknown): v is ServiceListingStatus {
   return v === 'draft' || v === 'pending' || v === 'approved' || v === 'rejected';
 }
@@ -195,6 +204,9 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
   return {
     id: str(c.id),
     category: c.category as ServiceCategory,
+    coachingCategory: isCoachingCategory(c.coachingCategory)
+      ? c.coachingCategory
+      : undefined,
     slug: str(c.slug),
     titleBn: str(c.titleBn),
     subtitleBn: optStr(c.subtitleBn),
@@ -381,11 +393,17 @@ function mapTeacher(row: Record<string, unknown>): CoachingTeacher {
 
 function mapBatch(row: Record<string, unknown>): CoachingBatch {
   const c = toCamelObject(row) as Record<string, unknown>;
+  const validWeekdays = COACHING_WEEKDAYS.map((day) => day.id);
   return {
     id: str(c.id),
     listingId: str(c.listingId),
     titleBn: str(c.titleBn),
     startDate: optStr(c.startDate),
+    weekdayIds: strArray(c.weekdays).filter((day): day is CoachingBatch['weekdayIds'][number] =>
+      validWeekdays.includes(day as CoachingBatch['weekdayIds'][number])
+    ),
+    startTimeLocal: localTime(c.startTimeLocal),
+    endTimeLocal: localTime(c.endTimeLocal),
     startTime: optStr(c.startTime),
     noteBn: optStr(c.noteBn),
     isActive: c.isActive !== false,
@@ -800,12 +818,12 @@ function customerListingPayload(
 ): Record<string, unknown> {
   return {
     category: input.category,
+    coaching_category: input.category === 'coaching' ? input.coachingCategory ?? null : null,
     title_bn: input.titleBn.trim(),
     subtitle_bn: input.subtitleBn?.trim() || null,
     summary_bn: input.summaryBn?.trim() || null,
     description_bn: input.descriptionBn?.trim() || null,
     image_url: input.imageUrl?.trim() || null,
-    photos: input.photos ?? [],
     logo_url: input.logoUrl?.trim() || null,
     area_ids: input.areaIds ?? [],
     tags: input.tags ?? [],
@@ -843,9 +861,18 @@ function validateCustomerListing(
       input.areaIds.some((area) => typeof area !== 'string' || !area.trim() || area.length > 100)) {
     return 'এলাকার তালিকা সঠিক নয়।';
   }
+  if (input.category === 'coaching' &&
+      (!isCoachingCategory(input.coachingCategory) ||
+       input.areaIds.length === 0)) {
+    return 'কোচিং ক্যাটাগরি ও অন্তত একটি এলাকা বেছে নিন।';
+  }
   if (!Array.isArray(input.tags) || input.tags.length > 60 ||
       input.tags.some((tag) => typeof tag !== 'string' || !tag.trim() || tag.length > 120)) {
     return 'বিষয়, ক্লাস বা সুবিধার তালিকা সঠিক নয়।';
+  }
+  const imageUrl = input.imageUrl?.trim() ?? '';
+  if (!imageUrl || imageUrl.length > 2000 || !(imageUrl.startsWith('/') || /^https:\/\//i.test(imageUrl))) {
+    return 'প্রতিষ্ঠানের একটি সঠিক ছবি যোগ করুন।';
   }
   const amounts = [input.monthlyFeeMin, input.monthlyFeeMax, input.admissionFee, input.priceMin, input.priceMax, input.connectionFee];
   if (amounts.some((amount) => amount !== undefined &&
@@ -855,9 +882,6 @@ function validateCustomerListing(
   if (input.monthlyFeeMin != null && input.monthlyFeeMax != null && input.monthlyFeeMax < input.monthlyFeeMin) return 'সর্বোচ্চ মাসিক ফি সর্বনিম্ন ফির চেয়ে কম হতে পারে না।';
   if (input.priceMin != null && input.priceMax != null && input.priceMax < input.priceMin) return 'সর্বোচ্চ মূল্য সর্বনিম্ন মূল্যের চেয়ে কম হতে পারে না।';
   if (input.speedMbps !== undefined && (!Number.isInteger(input.speedMbps) || input.speedMbps < 1 || input.speedMbps > 100_000)) return 'স্পিড ১ থেকে ১,০০,০০০ Mbps-এর মধ্যে পূর্ণসংখ্যা হতে হবে।';
-  if ((input.photos?.length ?? 0) > 5 || (input.photos ?? []).some((url) =>
-    typeof url !== 'string' || url.length > 2000 || !(url.startsWith('/') || /^https:\/\//i.test(url))
-  )) return 'সর্বোচ্চ ৫টি সঠিক HTTPS বা সাইটের ছবি যোগ করুন।';
   if (mode === 'submit') {
     if (!normalizeBdPhone(input.contactPhonePublic ?? '')) {
       return 'সঠিক ১১-ডিজিটের মোবাইল নম্বর লিখুন (যেমন ০১৭xxxxxxxx)।';
@@ -923,6 +947,16 @@ export async function createCustomerServiceListing(
   const invalid = validateCustomerListing(input, mode);
   if (invalid) return { success: false, error: invalid };
 
+  const { data: existing, error: existingError } = await client
+    .from('service_listings')
+    .select('id')
+    .eq('owner_id', userId)
+    .eq('category', input.category)
+    .limit(1)
+    .maybeSingle();
+  if (existingError) return { success: false, error: `প্রোফাইল যাচাই করা যায়নি: ${existingError.message}` };
+  if (existing) return { success: false, error: 'এই সেবার প্রোফাইল আগে থেকেই আছে। সেটি সম্পাদনা করুন।' };
+
   const payload = {
     ...customerListingPayload(input),
     slug: makeServiceSlug(input.category, input.titleBn),
@@ -986,12 +1020,15 @@ export async function deleteCustomerServiceListing(id: string): Promise<WriteRes
   if (!userId) return { success: false, error: NOT_SIGNED_IN };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
-  const { error } = await client
+  const { data, error } = await client
     .from('service_listings')
     .delete()
     .eq('id', id)
-    .eq('owner_id', userId);
+    .eq('owner_id', userId)
+    .select('id')
+    .maybeSingle();
   if (error) return { success: false, error: error.message };
+  if (!data) return { success: false, error: 'তালিকাটি পাওয়া যায়নি বা মুছার অনুমতি নেই।' };
   return { success: true, data: undefined };
 }
 
@@ -1007,20 +1044,28 @@ export async function uploadServiceListingImage(
   ownerId: string,
   file: File
 ): Promise<WriteResult<string>> {
-  if (!file.type.startsWith('image/')) {
-    return { success: false, error: 'শুধুমাত্র ছবি ফাইল দেওয়া যাবে।' };
-  }
+  const allowedImageTypes: Record<string, string> = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp',
+    'image/avif': 'avif',
+  };
+  const extension = allowedImageTypes[file.type];
+  if (!extension) return { success: false, error: 'JPG, PNG, WebP বা AVIF ছবি দিন।' };
+  if (file.size === 0) return { success: false, error: 'খালি ছবি ফাইল আপলোড করা যাবে না।' };
   if (file.size > SERVICE_IMAGE_MAX_BYTES) {
     return { success: false, error: 'ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।' };
   }
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (!isUuid(ownerId) || (await currentUserId()) !== ownerId) {
+    return { success: false, error: NOT_SIGNED_IN };
+  }
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
 
-  const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
   const path = `${ownerId}/service-listings/${Date.now()}-${Math.random()
     .toString(36)
-    .slice(2, 8)}.${ext}`;
+    .slice(2, 8)}.${extension}`;
   const { error } = await client.storage.from(SERVICE_IMAGE_BUCKET).upload(path, file, {
     contentType: file.type,
     upsert: false,
@@ -1172,14 +1217,18 @@ export async function createOwnCoachingBatch(
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const title = input.titleBn.trim();
   if (title.length < 2 || title.length > 160) return { success: false, error: 'ব্যাচের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।' };
-  if ((input.noteBn?.length ?? 0) > 1000 || (input.startTime?.length ?? 0) > 80) return { success: false, error: 'ব্যাচের নোট বা সময়ের দৈর্ঘ্য অনুমোদিত সীমা ছাড়িয়েছে।' };
+  const scheduleError = validateBatchSchedule(input);
+  if (scheduleError) return { success: false, error: scheduleError };
+  if ((input.noteBn?.length ?? 0) > 1000) return { success: false, error: 'ব্যাচের নোট সর্বোচ্চ ১০০০ অক্ষরের মধ্যে লিখুন।' };
   const { data, error } = await client
     .from('coaching_batches')
     .insert({
       listing_id: listingId,
       title_bn: title,
-      start_date: input.startDate?.trim() || null,
-      start_time: input.startTime?.trim() || null,
+      start_date: input.startDate?.trim(),
+      weekdays: input.weekdayIds,
+      start_time_local: input.startTimeLocal?.trim(),
+      end_time_local: input.endTimeLocal?.trim(),
       note_bn: input.noteBn?.trim() || null,
       is_active: input.isActive !== false,
     })
@@ -1200,12 +1249,22 @@ export async function updateOwnCoachingBatch(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const payload: Record<string, unknown> = {};
+  const scheduleChanged =
+    patch.startDate !== undefined || patch.weekdayIds !== undefined ||
+    patch.startTimeLocal !== undefined || patch.endTimeLocal !== undefined;
+  if (scheduleChanged) {
+    const scheduleError = validateBatchSchedule(patch);
+    if (scheduleError) return { success: false, error: scheduleError };
+    payload.start_date = patch.startDate?.trim();
+    payload.weekdays = patch.weekdayIds;
+    payload.start_time_local = patch.startTimeLocal?.trim();
+    payload.end_time_local = patch.endTimeLocal?.trim();
+  }
   if (patch.titleBn !== undefined) {
     const title = patch.titleBn.trim();
     if (title.length < 2 || title.length > 160) return { success: false, error: 'ব্যাচের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।' };
     payload.title_bn = title;
   }
-  if (patch.startDate !== undefined) payload.start_date = patch.startDate?.trim() || null;
   if (patch.startTime !== undefined) payload.start_time = patch.startTime?.trim() || null;
   if (patch.noteBn !== undefined) {
     if ((patch.noteBn?.length ?? 0) > 1000) return { success: false, error: 'ব্যাচের নোট সর্বোচ্চ ১০০০ অক্ষরের মধ্যে লিখুন।' };
@@ -1399,7 +1458,7 @@ export async function deleteOwnWifiPackage(id: string): Promise<WriteResult> {
 const PUBLIC_TEACHER_COLUMNS =
   'id, listing_id, name_bn, subjects, qualification_bn, experience_bn, sort_order, created_at, updated_at';
 const PUBLIC_BATCH_COLUMNS =
-  'id, listing_id, title_bn, start_date, start_time, note_bn, is_active, created_at, updated_at';
+  'id, listing_id, title_bn, start_date, weekdays, start_time_local, end_time_local, start_time, note_bn, is_active, created_at, updated_at';
 const PUBLIC_PACKAGE_COLUMNS =
   'id, listing_id, name_bn, speed_mbps, price, offer_label_bn, offer_conditions_bn, connection_fee, offer_expires_on, is_active, sort_order, created_at, updated_at';
 const REVIEW_COLUMNS =
@@ -1761,10 +1820,41 @@ type TeacherPatch = {
 type BatchPatch = {
   titleBn?: string;
   startDate?: string | null;
+  weekdayIds?: CoachingBatch['weekdayIds'];
+  startTimeLocal?: string | null;
+  endTimeLocal?: string | null;
   startTime?: string | null;
   noteBn?: string | null;
   isActive?: boolean;
 };
+
+function validateBatchSchedule(input: {
+  startDate?: string | null;
+  weekdayIds?: CoachingBatch['weekdayIds'];
+  startTimeLocal?: string | null;
+  endTimeLocal?: string | null;
+}): string | null {
+  const date = input.startDate?.trim() ?? '';
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return 'ব্যাচের সঠিক শুরুর তারিখ দিন।';
+  const parsedDate = new Date(`${date}T00:00:00.000Z`);
+  if (Number.isNaN(parsedDate.getTime()) || parsedDate.toISOString().slice(0, 10) !== date) {
+    return 'ব্যাচের সঠিক শুরুর তারিখ দিন।';
+  }
+  const days = input.weekdayIds;
+  const allowedDays = COACHING_WEEKDAYS.map((day) => day.id) as readonly string[];
+  if (!Array.isArray(days) || days.length === 0 ||
+    days.length > allowedDays.length ||
+    new Set(days).size !== days.length ||
+    days.some((day) => !allowedDays.includes(day))) {
+    return 'সপ্তাহের অন্তত একটি সঠিক দিন বেছে নিন।';
+  }
+  const start = input.startTimeLocal?.trim() ?? '';
+  const end = input.endTimeLocal?.trim() ?? '';
+  const validTime = (value: string) => /^(?:[01]\d|2[0-3]):[0-5]\d$/.test(value);
+  if (!validTime(start) || !validTime(end)) return 'শুরুর ও শেষের সঠিক সময় দিন।';
+  if (end <= start) return 'শেষের সময় শুরুর সময়ের পরে হতে হবে।';
+  return null;
+}
 type PackagePatch = {
   nameBn?: string;
   speedMbps?: number | null;
@@ -1896,6 +1986,9 @@ export async function adminCreateCoachingBatch(
       listing_id: listingId,
       title_bn: title,
       start_date: input.startDate?.trim() || null,
+      ...(input.weekdayIds?.length ? { weekdays: input.weekdayIds } : {}),
+      ...(input.startTimeLocal ? { start_time_local: input.startTimeLocal } : {}),
+      ...(input.endTimeLocal ? { end_time_local: input.endTimeLocal } : {}),
       start_time: input.startTime?.trim() || null,
       note_bn: input.noteBn?.trim() || null,
       is_active: input.isActive !== false,
@@ -1923,6 +2016,9 @@ export async function adminUpdateCoachingBatch(
     payload.title_bn = title;
   }
   if (patch.startDate !== undefined) payload.start_date = patch.startDate?.trim() || null;
+  if (patch.weekdayIds !== undefined) payload.weekdays = patch.weekdayIds;
+  if (patch.startTimeLocal !== undefined) payload.start_time_local = patch.startTimeLocal?.trim() || null;
+  if (patch.endTimeLocal !== undefined) payload.end_time_local = patch.endTimeLocal?.trim() || null;
   if (patch.startTime !== undefined) payload.start_time = patch.startTime?.trim() || null;
   if (patch.noteBn !== undefined) payload.note_bn = patch.noteBn?.trim() || null;
   if (patch.isActive !== undefined) payload.is_active = patch.isActive;

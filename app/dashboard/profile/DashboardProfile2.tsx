@@ -3,7 +3,8 @@ import React, { useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Camera, Home, GraduationCap, Heart, Lock, LogOut, CheckCircle2, ShieldCheck, Bookmark, Bell, MessageCircle, CircleAlert, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { MCC_AREAS, getAreaById, isInsideMCC } from '@/lib/locations';
+import { getAreaById, isInsideMCC } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 
@@ -44,10 +45,10 @@ export default function DashboardProfile() {
       <ProfileCompletion Bar={completion.percent} completed={completion.completed} total={completion.total} />
       <AvatarCard />
       <InfoForm />
+      <PasswordCard />
       <VerificationCard />
       <NotificationPreferencesCard />
       <AccountLinksCard />
-      <PasswordCard />
       <SvcCard />
       <LogoutCard />
     </div>
@@ -128,6 +129,7 @@ function AvatarCard() {
 function InfoForm() {
   const { user, updateProfile } = useAuth();
   const [name, setName] = useState(user!.fullName);
+  const [phone, setPhone] = useState(user!.phone || '');
   const [email, setEmail] = useState(user!.email || '');
   const [bio, setBio] = useState(user!.bio || '');
   const [areaId, setAreaId] = useState(
@@ -139,10 +141,17 @@ function InfoForm() {
   const [error, setError] = useState('');
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
+    if (!name.trim()) {
+      setError('পুরো নাম লিখুন।');
+      return;
+    }
+    if (!areaId) {
+      setError('এলাকা নির্বাচন করুন।');
+      return;
+    }
     setBusy(true); setOk(false); setError('');
     try {
-      const result = await updateProfile({ fullName: name.trim(), email: email.trim(), bio: bio.trim(), primaryAreaId: areaId, emergencyContact: emg.trim() });
+      const result = await updateProfile({ fullName: name.trim(), phone: phone.trim(), email: email.trim(), bio: bio.trim(), primaryAreaId: areaId, emergencyContact: emg.trim() });
       if (!result.success) {
         setError(result.error || 'তথ্য সংরক্ষণ ব্যর্থ হয়েছে।');
         return;
@@ -160,111 +169,25 @@ function InfoForm() {
       <h2 className="text-[13px] font-extrabold text-ink-900">ব্যক্তিগত তথ্য</h2>
       <div><label className={labelCls}>পুরো নাম</label><input value={name} onChange={(e) => setName(e.target.value)} required className={inputCls} /></div>
       <div>
-        <ProfilePhoneField />
+        <label className={labelCls}>মোবাইল নম্বর</label>
+        <input type="tel" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="01XXXXXXXXX" className={inputCls} />
       </div>
       <div><label className={labelCls}>যোগাযোগের ইমেইল (ঐচ্ছিক)</label><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" className={inputCls} /><p className="mt-1 text-[11px] text-ink-500">এটি যোগাযোগের ঠিকানা; লগইন নম্বর পরিবর্তন হবে না।</p></div>
-      <div><label className={labelCls}>এলাকা</label><select value={areaId} onChange={(e) => setAreaId(e.target.value)} required className={inputCls}><option value="">এলাকা নির্বাচন করুন</option>{MCC_AREAS.map((a) => (<option key={a.id} value={a.id}>{a.nameBn}</option>))}</select></div>
+      <div>
+        <LocationSelectInput
+          value={areaId}
+          onChange={(id) => setAreaId(id || '')}
+          label="এলাকা"
+          placeholder="এলাকা নির্বাচন করুন"
+          allowClear={false}
+        />
+      </div>
       <div><label className={labelCls}>সংক্ষিপ্ত পরিচিতি</label><textarea value={bio} onChange={(e) => setBio(e.target.value)} rows={3} maxLength={300} placeholder="নিজের সম্পর্কে দু-এক লাইন..." className={`${inputCls} py-3`} /></div>
       <div><label className={labelCls}>জরুরি যোগাযোগ</label><input type="tel" value={emg} onChange={(e) => setEmg(e.target.value)} placeholder="018xxxxxxxx" className={inputCls} /></div>
       {ok && <p className="rounded-xl bg-emerald-50 px-3 py-2.5 text-[12px] font-bold text-emerald-900">তথ্য সংরক্ষণ হয়েছে।</p>}
       {error && <p role="alert" className="rounded-xl bg-rose-50 px-3 py-2.5 text-[12px] font-bold text-rose-800">{error}</p>}
       <button type="submit" disabled={busy} className={`min-h-[48px] w-full rounded-xl bg-brand-700 text-[14px] font-extrabold text-white hover:bg-brand-800 disabled:opacity-50 ${LIGHT_FOCUS}`}>{busy ? 'সংরক্ষণ হচ্ছে...' : 'সংরক্ষণ করুন'}</button>
     </form>
-  );
-}
-
-function ProfilePhoneField() {
-  const { user, requestPhoneUpdate, verifyPhoneUpdate } = useAuth();
-  const [phone, setPhone] = useState(user?.phone || '');
-  const [token, setToken] = useState('');
-  const [sent, setSent] = useState(false);
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('');
-  const [failed, setFailed] = useState(false);
-
-  const requestCode = async () => {
-    setBusy(true); setMessage(''); setFailed(false);
-    try {
-      const result = await requestPhoneUpdate(phone);
-      if (result.success) {
-        setSent(true);
-        setMessage('নম্বর যাচাইয়ের কোড পাঠানো হয়েছে।');
-      } else {
-        setFailed(true);
-        setMessage(result.error || 'যাচাইকরণ কোড পাঠানো যায়নি।');
-      }
-    } catch (error) {
-      setFailed(true);
-      setMessage(error instanceof Error ? error.message : 'যাচাইকরণ কোড পাঠানো যায়নি।');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const verifyCode = async () => {
-    setBusy(true); setMessage(''); setFailed(false);
-    try {
-      const result = await verifyPhoneUpdate(phone, token);
-      if (result.success) {
-        setSent(false);
-        setToken('');
-        setMessage('মোবাইল নম্বর যাচাই ও সংরক্ষণ হয়েছে।');
-      } else {
-        setFailed(true);
-        setMessage(result.error || 'নম্বর যাচাই করা যায়নি।');
-      }
-    } catch (error) {
-      setFailed(true);
-      setMessage(error instanceof Error ? error.message : 'নম্বর যাচাই করা যায়নি।');
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div>
-      <label htmlFor="profile-phone" className={labelCls}>মোবাইল নম্বর</label>
-      <div className="flex flex-col gap-2 sm:flex-row">
-        <input
-          id="profile-phone"
-          type="tel"
-          value={phone}
-          onChange={(event) => {
-            setPhone(event.target.value);
-            setSent(false);
-            setMessage('');
-          }}
-          placeholder="০১৭১২৩৪৫৬৭৮"
-          autoComplete="tel"
-          className={`${inputCls} min-w-0 flex-1`}
-        />
-        {sent ? (
-          <div className="flex gap-2 sm:w-56">
-            <input
-              type="text"
-              inputMode="numeric"
-              maxLength={6}
-              value={token}
-              onChange={(event) => setToken(event.target.value.replace(/\D/g, ''))}
-              aria-label="এসএমএস যাচাইকরণ কোড"
-              placeholder="৬ সংখ্যার কোড"
-              className={`${inputCls} min-w-0 flex-1`}
-            />
-            <button type="button" onClick={() => void verifyCode()} disabled={busy} className={`min-h-[48px] rounded-xl bg-brand-700 px-3 text-xs font-bold text-white hover:bg-brand-800 disabled:opacity-50 ${LIGHT_FOCUS}`}>
-              যাচাই
-            </button>
-          </div>
-        ) : (
-          <button type="button" onClick={() => void requestCode()} disabled={busy || !phone.trim()} className={`min-h-[48px] shrink-0 rounded-xl border border-brand-200 px-3 text-xs font-bold text-brand-800 hover:bg-brand-50 disabled:opacity-50 ${LIGHT_FOCUS}`}>
-            {busy ? 'পাঠানো হচ্ছে…' : user?.phone ? 'নম্বর যাচাই করুন' : 'OTP পাঠান'}
-          </button>
-        )}
-      </div>
-      <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
-        নম্বরটি ব্যবহারের আগে এসএমএস কোড দিয়ে যাচাই করা হবে।
-      </p>
-      {message && <p role={failed ? 'alert' : 'status'} className={`mt-1 text-[11.5px] font-semibold ${failed ? 'text-rose-700' : 'text-brand-700'}`}>{message}</p>}
-    </div>
   );
 }
 
@@ -402,27 +325,38 @@ function SvcRow({ href, icon: Icon, label, desc }: { href: string; icon: typeof 
 }
 
 function PasswordCard() {
-  const { changePassword } = useAuth();
+  const { changePassword, hasPassword } = useAuth();
+  const [currentPassword, setCurrentPassword] = useState('');
   const [pw, setPw] = useState('');
   const [pw2, setPw2] = useState('');
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState('');
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (pw.length < 6) { setMsg('কমপক্ষে ৬ অক্ষর দিন।'); return; }
-    if (pw !== pw2) { setMsg('দুইবার একই পাসওয়ার্ড দিন।'); return; }
+    if (hasPassword && !currentPassword) { setMsg('বর্তমান পাসওয়ার্ড লিখুন।'); return; }
+    if (pw.length < 6) { setMsg('নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।'); return; }
+    if (pw !== pw2) { setMsg('দুইবার একই নতুন পাসওয়ার্ড দিন।'); return; }
     setBusy(true); setMsg('');
-    const r = await changePassword(pw);
-    setBusy(false);
-    setMsg(r.success ? 'পাসওয়ার্ড বদলে গেছে।' : (r.error || 'ব্যর্থ হয়েছে।'));
-    if (r.success) { setPw(''); setPw2(''); }
+    try {
+      const r = await changePassword(pw, hasPassword ? currentPassword : undefined);
+      setMsg(r.success
+        ? hasPassword ? 'পাসওয়ার্ড পরিবর্তন হয়েছে।' : 'পাসওয়ার্ড সেট হয়েছে।'
+        : (r.error || 'পাসওয়ার্ড সংরক্ষণ করা যায়নি।'));
+      if (r.success) { setCurrentPassword(''); setPw(''); setPw2(''); }
+    } catch (error) {
+      setMsg(error instanceof Error ? error.message : 'পাসওয়ার্ড সংরক্ষণ করা যায়নি।');
+    } finally {
+      setBusy(false);
+    }
   };
   return (
     <form onSubmit={save} className="space-y-3 rounded-2xl border border-brand-100 bg-white p-4">
-      <h2 className="flex items-center gap-1.5 text-[13px] font-extrabold text-ink-900"><Lock className="h-4 w-4" /> পাসওয়ার্ড বদলান</h2>
-      <div><label className={labelCls}>নতুন পাসওয়ার্ড</label><input type="password" value={pw} onChange={(e) => setPw(e.target.value)} minLength={6} className={inputCls} /></div>
-      <div><label className={labelCls}>আবার দিন</label><input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={6} className={inputCls} /></div>
-      {msg && <p className="text-[12px] font-semibold text-brand-700">{msg}</p>}
+      <h2 className="flex items-center gap-1.5 text-[13px] font-extrabold text-ink-900"><Lock className="h-4 w-4" /> {hasPassword ? 'পাসওয়ার্ড বদলান' : 'পাসওয়ার্ড সেট করুন'}</h2>
+      {!hasPassword && <p className="text-[11.5px] leading-relaxed text-ink-500">এই অ্যাকাউন্টে এখনো পাসওয়ার্ড নেই। নতুন পাসওয়ার্ড সেট করুন।</p>}
+      {hasPassword && <div><label className={labelCls}>বর্তমান পাসওয়ার্ড</label><input type="password" value={currentPassword} onChange={(e) => setCurrentPassword(e.target.value)} autoComplete="current-password" required className={inputCls} /></div>}
+      <div><label className={labelCls}>নতুন পাসওয়ার্ড</label><input type="password" value={pw} onChange={(e) => setPw(e.target.value)} minLength={6} autoComplete="new-password" required className={inputCls} /></div>
+      <div><label className={labelCls}>নতুন পাসওয়ার্ড আবার দিন</label><input type="password" value={pw2} onChange={(e) => setPw2(e.target.value)} minLength={6} autoComplete="new-password" required className={inputCls} /></div>
+      {msg && <p role={msg.includes('হয়েছে') || msg.includes('সেট হয়েছে') ? 'status' : 'alert'} className="text-[12px] font-semibold text-brand-700">{msg}</p>}
       <button type="submit" disabled={busy} className={`min-h-[48px] w-full rounded-xl border border-brand-200 text-[13px] font-bold text-brand-700 ${LIGHT_FOCUS}`}>{busy ? 'বদলানো হচ্ছে...' : 'সংরক্ষণ করুন'}</button>
     </form>
   );

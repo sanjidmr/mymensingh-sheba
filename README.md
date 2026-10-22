@@ -30,6 +30,8 @@
    ADMIN_NOTIFICATION_EMAIL=""
    EMAIL_FROM=""
    APP_BASE_URL="https://mymensinghsheba.com"
+   ADMIN_EMAIL_WORKER_SECRET=""
+   BREVO_WEBHOOK_SECRET=""
    ```
 
    `/admin` uses a signed-in Supabase admin account by default. The
@@ -46,13 +48,18 @@
    Without this project-level setting, Supabase intentionally returns no
    session and the app cannot safely sign the user in automatically.
 
-   Important admin events can also send email through Brevo. Set
+   Important admin events are written to a durable Supabase outbox and sent
+   asynchronously through Brevo. Set
    `BREVO_API_KEY`, `ADMIN_NOTIFICATION_EMAIL` (the administrator's Gmail),
-   `EMAIL_FROM` (a sender address verified in Brevo), and `APP_BASE_URL` in the
-   server environment. The API key must have access to Brevo Transactional
-   Email (`transactional.email`) and the sender must be verified. Keep these
-   server-only and never use `NEXT_PUBLIC_` names. Email is best-effort and
-   cannot change the result of the underlying database operation.
+   `EMAIL_FROM` (a sender address verified in Brevo), `APP_BASE_URL`,
+   `ADMIN_EMAIL_WORKER_SECRET`, and `BREVO_WEBHOOK_SECRET` in the server
+   environment. `BREVO_MIN_INTERVAL_MS` defaults to `12000` (five sends per
+   minute) and can be set to the account's documented transactional limit,
+   but is clamped to 1–60 seconds between messages. The API key must have access to Brevo Transactional Email
+   (`transactional.email`) and the sender must be verified. Keep these
+   server-only and never use `NEXT_PUBLIC_` names. A queue write is part of the
+   source database transaction; later email provider failures do not change an
+   already committed business operation or the in-app notification.
 
 3. Run the dev server:
 
@@ -82,18 +89,80 @@ requests only.
 Apply `supabase/migrations/20261009230000_customer_post_drafts.sql` to enable
 private, per-category Supabase drafts for signed-in customers.
 Apply `supabase/migrations/20261019200000_admin_email_delivery_tracking.sql`
-after the other incremental migrations to enable deduplicated Brevo alert
-delivery tracking. To send a test message, sign in as an admin and POST
-`{"type":"test"}` to `/api/admin-email-alerts` with
-`Content-Type: application/json`. Test messages are deduplicated per admin per
-UTC day. Confirm the server reports delivery and check the configured Gmail
-inbox (including spam). To verify an event alert, submit a new service request,
-pending To-Let listing, report, or safety/payment complaint. Routine contact
-messages and customer-facing status notifications do not send email. Unexpected
-admin-action failures also raise a sanitized alert; email content contains no
-raw error messages or personal data. A build never attempts real delivery.
-Brevo rate-limit responses are retried a bounded number of times, and stale or
-failed deliveries are safely reclaimed with a five-attempt limit.
+if it has not already been applied, then apply
+`supabase/migrations/20261022190000_admin_email_outbox.sql`. The outbox
+migration is additive: it preserves the existing in-app `notifications`
+system and existing delivery history. Database triggers enqueue one job for
+each new service request, pending To-Let submission, report, and safety/payment
+complaint in the same transaction as its source row. Duplicate database events
+use a unique idempotency key. Routine contact messages and customer-facing
+status notifications do not send email.
+
+### cPanel worker and Brevo webhook
+
+1. Add the server-only environment variables in the cPanel Node.js application
+   configuration (or the private environment file used by the deployed Next.js
+   process): `ADMIN_EMAIL_WORKER_SECRET` and `BREVO_WEBHOOK_SECRET`, each a
+   different random secret. Do not add either to a `NEXT_PUBLIC_` variable.
+   Restart the application after changing environment variables.
+2. In cPanel → **Cron Jobs**, run this once every minute:
+
+   ```cron
+   * * * * * /usr/bin/curl -fsS -X POST "https://mymensinghsheba.com/api/admin-email-alerts/worker" -H "Authorization: Bearer REPLACE_WITH_ADMIN_EMAIL_WORKER_SECRET" -o /dev/null
+   ```
+
+   Replace the domain and secret with production values. This HTTP cron
+   command is independent of the cron shell's working directory; the worker
+   runs inside the deployed Next.js application. It handles up to 3 jobs per
+   tick, serially, while a database lease prevents overlapping workers. A
+   crashed request is reclaimed when its lease expires. Brevo `Retry-After`
+   and transient HTTP/network failures are scheduled with bounded exponential
+   backoff and jitter; permanent 4xx responses become `failed`.
+3. In the Brevo Transactional → **Settings → Webhooks** screen, add
+   `https://mymensinghsheba.com/api/admin-email-alerts/webhook`. Configure its
+   Authorization header as `Bearer REPLACE_WITH_BREVO_WEBHOOK_SECRET` and
+   subscribe to `delivered`, `deferred`, `blocked`, `softBounce`, `hardBounce`,
+   and `error`. The endpoint checks the shared secret in constant time and
+   deduplicates provider event IDs before changing a job. If the Brevo account
+   does not offer custom webhook headers, do not expose the endpoint without
+   authentication; configure an authenticated webhook proxy instead.
+4. Sign in as an admin and open `/admin/email-deliveries` to inspect recent
+   event IDs, attempts, next retry, sanitized error, Brevo message ID, provider
+   acceptance, and delivery confirmation. `accepted_by_provider` is not
+   equivalent to Gmail delivery. A `delivered` webhook is the provider's
+   delivery event; it still cannot guarantee inbox placement rather than spam.
+5. To enqueue a test message, sign in as an admin and POST
+   `{"type":"test"}` to `/api/admin-email-alerts` with
+   `Content-Type: application/json`. HTTP `202` means the durable test job was
+   queued—not that Brevo accepted it or Gmail delivered it. Wait for the cron
+   and inspect the event on `/admin/email-deliveries`, then check the Gmail
+   inbox and spam folder.
+
+For a concurrency verification in a staging database, create 20–50 distinct
+valid source events (not duplicate copies of a single event), collect their
+`event_id` values from `admin_email_outbox`, then run two worker HTTP requests
+at the same time. The worker lock serializes invocations and `SKIP LOCKED`
+claims jobs atomically. Verify that each event ID reaches
+`accepted_by_provider`, `delivered`, or a visible terminal `failed` state and
+that there are no duplicate `idempotency_key` values:
+
+```sql
+SELECT event_id, related_type, status, attempt_count, provider_message_id,
+       last_error, created_at, sent_at, delivered_at
+FROM public.admin_email_outbox
+WHERE created_at >= NOW() - INTERVAL '1 hour'
+ORDER BY created_at, event_id;
+
+SELECT idempotency_key, COUNT(*)
+FROM public.admin_email_outbox
+GROUP BY idempotency_key
+HAVING COUNT(*) > 1;
+```
+
+Do not load-test by sending 50 real emails to the production Gmail inbox.
+Verify retries using a staging Brevo key or controlled transient provider
+response; verify the delivered/blocked/bounce paths with Brevo's webhook test
+facility. No production credentials or message payloads are written to logs.
 
 Signed-in community post drafts are stored in Supabase, scoped by customer and
 post category; anonymous drafts are local to the browser. Images must be

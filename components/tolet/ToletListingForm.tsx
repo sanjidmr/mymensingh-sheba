@@ -47,6 +47,8 @@ interface FormState {
   bedrooms: number;
   bathrooms: number;
   balconies: number;
+  hasDrawingRoom: boolean;
+  hasDiningRoom: boolean;
   totalRooms?: number;
   facilitiesText: string;
   unavailableFacilitiesText: string;
@@ -65,6 +67,8 @@ const defaultForm: FormState = {
   bedrooms: 1,
   bathrooms: 1,
   balconies: 0,
+  hasDrawingRoom: false,
+  hasDiningRoom: false,
   totalRooms: undefined,
   facilitiesText: '',
   unavailableFacilitiesText: '',
@@ -144,6 +148,8 @@ function fromListing(listing: ToletListing): FormState {
     bedrooms: listing.bedrooms || 1,
     bathrooms: listing.bathrooms || 1,
     balconies: listing.balconies || 0,
+    hasDrawingRoom: listing.hasDrawingRoom ?? false,
+    hasDiningRoom: listing.hasDiningRoom ?? false,
     totalRooms: listing.totalRooms,
     facilitiesText: facilitiesToText(listing.facilities),
     unavailableFacilitiesText: facilitiesToText(listing.unavailableFacilities),
@@ -346,6 +352,8 @@ export function ToletListingForm({
     bedrooms: form.bedrooms,
     bathrooms: form.bathrooms,
     balconies: form.balconies,
+    hasDrawingRoom: form.hasDrawingRoom,
+    hasDiningRoom: form.hasDiningRoom,
     totalRooms: isMessLike ? form.totalRooms : undefined,
     floor: form.floor.trim() || undefined,
     availableFrom: form.availableFrom.trim() || undefined,
@@ -490,9 +498,10 @@ export function ToletListingForm({
         {/* 5 — এলাকা ও ঠিকানা */}
         <Field id="areaId" label="এলাকা" required error={errors.areaId}>
           <LocationSelectInput
+            id="areaId"
             value={form.areaId || null}
             onChange={(areaId) => set('areaId', areaId ?? '')}
-            placeholder="এলাকা নির্বাচন করুন"
+            placeholder="আপনার এলাকা নির্বাচন করুন"
             source={TOLET_AREA_SOURCE}
             size="md"
           />
@@ -619,6 +628,27 @@ export function ToletListingForm({
               </>
             )}
           </div>
+          {!isMessLike && (
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+              {([
+                ['hasDrawingRoom', 'ড্রয়িং রুম'],
+                ['hasDiningRoom', 'ডাইনিং রুম'],
+              ] as const).map(([key, label]) => (
+                <label
+                  key={key}
+                  className="flex min-h-11 cursor-pointer items-center gap-2 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={form[key]}
+                    onChange={(event) => set(key, event.target.checked)}
+                    className="h-4 w-4 accent-emerald-800"
+                  />
+                  {label}
+                </label>
+              ))}
+            </div>
+          )}
         </Field>
 
         {/* 9 — যেসব সুবিধা আছে */}

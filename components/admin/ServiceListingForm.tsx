@@ -6,9 +6,10 @@ import Link from 'next/link';
 import { ChevronDown, ImagePlus, Loader2, Save, X } from 'lucide-react';
 import { saveServiceListing } from '@/app/admin/actions/service-listings';
 import { uploadMedia } from '@/app/admin/actions/media';
-import { COACHING_CATEGORIES, COACHING_CLASSES, COACHING_SUBJECTS, VEHICLE_KINDS, toBn, type ServiceCategory, type ServiceListingInput, type VehicleKind } from '@/lib/catalog-types';
+import { COACHING_CATEGORIES, COACHING_CLASSES, COACHING_SUBJECTS, VEHICLE_KINDS, toBn, type CoachingCategory, type ServiceCategory, type ServiceListingInput, type VehicleKind } from '@/lib/catalog-types';
 import type { AdminServiceListingRow } from '@/lib/admin/queries';
-import { getAllMCCAreas } from '@/lib/locations';
+import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { Panel } from '@/components/admin/PageHeader';
 import { ImageUpload } from '@/components/admin/ImageUpload';
@@ -78,6 +79,7 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     descriptionBn: row?.description_bn ?? '',
     imageUrl: row?.image_url ?? '',
     logoUrl: row?.logo_url ?? '',
+    coachingCategory: row?.coaching_category ?? undefined,
     areaIds: row?.area_ids ?? [],
     tags: row?.tags ?? [],
     monthlyFeeMin: row?.monthly_fee_min ?? undefined,
@@ -216,7 +218,7 @@ export default function ServiceListingForm({
   const [tagText, setTagText] = useState(() => (listing?.tags ?? [])
     .filter((tag) => category !== 'vehicle' || !VEHICLE_KINDS.includes(tag as VehicleKind))
     .join(', '));
-  const [areaText, setAreaText] = useState('');
+  const [selectedAreaId, setSelectedAreaId] = useState('');
   const [vehicleImages, setVehicleImages] = useState<string[]>(() => initialVehicleImages(listing));
   const [busStopsText, setBusStopsText] = useState(() => (listing?.stops_bn ?? []).join(', '));
   const [busFacilitiesText, setBusFacilitiesText] = useState(() => (listing?.available_facilities ?? []).join(', '));
@@ -240,7 +242,7 @@ export default function ServiceListingForm({
   const [error, setError] = useState('');
   const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
   const taxonomy = category === 'coaching'
-    ? [...COACHING_CLASSES, ...COACHING_SUBJECTS, ...COACHING_CATEGORIES]
+    ? [...COACHING_CLASSES, ...COACHING_SUBJECTS]
     : category === 'bus'
       ? BUS_TYPES
       : [];
@@ -377,9 +379,27 @@ export default function ServiceListingForm({
   const areaPicker = (
     <>
       <div className="mb-3 flex gap-2">
-        <input value={areaText} onChange={(e) => setAreaText(e.target.value)} list="listing-areas" className={inputClass} placeholder="এলাকার নাম বা আইডি খুঁজুন…" />
-        <datalist id="listing-areas">{areas.map((area) => <option key={area.id} value={`${area.nameBn} (${area.id})`} />)}</datalist>
-        <button type="button" onClick={() => { const match = areas.find((area) => `${area.nameBn} (${area.id})` === areaText || area.id === areaText); if (match && !values.areaIds.includes(match.id)) set('areaIds', [...values.areaIds, match.id]); setAreaText(''); }} className="min-h-11 shrink-0 rounded-md border border-admin-border px-3 text-sm font-semibold">যোগ করুন</button>
+        <LocationSelectInput
+          id="admin-service-area"
+          value={selectedAreaId}
+          onChange={(areaId) => setSelectedAreaId(areaId ?? '')}
+          placeholder="আপনার এলাকা নির্বাচন করুন"
+          source={createAreaSource(areas)}
+          size="sm"
+        />
+        <button
+          type="button"
+          onClick={() => {
+            if (selectedAreaId && !values.areaIds.includes(selectedAreaId)) {
+              set('areaIds', [...values.areaIds, selectedAreaId]);
+            }
+            setSelectedAreaId('');
+          }}
+          disabled={!selectedAreaId}
+          className="min-h-11 shrink-0 rounded-md border border-admin-border px-3 text-sm font-semibold disabled:opacity-50"
+        >
+          যোগ করুন
+        </button>
       </div>
       {values.areaIds.length === 0 ? (
         <p className="text-xs text-admin-muted">কোনো নির্দিষ্ট এলাকা না বাছাই করলে পেজের বর্তমান নিয়ম অনুযায়ী city-wide হিসেবে বিবেচিত হতে পারে। কভারেজ যাচাই ছাড়া সক্রিয় করবেন না।</p>
@@ -627,6 +647,20 @@ export default function ServiceListingForm({
                 {field('নাম / শিরোনাম *', <input required minLength={2} maxLength={160} value={values.titleBn} onChange={(e) => set('titleBn', e.target.value)} className={inputClass} />)}
                 {field('URL স্লাগ *', <input required pattern="[a-z0-9]+(-[a-z0-9]+)*" maxLength={100} value={values.slug} onChange={(e) => set('slug', e.target.value)} className={inputClass} placeholder="english-lowercase-with-hyphens" />, 'পাবলিক URL-এ ব্যবহৃত হবে; একই ক্যাটাগরিতে অবশ্যই অনন্য হতে হবে।')}
                 {field('উপশিরোনাম', <input maxLength={240} value={values.subtitleBn ?? ''} onChange={(e) => set('subtitleBn', e.target.value)} className={inputClass} />)}
+                {category === 'coaching' && field(
+                  'কোচিং ক্যাটাগরি *',
+                  <select
+                    required
+                    value={values.coachingCategory ?? ''}
+                    onChange={(event) => set('coachingCategory', (event.target.value || undefined) as CoachingCategory | undefined)}
+                    className={inputClass}
+                  >
+                    <option value="">ক্যাটাগরি বেছে নিন</option>
+                    {COACHING_CATEGORIES.map((item) => (
+                      <option key={item.id} value={item.id}>{item.labelBn}</option>
+                    ))}
+                  </select>,
+                )}
                 {field('সংক্ষিপ্ত পরিচয়', <input maxLength={800} value={values.summaryBn ?? ''} onChange={(e) => set('summaryBn', e.target.value)} className={inputClass} />)}
                 {field(
                   'প্রধান ছবি',
@@ -649,6 +683,12 @@ export default function ServiceListingForm({
                     onBusyChange={trackUpload}
                   />,
                   'কোচিং সেন্টারের লোগো আপলোড করুন।',
+                )}
+                {category === 'coaching' && (
+                  <div className="min-w-0 sm:col-span-2">
+                    <span className="mb-1 block text-xs font-semibold text-admin-text">কোচিং সেন্টারের এলাকা *</span>
+                    {areaPicker}
+                  </div>
                 )}
                 {field('বিস্তারিত', <textarea rows={5} maxLength={10_000} value={values.descriptionBn ?? ''} onChange={(e) => set('descriptionBn', e.target.value)} className={textAreaClass} />, category === 'bus' ? 'প্রকৃত অপারেটরের বুকিং/যোগাযোগ নির্দেশনা এখানে দিন। এটি বুকিং বা আসন নিশ্চিতকরণ নয়।' : undefined)}
                 {field('অ্যাডমিন-শুধু যোগাযোগ নম্বর', <input value={values.contactPhonePrivate ?? ''} onChange={(e) => set('contactPhonePrivate', e.target.value)} className={inputClass} inputMode="tel" />, 'ফোন নম্বর পাবলিক লিস্টিং query-তে অন্তর্ভুক্ত নয়।')}

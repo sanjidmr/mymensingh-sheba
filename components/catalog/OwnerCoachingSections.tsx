@@ -24,6 +24,9 @@ import {
 } from '@/lib/catalog-service';
 import {
   bnDate,
+  coachingTimeRange,
+  coachingWeekdayLabel,
+  COACHING_WEEKDAY_GROUPS,
   COACHING_SUBJECTS,
   tagLabel,
   type CoachingBatch,
@@ -252,9 +255,10 @@ function BatchesEditor({ listingId }: { listingId: string }) {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState('');
-  const [startTime, setStartTime] = useState('');
+  const [weekdayIds, setWeekdayIds] = useState<CoachingBatch['weekdayIds']>([]);
+  const [startTimeLocal, setStartTimeLocal] = useState('');
+  const [endTimeLocal, setEndTimeLocal] = useState('');
   const [note, setNote] = useState('');
   const [isActive, setIsActive] = useState(true);
 
@@ -289,9 +293,10 @@ function BatchesEditor({ listingId }: { listingId: string }) {
 
   const reset = () => {
     setEditingId(null);
-    setTitle('');
     setStartDate('');
-    setStartTime('');
+    setWeekdayIds([]);
+    setStartTimeLocal('');
+    setEndTimeLocal('');
     setNote('');
     setIsActive(true);
   };
@@ -301,9 +306,11 @@ function BatchesEditor({ listingId }: { listingId: string }) {
     setError('');
     setNotice('');
     const payload = {
-      titleBn: title,
-      startDate: startDate || undefined,
-      startTime,
+      titleBn: 'নতুন ব্যাচ',
+      startDate,
+      weekdayIds,
+      startTimeLocal,
+      endTimeLocal,
       noteBn: note,
       isActive,
     };
@@ -350,7 +357,7 @@ function BatchesEditor({ listingId }: { listingId: string }) {
 
   return (
     <section className="rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
-      <h2 className="text-[14px] font-extrabold text-ink-900">নতুন ব্যাচের ঘোষণা</h2>
+      <h2 className="text-[14px] font-extrabold text-ink-900">নতুন ব্যাচের সময়সূচি</h2>
       <p className="mb-3 mt-1 text-[11.5px] leading-relaxed text-ink-400">
         ব্যাচ শুরুর তারিখ যেকোনো সময় হালনাগাদ করতে পারবেন। পুরোনো ঘোষণা মুছে না দিয়ে
         অপ্রকাশিতও করতে পারেন।
@@ -358,17 +365,39 @@ function BatchesEditor({ listingId }: { listingId: string }) {
       <Message error={error} notice={notice} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block">
-          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">ব্যাচের নাম *</span>
-          <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
+          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">শুরুর তারিখ *</span>
+          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} required />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">শুরুর তারিখ</span>
-          <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} />
+          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">শুরুর সময় *</span>
+          <input type="time" value={startTimeLocal} onChange={(e) => setStartTimeLocal(e.target.value)} className={inputClass} required />
         </label>
         <label className="block">
-          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">শুরুর সময়</span>
-          <input value={startTime} onChange={(e) => setStartTime(e.target.value)} className={inputClass} placeholder="যেমন: সকাল ৯টা" />
+          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">শেষের সময় *</span>
+          <input type="time" value={endTimeLocal} onChange={(e) => setEndTimeLocal(e.target.value)} className={inputClass} required />
         </label>
+        <div className="sm:col-span-2">
+          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">সপ্তাহের দিন *</span>
+          <div className="flex flex-wrap gap-1.5">
+            {COACHING_WEEKDAY_GROUPS.map((group) => {
+              const selected = group.weekdayIds.every((day) => weekdayIds.includes(day)) &&
+                weekdayIds.length === group.weekdayIds.length;
+              return (
+                <button
+                  key={group.id}
+                  type="button"
+                  aria-pressed={selected}
+                  onClick={() => setWeekdayIds(selected ? [] : group.weekdayIds)}
+                  className={`min-h-9 rounded-full border px-3 text-[12px] font-semibold ${
+                    selected ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-200 bg-white text-ink-600'
+                  }`}
+                >
+                  {group.labelBn}
+                </button>
+              );
+            })}
+          </div>
+        </div>
         <label className="flex min-h-11 items-center gap-2 self-end text-[13px] font-bold text-ink-700">
           <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="h-4 w-4 accent-brand-700" />
           {isActive ? 'প্রকাশিত' : 'অপ্রকাশিত'}
@@ -383,7 +412,7 @@ function BatchesEditor({ listingId }: { listingId: string }) {
       <div className="mt-3 flex gap-2">
         <button type="button" onClick={() => void commit()} disabled={busy} className={primaryBtn}>
           {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-          {editingId ? 'হালনাগাদ' : 'যোগ করুন'}
+          {editingId ? 'হালনাগাদ' : 'ব্যাচ যোগ করুন'}
         </button>
         {editingId && (
           <button type="button" onClick={reset} className={ghostBtn}>
@@ -406,13 +435,22 @@ function BatchesEditor({ listingId }: { listingId: string }) {
             <div key={b.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-brand-100 p-3">
               <div className="min-w-0">
                 <p className="text-[13.5px] font-bold text-ink-900">
-                  {b.titleBn}
+                  নতুন ব্যাচ
                   <span className={`ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold ${b.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-mist-50 text-ink-500'}`}>
                     {b.isActive ? 'প্রকাশিত' : 'অপ্রকাশিত'}
                   </span>
                 </p>
                 {b.startDate && <p className="mt-0.5 text-[12px] text-ink-500">শুরু: {bnDate(b.startDate)}</p>}
-                {b.startTime && <p className="text-[12px] text-ink-500">সময়: {b.startTime}</p>}
+                {b.weekdayIds.length > 0 && (
+                  <p className="text-[12px] text-ink-500">দিন: {coachingWeekdayLabel(b.weekdayIds)}</p>
+                )}
+                {(b.startTimeLocal || b.startTime) && (
+                  <p className="text-[12px] text-ink-500">
+                    সময়: {b.startTimeLocal && b.endTimeLocal
+                      ? coachingTimeRange(b.startTimeLocal, b.endTimeLocal)
+                      : b.startTime}
+                  </p>
+                )}
                 {b.noteBn && <p className="text-[12px] text-ink-500">{b.noteBn}</p>}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -428,9 +466,10 @@ function BatchesEditor({ listingId }: { listingId: string }) {
                   type="button"
                   onClick={() => {
                     setEditingId(b.id);
-                    setTitle(b.titleBn);
                     setStartDate(b.startDate ?? '');
-                    setStartTime(b.startTime ?? '');
+                    setWeekdayIds(b.weekdayIds);
+                    setStartTimeLocal(b.startTimeLocal ?? '');
+                    setEndTimeLocal(b.endTimeLocal ?? '');
                     setNote(b.noteBn ?? '');
                     setIsActive(b.isActive);
                   }}
@@ -458,8 +497,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
 export default function OwnerCoachingSections({ listingId }: { listingId: string }) {
   return (
     <div className="space-y-4">
-      <TeachersEditor listingId={listingId} />
       <BatchesEditor listingId={listingId} />
+      <TeachersEditor listingId={listingId} />
     </div>
   );
 }
