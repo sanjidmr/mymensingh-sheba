@@ -59,12 +59,13 @@ export default async function AdminEmailDeliveriesPage() {
           />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-xs">
+            <table className="w-full min-w-[1000px] text-left text-xs">
               <thead>
                 <tr className="border-b border-admin-border text-admin-muted">
                   <th className="px-3 py-2 font-semibold">ঘটনা</th>
                   <th className="px-3 py-2 font-semibold">অবস্থা</th>
                   <th className="px-3 py-2 font-semibold">চেষ্টা</th>
+                  <th className="px-3 py-2 font-semibold">Brevo HTTP</th>
                   <th className="px-3 py-2 font-semibold">শেষ ত্রুটি</th>
                   <th className="px-3 py-2 font-semibold">Brevo message ID</th>
                   <th className="px-3 py-2 font-semibold">সময়</th>
@@ -89,6 +90,7 @@ export default async function AdminEmailDeliveriesPage() {
                       )}
                     </td>
                     <td className="px-3 py-3">{job.attempt_count}</td>
+                    <td className="px-3 py-3">{job.provider_http_status ?? '—'}</td>
                     <td className="max-w-52 break-words px-3 py-3 text-red-700">{job.last_error || '—'}</td>
                     <td className="max-w-48 break-all px-3 py-3 font-mono">{job.provider_message_id || '—'}</td>
                     <td className="px-3 py-3 text-admin-muted">

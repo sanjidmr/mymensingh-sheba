@@ -324,17 +324,17 @@ export default function MarketDetail({ slug }: { slug: string }) {
             <div className="mt-3 rounded-2xl border border-mist-200 bg-white p-4 sm:p-5">
               <div className="flex flex-wrap items-center gap-1.5">
                 {post.category && (
-                  <span className="rounded-md border border-brand-100 bg-mist-50 px-2 py-0.5 text-[11px] font-extrabold text-brand-700">
+                  <span className="rounded-md border border-brand-100 bg-mist-50 px-2.5 py-1 text-xs font-extrabold text-brand-700">
                     {tagLabel(post.category)}
                   </span>
                 )}
                 {condition && (
-                  <span className="rounded-md border border-mist-200 bg-white px-2 py-0.5 text-[11px] font-bold text-ink-600">
+                  <span className="rounded-md border border-mist-200 bg-white px-2.5 py-1 text-xs font-bold text-ink-700">
                     {condition}
                   </span>
                 )}
                 {post.isFeatured && post.status === 'approved' && (
-                  <span className="rounded-md bg-accent-400 px-2 py-0.5 text-[11px] font-extrabold text-brand-950">
+                  <span className="rounded-md bg-accent-400 px-2.5 py-1 text-xs font-extrabold text-brand-950">
                     ফিচার্ড
                   </span>
                 )}
@@ -347,11 +347,11 @@ export default function MarketDetail({ slug }: { slug: string }) {
                 {post.price != null ? bnTaka(post.price) : 'দাম আলোচনা'}
               </p>
 
-              <h1 className="mt-2 text-[17px] font-extrabold leading-snug text-ink-900 sm:text-xl">
+              <h1 className="mt-2 text-xl font-extrabold leading-snug text-ink-900 sm:text-2xl">
                 {post.titleBn}
               </h1>
 
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-500">
+              <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-2 text-sm font-medium text-ink-700">
                 {area && (
                   <span className="flex items-center gap-1">
                     <MapPin className="h-3.5 w-3.5 text-brand-500" aria-hidden="true" />
@@ -363,13 +363,13 @@ export default function MarketDetail({ slug }: { slug: string }) {
               </div>
 
               {post.summaryBn && (
-                <p className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-3 text-[13.5px] font-medium leading-relaxed text-ink-700">
+                <p className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-3.5 text-[15px] font-medium leading-relaxed text-ink-800 sm:p-4">
                   {post.summaryBn}
                 </p>
               )}
 
               {post.bodyBn && (
-                <div className="mt-3.5 space-y-3 text-[14px] leading-[1.75] text-ink-700">
+                <div className="mt-3.5 space-y-3 text-[15px] leading-[1.8] text-ink-800 sm:text-base">
                   {post.bodyBn
                     .split(/\n{2,}/)
                     .map((para) => para.trim())
@@ -385,7 +385,7 @@ export default function MarketDetail({ slug }: { slug: string }) {
                   {extras.map((tag) => (
                     <li
                       key={tag}
-                      className="rounded-lg border border-mist-200 bg-mist-50 px-2.5 py-1 text-[11.5px] font-medium text-ink-600"
+                      className="rounded-lg border border-mist-200 bg-mist-50 px-3 py-1.5 text-[13px] font-medium text-ink-700"
                     >
                       {tag}
                     </li>

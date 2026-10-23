@@ -36,7 +36,7 @@ export interface ServiceRequestPageProps {
 export default function ServiceRequestPage({ config }: ServiceRequestPageProps) {
   if (config.compactHero) {
     return (
-      <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">
+      <div className={`flex min-h-screen flex-col overflow-x-clip ${config.slug === 'kajer-bua' ? 'bg-white' : 'bg-mist-50'}`}>
         <Navbar />
         <main className="flex-1">
           <ServiceRequestHero config={config} />

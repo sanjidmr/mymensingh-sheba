@@ -55,12 +55,12 @@ export function PropertyLocation({ listing }: { listing: ToletListing }) {
 
       <div className="mt-2.5 overflow-hidden rounded-xl border border-brand-100 bg-white">
         {/* Address block */}
-        <div className="px-3.5 py-3 sm:px-4">
-          <p className="flex items-start gap-1.5 text-[13px] font-semibold leading-relaxed text-ink-900">
-            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
+        <div className="px-4 py-4 sm:px-5">
+          <p className="flex items-start gap-2 text-[15px] font-bold leading-relaxed text-ink-950 sm:text-base">
+            <MapPin className="mt-1 h-5 w-5 shrink-0 text-brand-700" aria-hidden="true" />
             <span>{listing.specificAddress}</span>
           </p>
-          <p className="mt-1 pl-[22px] text-[12px] text-ink-500">
+          <p className="mt-1.5 pl-7 text-sm font-semibold text-ink-700">
             {areaName}
             {' • '}ময়মনসিংহ সিটি কর্পোরেশন
           </p>
@@ -71,7 +71,7 @@ export function PropertyLocation({ listing }: { listing: ToletListing }) {
               {area.prominentLandmarks.slice(0, 4).map((landmark) => (
                 <li
                   key={landmark}
-                  className="rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[10.5px] font-medium text-ink-600"
+                  className="rounded border border-brand-100 bg-mist-50 px-2.5 py-1 text-xs font-medium text-ink-700"
                 >
                   {landmark}
                 </li>
@@ -109,7 +109,7 @@ export function PropertyLocation({ listing }: { listing: ToletListing }) {
                 <MapIcon className="h-5 w-5" aria-hidden="true" />
               </span>
               <span className="text-[13px] font-bold text-ink-900">মানচিত্র দেখুন</span>
-              <span className="max-w-xs text-[11px] leading-relaxed text-ink-400">
+              <span className="max-w-xs text-xs leading-relaxed text-ink-600">
                 {precise
                   ? `${areaName} এলাকার আনুমানিক মানচিত্র। নির্দিষ্ট বাসার ঠিকানা প্রকাশ করা হয় না।`
                   : 'এলাকাটির সাধারণ মানচিত্র দেখানো হচ্ছে।'}
@@ -119,14 +119,14 @@ export function PropertyLocation({ listing }: { listing: ToletListing }) {
         </div>
 
         <div className="flex items-center justify-between gap-3 border-t border-brand-100 px-3.5 py-2.5 sm:px-4">
-          <p className="text-[10.5px] leading-relaxed text-ink-400">
+          <p className="text-xs leading-relaxed text-ink-600">
             নিরাপত্তার জন্য শুধু এলাকা পর্যন্ত চিহ্নিত করা হয়েছে।
           </p>
           <a
             href={buildGoogleMapsLink(searchQuery)}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex min-h-10 shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-[11.5px] font-bold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg border border-brand-200 bg-white px-3 text-xs font-bold text-brand-700 transition-colors hover:bg-brand-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
           >
             <Navigation className="h-3.5 w-3.5" aria-hidden="true" />
             পথ দেখুন

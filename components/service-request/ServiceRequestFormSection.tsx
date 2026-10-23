@@ -21,7 +21,7 @@ export default function ServiceRequestFormSection({ config }: ServiceRequestForm
     <section
       id={REQUEST_FORM_ANCHOR}
       aria-labelledby="service-request-heading"
-      className="scroll-mt-6 bg-mist-50"
+      className={`scroll-mt-6 ${config.slug === 'kajer-bua' ? 'bg-white' : 'bg-mist-50'}`}
     >
       <div className="mx-auto w-full max-w-5xl px-4 py-10 sm:px-6 sm:py-12">
         <div className="max-w-2xl">

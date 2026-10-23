@@ -11,6 +11,7 @@ import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
 import { isSafeInternalPath, resolveAuthRedirect, roleHome } from '@/lib/auth-routes';
+import { isOnboardingComplete } from '@/lib/onboarding';
 import SplashScreen from '@/components/site/SplashScreen';
 
 function LoginForm() {
@@ -38,6 +39,10 @@ function LoginForm() {
   // form for a second time.
   useEffect(() => {
     if (authLoading || !user) return;
+    if (user.role !== 'admin' && !isOnboardingComplete(user)) {
+      window.location.replace('/onboarding');
+      return;
+    }
     const destination = resolveAuthRedirect(user.role, requestedTarget);
     window.location.replace(destination === '/login' ? roleHome(user.role) : destination);
   }, [authLoading, user, requestedTarget]);

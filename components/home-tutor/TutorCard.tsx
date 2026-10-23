@@ -63,7 +63,7 @@ export function TutorAvatar({
 export function TutorRatingBadge({ tutor }: { tutor: HomeTutorProfile }) {
   if (!tutor.ratingCount) return null;
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-mist-200 bg-mist-50 px-2 py-0.5 text-[11px] font-bold text-ink-700">
+    <span className="inline-flex items-center gap-1 rounded-full border border-mist-200 bg-mist-50 px-2.5 py-1 text-xs font-bold text-ink-800">
       <Star className="h-3 w-3 fill-accent-400 text-accent-400" aria-hidden="true" />
       {Number(tutor.ratingAvg ?? 0).toFixed(1)}
       <span className="font-medium text-ink-400">({toBengaliDigits(tutor.ratingCount)})</span>
@@ -106,36 +106,36 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-3.5">
+      <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start gap-1.5">
-          <h3 className="min-w-0 flex-1 truncate text-[15px] font-extrabold leading-tight text-ink-900">
+          <h3 className="min-w-0 flex-1 line-clamp-2 text-base font-extrabold leading-snug text-ink-900">
             {tutor.fullName}
           </h3>
           {tutor.isVerified && (
             <BadgeCheck className="h-4 w-4 shrink-0 text-brand-600" aria-label="অ্যাডমিন যাচাই করা" />
           )}
           {tutor.isDemo && (
-            <span className="shrink-0 rounded-full border border-accent-200 bg-accent-100/70 px-1.5 py-0.5 text-[10px] font-bold text-accent-700">
+            <span className="shrink-0 rounded-full border border-accent-200 bg-accent-100/70 px-2 py-1 text-xs font-bold text-accent-800">
               নমুনা
             </span>
           )}
         </div>
 
         {tutor.qualification ? (
-          <p className="mt-1 flex items-start gap-1 text-[12px] leading-snug text-ink-600">
+          <p className="mt-1 flex items-start gap-1 text-[13px] leading-snug text-ink-700">
             <GraduationCap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-300" aria-hidden="true" />
             <span className="line-clamp-1">{tutor.qualification}</span>
           </p>
         ) : null}
 
         {/* The fee, first and largest. It is the comparison number. */}
-        <p className="mt-2.5 text-[13.5px] font-black leading-tight text-brand-800">
+        <p className="mt-2.5 text-[15px] font-black leading-tight text-brand-800">
           {formatTutorFee(tutor.expectedSalary)}
         </p>
 
         <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
           <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
               AVAILABILITY_CHIP[tutor.availability] ?? AVAILABILITY_CHIP.busy
             }`}
           >
@@ -150,13 +150,13 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
             {classes.slice(0, 2).map((c) => (
               <li
                 key={c}
-                className="rounded-md border border-mist-200 bg-mist-50 px-2 py-0.5 text-[11px] font-medium leading-snug text-ink-700"
+                className="rounded-md border border-mist-200 bg-mist-50 px-2.5 py-1 text-xs font-medium leading-snug text-ink-800"
               >
                 {c}
               </li>
             ))}
             {classes.length > 2 && (
-              <li className="text-[11px] font-semibold text-ink-400">
+              <li className="text-xs font-semibold text-ink-600">
                 +{toBengaliDigits(classes.length - 2)}
               </li>
             )}
@@ -168,13 +168,13 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
             {subjects.slice(0, 3).map((s) => (
               <li
                 key={s}
-                className="rounded-md border border-brand-100 bg-brand-50 px-2 py-0.5 text-[11px] font-medium leading-snug text-brand-700"
+                className="rounded-md border border-brand-100 bg-brand-50 px-2.5 py-1 text-xs font-medium leading-snug text-brand-800"
               >
                 {s}
               </li>
             ))}
             {subjects.length > 3 && (
-              <li className="text-[11px] font-semibold text-ink-400">
+              <li className="text-xs font-semibold text-ink-600">
                 +{toBengaliDigits(subjects.length - 3)}
               </li>
             )}
@@ -182,7 +182,7 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
         )}
 
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-          <span className="flex min-w-0 items-start gap-1 text-[11.5px] leading-snug text-ink-500">
+          <span className="flex min-w-0 items-start gap-1 text-xs leading-relaxed text-ink-700">
             {areas.length > 0 ? (
               <>
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-300" aria-hidden="true" />

@@ -75,10 +75,10 @@ export default function RoutePlaceholderShell({
         {/* Page Header */}
         <div
           className={`bg-white rounded-2xl border border-slate-200/80 shadow-2xs ${
-            compact ? 'p-5 sm:p-6 mb-6' : 'p-6 sm:p-8 mb-8'
+            compact ? 'p-4 sm:p-6 mb-4 sm:mb-6' : 'p-6 sm:p-8 mb-8'
           }`}
         >
-          <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
+          <div className={`flex flex-wrap items-center justify-between gap-4 ${compact ? 'mb-2' : 'mb-3'}`}>
             {categoryBadge && (
               <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-100 text-emerald-900 text-xs font-semibold">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-700" />

@@ -74,6 +74,7 @@ export interface UserProfile {
   email?: string;
   avatarUrl?: string;
   primaryAreaId: string;
+  onboardingCompletedAt?: string;
   role: UserRole;
   status: UserAccountStatus;
   isVerified: boolean;

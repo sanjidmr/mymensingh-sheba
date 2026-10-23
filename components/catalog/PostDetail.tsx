@@ -235,37 +235,37 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
 
           <div className="p-4 sm:p-6">
             <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[10px] font-extrabold text-brand-700">
+              <span className="rounded border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-extrabold text-brand-700">
                 {POST_META[kind]}
               </span>
               {post.kind === 'buy_sell' && post.marketplaceStatus === 'sold' && (
-                <span className="rounded bg-slate-100 px-1.5 py-[2px] text-[10px] font-extrabold text-slate-700">
+                <span className="rounded bg-slate-100 px-2 py-1 text-xs font-extrabold text-slate-700">
                   বিক্রি হয়েছে
                 </span>
               )}
               {post.kind === 'buy_sell' && post.marketplaceStatus === 'closed' && (
-                <span className="rounded bg-mist-100 px-1.5 py-[2px] text-[10px] font-extrabold text-ink-600">
+                <span className="rounded bg-mist-100 px-2 py-1 text-xs font-extrabold text-ink-600">
                   বন্ধ
                 </span>
               )}
               {post.category && (
-                <span className="truncate text-[11px] font-bold text-brand-600">
+                <span className="truncate text-[13px] font-bold text-brand-700">
                   {tagLabel(post.category)}
                 </span>
               )}
               {post.isFeatured && post.status === 'approved' && (
-                <span className="rounded bg-accent-400 px-1.5 py-[2px] text-[10px] font-extrabold text-brand-950">
+                <span className="rounded bg-accent-400 px-2 py-1 text-xs font-extrabold text-brand-950">
                   ফিচার্ড
                 </span>
               )}
             </div>
 
-            <h1 className="mt-2 text-xl font-extrabold leading-snug text-ink-900 sm:text-2xl">
+            <h1 className="mt-2 text-2xl font-extrabold leading-snug text-ink-900 sm:text-3xl">
               {post.titleBn}
             </h1>
 
             {(post.authorName || areaName) && (
-              <p className="mt-1.5 text-[12px] text-ink-500">
+              <p className="mt-2 text-sm leading-relaxed text-ink-600">
                 {post.authorName
                   ? kind === 'news'
                     ? `সূত্র: ${post.authorName}`
@@ -277,7 +277,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
             )}
 
             {post.summaryBn && (
-              <p className="mt-3 rounded-lg border border-brand-100 bg-mist-50 p-3 text-[13.5px] font-medium leading-relaxed text-ink-700 sm:text-[15px]">
+              <p className="mt-3 rounded-lg border border-brand-100 bg-mist-50 p-3.5 text-[15px] font-medium leading-relaxed text-ink-800 sm:p-4 sm:text-base">
                 {post.summaryBn}
               </p>
             )}
@@ -285,7 +285,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
             {((kind === 'job' &&
               (salary || jobTypeLabel || deadlineLabel || education || experience)) ||
               (kind === 'buy_sell' && (post.price != null || condition))) ? (
-              <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 rounded-lg border border-brand-100 bg-mist-50 p-3 sm:grid-cols-3">
+              <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-brand-100 bg-mist-50 p-3.5 sm:grid-cols-3 sm:gap-4 sm:p-4">
                 {kind === 'job' && salary && (
                   <Fact label="বেতন" value={salary} />
                 )}
@@ -311,7 +311,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
             ) : null}
 
             {post.bodyBn && (
-              <div className="mt-4 space-y-3 text-[14px] leading-[1.75] text-ink-700 sm:text-[15px]">
+              <div className="mt-4 space-y-3 text-[15px] leading-[1.8] text-ink-800 sm:text-base">
                 {post.bodyBn
                   .split(/\n{2,}/)
                   .map((para) => para.trim())
@@ -327,7 +327,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
                 {tagLabels(post.tags).map((tag) => (
                   <li
                     key={tag}
-                    className="rounded border border-brand-100 bg-mist-50 px-2 py-[3px] text-[11px] font-medium text-ink-600"
+                    className="rounded border border-brand-100 bg-mist-50 px-2.5 py-1 text-[13px] font-medium text-ink-700"
                   >
                     {tag}
                   </li>
@@ -389,10 +389,10 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <dt className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-400">
+      <dt className="text-xs font-semibold tracking-wide text-ink-600">
         {label}
       </dt>
-      <dd className="mt-0.5 truncate text-[13.5px] font-bold text-ink-900">{value}</dd>
+      <dd className="mt-1 break-words text-[15px] font-bold leading-snug text-ink-950">{value}</dd>
     </div>
   );
 }

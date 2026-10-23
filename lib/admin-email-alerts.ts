@@ -6,7 +6,14 @@ export type AdminEmailAlertType =
   | 'tutor_reports'
   | 'staff_profile_reports'
   | 'community_post_reports'
-  | 'contact_message';
+  | 'contact_message'
+  | 'blood_request'
+  | 'vehicle_request'
+  | 'community_post'
+  | 'service_listing'
+  | 'tolet_profile'
+  | 'tutor_profile'
+  | 'donor_profile';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 

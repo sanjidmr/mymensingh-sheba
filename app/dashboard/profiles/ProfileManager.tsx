@@ -92,7 +92,7 @@ export default function ProfileManager() {
       key: 'tutor',
       href: '/profile/home-tutor/setup',
       icon: GraduationCap,
-      title: 'GRS শিক্ষক অ্যাকাউন্ট খুলুন',
+      title: 'গৃহ শিক্ষক প্রোফাইল খুলুন',
       description: 'শিক্ষাগত যোগ্যতা, পড়ানোর বিষয় ও পছন্দের এলাকা দিয়ে শিক্ষক প্রোফাইল পরিচালনা করুন।',
     },
     {
@@ -260,7 +260,9 @@ export default function ProfileManager() {
                       }
                     : null;
               const displayTitle = hasProfile
-                ? card.title.replace(' অ্যাকাউন্ট খুলুন', ' অ্যাকাউন্ট')
+                ? card.key === 'tutor'
+                  ? 'গৃহ শিক্ষক প্রোফাইল'
+                  : card.title.replace(' অ্যাকাউন্ট খুলুন', ' অ্যাকাউন্ট')
                 : card.title;
 
               return (

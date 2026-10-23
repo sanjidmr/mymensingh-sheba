@@ -84,7 +84,7 @@ export default function BloodDonorSetupPage() {
         birthYear: parsedBirthYear,
         weightKg: parsedWeightKg,
         isAvailable,
-        showReadiness,
+        showReadiness: true,
         lastDonationDate: lastDonationDate || undefined,
         donationCount: Number(donationCount),
         privatePhone,
@@ -227,7 +227,7 @@ export default function BloodDonorSetupPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-1 gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   লিঙ্গ
@@ -240,34 +240,6 @@ export default function BloodDonorSetupPage() {
                   <option value="male">পুরুষ</option>
                   <option value="female">নারী</option>
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
-                  জন্মসাল
-                </label>
-                <input
-                  type="number"
-                  min="1950"
-                  max="2007"
-                  value={birthYear}
-                  onChange={(e) => setBirthYear(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
-                  ওজন (কেজি - নূন্যতম ৪৫ কেজি)
-                </label>
-                <input
-                  type="number"
-                  min="45"
-                  max="140"
-                  value={weightKg}
-                  onChange={(e) => setWeightKg(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                />
               </div>
             </div>
 
@@ -307,9 +279,7 @@ export default function BloodDonorSetupPage() {
                   এখন রক্ত দিতে প্রস্তুত?
                 </span>
                 <span className="text-xs text-ink-500">
-                  {isAvailable
-                    ? 'আপনি বর্তমানে শারীরিক সুস্থ আছেন এবং রক্ত দিতে প্রস্তুত'
-                    : 'আপনি সাময়িক অসুস্থ বা বিরতিতে আছেন (জরুরি কলের বাইরে রাখা হবে)'}
+                  {isAvailable ? 'রক্ত দিতে প্রস্তুত' : 'রক্ত দিতে প্রস্তুত নয়'}
                 </span>
               </div>
               <label className="relative inline-flex items-center cursor-pointer shrink-0">
@@ -321,30 +291,6 @@ export default function BloodDonorSetupPage() {
                 />
                 <div className="w-11 h-6 bg-brand-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
               </label>
-            </div>
-
-            {/* Readiness visibility — the public-card opt-in */}
-            <div className="rounded-xl border border-brand-100 bg-mist-50 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <span className="block text-sm font-semibold text-ink-900">
-                    কার্ডে “রক্তদানের বর্তমান প্রস্তুতি” দেখান
-                  </span>
-                  <span className="mt-0.5 block text-xs leading-relaxed text-ink-500">
-                    চালু করলে ডিরেক্টরির কার্ডে সর্বশেষ রক্তদানের তারিখ অনুযায়ী আপনার প্রস্তুতির তথ্য
-                    দেখানো হবে। বন্ধ থাকলে কার্ডে এই তথ্য কিছুই দেখানো হবে না।
-                  </span>
-                </div>
-                <label className="relative inline-flex shrink-0 cursor-pointer items-center">
-                  <input
-                    type="checkbox"
-                    checked={showReadiness}
-                    onChange={(e) => setShowReadiness(e.target.checked)}
-                    className="sr-only peer"
-                  />
-                  <div className="w-11 h-6 bg-brand-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
-                </label>
-              </div>
             </div>
 
             {/* Private Phone */}

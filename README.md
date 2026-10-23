@@ -92,11 +92,22 @@ Apply `supabase/migrations/20261019200000_admin_email_delivery_tracking.sql`
 if it has not already been applied, then apply
 `supabase/migrations/20261022190000_admin_email_outbox.sql`. The outbox
 migration is additive: it preserves the existing in-app `notifications`
-system and existing delivery history. Database triggers enqueue one job for
-each new service request, pending To-Let submission, report, and safety/payment
-complaint in the same transaction as its source row. Duplicate database events
-use a unique idempotency key. Routine contact messages and customer-facing
-status notifications do not send email.
+system and existing delivery history. Apply the later migrations in timestamp
+order: `20261023213001_service_listing_moderation_notifications.sql`,
+`20261023214000_admin_email_notification_coverage.sql`, and
+`20261023214100_admin_email_provider_http_status.sql`.
+
+Database triggers enqueue email jobs transactionally for service requests,
+pending To-Let listings, reports, safety/payment complaints, WiFi/coaching and
+other customer-submitted service listings, community posts, vehicle and blood
+requests, and pending To-Let-owner, tutor, and donor profiles. Provider profile
+submissions also create an in-app admin notification. Events with existing
+source-table email triggers are excluded from the notification outbox trigger
+to avoid duplicate email jobs. Routine contact messages, ordinary account
+registration, and customer-facing status notifications do not send email.
+Each job has a unique idempotency key; provider HTTP status, message ID,
+provider acceptance, webhook delivery status, retry state, and failure reason
+are tracked independently from the in-app notification.
 
 ### cPanel worker and Brevo webhook
 
@@ -104,7 +115,9 @@ status notifications do not send email.
    configuration (or the private environment file used by the deployed Next.js
    process): `ADMIN_EMAIL_WORKER_SECRET` and `BREVO_WEBHOOK_SECRET`, each a
    different random secret. Do not add either to a `NEXT_PUBLIC_` variable.
-   Restart the application after changing environment variables.
+   Restart the application after changing environment variables. The worker
+   and webhook routes bypass cookie-based session middleware and authenticate
+   with these bearer secrets in their route handlers.
 2. In cPanel → **Cron Jobs**, run this once every minute:
 
    ```cron
@@ -114,10 +127,11 @@ status notifications do not send email.
    Replace the domain and secret with production values. This HTTP cron
    command is independent of the cron shell's working directory; the worker
    runs inside the deployed Next.js application. It handles up to 3 jobs per
-   tick, serially, while a database lease prevents overlapping workers. A
-   crashed request is reclaimed when its lease expires. Brevo `Retry-After`
-   and transient HTTP/network failures are scheduled with bounded exponential
-   backoff and jitter; permanent 4xx responses become `failed`.
+   tick, serially, with a 45-second processing budget and a 120-second worker
+   lease to avoid a long-running batch monopolizing cPanel requests. Each
+   claimed job has its own lease and can be reclaimed after a crash. Brevo
+   `Retry-After` and transient HTTP/network failures are scheduled with bounded
+   exponential backoff and jitter; permanent 4xx responses become `failed`.
 3. In the Brevo Transactional → **Settings → Webhooks** screen, add
    `https://mymensinghsheba.com/api/admin-email-alerts/webhook`. Configure its
    Authorization header as `Bearer REPLACE_WITH_BREVO_WEBHOOK_SECRET` and

@@ -15,11 +15,12 @@ import Footer from '@/components/Footer';
 export default function NewToletListingPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const ownerPhone = normalizeBdPhone(
+  const [ownerPhoneInput, setOwnerPhoneInput] = React.useState(
     (user?.phone || '').replace(/[০-৯]/g, (digit) =>
       String('০১২৩৪৫৬৭৮৯'.indexOf(digit))
     )
   );
+  const ownerPhone = normalizeBdPhone(ownerPhoneInput);
   const hasValidOwnerPhone = /^01[3-9]\d{8}$/.test(ownerPhone);
 
   if (isLoading || !user) {
@@ -45,8 +46,7 @@ export default function NewToletListingPage() {
 
   const handleSubmit = async (input: ToletListingInput, draft: boolean) => {
     if (!hasValidOwnerPhone) {
-      const message =
-        'বাসা ভাড়ার বিজ্ঞাপন জমা দিতে প্রোফাইলে নিজের সঠিক মোবাইল নম্বর যোগ করুন।';
+      const message = 'সঠিক মোবাইল নম্বর দিন।';
       window.alert(message);
       return { success: false, error: message };
     }
@@ -55,7 +55,7 @@ export default function NewToletListingPage() {
       user.id,
       user.fullName,
       user.isVerified,
-      input,
+      { ...input, ownerPhone: ownerPhone } as ToletListingInput,
       draft ? 'draft' : 'submit'
     );
     return { success: result.success, error: result.error };
@@ -83,16 +83,34 @@ export default function NewToletListingPage() {
 
         <div className="mb-5 rounded-xl border border-brand-100 bg-white px-4 py-3 text-xs text-ink-600">
           <p className="font-semibold text-ink-800">মালিকের পরিচিতি</p>
-          <p className="mt-1">
-            {user.fullName} <span className="mx-1 text-ink-300">•</span> {user.phone || 'মোবাইল নম্বর যোগ করা হয়নি'}
+          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-ink-700 mb-1">মালিকের নাম</label>
+              <input
+                type="text"
+                defaultValue={user.fullName || ''}
+                placeholder="মালিকের নাম লিখুন"
+                className="w-full px-3 py-2 rounded-lg border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+            <div>
+              <label className="block text-[11px] font-semibold text-ink-700 mb-1">মোবাইল নম্বর</label>
+              <input
+                type="tel"
+                inputMode="tel"
+                value={ownerPhoneInput}
+                onChange={(e) => setOwnerPhoneInput(e.target.value.replace(/[^\d০-৯]/g, ''))}
+                placeholder="01XXXXXXXXX"
+                className="w-full px-3 py-2 rounded-lg border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </div>
+          </div>
+          <p className="mt-2 text-[11px] leading-relaxed text-ink-500">
+            এই নাম ও ফোন বিজ্ঞাপনের মালিক হিসেবে সংযুক্ত থাকবে। ফোন নম্বর ওয়েবসাইটে লেখা হিসেবে দেখানো হবে না; অনুমোদিত বিজ্ঞাপনের “কল করুন” বোতাম থেকে সরাসরি ডায়াল করা যাবে।
           </p>
-          <p className="mt-1 text-[11px] leading-relaxed text-ink-500">
-            এই প্রোফাইলের নাম ও ফোন বিজ্ঞাপনের মালিক হিসেবে সংযুক্ত থাকবে। নিজের সঠিক মোবাইল নম্বর প্রোফাইলে যোগ করা আবশ্যক। ফোন নম্বর ওয়েবসাইটে লেখা হিসেবে
-            দেখানো হবে না; অনুমোদিত বিজ্ঞাপনের “কল করুন” বোতাম থেকে সরাসরি ডায়াল করা যাবে।
-          </p>
-          {!hasValidOwnerPhone && (
-            <p className="mt-2 text-[11px] font-semibold text-rose-700">
-              বিজ্ঞাপন জমা দেওয়ার আগে <Link href="/profile" className="underline">প্রোফাইলে নিজের নম্বর যোগ করুন</Link>।
+          {!hasValidOwnerPhone && ownerPhoneInput && (
+            <p className="mt-1 text-[11px] font-semibold text-rose-700">
+              সঠিক ১১-ডিজিটের মোবাইল নম্বর দিন।
             </p>
           )}
         </div>

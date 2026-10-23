@@ -75,7 +75,7 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
           )}
         </div>
 
-        <div className="p-4 sm:p-5">
+        <div className="p-4 sm:p-6">
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <h1 className="text-xl font-black leading-tight text-ink-900 sm:text-2xl">
               {tutor.fullName}
@@ -89,14 +89,14 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
           {/* The one-line credential: the most recent qualification. Never the
               full timeline — that is the section's job. */}
           {tutor.qualification && (
-            <p className="mt-1 text-[13.5px] font-medium leading-snug text-ink-700">
+            <p className="mt-1.5 text-[15px] font-medium leading-relaxed text-ink-800">
               {tutor.qualification}
             </p>
           )}
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <span
-              className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-[11.5px] font-bold ${
+              className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs font-bold ${
                 AVAILABILITY_CHIP[tutor.availability] ?? AVAILABILITY_CHIP.busy
               }`}
             >
@@ -113,12 +113,12 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
               {availability.labelBn}
             </span>
 
-            <span className="inline-flex items-center rounded-full border border-mist-200 bg-mist-50 px-2.5 py-1 text-[11.5px] font-semibold text-ink-600">
+            <span className="inline-flex items-center rounded-full border border-mist-200 bg-mist-50 px-3 py-1.5 text-xs font-semibold text-ink-700">
               {TUTOR_TEACHING_MODE_LABELS[tutor.teachingMode]}
             </span>
 
             {(tutor.ratingCount ?? 0) > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full border border-mist-200 bg-mist-50 px-2.5 py-1 text-[11.5px] font-semibold text-ink-700">
+              <span className="inline-flex items-center gap-1 rounded-full border border-mist-200 bg-mist-50 px-3 py-1.5 text-xs font-semibold text-ink-800">
                 <Star className="h-3.5 w-3.5 fill-accent-400 text-accent-400" aria-hidden="true" />
                 {toBengaliDigits((tutor.ratingAvg ?? 0).toFixed(1))}
                 <span className="text-ink-400">({toBengaliDigits(tutor.ratingCount ?? 0)})</span>
@@ -134,9 +134,9 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
                 className="mt-0.5 h-4 w-4 shrink-0 text-accent-500"
                 aria-hidden="true"
               />
-              <div className="min-w-0 text-[12.5px] leading-relaxed text-ink-600">
+              <div className="min-w-0 text-[14px] leading-relaxed text-ink-700">
                 {activity.roleLabelBn && (
-                  <p className="text-[13px] font-bold text-ink-900">{activity.roleLabelBn}</p>
+                  <p className="text-[15px] font-bold text-ink-900">{activity.roleLabelBn}</p>
                 )}
                 {(activity.studyingAt || activity.teachingAt || activity.workingAt) && (
                   <p className="mt-0.5">
@@ -159,11 +159,11 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
           )}
 
           {tutor.bio && (
-            <p className="mt-3.5 text-[13.5px] leading-relaxed text-ink-700">{tutor.bio}</p>
+            <p className="mt-3.5 text-[15px] leading-[1.8] text-ink-800">{tutor.bio}</p>
           )}
 
           {areas.length > 0 && (
-            <p className="mt-3.5 flex items-start gap-1.5 text-[12.5px] text-ink-500">
+            <p className="mt-3.5 flex items-start gap-2 text-[14px] leading-relaxed text-ink-700">
               <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
               <span>এলাকা — {areas.join(', ')}</span>
             </p>
@@ -177,7 +177,7 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
 /** The label a fallback profile always carries. Never decorative. */
 export function DemoBadge() {
   return (
-    <span className="shrink-0 rounded-full border border-accent-200 bg-accent-100/70 px-2 py-0.5 text-[10.5px] font-bold text-accent-700">
+    <span className="shrink-0 rounded-full border border-accent-200 bg-accent-100/70 px-2.5 py-1 text-xs font-bold text-accent-800">
       নমুনা প্রোফাইল
     </span>
   );

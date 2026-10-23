@@ -3,6 +3,7 @@ import { AdminError } from '@/components/admin/States';
 import { DetailField, PageHeader, Panel } from '@/components/admin/PageHeader';
 import { StatusPill } from '@/components/admin/StatCard';
 import HomeServiceRequestEditor from '@/components/admin/HomeServiceRequestEditor';
+import { ServiceRequestMetadata } from '@/components/admin/ServiceRequestMetadata';
 import {
   fetchAssignableStaff,
   fetchServiceRequestAttachmentUrls,
@@ -22,6 +23,7 @@ const SERVICE_LABEL: Record<string, string> = {
   'basha-paltano': 'বাসা বদলানো',
   'home-moving': 'বাসা বদলানো (পুরোনো রেকর্ড)',
   'ac-fridge': 'AC ও ফ্রিজ মেরামত',
+  'home-tutor': 'গৃহশিক্ষক',
 };
 
 function valueOrDash(value: string | null | undefined) {
@@ -126,11 +128,7 @@ export default async function AdminHomeServiceRequestOperationsPage({
         </Panel>
       )}
 
-      {request.service_meta && (
-        <Panel title="অতিরিক্ত ফর্ম তথ্য" className="mb-4">
-          <pre className="overflow-x-auto whitespace-pre-wrap break-words text-xs text-admin-text">{JSON.stringify(request.service_meta, null, 2)}</pre>
-        </Panel>
-      )}
+      <ServiceRequestMetadata serviceMeta={request.service_meta} serviceSlug={request.service_slug} />
 
       {(attachmentUrls.length > 0 || attachmentError) && (
         <Panel title="সংযুক্ত ফাইল" className="mb-4">

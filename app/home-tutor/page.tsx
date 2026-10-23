@@ -167,18 +167,12 @@ function HomeTutorContent() {
   return (
     <RoutePlaceholderShell
       title="গৃহশিক্ষক (Home Tutor) — ময়মনসিংহ"
-      subtitle="ময়মনসিংহ মেডিকেল, আনন্দ মোহন কলেজ ও বাকৃবির শিক্ষার্থীদের যাচাই করা শিক্ষক প্রোফাইল। আপনার সন্তানের জন্য নির্ভরযোগ্য টিউটর খুঁজুন।"
-      categoryBadge="শিক্ষা সেবা"
       breadcrumbs={[{ label: 'গৃহশিক্ষক' }]}
+      compact
     >
       {/* Top Banner with Post Profile CTA */}
-      <div className="mb-5 flex flex-col gap-3 border-b border-mist-200 pb-5 sm:flex-row sm:items-end sm:justify-between">
+      <div className="mb-3 flex flex-col gap-3 border-b border-mist-200 pb-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between sm:pb-5">
         <div className="min-w-0">
-          <div>
-            <span className="block text-[11.5px] font-bold uppercase tracking-wide text-brand-600">
-              মেডিকেল • আনন্দ মোহন • বাকৃবি
-            </span>
-          </div>
           <h2 className="mt-1 text-[16px] font-extrabold leading-snug text-ink-900 sm:text-[18px]">
             শিক্ষার্থী ও অভিজ্ঞ গৃহশিক্ষক খুঁজুন অথবা পড়াতে প্রোফাইল খুলুন
           </h2>

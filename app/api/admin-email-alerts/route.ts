@@ -17,6 +17,13 @@ const ALLOWED_TYPES = new Set<AdminEmailAlertType>([
   'staff_profile_reports',
   'community_post_reports',
   'contact_message',
+  'blood_request',
+  'vehicle_request',
+  'community_post',
+  'service_listing',
+  'tolet_profile',
+  'tutor_profile',
+  'donor_profile',
 ]);
 
 export async function POST(request: Request) {

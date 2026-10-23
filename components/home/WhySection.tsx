@@ -1,6 +1,6 @@
 'use client';
 
-import { ShieldCheck, Users, Search, BadgeCheck, HeartHandshake, MapPin, Layers, Sparkles, Star } from 'lucide-react';
+import { ShieldCheck, Users, BadgeCheck, HeartHandshake, MapPin, Sparkles } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 
 const WHY_ITEMS = [
@@ -13,11 +13,6 @@ const WHY_ITEMS = [
     icon: Users,
     title: 'যাচাইয়ের মাধ্যমে নিরাপদ যোগাযোগ',
     text: 'ব্যক্তিগত নম্বর সবার সামনে প্রকাশ করা হয় না — অসুবিধাজনক কল ও হয়রানি প্রতিরোধে নিরাপদ ব্যবস্থা।',
-  },
-  {
-    icon: Search,
-    title: 'এলাকা-ভিত্তিক সূক্ষ্ম খোঁজ',
-    text: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকার ভেতরে এলাকা, বাজেট ও প্রয়োজন অনুযায়ী আগে-থেকে ফিল্টার করে সহজে বেছে নিন।',
   },
   {
     icon: HeartHandshake,
@@ -36,22 +31,9 @@ const WHY_ITEMS = [
   },
 ];
 
-const POINTS = [
-  {
-    icon: MapPin,
-    title: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকার ভেতরে',
-    text: 'লোকাল সেবা, লোকাল মানুষের জন্য',
-  },
-  {
-    icon: Layers,
-    title: 'বিভিন্ন এলাকায়',
-    text: 'ওয়ার্ডভিত্তিক তালিকা ও সেবাদাতা',
-  },
-];
-
 /**
- * WhySection — "কেন Mymensingh Sheba?" ভিত্তিক চারটি যুক্তি + তিনটি পয়েন্ট
- * এবং একটি "আপনার রিভিউ দিন" কার্ড (রিভিউ মোডাল খোলে)।
+ * WhySection — "কেন Mymensingh Sheba?" ভিত্তিক পাঁচটি আস্থার যুক্তি
+ * এবং ময়মনসিংহ সিটি কর্পোরেশন এলাকার সংক্ষিপ্ত পরিচিতি।
  */
 export default function WhySection() {
   return (
@@ -87,41 +69,18 @@ export default function WhySection() {
           ))}
         </div>
 
-        {/* Points + review invite */}
+        {/* Local coverage */}
         <Reveal delay={120}>
-          <div className="mt-4 grid grid-cols-2 gap-2.5 max-sm:mt-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
-            {POINTS.map((point) => (
-              <div
-                key={point.title}
-                className={`flex h-full flex-col rounded-2xl border border-brand-100 bg-white p-4 max-sm:p-3 sm:p-5 ${point.title === 'বিভিন্ন এলাকায়' ? 'max-sm:hidden' : ''}`}
-              >
-                <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-11 sm:w-11">
-                  <point.icon className="h-5 w-5" />
-                </span>
-                <h3 className="mt-3 text-[15px] font-bold leading-snug text-ink-900 max-sm:mt-2 max-sm:text-[13px]">
-                  {point.title}
-                </h3>
-                <p className="mt-1 text-[13px] leading-relaxed text-ink-500 max-sm:text-[11px]">{point.text}</p>
-              </div>
-            ))}
-
-            {/* Review — opens the shared review modal */}
-            <button
-              type="button"
-              onClick={() => window.dispatchEvent(new Event('mms:open-review'))}
-              className="group flex h-full flex-col rounded-2xl border border-accent-400/70 bg-accent-400/10 p-4 text-left transition-all duration-300 hover:-translate-y-1 hover:bg-accent-400/20 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 max-sm:p-3 sm:p-5"
-            >
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent-400 text-brand-900 shadow-sm sm:h-11 sm:w-11">
-                <Star className="h-5 w-5" />
-              </span>
-              <h3 className="mt-3 text-[15px] font-bold text-ink-900 max-sm:mt-2 max-sm:text-[13px]">আপনার রিভিউ দিন</h3>
-              <p className="mt-1 text-[13px] leading-relaxed text-ink-600 max-sm:text-[11px]">
-                কোন সেবা নিয়েছেন, অভিজ্ঞতা কেমন — সবার জানান।
-              </p>
-              <span className="mt-auto pt-3 text-xs font-bold text-brand-800">
-                রিভিউ ফর্ম খুলুন
-              </span>
-            </button>
+          <div className="mx-auto mt-4 max-w-md rounded-2xl border border-brand-100 bg-white p-4 max-sm:mt-3 max-sm:p-3 sm:p-5">
+            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-11 sm:w-11">
+              <MapPin className="h-5 w-5" />
+            </span>
+            <h3 className="mt-3 text-[15px] font-bold leading-snug text-ink-900 max-sm:mt-2 max-sm:text-[13px]">
+              ময়মনসিংহ সিটি কর্পোরেশন এলাকার ভেতরে
+            </h3>
+            <p className="mt-1 text-[13px] leading-relaxed text-ink-500 max-sm:text-[11px]">
+              লোকাল সেবা, লোকাল মানুষের জন্য
+            </p>
           </div>
         </Reveal>
       </div>

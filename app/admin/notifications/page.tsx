@@ -11,10 +11,16 @@ export const dynamic = 'force-dynamic';
 
 const CATEGORIES = [
   { value: 'service_request', label: 'সেবা অনুরোধ' },
+  { value: 'blood_request', label: 'রক্তের অনুরোধ' },
   { value: 'vehicle_request', label: 'যানবাহন অনুরোধ' },
   { value: 'contact_message', label: 'গ্রাহক সহায়তা' },
   { value: 'community_post', label: 'কমিউনিটি পোস্ট' },
+  { value: 'service_listing', label: 'WiFi ও অন্যান্য সেবা তালিকা' },
+  { value: 'tolet_profile', label: 'বাসাভাড়া মালিক প্রোফাইল' },
+  { value: 'tutor_profile', label: 'গৃহশিক্ষক প্রোফাইল' },
+  { value: 'donor_profile', label: 'রক্তদাতা প্রোফাইল' },
   { value: 'community_post_report', label: 'পোস্ট রিপোর্ট' },
+  { value: 'community_post_reports', label: 'কমিউনিটি পোস্ট রিপোর্ট' },
   { value: 'tolet_listing_deleted', label: 'বাসাভাড়ার পোস্ট ডিলিট' },
   { value: 'listing_reports', label: 'লিস্টিং রিপোর্ট' },
   { value: 'staff_profile_reports', label: 'কর্মী রিপোর্ট' },

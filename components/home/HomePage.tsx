@@ -149,8 +149,8 @@ export default async function HomePage() {
             kicker="সম্প্রতি"
             hideKickerOnMobile
             title="স্থানীয় খবর ও ঘোষণা"
-            href="/news"
-            source="news"
+            href="/posts"
+            source="posts"
             tone="white"
             withImage
           />

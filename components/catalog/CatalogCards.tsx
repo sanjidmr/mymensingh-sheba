@@ -59,8 +59,8 @@ export function RatingSummary({
           />
         ))}
       </span>
-      <span className="text-[11px] font-bold text-ink-600">{toBn(avg.toFixed(1))}</span>
-      <span className="text-[10.5px] text-ink-400">({toBn(count)})</span>
+      <span className="text-xs font-bold text-ink-700">{toBn(avg.toFixed(1))}</span>
+      <span className="text-xs text-ink-600">({toBn(count)})</span>
     </span>
   );
 }
@@ -135,7 +135,7 @@ export function FactChips({
       {clean.slice(0, max).map((chip) => (
         <li
           key={chip}
-          className="max-w-full truncate rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[10px] font-medium text-ink-600"
+          className="max-w-full truncate rounded border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-medium text-ink-700"
         >
           {chip}
         </li>
@@ -225,9 +225,9 @@ export function BannerCard({
       <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-4">
         {(badge || isVerified) && (
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
-            {badge && <span className="text-[10px] font-bold text-brand-700">{badge}</span>}
+            {badge && <span className="text-xs font-bold text-brand-700">{badge}</span>}
             {isVerified && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-700">
+              <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-700">
                 <BadgeCheck className="h-3 w-3" aria-hidden="true" />
                 অ্যাডমিন যাচাইকৃত
               </span>
@@ -238,7 +238,7 @@ export function BannerCard({
           <p className="text-[15px] font-extrabold leading-none tracking-tight text-brand-800 sm:text-lg">
             <span className="truncate">{priceLabel}</span>
             {priceSuffix && (
-              <span className="ml-1 text-[10px] font-semibold text-ink-400 sm:text-[11px]">
+              <span className="ml-1 text-xs font-semibold text-ink-500">
                 {priceSuffix}
               </span>
             )}
@@ -246,7 +246,7 @@ export function BannerCard({
         )}
 
         <h3
-          className={`mt-1 line-clamp-2 text-[13.5px] font-bold leading-snug text-ink-900 sm:text-base ${
+          className={`mt-1 line-clamp-2 text-[15px] font-bold leading-snug text-ink-900 sm:text-base ${
             priceLabel ? '' : 'mt-0'
           }`}
         >
@@ -254,19 +254,19 @@ export function BannerCard({
         </h3>
 
         {subtitle && (
-          <p className="mt-0.5 line-clamp-1 text-[11px] leading-snug text-ink-500 sm:text-xs">
+          <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-ink-600 sm:text-sm">
             {subtitle}
           </p>
         )}
 
         {packageLines && packageLines.length > 0 && (
-          <ul className="mt-1.5 space-y-0.5 text-[10.5px] font-semibold leading-snug text-brand-800 sm:text-xs">
+          <ul className="mt-1.5 space-y-1 text-xs font-semibold leading-snug text-brand-800 sm:text-sm">
             {packageLines.map((line, index) => <li key={`${line}-${index}`}>{line}</li>)}
           </ul>
         )}
 
         {details && details.length > 0 && (
-          <ul className="mt-1 space-y-0.5 text-[10.5px] leading-snug text-ink-500 sm:text-xs">
+          <ul className="mt-1 space-y-1 text-xs leading-snug text-ink-600 sm:text-sm">
             {details.map((line, index) => <li key={`${line}-${index}`} className="break-words">{line}</li>)}
           </ul>
         )}
@@ -274,13 +274,13 @@ export function BannerCard({
         <RatingSummary avg={ratingAvg} count={ratingCount} className="mt-1" />
 
         {description && (
-          <p className="mt-1.5 line-clamp-2 text-[11px] leading-relaxed text-ink-500 sm:line-clamp-2 sm:text-[13px]">
+          <p className="mt-1.5 line-clamp-2 text-[13px] leading-relaxed text-ink-600 sm:line-clamp-2 sm:text-sm">
             {description}
           </p>
         )}
 
         {areaLabel && (
-          <p className="mt-1.5 flex items-center gap-1 text-[10.5px] text-ink-400 sm:text-xs">
+          <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-600 sm:text-sm">
             <MapPin className="h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
             <span className="truncate">{areaLabel}</span>
           </p>
@@ -291,7 +291,7 @@ export function BannerCard({
         {actionLabel && (
           <div className="mt-auto flex items-center justify-between gap-2 border-t border-brand-100 pt-2">
             <span
-              className={`flex min-w-0 items-center gap-1 text-[11px] font-bold sm:text-xs ${accent}`}
+              className={`flex min-w-0 items-center gap-1 text-xs font-bold sm:text-sm ${accent}`}
             >
               <span className="truncate">{actionLabel}</span>
             </span>
@@ -356,9 +356,9 @@ export function TileCard({
       <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-3.5">
         {(badge || isVerified) && (
           <div className="mb-1 flex flex-wrap items-center gap-1">
-            {badge && <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold ${toneClass}`}>{badge}</span>}
+            {badge && <span className={`rounded px-2 py-1 text-xs font-bold ${toneClass}`}>{badge}</span>}
             {isVerified && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-700">
+              <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-700">
                 <BadgeCheck className="h-3 w-3" aria-hidden="true" />
                 অ্যাডমিন যাচাইকৃত
               </span>
@@ -369,25 +369,25 @@ export function TileCard({
           <p className="text-[15px] font-extrabold leading-none tracking-tight text-brand-800 sm:text-lg">
             <span className="truncate">{priceLabel}</span>
             {priceSuffix && (
-              <span className="ml-1 text-[10px] font-semibold text-ink-400 sm:text-[11px]">
+              <span className="ml-1 text-xs font-semibold text-ink-500">
                 {priceSuffix}
               </span>
             )}
           </p>
         )}
 
-        <h3 className="mt-1 line-clamp-2 text-[12.5px] font-bold leading-snug text-ink-900 sm:text-[15px]">
+        <h3 className="mt-1 line-clamp-2 text-[14px] font-bold leading-snug text-ink-900 sm:text-base">
           {title}
         </h3>
 
         {subtitle && (
-          <p className={`mt-0.5 line-clamp-1 text-[10.5px] leading-snug text-ink-500 sm:text-xs ${mobileMinimal ? 'hidden sm:block' : ''}`}>
+          <p className={`mt-0.5 line-clamp-2 text-xs leading-snug text-ink-600 sm:text-sm ${mobileMinimal ? 'hidden sm:block' : ''}`}>
             {subtitle}
           </p>
         )}
 
         {areaLabel && (
-          <p className={`mt-1.5 flex items-center gap-1 text-[10.5px] text-ink-400 sm:text-xs ${mobileMinimal ? 'hidden sm:flex' : ''}`}>
+          <p className={`mt-1.5 flex items-center gap-1 text-xs text-ink-600 sm:text-sm ${mobileMinimal ? 'hidden sm:flex' : ''}`}>
             <MapPin className="h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
             <span className="truncate">{areaLabel}</span>
           </p>
@@ -401,7 +401,7 @@ export function TileCard({
 
         {actionLabel && (
           <div className="mt-auto flex items-center justify-between gap-1.5 border-t border-brand-100 pt-2 sm:pt-2.5">
-            <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
+            <span className="flex min-w-0 items-center gap-1 text-xs font-bold text-brand-700 sm:text-sm">
               <span className="truncate">{actionLabel}</span>
             </span>
           </div>
@@ -445,9 +445,9 @@ export function CompactCard({
       <div className="flex min-w-0 flex-col p-2 sm:p-2.5">
         {(badge || isVerified) && (
           <div className="mb-1 flex flex-wrap items-center gap-1">
-            {badge && <span className="text-[10px] font-bold text-brand-700">{badge}</span>}
+            {badge && <span className="text-xs font-bold text-brand-700">{badge}</span>}
             {isVerified && (
-              <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-700">
+              <span className="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-700">
                 <BadgeCheck className="h-3 w-3" aria-hidden="true" />
                 যাচাইকৃত
               </span>
@@ -459,11 +459,11 @@ export function CompactCard({
             {priceLabel}
           </p>
         )}
-        <h3 className="mt-1 line-clamp-2 text-[11.5px] font-bold leading-snug text-ink-900 sm:text-[13px]">
+        <h3 className="mt-1 line-clamp-2 text-[14px] font-bold leading-snug text-ink-900 sm:text-[15px]">
           {title}
         </h3>
         {areaLabel && (
-          <p className="mt-1 flex items-center gap-0.5 text-[10px] text-ink-400">
+          <p className="mt-1 flex items-center gap-1 text-xs text-ink-600">
             <MapPin className="h-2.5 w-2.5 shrink-0 text-brand-500" aria-hidden="true" />
             <span className="truncate">{areaLabel}</span>
           </p>

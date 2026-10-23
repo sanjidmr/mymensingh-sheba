@@ -107,11 +107,11 @@ function FactCell({ fact }: { fact: Fact }) {
   const Icon = fact.icon;
   return (
     <div className="min-w-0">
-      <dt className="flex items-center gap-1 text-[10.5px] font-medium leading-tight text-ink-400">
-        <Icon className="h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
+      <dt className="flex items-center gap-1.5 text-xs font-semibold leading-snug text-ink-600">
+        <Icon className="h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
         <span className="truncate">{fact.labelBn}</span>
       </dt>
-      <dd className="mt-1 text-[13px] font-bold leading-snug text-ink-900">
+      <dd className="mt-1.5 break-words text-[15px] font-bold leading-snug text-ink-950">
         {fact.value}
       </dd>
     </div>

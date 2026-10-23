@@ -634,12 +634,12 @@ export default function CustomerListingForm({
                 ))}
               </select>
             </Field>
-            <Field label="কোচিং সেন্টারের এলাকা" required>
+            <Field label="কোচিং সেন্টারের এলাকা*" required>
               <LocationSelectInput
-                value={selectedAreaId}
-                onChange={(areaId) => setSelectedAreaId(areaId ?? '')}
+                value={selectedAreaId || null}
+                onChange={(areaId) => setSelectedAreaId(areaId || '')}
                 placeholder="ময়মনসিংহের এলাকা বেছে নিন"
-                allowClear
+                allowClear={true}
                 size="sm"
               />
             </Field>
@@ -653,7 +653,7 @@ export default function CustomerListingForm({
             placeholder="এক লাইনে প্রতিষ্ঠান সম্পর্কে"
           />
         </Field>
-        <Field label="বিস্তারিত বর্ণনা">
+        <Field label="বিস্তারিত বর্ণনা (ঐচ্ছিক)">
           <textarea
             rows={4}
             value={form.descriptionBn}
@@ -710,16 +710,26 @@ export default function CustomerListingForm({
               />
             </Field>
             <Field label="ভর্তি ফি (টাকা)" hint="ভর্তি ফি না থাকলে ফাঁকা রাখুন।">
-              <input
-                type="number"
-                inputMode="numeric"
-                step={1}
-                min={0}
-                value={form.admissionFee}
-                onChange={(e) => set('admissionFee', e.target.value)}
-                className={inputClass}
-                placeholder="ঐচ্ছিক"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  min={0}
+                  value={form.admissionFee === '0' ? '' : form.admissionFee}
+                  onChange={(e) => set('admissionFee', e.target.value)}
+                  disabled={form.admissionFee === '0'}
+                  className={inputClass}
+                  placeholder="ঐচ্ছিক"
+                />
+                <button
+                  type="button"
+                  onClick={() => set('admissionFee', form.admissionFee === '0' ? '' : '0')}
+                  className={`min-h-11 px-4 rounded-lg border text-sm font-extrabold whitespace-nowrap transition-colors ${form.admissionFee === '0' ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-200 bg-white text-brand-700 hover:bg-brand-50'}`}
+                >
+                  {form.admissionFee === '0' ? 'ভর্তি ফ্রি' : 'ফ্রি'}
+                </button>
+              </div>
             </Field>
           </div>
         </section>
@@ -789,19 +799,29 @@ export default function CustomerListingForm({
           </button>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="সংযোগ ফি">
-              <input
-                type="number"
-                inputMode="numeric"
-                step={1}
-                min={0}
-                value={form.connectionFee}
-                onChange={(e) => set('connectionFee', e.target.value)}
-                className={inputClass}
-                placeholder="১০০০"
-              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  step={1}
+                  min={0}
+                  value={form.connectionFee === '0' ? '' : form.connectionFee}
+                  onChange={(e) => set('connectionFee', e.target.value)}
+                  disabled={form.connectionFee === '0'}
+                  className={inputClass}
+                  placeholder="১০০০"
+                />
+                <button
+                  type="button"
+                  onClick={() => set('connectionFee', form.connectionFee === '0' ? '' : '0')}
+                  className={`min-h-11 px-4 rounded-lg border text-sm font-extrabold whitespace-nowrap transition-colors ${form.connectionFee === '0' ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-200 bg-white text-brand-700 hover:bg-brand-50'}`}
+                >
+                  {form.connectionFee === '0' ? 'সংযোগ ফ্রি' : 'ফ্রি'}
+                </button>
+              </div>
             </Field>
           </div>
-          <Field label="সংযোগের শর্ত">
+          <Field label="সংযোগের শর্ত (ঐচ্ছিক)">
             <textarea
               rows={2}
               value={form.termsBn}
@@ -928,7 +948,7 @@ export default function CustomerListingForm({
           <div>
             <h2 className="text-[14px] font-extrabold text-ink-900">নতুন ব্যাচের সময়সূচি</h2>
             <p className="mt-1 text-[11.5px] leading-relaxed text-ink-400">
-              প্রতিটি ব্যাচ আলাদাভাবে যোগ করুন। তারিখ, সপ্তাহের দিন এবং শুরু ও শেষের সময় দিন।
+              প্রতিটি ব্যাচ আলাদাভাবে যোগ করুন। তারিখ, সপ্তাহের দিন এবং শুরু ও শেষের সময় দিন। নতুন ব্যাচ শুরু হলে এখানে এসে আপডেট করতে পারবেন।
             </p>
           </div>
           {pendingBatches.map((batch, index) => (

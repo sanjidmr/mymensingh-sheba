@@ -55,7 +55,7 @@ export function OwnerProfileCard({ listing }: { listing: ToletListing }) {
         <div className="min-w-0 flex-1">
           <p className="flex items-center gap-1.5">
             <UserRound className="h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
-            <span className="truncate text-[13.5px] font-bold text-ink-900">
+            <span className="truncate text-[15px] font-bold text-ink-900">
               {roleLabel}
             </span>
             {verified && (
@@ -66,7 +66,7 @@ export function OwnerProfileCard({ listing }: { listing: ToletListing }) {
             )}
           </p>
 
-          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-ink-400">
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink-600">
             {meta?.memberSinceBn && (
               <span className="inline-flex items-center gap-1">
                 <CalendarDays className="h-3 w-3 shrink-0" aria-hidden="true" />
@@ -78,7 +78,7 @@ export function OwnerProfileCard({ listing }: { listing: ToletListing }) {
         </div>
       </div>
 
-      <p className="mt-3 rounded-lg bg-mist-50 px-2.5 py-2 text-[11px] leading-relaxed text-ink-500">
+      <p className="mt-3 rounded-lg bg-mist-50 px-3 py-2.5 text-[13px] leading-relaxed text-ink-700">
         যোগাযোগের অনুরোধটি প্ল্যাটফর্মের মাধ্যমে মালিকের কাছে পৌঁছাবে।
       </p>
     </section>

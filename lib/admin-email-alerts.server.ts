@@ -12,6 +12,7 @@ import {
 const BREVO_ENDPOINT = 'https://api.brevo.com/v3/smtp/email';
 const MAX_DELIVERY_ATTEMPTS = 5;
 const MAX_WORKER_JOBS = 3;
+const MAX_WORKER_RUNTIME_MS = 45_000;
 
 type QueueType = AdminEmailAlertType | 'critical_error' | 'admin_test';
 type QueueJob = {
@@ -45,6 +46,13 @@ const EMAIL_PATHS: Record<AdminEmailAlertType, string> = {
   staff_profile_reports: '/admin/reports',
   community_post_reports: '/admin/reports',
   contact_message: '/admin/messages',
+  blood_request: '/admin/notifications',
+  vehicle_request: '/admin/vehicle-requests',
+  community_post: '/admin/posts',
+  service_listing: '/admin/approvals',
+  tolet_profile: '/admin/approvals',
+  tutor_profile: '/admin/verifications',
+  donor_profile: '/admin/blood/donors',
 };
 
 function getServerClient(): SupabaseClient | null {
@@ -257,6 +265,7 @@ async function sendOneJob(
     const retryable = job.attempt_count < MAX_DELIVERY_ATTEMPTS;
     await updateClaimedJob(client, job, {
       status: retryable ? 'retry_scheduled' : 'failed',
+      provider_http_status: null,
       last_error: 'provider_network_timeout_or_unavailable',
       next_retry_at: retryable
         ? new Date(Date.now() + getRetryDelayMs(job.attempt_count, null)).toISOString()
@@ -277,6 +286,7 @@ async function sendOneJob(
     const retryAfter = getProviderRetryAfter(response.headers);
     await updateClaimedJob(client, job, {
       status: retryable ? 'retry_scheduled' : 'failed',
+      provider_http_status: response.status,
       last_error: `provider_http_${response.status}`,
       next_retry_at: retryable
         ? new Date(Date.now() + getRetryDelayMs(job.attempt_count, retryAfter)).toISOString()
@@ -301,6 +311,7 @@ async function sendOneJob(
       : null;
   await updateClaimedJob(client, job, {
     status: 'accepted_by_provider',
+    provider_http_status: response.status,
     provider_message_id: messageId,
     sent_at: new Date().toISOString(),
     last_error: messageId ? null : 'provider_message_id_missing',
@@ -411,12 +422,13 @@ export async function processAdminEmailQueue(
 
   const { data: lockToken, error: lockError } = await client.rpc(
     'acquire_admin_email_worker_lock',
-    { p_lease_seconds: 600 }
+    { p_lease_seconds: 120 }
   );
   if (lockError) throw new Error('admin_email_worker_lock_failed');
   if (!lockToken) return { claimed: 0, accepted: 0, retryScheduled: 0, failed: 0, busy: true };
 
   const result = { claimed: 0, accepted: 0, retryScheduled: 0, failed: 0, busy: false };
+  const startedAt = Date.now();
   try {
     const batchSize = Math.max(1, Math.min(MAX_WORKER_JOBS, Math.floor(requestedBatchSize)));
     for (let index = 0; index < batchSize; index += 1) {
@@ -437,6 +449,8 @@ export async function processAdminEmailQueue(
         const intervalMs = Number.isFinite(configuredInterval)
           ? Math.max(1000, Math.min(60_000, configuredInterval))
           : 12_000;
+        const remainingMs = MAX_WORKER_RUNTIME_MS - (Date.now() - startedAt);
+        if (intervalMs + 15_000 >= remainingMs) break;
         await new Promise((resolve) => setTimeout(resolve, intervalMs));
       }
     }
@@ -514,6 +528,7 @@ export type AdminEmailJobSummary = {
   related_id: string | null;
   status: string;
   attempt_count: number;
+  provider_http_status: number | null;
   next_retry_at: string | null;
   last_error: string | null;
   provider_message_id: string | null;
@@ -527,7 +542,7 @@ export async function listAdminEmailJobs(): Promise<AdminEmailJobSummary[]> {
   if (!client) throw new Error('supabase_server_configuration_missing');
   const { data, error } = await client
     .from('admin_email_outbox')
-    .select('event_id, related_type, related_id, status, attempt_count, next_retry_at, last_error, provider_message_id, created_at, sent_at, delivered_at')
+    .select('event_id, related_type, related_id, status, attempt_count, provider_http_status, next_retry_at, last_error, provider_message_id, created_at, sent_at, delivered_at')
     .order('created_at', { ascending: false })
     .limit(100);
   if (error) throw new Error('admin_email_jobs_read_failed');

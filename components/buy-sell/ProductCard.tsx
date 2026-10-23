@@ -74,18 +74,18 @@ export function ProductCard({ post, now }: ProductCardProps) {
           {post.price != null ? bnTaka(post.price) : 'দাম আলোচনা'}
         </p>
 
-        <h3 className="mt-1 line-clamp-2 text-[12.5px] font-semibold leading-snug text-ink-900">
+        <h3 className="mt-1 line-clamp-2 text-[14px] font-bold leading-snug text-ink-900">
           {post.titleBn}
         </h3>
 
         {post.summaryBn && (
-          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-500">
+          <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-ink-600">
             {post.summaryBn}
           </p>
         )}
 
         {extras.length > 0 && (
-          <p className="mt-1.5 flex items-start gap-1 text-[10.5px] leading-snug text-brand-700">
+          <p className="mt-1.5 flex items-start gap-1 text-xs leading-snug text-brand-800">
             <Package className="mt-[1px] h-3 w-3 shrink-0" aria-hidden="true" />
             <span className="line-clamp-1">{extras.slice(0, 2).join(' · ')}</span>
           </p>
@@ -97,19 +97,19 @@ export function ProductCard({ post, now }: ProductCardProps) {
             than wrapping. */}
         <div className="mt-auto space-y-0.5 pt-2">
           {area && (
-            <p className="flex items-center gap-1 truncate text-[10.5px] text-ink-500">
+            <p className="flex items-center gap-1 truncate text-xs text-ink-600">
               <MapPin className="h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
               <span className="truncate">{area}</span>
             </p>
           )}
           {post.authorName && (
-            <p className="flex items-center gap-1 truncate text-[10.5px] text-ink-500">
+            <p className="flex items-center gap-1 truncate text-xs text-ink-600">
               <User className="h-3 w-3 shrink-0 text-ink-300" aria-hidden="true" />
               <span className="truncate">{post.authorName}</span>
             </p>
           )}
           {posted && (
-            <p className="flex items-center gap-1 text-[10.5px] text-ink-400">
+            <p className="flex items-center gap-1 text-xs text-ink-600">
               <Clock className="h-3 w-3 shrink-0" aria-hidden="true" />
               <span>{posted}</span>
             </p>

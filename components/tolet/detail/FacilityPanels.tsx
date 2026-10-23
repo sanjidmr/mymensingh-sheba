@@ -76,7 +76,7 @@ export function FacilityPanels({
                   strokeWidth={3}
                   aria-hidden="true"
                 />
-                <span className="truncate text-[12px] font-semibold text-ink-700">
+                <span className="truncate text-[14px] font-semibold text-ink-800">
                   {facilityLabel(id)}
                 </span>
               </li>
@@ -97,7 +97,7 @@ export function FacilityPanels({
             />
             এই বাসায় যা নেই
           </h2>
-          <p className="mt-1 text-[11.5px] leading-relaxed text-ink-400">
+          <p className="mt-1 text-[13px] leading-relaxed text-ink-600">
             মালিক নিজে উল্লেখ করেছেন — ভাড়াটিয়া হিসেব করার আগে জেনে রাখুন।
           </p>
 
@@ -112,7 +112,7 @@ export function FacilityPanels({
                   strokeWidth={2.5}
                   aria-hidden="true"
                 />
-                <span className="truncate text-[12px] font-medium text-ink-500">
+                <span className="truncate text-[14px] font-medium text-ink-700">
                   {facilityLabel(id)}
                 </span>
               </li>

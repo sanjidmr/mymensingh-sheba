@@ -278,6 +278,8 @@ export function listingToPreviewCard(listing: ServiceListing): HomePreviewCard {
 
 export function postToPreviewCard(post: CommunityPost): HomePreviewCard {
   const area = post.areaId ? getAreaById(post.areaId) : undefined;
+  const kindLabel =
+    post.kind === 'buy_sell' ? 'কেনাবেচা' : post.kind === 'job' ? 'চাকরি' : 'খবর';
   const href =
     post.kind === 'buy_sell'
       ? `/buy-sell/${post.slug}`
@@ -306,9 +308,9 @@ export function postToPreviewCard(post: CommunityPost): HomePreviewCard {
     avatarLabel: post.titleBn.charAt(0) || '?',
     avatarTone: 'green',
     title: post.titleBn,
-    subtitle: post.summaryBn,
+    subtitle: [kindLabel, post.summaryBn].filter(Boolean).join(' · '),
     location: area?.nameBn || 'ময়মনসিংহ সিটি কর্পোরেশন',
-    metaChips: chips,
+    metaChips: [kindLabel, ...chips],
     verified: post.isFeatured,
     footer:
       post.kind === 'buy_sell'

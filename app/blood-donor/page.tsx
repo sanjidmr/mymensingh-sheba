@@ -11,7 +11,7 @@
 import React, { useEffect, useMemo, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Droplets, Loader2, Lock, PlusCircle, ShieldCheck } from 'lucide-react';
+import { Droplets, Loader2, PlusCircle, ShieldCheck } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
@@ -155,24 +155,10 @@ function BloodDonorContent() {
           totalResults={filteredDonors.length}
         />
 
-        {/* The privacy contract, stated once, plainly. The number is not printed
-            anywhere on the page; the card only carries it inside a `tel:` link. */}
-        <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-brand-200 bg-brand-50 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-4">
-          <div className="flex items-start gap-2.5">
-            <Lock className="mt-0.5 h-4.5 w-4.5 shrink-0 text-brand-700" aria-hidden="true" />
-            <div>
-              <h2 className="text-[13.5px] font-bold text-brand-900">
-                নম্বর কোথাও লেখা থাকে না — শুধু সরাসরি কল
-              </h2>
-              <p className="mt-1 text-[12.5px] leading-relaxed text-brand-800/85">
-                রক্তদাতার ফোন নম্বর কোথাও লেখা হিসেবে দেখানো হয় না। কার্ডে চাপ দিলেই সরাসরি
-                কল চলে যায় — আগে কোনো অনুরোধ পাঠানো বা অ্যাডমিনের জন্য অপেক্ষা করার দরকার নেই।
-              </p>
-            </div>
-          </div>
+        <div className="mb-5 flex justify-stretch sm:justify-end">
           <Link
             href="/profile/blood-donor/setup"
-            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-4 text-[13px] font-bold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-1.5 rounded-xl bg-brand-700 px-4 text-[13px] font-bold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:w-auto"
           >
             <PlusCircle className="h-4 w-4" aria-hidden="true" />
             রক্তদাতা হিসেবে নিবন্ধন

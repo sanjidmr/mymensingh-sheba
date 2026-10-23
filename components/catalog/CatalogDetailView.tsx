@@ -109,39 +109,39 @@ export default function CatalogDetailView({
           <div className="p-3.5 sm:p-5">
             <div className="flex flex-wrap items-center gap-2">
               {listing.isFeatured && (
-                <span className="rounded-md bg-accent-400 px-1.5 py-[3px] text-[10px] font-extrabold text-brand-950">
+                <span className="rounded-md bg-accent-400 px-2 py-1 text-xs font-extrabold text-brand-950">
                   ফিচার্ড
                 </span>
               )}
               {listing.ownerId ? (
-                <span className="rounded-md border border-brand-100 bg-mist-50 px-1.5 py-[3px] text-[10px] font-bold text-ink-600">
+                <span className="rounded-md border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-bold text-ink-700">
                   প্রতিষ্ঠান-জমা দেওয়া তথ্য · যাচাই করা হয়নি
                 </span>
               ) : (
-                <span className="rounded-md border border-brand-100 bg-mist-50 px-1.5 py-[3px] text-[10px] font-bold text-ink-600">
+                <span className="rounded-md border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-bold text-ink-700">
                   অ্যাডমিন-পরিচালিত · আলাদা যাচাইয়ের তথ্য নেই
                 </span>
               )}
             </div>
 
-            <h1 className="mt-2 text-lg font-extrabold leading-snug text-ink-900 sm:text-2xl">
+            <h1 className="mt-2 text-2xl font-extrabold leading-snug text-ink-900 sm:text-3xl">
               {listing.titleBn}
             </h1>
 
             {listing.subtitleBn && (
-              <p className="mt-1 text-[13px] leading-relaxed text-ink-500 sm:text-sm">
+              <p className="mt-1.5 text-[15px] leading-relaxed text-ink-600 sm:text-base">
                 {listing.subtitleBn}
               </p>
             )}
 
             {facts.length > 0 && (
-              <dl className="mt-4 grid grid-cols-2 gap-x-3 gap-y-3 rounded-lg border border-brand-100 bg-mist-50 p-3 sm:grid-cols-3 sm:p-4">
+              <dl className="mt-4 grid grid-cols-2 gap-3 rounded-lg border border-brand-100 bg-mist-50 p-3.5 sm:grid-cols-3 sm:gap-4 sm:p-4">
                 {facts.map((fact) => (
                   <div key={fact.label} className="min-w-0">
-                    <dt className="text-[10.5px] font-semibold uppercase tracking-wide text-ink-400">
+                    <dt className="text-xs font-semibold tracking-wide text-ink-600">
                       {fact.label}
                     </dt>
-                    <dd className="mt-0.5 break-words text-[13px] font-bold text-ink-900 sm:text-sm">
+                    <dd className="mt-1 break-words text-[15px] font-bold leading-snug text-ink-950 sm:text-base">
                       {fact.value}
                     </dd>
                   </div>
@@ -150,7 +150,7 @@ export default function CatalogDetailView({
             )}
 
             {listing.summaryBn && (
-              <p className="mt-4 text-[13.5px] leading-relaxed text-ink-600 sm:text-[15px]">
+              <p className="mt-4 text-[15px] leading-relaxed text-ink-700 sm:text-base">
                 {listing.summaryBn}
               </p>
             )}
@@ -169,7 +169,7 @@ export default function CatalogDetailView({
             ) : null}
 
             {listing.descriptionBn && (
-              <div className="mt-3 space-y-2.5 text-[13.5px] leading-relaxed text-ink-600 sm:text-[15px]">
+              <div className="mt-3 space-y-3 text-[15px] leading-[1.8] text-ink-700 sm:text-base">
                 {listing.descriptionBn
                   .split(/\n{2,}/)
                   .map((para) => para.trim())
@@ -181,10 +181,10 @@ export default function CatalogDetailView({
             )}
 
             {listing.areaIds.length > 0 && (
-              <p className="mt-4 flex items-start gap-1.5 text-[12.5px] leading-relaxed text-ink-500 sm:text-sm">
+              <p className="mt-4 flex items-start gap-2 text-[15px] leading-relaxed text-ink-700 sm:text-base">
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
                 <span className="min-w-0 break-words">
-                  <span className="font-semibold text-ink-600">এলাকা: </span>
+                  <span className="font-bold text-ink-800">এলাকা: </span>
                   {areaNames(listing.areaIds)}
                 </span>
               </p>

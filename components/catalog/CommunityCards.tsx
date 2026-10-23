@@ -45,7 +45,7 @@ function StatusBadge({ status }: { status: PostStatus }) {
   const meta = STATUS_META[status];
   return (
     <span
-      className={`inline-flex shrink-0 items-center rounded-md px-1.5 py-[3px] text-[10px] font-extrabold ${meta.className}`}
+      className={`inline-flex shrink-0 items-center rounded-md px-2 py-1 text-xs font-extrabold ${meta.className}`}
     >
       {meta.labelBn}
     </span>
@@ -56,7 +56,7 @@ function AreaLine({ areaId }: { areaId?: string }) {
   const name = areaId ? getAreaById(areaId)?.nameBn : undefined;
   if (!name) return null;
   return (
-    <span className="inline-flex min-w-0 items-center gap-1 text-[10.5px] text-ink-400">
+    <span className="inline-flex min-w-0 items-center gap-1 text-xs font-medium text-ink-600">
       <MapPin className="h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
       <span className="truncate">{name}</span>
     </span>
@@ -79,26 +79,26 @@ export function NewsCard({ post }: { post: CommunityPost }) {
       <div className="flex min-w-0 flex-1 flex-col p-2.5 sm:p-4">
         <div className="flex items-center gap-2">
           {post.category && (
-            <span className="truncate text-[10px] font-extrabold uppercase tracking-wide text-brand-600">
+            <span className="truncate text-xs font-extrabold tracking-wide text-brand-700">
               {categoryLabel(post.category)}
             </span>
           )}
-          <span className="truncate text-[10.5px] text-ink-400">
+          <span className="truncate text-xs text-ink-600">
             {post.authorName || 'সদস্য'}
           </span>
         </div>
 
-        <h3 className="mt-1 line-clamp-2 text-[13.5px] font-bold leading-snug text-ink-900 sm:text-base">
+        <h3 className="mt-1 line-clamp-2 text-[15px] font-bold leading-snug text-ink-900 sm:text-base">
           {post.titleBn}
         </h3>
 
         {post.summaryBn && (
-          <p className="mt-1 line-clamp-2 text-[11px] leading-relaxed text-ink-500 sm:line-clamp-3 sm:text-[13px]">
+          <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-ink-600 sm:line-clamp-3 sm:text-sm">
             {post.summaryBn}
           </p>
         )}
 
-        <span className="mt-auto flex items-center gap-1 pt-2 text-[11px] font-bold text-brand-700 sm:text-xs">
+        <span className="mt-auto flex items-center gap-1 pt-2 text-xs font-bold text-brand-700 sm:text-sm">
           <span className="truncate">বিস্তারিত পড়ুন</span>
         </span>
       </div>
@@ -115,14 +115,14 @@ export function NewsListRow({ post }: { post: CommunityPost }) {
     >
       <div className="min-w-0 flex-1">
         {post.category && (
-          <span className="text-[10px] font-extrabold uppercase tracking-wide text-brand-600">
+          <span className="text-xs font-extrabold tracking-wide text-brand-700">
             {categoryLabel(post.category)}
           </span>
         )}
-        <h3 className="mt-0.5 line-clamp-2 text-[13px] font-bold leading-snug text-ink-900 group-hover:text-brand-800 sm:text-sm">
+        <h3 className="mt-1 line-clamp-2 text-[15px] font-bold leading-snug text-ink-900 group-hover:text-brand-800 sm:text-base">
           {post.titleBn}
         </h3>
-        <p className="mt-0.5 truncate text-[10.5px] text-ink-400">
+        <p className="mt-1 truncate text-xs text-ink-600">
           {post.authorName || 'সদস্য'}
         </p>
       </div>
@@ -148,19 +148,19 @@ export function JobCard({ post }: { post: CommunityPost }) {
       <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
         <div className="flex items-start justify-between gap-2">
           {post.category && (
-            <span className="truncate rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[10px] font-extrabold text-brand-700">
+            <span className="truncate rounded border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-extrabold text-brand-700">
               {categoryLabel(post.category)}
             </span>
           )}
           <StatusBadge status={post.status} />
         </div>
 
-        <h3 className="mt-1.5 line-clamp-2 text-[13.5px] font-bold leading-snug text-ink-900 sm:text-[15px]">
+        <h3 className="mt-1.5 line-clamp-2 text-[15px] font-bold leading-snug text-ink-900 sm:text-base">
           {post.titleBn}
         </h3>
 
         {post.summaryBn && (
-          <p className="mt-1 line-clamp-2 text-[11.5px] leading-relaxed text-ink-500 sm:text-[13px]">
+          <p className="mt-1 line-clamp-2 text-[13px] leading-relaxed text-ink-600 sm:text-sm">
             {post.summaryBn}
           </p>
         )}
@@ -179,7 +179,7 @@ export function JobCard({ post }: { post: CommunityPost }) {
             {tagLabels(post.tags).slice(0, 3).map((tag) => (
               <li
                 key={tag}
-                className="max-w-full truncate rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[10px] font-medium text-ink-600"
+                className="max-w-full truncate rounded border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-medium text-ink-700"
               >
                 {tag}
               </li>
@@ -188,7 +188,7 @@ export function JobCard({ post }: { post: CommunityPost }) {
         )}
 
         <div className="mt-auto flex items-center justify-between gap-2 border-t border-brand-100 pt-2.5">
-          <span className="flex min-w-0 items-center gap-1 text-[11px] font-bold text-brand-700 sm:text-xs">
+          <span className="flex min-w-0 items-center gap-1 text-xs font-bold text-brand-700 sm:text-sm">
             <span className="truncate">বিস্তারিত</span>
           </span>
         </div>
@@ -224,15 +224,15 @@ export function MyPostRow({
         <div className="flex items-center gap-1.5">
           <StatusBadge status={post.status} />
           {post.category && (
-            <span className="truncate text-[10px] font-bold text-brand-600">
+            <span className="truncate text-xs font-bold text-brand-700">
               {categoryLabel(post.category)}
             </span>
           )}
         </div>
-        <h3 className="mt-0.5 line-clamp-1 text-[12.5px] font-bold text-ink-900 sm:text-[13.5px]">
+        <h3 className="mt-1 line-clamp-2 text-sm font-bold leading-snug text-ink-900 sm:text-[15px]">
           {post.titleBn}
         </h3>
-        <p className="mt-0.5 text-[10.5px] text-ink-400">
+        <p className="mt-1 text-xs text-ink-600">
           {post.kind === 'job' ? 'চাকরির পোস্ট' : post.kind === 'news' ? 'সংবাদ' : 'বিক্রয়ের পোস্ট'}
         </p>
       </div>

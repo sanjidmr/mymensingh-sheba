@@ -28,7 +28,7 @@ export const REQUEST_FORM_ANCHOR = 'service-request-form';
  * which is what makes these five pages feel like part of the same site.
  */
 export default function ServiceRequestHero({ config }: ServiceRequestHeroProps) {
-  const cleanHero = ['basha-paltano', 'electrician', 'plumber', 'ac-fridge'].includes(config.slug);
+  const cleanHero = ['basha-paltano', 'kajer-bua', 'electrician', 'plumber', 'ac-fridge'].includes(config.slug);
 
   return (
     <section

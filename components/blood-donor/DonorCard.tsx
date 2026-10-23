@@ -149,37 +149,29 @@ export default function DonorCard({ donor }: DonorCardProps) {
     <article className="flex flex-col rounded-2xl border border-mist-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(7,39,31,0.04)] sm:p-4">
       {body}
 
-      {/*
-        Readiness is OPT-IN. It is shown only when the donor turned it on in
-        their own profile — a stranger never sees a "প্রস্তুত" badge the donor did
-        not choose to publish. With it off, nothing here hints at availability
-        beyond the group and area.
-      */}
-      {donor.showReadiness ? (
-        <div className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-2.5">
-          <button
-            type="button"
-            onClick={() => setReadinessOpen((open) => !open)}
-            aria-expanded={readinessOpen}
-            className={`inline-flex min-h-9 items-center gap-1.5 text-[12px] font-bold text-ink-700 ${LIGHT_FOCUS}`}
-          >
-            <Droplets className="h-3.5 w-3.5 text-brand-600" strokeWidth={2.25} aria-hidden="true" />
-            রক্তদানের বর্তমান প্রস্তুতি
-            <ChevronDown
-              className={`h-3.5 w-3.5 text-ink-400 transition-transform ${readinessOpen ? 'rotate-180' : ''}`}
-              aria-hidden="true"
-            />
-          </button>
-          {readinessOpen && (
-            <div className="mt-2 flex items-start gap-2">
-              <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${recovery.chipClassName}`}>
-                {recovery.labelBn}
-              </span>
-              <p className="text-[12px] leading-relaxed text-ink-600">{recovery.detailBn}</p>
-            </div>
-          )}
-        </div>
-      ) : null}
+      <div className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-2.5">
+        <button
+          type="button"
+          onClick={() => setReadinessOpen((open) => !open)}
+          aria-expanded={readinessOpen}
+          className={`inline-flex min-h-9 items-center gap-1.5 text-[12px] font-bold text-ink-700 ${LIGHT_FOCUS}`}
+        >
+          <Droplets className="h-3.5 w-3.5 text-brand-600" strokeWidth={2.25} aria-hidden="true" />
+          রক্তদানের বর্তমান প্রস্তুতি
+          <ChevronDown
+            className={`h-3.5 w-3.5 text-ink-400 transition-transform ${readinessOpen ? 'rotate-180' : ''}`}
+            aria-hidden="true"
+          />
+        </button>
+        {readinessOpen && (
+          <div className="mt-2 flex items-start gap-2">
+            <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${recovery.chipClassName}`}>
+              {recovery.labelBn}
+            </span>
+            <p className="text-[12px] leading-relaxed text-ink-600">{recovery.detailBn}</p>
+          </div>
+        )}
+      </div>
 
       {callAction}
     </article>

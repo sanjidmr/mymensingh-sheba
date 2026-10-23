@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { AlertCircle, Check, CheckCircle2, Lock, Mail, UserPlus } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Lock, Mail, UserPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
@@ -11,6 +11,7 @@ import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/lib/auth-context';
 import { isSafeInternalPath, resolveAuthRedirect } from '@/lib/auth-routes';
+import { isOnboardingComplete } from '@/lib/onboarding';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import SplashScreen from '@/components/site/SplashScreen';
 
@@ -28,23 +29,17 @@ function RegisterForm() {
   const [formError, setFormError] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [welcomeState, setWelcomeState] = useState<'ready' | 'setup' | null>(null);
+  const [welcomeState, setWelcomeState] = useState<'setup' | null>(null);
 
-  // Existing sessions leave the registration route immediately. A newly
-  // registered user sees the welcome moment first, then enters their account.
+  // New customers complete their profile before entering the rest of the site.
   useEffect(() => {
     if (authLoading || !user || loading) return;
-    if (welcomeState === 'ready') {
-      const timer = window.setTimeout(
-        () => window.location.replace(resolveAuthRedirect(user.role, requestedTarget)),
-        2600
-      );
-      return () => window.clearTimeout(timer);
-    }
-    if (!welcomeState) {
-      window.location.replace(resolveAuthRedirect(user.role, requestedTarget));
-    }
-  }, [authLoading, loading, user, welcomeState, requestedTarget]);
+    const destination =
+      user.role !== 'admin' && !isOnboardingComplete(user)
+        ? '/onboarding'
+        : resolveAuthRedirect(user.role, requestedTarget);
+    window.location.replace(destination);
+  }, [authLoading, loading, user, requestedTarget]);
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -76,8 +71,6 @@ function RegisterForm() {
         setFormError(result.error || 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।');
       } else if (result.needsConfirmation) {
         setWelcomeState('setup');
-      } else {
-        setWelcomeState('ready');
       }
     } catch (error) {
       setFormError(error instanceof Error ? error.message : 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।');
@@ -99,7 +92,7 @@ function RegisterForm() {
     }
   };
 
-  if (authLoading || (user && welcomeState !== 'ready')) {
+  if (authLoading || user) {
     return <SplashScreen />;
   }
 
@@ -108,65 +101,22 @@ function RegisterForm() {
       <div className="flex min-h-screen flex-col bg-mist-50">
         <Navbar />
         <main className="flex flex-1 items-center justify-center px-4 py-8 sm:py-12">
-          <section className="mms-welcome-card w-full max-w-md rounded-2xl border border-brand-100 bg-white px-6 py-9 text-center shadow-[0_16px_48px_rgba(12,59,46,0.09)] sm:px-10 sm:py-11">
-            <div className="relative mx-auto flex h-[76px] w-[76px] items-center justify-center">
-              {welcomeState === 'ready' && (
-                <span
-                  aria-hidden="true"
-                  className="mms-welcome-ring absolute inset-0 rounded-full border border-brand-300"
-                />
-              )}
-              <span className="relative flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-brand-700 ring-1 ring-brand-100">
-                {welcomeState === 'ready' ? (
-                  <Check
-                    className="mms-welcome-check h-8 w-8"
-                    strokeWidth={2.5}
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <CheckCircle2 className="h-8 w-8" strokeWidth={1.8} aria-hidden="true" />
-                )}
-              </span>
+          <section className="mms-welcome-card w-full max-w-md border border-brand-100 bg-white px-6 py-9 text-center shadow-sm sm:px-10 sm:py-11">
+            <div className="mx-auto flex h-14 w-14 items-center justify-center border border-brand-200 bg-brand-50 text-brand-700">
+              <CheckCircle2 className="h-7 w-7" strokeWidth={1.8} aria-hidden="true" />
             </div>
-            <span className="mt-5 inline-flex items-center gap-1.5 rounded-full bg-brand-50 px-3 py-1 text-[11px] font-bold text-brand-700">
-              {welcomeState === 'ready' ? 'নিবন্ধন সফল' : 'একটি ছোট সেটিংস বাকি'}
-            </span>
-            <p className="mt-4 text-xs font-extrabold uppercase tracking-[0.16em] text-brand-600">
-              Welcome to
-            </p>
-            <h1 className="mt-1 text-2xl font-extrabold leading-tight text-ink-900 sm:text-3xl">
-              Mymensingh Sheba
+            <h1 className="mt-5 text-2xl font-extrabold leading-tight text-ink-900 sm:text-3xl">
+              ইমেইল যাচাই করুন
             </h1>
             <p className="mx-auto mt-3 max-w-sm text-sm leading-relaxed text-ink-600 sm:text-base">
-              এখন থেকে ঘরে বসেই পাবেন আপনার প্রয়োজনীয় স্থানীয় সেবা—সহজে, নিরাপদে, এক জায়গায়।
+              অ্যাকাউন্ট তৈরি হয়েছে। ইমেইলে পাঠানো যাচাইকরণ লিংকে প্রবেশ করে লগইন করুন; এরপর আপনার প্রোফাইল সেটআপ সম্পন্ন করতে পারবেন।
             </p>
-            {welcomeState === 'setup' ? (
-              <>
-                <p className="mx-auto mt-5 max-w-sm rounded-lg bg-mist-50 px-4 py-3 text-sm leading-relaxed text-ink-700">
-                  অ্যাকাউন্টটি তৈরি হয়েছে, তবে স্বয়ংক্রিয়ভাবে প্রবেশ করা যায়নি। সাইটের প্রশাসককে Supabase Auth-এ Email confirmations বন্ধ করতে বলুন।
-                </p>
-                <Link
-                  href="/"
-                  className={`mt-5 inline-flex min-h-11 items-center justify-center rounded-lg border border-brand-200 px-5 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
-                >
-                  হোমপেজে যান
-                </Link>
-              </>
-            ) : (
-              <>
-                <p className="mt-4 text-sm font-semibold text-brand-700">
-                  আপনার অ্যাকাউন্ট তৈরি হয়েছে। আপনাকে{' '}
-                  {requestedTarget ? 'আপনার নির্বাচিত পেজে' : 'আপনার অ্যাকাউন্টে'} নিয়ে যাওয়া হচ্ছে…
-                </p>
-                <button
-                  type="button"
-                  onClick={() => user && window.location.replace(resolveAuthRedirect(user.role, requestedTarget))}
-                  className={`mt-5 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-800 motion-safe:animate-[mms-welcome-rise_500ms_350ms_both] ${LIGHT_FOCUS}`}
-                >
-                  {requestedTarget ? 'এখনই এগিয়ে যান' : 'ড্যাশবোর্ডে যান'}
-                </button>
-              </>
-            )}
+            <Link
+              href="/login"
+              className={`mt-6 inline-flex min-h-12 items-center justify-center border border-brand-200 px-5 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
+            >
+              লগইন করুন
+            </Link>
           </section>
         </main>
         <Footer />

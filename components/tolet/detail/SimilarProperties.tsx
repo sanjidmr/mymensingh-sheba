@@ -122,11 +122,11 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
           <span className="text-[11px] font-semibold text-ink-400">/মাস</span>
         </p>
 
-        <h3 className="mt-1 line-clamp-2 text-[12.5px] font-bold leading-snug text-ink-900 sm:text-[13px]">
+        <h3 className="mt-1 line-clamp-2 text-[14px] font-bold leading-snug text-ink-900 sm:text-[15px]">
           {listing.title}
         </h3>
 
-        <p className="mt-1 flex items-center gap-1 text-[10.5px] text-ink-400">
+        <p className="mt-1 flex items-center gap-1 text-xs text-ink-600">
           <MapPin className="h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
           <span className="truncate">{area?.nameBn ?? listing.areaId}</span>
         </p>
@@ -136,7 +136,7 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
             {chips.slice(0, 2).map((chip) => (
               <li
                 key={chip}
-                className="rounded border border-brand-100 bg-mist-50 px-1.5 py-[2px] text-[11px] font-medium text-ink-600"
+                className="rounded border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-medium text-ink-700"
               >
                 {chip}
               </li>

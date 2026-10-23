@@ -20,6 +20,7 @@ const SERVICE_LABEL: Record<string, string> = {
   'basha-paltano': 'বাসা বদলানো',
   'home-moving': 'বাসা বদলানো (পুরোনো রেকর্ড)',
   'ac-fridge': 'AC ও ফ্রিজ মেরামত',
+  'home-tutor': 'গৃহশিক্ষক',
 };
 
 const columns: AdminColumn<AdminRequestRow>[] = [

@@ -4,6 +4,7 @@ export const HOME_SERVICE_SLUGS = [
   'plumber',
   'basha-paltano',
   'ac-fridge',
+  'home-tutor',
   'home-moving',
 ] as const;
 

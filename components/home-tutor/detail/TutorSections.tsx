@@ -57,13 +57,13 @@ export function TutorSection({
   noteBn?: string;
 }) {
   return (
-    <section className="rounded-2xl border border-mist-200 bg-white p-4 sm:p-5">
-      <h2 className="flex items-center gap-2 text-[14.5px] font-extrabold text-ink-900">
+    <section className="rounded-2xl border border-mist-200 bg-white p-4 sm:p-6">
+      <h2 className="flex items-center gap-2 text-base font-extrabold text-ink-900 sm:text-lg">
         <Icon className="h-4 w-4 shrink-0 text-brand-600" strokeWidth={2.25} aria-hidden="true" />
         {titleBn}
       </h2>
-      {noteBn ? <p className="mt-1 text-[12px] text-ink-400">{noteBn}</p> : null}
-      <div className="mt-3.5">{children}</div>
+      {noteBn ? <p className="mt-1 text-[13px] text-ink-600">{noteBn}</p> : null}
+      <div className="mt-4">{children}</div>
     </section>
   );
 }
@@ -80,7 +80,7 @@ function Chips({ items, tone = 'brand' }: { items: string[]; tone?: 'brand' | 'n
       {items.map((item) => (
         <li
           key={item}
-          className={`rounded-lg border px-2.5 py-1 text-[12px] font-medium leading-snug ${cls}`}
+          className={`rounded-lg border px-3 py-1.5 text-[13px] font-medium leading-snug ${cls}`}
         >
           {item}
         </li>
@@ -155,20 +155,20 @@ function EducationRow({ entry, isLast }: { entry: TutorEducation; isLast: boolea
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-          <p className="text-[13.5px] font-bold leading-snug text-ink-900">{entry.degree}</p>
+          <p className="text-[15px] font-bold leading-snug text-ink-900">{entry.degree}</p>
           <span
-            className={`rounded-full border px-1.5 py-0.5 text-[10.5px] font-bold ${status.className}`}
+            className={`rounded-full border px-2.5 py-1 text-xs font-bold ${status.className}`}
           >
             {status.labelBn}
           </span>
           {entry.year && (
-            <span className="text-[11.5px] font-medium text-ink-400">
+            <span className="text-xs font-medium text-ink-600">
               {entry.status === 'studying' ? 'হবে' : ''} {toBengaliDigits(entry.year)}
             </span>
           )}
         </div>
         {entry.institution ? (
-          <p className="mt-0.5 flex items-start gap-1.5 text-[12.5px] leading-relaxed text-ink-600">
+          <p className="mt-1 flex items-start gap-2 text-[14px] leading-relaxed text-ink-700">
             <School className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-300" aria-hidden="true" />
             <span>
               {entry.institution}
@@ -232,8 +232,8 @@ function ActivityRow({
     <li className="flex items-start gap-2.5">
       <Icon className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />
       <div className="min-w-0">
-        <p className="text-[11px] font-medium leading-tight text-ink-400">{labelBn}</p>
-        <p className="mt-0.5 text-[13px] leading-relaxed text-ink-800">{value}</p>
+        <p className="text-xs font-semibold leading-snug text-ink-600">{labelBn}</p>
+        <p className="mt-1 text-[15px] leading-relaxed text-ink-900">{value}</p>
       </div>
     </li>
   );
@@ -271,7 +271,7 @@ export function TutorTeachingSection({ tutor }: { tutor: HomeTutorProfile }) {
 
   return (
     <TutorSection titleBn="শিক্ষা সংক্রান্ত বিস্তারিত" icon={BookOpen}>
-      <div className="space-y-4">
+      <div className="space-y-5">
         {subjects.length > 0 && (
           <Block labelBn="যেসব বিষয় পড়ান" icon={BookOpen}>
             <Chips items={subjects} />
@@ -336,7 +336,7 @@ function Block({
 }) {
   return (
     <div>
-      <p className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold text-ink-400">
+      <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-ink-600">
         <Icon className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         {labelBn}
       </p>
@@ -356,11 +356,11 @@ function Detail({
 }) {
   return (
     <div className="min-w-0">
-      <dt className="flex items-center gap-1 text-[10.5px] font-medium leading-tight text-ink-400">
+      <dt className="flex items-center gap-1 text-xs font-semibold leading-snug text-ink-600">
         <Icon className="h-3.5 w-3.5 shrink-0 text-brand-500" aria-hidden="true" />
         <span className="truncate">{labelBn}</span>
       </dt>
-      <dd className="mt-1 text-[13px] font-bold leading-snug text-ink-900">{value}</dd>
+      <dd className="mt-1 text-[15px] font-bold leading-relaxed text-ink-950">{value}</dd>
     </div>
   );
 }

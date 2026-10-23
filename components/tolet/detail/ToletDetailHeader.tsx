@@ -55,7 +55,7 @@ export function ToletDetailHeader({
           a phone. */}
       <nav
         aria-label="ব্রেডক্রাম্ব"
-        className="flex items-center gap-1 overflow-hidden text-[11px] text-ink-400 sm:text-xs"
+        className="flex items-center gap-1.5 overflow-hidden text-xs font-medium text-ink-600 sm:text-sm"
       >
         <Link
           href="/"
@@ -82,7 +82,7 @@ export function ToletDetailHeader({
               "প্রকাশিত" badge on a published listing is noise. */}
           <div className="flex flex-wrap items-center gap-1.5">
             {typeInfo?.labelBn && (
-              <span className="inline-flex items-center rounded-md border border-brand-200 bg-brand-50 px-1.5 py-[3px] text-[10.5px] font-extrabold text-brand-800">
+              <span className="inline-flex items-center rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1 text-xs font-extrabold text-brand-800">
                 {typeInfo.labelBn}
               </span>
             )}
@@ -90,7 +90,7 @@ export function ToletDetailHeader({
               <ListingStatusBadge status={listing.status} />
             )}
             {listing.isVerified && isLive && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-brand-200 bg-white px-1.5 py-[3px] text-[10.5px] font-bold text-brand-700">
+              <span className="inline-flex items-center gap-1 rounded-md border border-brand-200 bg-white px-2.5 py-1 text-xs font-bold text-brand-700">
                 <ShieldCheck className="h-3 w-3" aria-hidden="true" />
                 যাচাইকৃত
               </span>
@@ -106,14 +106,14 @@ export function ToletDetailHeader({
               <MapPin className="h-4.5 w-4.5 sm:h-5 sm:w-5" aria-hidden="true" />
             </span>
             <div className="min-w-0">
-              <p className="text-[10.5px] font-bold text-brand-700 sm:text-[11px]">
+              <p className="text-xs font-bold text-brand-700 sm:text-sm">
                 বাসার অবস্থান
               </p>
               <p className="mt-0.5 text-[14px] font-extrabold leading-snug text-ink-900 sm:text-[16px]">
                 {listing.specificAddress}
               </p>
               {area?.nameBn && (
-                <p className="mt-0.5 text-[12px] font-semibold text-brand-800 sm:text-[13px]">
+                <p className="mt-1 text-sm font-semibold text-brand-800">
                   {area.nameBn} — ময়মনসিংহ
                 </p>
               )}
@@ -129,7 +129,7 @@ export function ToletDetailHeader({
       </div>
 
       {isLoggedIn && !isLive && statusInfo && (
-        <p className="mt-2 rounded-lg border border-accent-200 bg-accent-100/60 px-2.5 py-1.5 text-[11.5px] font-medium text-accent-700">
+        <p className="mt-2 rounded-lg border border-accent-200 bg-accent-100/60 px-3 py-2 text-[13px] font-medium text-accent-800">
           এই বিজ্ঞাপনটি এখনো সবার জন্য প্রকাশিত হয়নি — অবস্থা: {statusInfo.labelBn}
         </p>
       )}

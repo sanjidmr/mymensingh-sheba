@@ -2265,10 +2265,18 @@ export function notificationTargetLink(relatedType: string | null, relatedId: st
   const id = relatedId ? encodeURIComponent(relatedId) : '';
   switch (relatedType) {
     case 'service_request': return id ? `/admin/requests/${id}` : '/admin/requests';
-    case 'blood_request': return '/admin/blood/donors';
+    case 'service_listing': return '/admin/approvals';
+    case 'blood_donor_profile':
+    case 'donor_profile': return id ? `/admin/blood/donors/${id}` : '/admin/blood/donors';
+    case 'home_tutor_profile':
+    case 'tutor_profile': return id ? `/admin/verifications/${id}` : '/admin/verifications';
+    case 'tolet_profile': return '/admin/approvals';
+    case 'blood_request': return '/admin/notifications';
     case 'vehicle_request': return id ? `/admin/vehicle-requests/${id}` : '/admin/vehicle-requests';
     case 'contact_message': return id ? `/admin/messages/${id}` : '/admin/messages';
     case 'community_post': return id ? `/admin/posts/${id}` : '/admin/posts';
+    case 'community_post_reports': return '/admin/reports';
+    case 'tolet_listing': return id ? `/admin/tolet/${id}` : '/admin/tolet';
     case 'tolet_listing_deleted': return '/admin/tolet';
     case 'community_post_report':
     case 'listing_reports':
