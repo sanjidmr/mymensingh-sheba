@@ -111,6 +111,7 @@ export default function CatalogDirectory({
         item.fareMax,
         item.fareMin,
         item.speedMbps,
+        ...(item.coachingBatchYears ?? []),
       ].filter((n): n is number => typeof n === 'number'),
     }),
     []
@@ -137,6 +138,7 @@ export default function CatalogDirectory({
         class: item.tags,
         subject: item.tags,
         category: item.coachingCategory ?? item.tags,
+        batchYear: item.coachingBatchYears?.map(String),
         busType: item.tags,
         // Vehicle kind is written into `tags` as its Bengali label, so the facet
         // ids are those labels.

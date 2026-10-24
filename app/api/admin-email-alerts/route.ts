@@ -4,6 +4,7 @@ import {
 } from '@/lib/admin-email-alerts.server';
 import type { AdminEmailAlertType } from '@/lib/admin-email-alerts';
 import { getAdminDataClient } from '@/lib/admin/queries';
+import { readBoundedRequestBody } from '@/lib/bounded-request-body';
 
 export const runtime = 'nodejs';
 
@@ -48,7 +49,9 @@ export async function POST(request: Request) {
 
   let payload: unknown;
   try {
-    payload = await request.json();
+    const body = await readBoundedRequestBody(request, 32_000);
+    if (body.tooLarge) return Response.json({ error: 'Alert payload too large.' }, { status: 413 });
+    payload = JSON.parse(body.text);
   } catch {
     return Response.json({ error: 'Invalid alert event.' }, { status: 400 });
   }

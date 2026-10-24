@@ -6,7 +6,7 @@ import { BannerCard } from '@/components/catalog/CatalogCards';
 import AdminListingLink from '@/components/catalog/AdminListingLink';
 import OwnerListingCta from '@/components/catalog/OwnerListingCta';
 import { areaFilterGroupMulti, type FilterGroup } from '@/lib/directory-filters';
-import { fetchServiceListings } from '@/lib/catalog-service';
+import { fetchCoachingBatchYears, fetchServiceListings } from '@/lib/catalog-service';
 import {
   areaNames,
   bnTakaRange,
@@ -17,6 +17,7 @@ import {
   COACHING_SUBJECTS,
   COACHING_SUBJECTS_BY_CATEGORY,
   tagLabels,
+  toBn,
   type ServiceListing,
   type CoachingCategory,
 } from '@/lib/catalog-types';
@@ -55,6 +56,17 @@ export default function CoachingDirectory() {
       try {
         const data = await fetchServiceListings('coaching', true);
         if (active) setListings(data);
+        try {
+          const yearsByListing = await fetchCoachingBatchYears(data.map((listing) => listing.id), true);
+          if (active) {
+            setListings(data.map((listing) => ({
+              ...listing,
+              coachingBatchYears: yearsByListing[listing.id] ?? [],
+            })));
+          }
+        } catch (cause) {
+          if (active) setLoadError(cause instanceof Error ? cause.message : 'ব্যাচের বছর লোড করা যায়নি।');
+        }
       } catch (cause) {
         if (active) setLoadError(cause instanceof Error ? cause.message : 'তালিকা লোড করা যায়নি।');
       } finally {
@@ -94,13 +106,23 @@ export default function CoachingDirectory() {
   }, [categoryListings, selectedCategory]);
 
   const filterGroups = useMemo<FilterGroup[]>(
-    () => [
-      areaFilterGroupMulti(),
-      tagFacet('class', 'ক্লাস', COACHING_CLASSES),
-      tagFacet('subject', 'বিষয়', subjectOptions),
-      rangeGroup('monthlyFee', 'মাসিক ফি', COACHING_FEE_BANDS),
-      providerGroup(listings),
-    ],
+    () => {
+      const years = Array.from(new Set(listings.flatMap((listing) => listing.coachingBatchYears ?? [])))
+        .sort((a, b) => a - b);
+      return [
+        areaFilterGroupMulti(),
+        tagFacet('class', 'ক্লাস', COACHING_CLASSES),
+        tagFacet('subject', 'বিষয়', subjectOptions),
+        ...(years.length > 0 ? [{
+          id: 'batchYear',
+          labelBn: 'ব্যাচের বছর',
+          type: 'single' as const,
+          options: years.map((year) => ({ id: String(year), labelBn: toBn(year) })),
+        }] : []),
+        rangeGroup('monthlyFee', 'মাসিক ফি', COACHING_FEE_BANDS),
+        providerGroup(listings),
+      ];
+    },
     [listings, subjectOptions]
   );
 
@@ -145,7 +167,7 @@ export default function CoachingDirectory() {
             <h2 id="coaching-categories-heading" className="text-sm font-extrabold text-ink-900">
               কোচিংয়ের ক্যাটাগরি
             </h2>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
               {COACHING_CATEGORIES.map((category) => {
                 const selected = selectedCategory === category.id;
                 return (

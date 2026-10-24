@@ -2,6 +2,7 @@ import {
   isValidBrevoWebhookSecret,
   processBrevoWebhook,
 } from '@/lib/admin-email-alerts.server';
+import { readBoundedRequestBody } from '@/lib/bounded-request-body';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -10,15 +11,11 @@ export async function POST(request: Request) {
   if (!isValidBrevoWebhookSecret(request)) {
     return Response.json({ error: 'Unauthorized.' }, { status: 401 });
   }
-  const contentLength = Number(request.headers.get('content-length') || 0);
-  if (contentLength > 32_000) {
-    return Response.json({ error: 'Webhook payload too large.' }, { status: 413 });
-  }
   let payload: unknown;
   try {
-    const text = await request.text();
-    if (text.length > 32_000) return Response.json({ error: 'Webhook payload too large.' }, { status: 413 });
-    payload = JSON.parse(text);
+    const body = await readBoundedRequestBody(request, 32_000);
+    if (body.tooLarge) return Response.json({ error: 'Webhook payload too large.' }, { status: 413 });
+    payload = JSON.parse(body.text);
   } catch {
     return Response.json({ error: 'Invalid webhook payload.' }, { status: 400 });
   }

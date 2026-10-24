@@ -29,6 +29,7 @@ import {
   COACHING_WEEKDAY_GROUPS,
   COACHING_SUBJECTS,
   tagLabel,
+  toBn,
   type CoachingBatch,
   type CoachingTeacher,
 } from '@/lib/catalog-types';
@@ -248,13 +249,15 @@ function TeachersEditor({ listingId }: { listingId: string }) {
   );
 }
 
-function BatchesEditor({ listingId }: { listingId: string }) {
+function BatchesEditor({ listingId, batchYearEnabled }: { listingId: string; batchYearEnabled: boolean }) {
   const [rows, setRows] = useState<CoachingBatch[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [batchYear, setBatchYear] = useState('');
+  const [batchStatus, setBatchStatus] = useState<'new' | 'old'>('new');
   const [startDate, setStartDate] = useState('');
   const [weekdayIds, setWeekdayIds] = useState<CoachingBatch['weekdayIds']>([]);
   const [startTimeLocal, setStartTimeLocal] = useState('');
@@ -293,6 +296,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
 
   const reset = () => {
     setEditingId(null);
+    setBatchYear('');
+    setBatchStatus('new');
     setStartDate('');
     setWeekdayIds([]);
     setStartTimeLocal('');
@@ -302,11 +307,17 @@ function BatchesEditor({ listingId }: { listingId: string }) {
   };
 
   const commit = async () => {
+    if (batchYearEnabled && !batchYear) {
+      setError('ব্যাচের বছর নির্বাচন করুন।');
+      return;
+    }
     setBusy(true);
     setError('');
     setNotice('');
     const payload = {
       titleBn: 'নতুন ব্যাচ',
+      batchYear: batchYear ? Number(batchYear) : undefined,
+      batchStatus,
       startDate,
       weekdayIds,
       startTimeLocal,
@@ -364,6 +375,36 @@ function BatchesEditor({ listingId }: { listingId: string }) {
       </p>
       <Message error={error} notice={notice} />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {batchYearEnabled && (
+          <label className="block">
+            <span className="mb-1 block text-[12.5px] font-bold text-ink-700">ব্যাচের বছর *</span>
+            <select value={batchYear} onChange={(event) => setBatchYear(event.target.value)} className={inputClass}>
+              <option value="">বছর নির্বাচন করুন</option>
+              {[2027, 2028, 2029].map((year) => <option key={year} value={year}>{toBn(year)}</option>)}
+            </select>
+          </label>
+        )}
+        <div className="sm:col-span-2">
+          <span className="mb-1 block text-[12.5px] font-bold text-ink-700">ব্যাচের ধরন *</span>
+          <div className="flex gap-2">
+            {([
+              ['new', 'নতুন ব্যাচ'],
+              ['old', 'পুরাতন ব্যাচ'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={batchStatus === value}
+                onClick={() => setBatchStatus(value)}
+                className={`min-h-10 rounded-lg border px-3 text-[12px] font-bold ${
+                  batchStatus === value ? 'border-brand-700 bg-brand-700 text-white' : 'border-brand-200 bg-white text-brand-700'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <label className="block">
           <span className="mb-1 block text-[12.5px] font-bold text-ink-700">শুরুর তারিখ *</span>
           <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className={inputClass} required />
@@ -435,7 +476,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
             <div key={b.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border border-brand-100 p-3">
               <div className="min-w-0">
                 <p className="text-[13.5px] font-bold text-ink-900">
-                  নতুন ব্যাচ
+                  {b.batchYear ? `${toBn(b.batchYear)} · ` : ''}
+                  {b.batchStatus === 'old' ? 'পুরাতন ব্যাচ' : 'নতুন ব্যাচ'}
                   <span className={`ml-2 rounded px-1.5 py-0.5 text-[11px] font-semibold ${b.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-mist-50 text-ink-500'}`}>
                     {b.isActive ? 'প্রকাশিত' : 'অপ্রকাশিত'}
                   </span>
@@ -466,6 +508,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
                   type="button"
                   onClick={() => {
                     setEditingId(b.id);
+                    setBatchYear(b.batchYear ? String(b.batchYear) : '');
+                    setBatchStatus(b.batchStatus ?? 'new');
                     setStartDate(b.startDate ?? '');
                     setWeekdayIds(b.weekdayIds);
                     setStartTimeLocal(b.startTimeLocal ?? '');
@@ -494,10 +538,16 @@ function BatchesEditor({ listingId }: { listingId: string }) {
   );
 }
 
-export default function OwnerCoachingSections({ listingId }: { listingId: string }) {
+export default function OwnerCoachingSections({
+  listingId,
+  batchYearEnabled,
+}: {
+  listingId: string;
+  batchYearEnabled: boolean;
+}) {
   return (
     <div className="space-y-4">
-      <BatchesEditor listingId={listingId} />
+      <BatchesEditor listingId={listingId} batchYearEnabled={batchYearEnabled} />
       <TeachersEditor listingId={listingId} />
     </div>
   );

@@ -21,6 +21,7 @@ import {
   coachingTimeRange,
   coachingWeekdayLabel,
   tagLabel,
+  toBn,
   type CoachingBatch,
   type CoachingTeacher,
 } from '@/lib/catalog-types';
@@ -111,7 +112,10 @@ export default function CoachingDetailSections({
           <ul className="mt-2 space-y-2">
             {batches.map((b) => (
               <li key={b.id} className="rounded-xl border border-brand-100 bg-white p-3">
-                <p className="text-[13.5px] font-bold text-ink-900">নতুন ব্যাচ</p>
+                <p className="text-[13.5px] font-bold text-ink-900">
+                  {b.batchYear ? `${toBn(b.batchYear)} সালের · ` : ''}
+                  {b.batchStatus === 'old' ? 'পুরাতন ব্যাচ' : 'নতুন ব্যাচ'}
+                </p>
                 <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-ink-500">
                   {bnDate(b.startDate) && (
                     <span className="inline-flex items-center gap-1">

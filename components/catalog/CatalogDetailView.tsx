@@ -78,6 +78,9 @@ export default function CatalogDetailView({
   action,
 }: CatalogDetailViewProps) {
   const { isAdmin } = useAuth();
+  const additionalPhotos = listing.photos?.filter((photo) => photo && photo !== listing.imageUrl) ?? [];
+  const galleryPhotos = listing.category === 'coaching' ? additionalPhotos.slice(0, 4) : additionalPhotos;
+  const showCoachingGallery = listing.category === 'coaching' && galleryPhotos.length > 0;
   const adminNote = isAdmin ? (
     <Link
       href={`/admin/directories/${listing.category}/${listing.id}/edit`}
@@ -98,12 +101,28 @@ export default function CatalogDetailView({
     >
       <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_18rem]">
         <article className="min-w-0 overflow-hidden rounded-xl border border-brand-100 bg-white">
-          <div className="relative aspect-[16/10] w-full overflow-hidden bg-mist-100 sm:aspect-[16/7]">
-            <ListingMedia
-              src={listing.imageUrl || listing.logoUrl}
-              alt={listing.titleBn}
-              label={listing.titleBn}
-            />
+          <div className={showCoachingGallery ? 'grid gap-2 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]' : ''}>
+            <div className="relative aspect-[16/10] w-full overflow-hidden bg-mist-100 sm:aspect-[16/7]">
+              <ListingMedia
+                src={listing.imageUrl || listing.logoUrl}
+                alt={listing.titleBn}
+                label={listing.titleBn}
+              />
+            </div>
+            {showCoachingGallery && (
+              <div className="grid grid-cols-2 gap-2">
+                {galleryPhotos.map((photo, index) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={`${photo}-${index}`}
+                    src={photo}
+                    alt={`${listing.titleBn} — ছবি ${index + 1}`}
+                    className="aspect-[4/3] h-full w-full rounded-lg object-cover"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="p-3.5 sm:p-5">
@@ -155,12 +174,11 @@ export default function CatalogDetailView({
               </p>
             )}
 
-            {listing.category !== 'coaching' && listing.category !== 'wifi' &&
-            listing.photos?.filter((photo) => photo && photo !== listing.imageUrl).length ? (
+            {listing.category !== 'coaching' && additionalPhotos.length > 0 ? (
               <section className="mt-5" aria-label="তালিকার আরও ছবি">
                 <h2 className="mb-2 text-sm font-extrabold text-ink-900">আরও ছবি</h2>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                  {listing.photos.filter((photo) => photo && photo !== listing.imageUrl).map((photo, index) => (
+                  {additionalPhotos.map((photo, index) => (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img key={`${photo}-${index}`} src={photo} alt={`${listing.titleBn} — ছবি ${index + 1}`} className="aspect-[4/3] w-full rounded-lg border border-brand-100 object-cover" loading="lazy" />
                   ))}

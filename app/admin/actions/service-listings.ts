@@ -27,7 +27,7 @@ function validate(category: ServiceCategory, input: ServiceListingInput): string
   if (!input.isActive && input.isFeatured) return 'নিষ্ক্রিয় তালিকাকে ফিচার করা যাবে না।';
   if (!Array.isArray(input.areaIds) || input.areaIds.length > 100 || input.areaIds.some((id) => typeof id !== 'string' || id.length > 100)) return 'এলাকার তালিকা সঠিক নয়।';
   if (category === 'coaching' &&
-      (!['class_1_8', 'ssc', 'hsc', 'admission'].includes(input.coachingCategory ?? '') ||
+      (!['class_1_8', 'ssc', 'hsc', 'bba', 'admission'].includes(input.coachingCategory ?? '') ||
        input.areaIds.length === 0)) {
     return 'কোচিং ক্যাটাগরি ও অন্তত একটি এলাকা বেছে নিন।';
   }

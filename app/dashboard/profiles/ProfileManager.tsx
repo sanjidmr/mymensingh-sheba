@@ -18,7 +18,10 @@ import {
 import { useAuth } from '@/lib/auth-context';
 import { deleteCustomerServiceListing, fetchMyServiceListings } from '@/lib/catalog-service';
 import { deleteOwnTutorProfile } from '@/lib/home-tutor-service';
-import { deleteOwnBloodDonorProfile } from '@/lib/blood-donor-service';
+import {
+  deleteOwnBloodDonorProfile,
+  updateOwnBloodDonorAvailability,
+} from '@/lib/blood-donor-service';
 import { TutorAvatar } from '@/components/home-tutor/TutorCard';
 import { DonorAvatar } from '@/components/blood-donor/DonorCard';
 import { getAreaById } from '@/lib/locations';
@@ -27,6 +30,7 @@ import {
   bnTakaRange,
   COACHING_CATEGORIES,
   SERVICE_LISTING_STATUS_META,
+  tagLabels,
   toBn,
   type ServiceListing,
 } from '@/lib/catalog-types';
@@ -61,6 +65,16 @@ export default function ProfileManager() {
   const [reloadKey, setReloadKey] = useState(0);
   const [actionError, setActionError] = useState('');
   const [deletingId, setDeletingId] = useState('');
+  const [donorAvailabilityOverride, setDonorAvailabilityOverride] = useState<{
+    profileId: string;
+    isAvailable: boolean;
+  } | null>(null);
+  const [donorAvailabilityBusy, setDonorAvailabilityBusy] = useState(false);
+  const donorAvailable = bloodDonorProfile
+    ? donorAvailabilityOverride?.profileId === bloodDonorProfile.id
+      ? donorAvailabilityOverride.isAvailable
+      : bloodDonorProfile.isAvailable
+    : false;
 
   useEffect(() => {
     let active = true;
@@ -143,6 +157,28 @@ export default function ProfileManager() {
   const countsUnknown = loading || Boolean(error);
 
   const reload = () => setReloadKey((key) => key + 1);
+
+  const toggleDonorAvailability = async () => {
+    if (!bloodDonorProfile || donorAvailabilityBusy) return;
+    const nextAvailability = !donorAvailable;
+    setDonorAvailabilityBusy(true);
+    setActionError('');
+    try {
+      const result = await updateOwnBloodDonorAvailability(bloodDonorProfile.id, nextAvailability);
+      if (!result.success) {
+        setActionError(result.error || 'রক্তদানের প্রস্তুতির অবস্থা হালনাগাদ ব্যর্থ হয়েছে।');
+        return;
+      }
+      setDonorAvailabilityOverride({
+        profileId: bloodDonorProfile.id,
+        isAvailable: nextAvailability,
+      });
+    } catch (cause) {
+      setActionError(firstError(cause, 'রক্তদানের প্রস্তুতির অবস্থা হালনাগাদ ব্যর্থ হয়েছে।'));
+    } finally {
+      setDonorAvailabilityBusy(false);
+    }
+  };
 
   const removeProfile = async (kind: ProfileCard['key'], id: string, label: string) => {
     const confirmation = kind === 'donor'
@@ -267,15 +303,23 @@ export default function ProfileManager() {
 
               return (
                 <li key={card.key} className="min-w-0">
-                  <article className="flex h-full min-w-0 flex-col rounded-xl border border-ink-900/[0.08] bg-white p-4 shadow-[0_1px_2px_rgba(16,24,20,0.03)] sm:p-5">
-                    <div className="flex items-start justify-between gap-3">
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-ink-900/[0.05] bg-mist-50 text-ink-600">
-                        <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
-                      </span>
-                      {latestStatus && <StatusBadge label={latestStatus.label} tone={latestStatus.tone} />}
-                    </div>
-                    <h3 className="mt-3 break-words text-[14px] font-bold text-ink-900">{displayTitle}</h3>
-                    <p className="mt-1 text-[12px] leading-relaxed text-ink-500">{card.description}</p>
+                  <article className={cn(
+                    'flex min-w-0 flex-col rounded-xl border border-ink-900/[0.08] bg-white shadow-[0_1px_2px_rgba(16,24,20,0.03)]',
+                    hasProfile && 'h-full',
+                    hasProfile ? 'p-4 sm:p-5' : 'p-3'
+                  )}>
+                    {hasProfile && (
+                      <>
+                        <div className="flex items-start justify-between gap-3">
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-ink-900/[0.05] bg-mist-50 text-ink-600">
+                            <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
+                          </span>
+                          {latestStatus && <StatusBadge label={latestStatus.label} tone={latestStatus.tone} />}
+                        </div>
+                        <h3 className="mt-3 break-words text-[14px] font-bold text-ink-900">{displayTitle}</h3>
+                        <p className="mt-1 text-[12px] leading-relaxed text-ink-500">{card.description}</p>
+                      </>
+                    )}
 
                     {tutor && (
                       <div className="mt-3 rounded-lg border border-ink-900/[0.06] bg-mist-50/50 p-3">
@@ -314,8 +358,26 @@ export default function ProfileManager() {
                           </div>
                         </div>
                         <p className="mt-2 text-[11.5px] text-ink-600">
-                          {donor.isAvailable ? 'রক্তদানে প্রস্তুত' : 'বর্তমানে রক্তদানে বিরতিতে'}
+                          {donorAvailable ? 'রক্তদানে প্রস্তুত' : 'বর্তমানে রক্তদানে বিরতিতে'}
                         </p>
+                        <button
+                          type="button"
+                          onClick={() => void toggleDonorAvailability()}
+                          disabled={donorAvailabilityBusy}
+                          aria-pressed={donorAvailable}
+                          className={cn(
+                            'mt-2 inline-flex min-h-9 items-center rounded-lg border px-3 text-[11.5px] font-bold disabled:cursor-wait disabled:opacity-60',
+                            donorAvailable
+                              ? 'border-amber-200 text-amber-800 hover:bg-amber-50'
+                              : 'border-emerald-200 text-emerald-800 hover:bg-emerald-50'
+                          )}
+                        >
+                          {donorAvailabilityBusy
+                            ? 'হালনাগাদ হচ্ছে…'
+                            : donorAvailable
+                              ? 'রক্তদানে প্রস্তুত নই'
+                              : 'রক্তদানে প্রস্তুত'}
+                        </button>
                         <ProfileActionLinks
                           editHref="/profile/blood-donor/setup"
                           deleting={deletingId === donor.id}
@@ -353,9 +415,29 @@ export default function ProfileManager() {
                             </div>
                             <StatusBadge label={SERVICE_LISTING_STATUS_META[status].labelBn} tone={statusTone(status)} />
                           </div>
+                          {listing.subtitleBn && (
+                            <p className="mt-2 text-[11.5px] leading-relaxed text-ink-600">{listing.subtitleBn}</p>
+                          )}
                           <p className="mt-2 text-[11.5px] leading-relaxed text-ink-600">
                             এলাকা: {areaNames(listing.areaIds) || 'উল্লেখ নেই'}
                           </p>
+                          {listing.addressBn && (
+                            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600">ঠিকানা: {listing.addressBn}</p>
+                          )}
+                          {listing.contactPhonePublic && (
+                            <p className="mt-1 text-[11.5px] text-ink-600">যোগাযোগ: {listing.contactPhonePublic}</p>
+                          )}
+                          {listing.tags.length > 0 && (
+                            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600">
+                              {listing.category === 'coaching' ? 'বিষয় / ক্লাস' : 'সুবিধা'}: {tagLabels(listing.tags).join(' · ')}
+                            </p>
+                          )}
+                          {listing.admissionInfoBn && (
+                            <p className="mt-1 text-[11.5px] leading-relaxed text-ink-600">ভর্তি তথ্য: {listing.admissionInfoBn}</p>
+                          )}
+                          {listing.descriptionBn && (
+                            <p className="mt-1 line-clamp-3 text-[11.5px] leading-relaxed text-ink-600">{listing.descriptionBn}</p>
+                          )}
                           <ProfileActionLinks
                             editHref={`/dashboard/${listing.category}/${listing.id}/edit`}
                             deleting={deletingId === listing.id}
@@ -369,7 +451,7 @@ export default function ProfileManager() {
                       <Link
                         href={card.href}
                         className={cn(
-                          'mt-auto inline-flex min-h-11 items-center gap-1.5 border-t border-ink-900/[0.06] pt-3 text-[12px] font-semibold text-ink-800',
+                          'inline-flex min-h-9 items-center gap-1.5 self-start rounded-lg border border-ink-900/[0.12] px-3 text-[11.5px] font-semibold text-ink-800 transition-colors hover:bg-mist-50',
                           LIGHT_FOCUS
                         )}
                       >

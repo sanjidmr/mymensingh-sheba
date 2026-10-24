@@ -145,9 +145,10 @@ function communityPostWriteError(
  *
  * `contact_phone_private` is deliberately absent: it is admin-only at the RLS
  * layer AND omitted here, so the public path cannot reach it even if the policy
- * were ever relaxed. `photos`/`model_*` are vehicle-only and
- * `operator_bn`/`address_bn`/`rating_*` come from the directory-catalog
- * migration; `mapListing` drops a null with `optStr`/`optNum`, so a row that
+ * were ever relaxed. `photos` is shared by vehicle and customer coaching
+ * galleries; `model_*` are vehicle-only. `operator_bn`/`address_bn`/`rating_*`
+ * come from the directory-catalog migration; `mapListing` drops a null with
+ * `optStr`/`optNum`, so a row that
  * leaves them unset still renders. NOTE: because this list is explicit, the
  * directory-catalog migration must be applied before this query runs — PostgREST
  * errors on an unknown column rather than ignoring it.
@@ -214,6 +215,7 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     descriptionBn: optStr(c.descriptionBn),
     imageUrl: optStr(c.imageUrl),
     logoUrl: optStr(c.logoUrl),
+    photos: Array.isArray(c.photos) ? strArray(c.photos) : undefined,
     areaIds: strArray(c.areaIds),
     tags: strArray(c.tags),
     monthlyFeeMin: optNum(c.monthlyFeeMin),
@@ -233,9 +235,7 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
     travelDays: strArray(c.travelDays),
     stops: strArray(c.stopsBn),
     journeyDurationBn: optStr(c.journeyDurationBn),
-    // --- vehicle only; absent on every other category and on pre-migration
-    // rows, where they arrive as null and `optStr`/`optNum` drop them.
-    photos: c.photos ? strArray(c.photos) : undefined,
+    // --- vehicle-specific details ----------------------------------------
     modelNameBn: optStr(c.modelNameBn),
     modelYear: optNum(c.modelYear),
     hasAc: typeof c.hasAc === 'boolean' ? c.hasAc : undefined,
@@ -398,6 +398,8 @@ function mapBatch(row: Record<string, unknown>): CoachingBatch {
     id: str(c.id),
     listingId: str(c.listingId),
     titleBn: str(c.titleBn),
+    batchYear: optNum(c.batchYear),
+    batchStatus: c.batchStatus === 'new' || c.batchStatus === 'old' ? c.batchStatus : undefined,
     startDate: optStr(c.startDate),
     weekdayIds: strArray(c.weekdays).filter((day): day is CoachingBatch['weekdayIds'][number] =>
       validWeekdays.includes(day as CoachingBatch['weekdayIds'][number])
@@ -825,6 +827,7 @@ function customerListingPayload(
     description_bn: input.descriptionBn?.trim() || null,
     image_url: input.imageUrl?.trim() || null,
     logo_url: input.logoUrl?.trim() || null,
+    photos: input.photos?.slice(0, 4) ?? [],
     area_ids: input.areaIds ?? [],
     tags: input.tags ?? [],
     address_bn: input.addressBn?.trim() || null,
@@ -873,6 +876,11 @@ function validateCustomerListing(
   const imageUrl = input.imageUrl?.trim() ?? '';
   if (!imageUrl || imageUrl.length > 2000 || !(imageUrl.startsWith('/') || /^https:\/\//i.test(imageUrl))) {
     return 'প্রতিষ্ঠানের একটি সঠিক ছবি যোগ করুন।';
+  }
+  if (input.photos !== undefined && (!Array.isArray(input.photos) || input.photos.length > 4 ||
+      input.photos.some((photo) => typeof photo !== 'string' || photo.length > 2000 ||
+        !(photo.startsWith('/') || /^https:\/\//i.test(photo))))) {
+    return 'প্রতিষ্ঠানের অতিরিক্ত ছবির তালিকা সঠিক নয়। সর্বোচ্চ ৪টি ছবি যোগ করা যাবে।';
   }
   const amounts = [input.monthlyFeeMin, input.monthlyFeeMax, input.admissionFee, input.priceMin, input.priceMax, input.connectionFee];
   if (amounts.some((amount) => amount !== undefined &&
@@ -1217,6 +1225,8 @@ export async function createOwnCoachingBatch(
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const title = input.titleBn.trim();
   if (title.length < 2 || title.length > 160) return { success: false, error: 'ব্যাচের নাম ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।' };
+  const metadataError = validateBatchMetadata(input);
+  if (metadataError) return { success: false, error: metadataError };
   const scheduleError = validateBatchSchedule(input);
   if (scheduleError) return { success: false, error: scheduleError };
   if ((input.noteBn?.length ?? 0) > 1000) return { success: false, error: 'ব্যাচের নোট সর্বোচ্চ ১০০০ অক্ষরের মধ্যে লিখুন।' };
@@ -1225,6 +1235,8 @@ export async function createOwnCoachingBatch(
     .insert({
       listing_id: listingId,
       title_bn: title,
+      batch_year: input.batchYear ?? null,
+      batch_status: input.batchStatus ?? null,
       start_date: input.startDate?.trim(),
       weekdays: input.weekdayIds,
       start_time_local: input.startTimeLocal?.trim(),
@@ -1249,6 +1261,12 @@ export async function updateOwnCoachingBatch(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const payload: Record<string, unknown> = {};
+  if (patch.batchYear !== undefined || patch.batchStatus !== undefined) {
+    const metadataError = validateBatchMetadata(patch);
+    if (metadataError) return { success: false, error: metadataError };
+    if (patch.batchYear !== undefined) payload.batch_year = patch.batchYear;
+    if (patch.batchStatus !== undefined) payload.batch_status = patch.batchStatus;
+  }
   const scheduleChanged =
     patch.startDate !== undefined || patch.weekdayIds !== undefined ||
     patch.startTimeLocal !== undefined || patch.endTimeLocal !== undefined;
@@ -1458,7 +1476,7 @@ export async function deleteOwnWifiPackage(id: string): Promise<WriteResult> {
 const PUBLIC_TEACHER_COLUMNS =
   'id, listing_id, name_bn, subjects, qualification_bn, experience_bn, sort_order, created_at, updated_at';
 const PUBLIC_BATCH_COLUMNS =
-  'id, listing_id, title_bn, start_date, weekdays, start_time_local, end_time_local, start_time, note_bn, is_active, created_at, updated_at';
+  'id, listing_id, title_bn, batch_year, batch_status, start_date, weekdays, start_time_local, end_time_local, start_time, note_bn, is_active, created_at, updated_at';
 const PUBLIC_PACKAGE_COLUMNS =
   'id, listing_id, name_bn, speed_mbps, price, offer_label_bn, offer_conditions_bn, connection_fee, offer_expires_on, is_active, sort_order, created_at, updated_at';
 const REVIEW_COLUMNS =
@@ -1495,6 +1513,42 @@ export async function fetchCoachingBatches(listingId: string): Promise<CoachingB
     .order('created_at', { ascending: false });
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map(mapBatch);
+}
+
+/** Active, public batch years fetched in one query for directory filtering. */
+export async function fetchCoachingBatchYears(
+  listingIds: string[],
+  strict = false
+): Promise<Record<string, number[]>> {
+  const ids = Array.from(new Set(listingIds.filter(isUuid)));
+  const result: Record<string, number[]> = {};
+  if (ids.length === 0) return result;
+  if (!isSupabaseConfigured) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return result;
+  }
+  const client = createClient();
+  if (!client) {
+    if (strict) throw new Error(NOT_CONFIGURED);
+    return result;
+  }
+  const { data, error } = await client
+    .from('coaching_batches')
+    .select('listing_id, batch_year')
+    .in('listing_id', ids)
+    .eq('is_active', true)
+    .not('batch_year', 'is', null);
+  if (error || !data) {
+    if (strict) throw new Error(error?.message ?? 'ব্যাচের বছর লোড করা যায়নি।');
+    return result;
+  }
+  for (const row of data as { listing_id: string; batch_year: number | null }[]) {
+    if (!Number.isInteger(row.batch_year)) continue;
+    const years = result[row.listing_id] ?? (result[row.listing_id] = []);
+    if (!years.includes(row.batch_year as number)) years.push(row.batch_year as number);
+  }
+  for (const years of Object.values(result)) years.sort((a, b) => a - b);
+  return result;
 }
 
 export async function fetchWifiPackagesForListings(
@@ -1819,6 +1873,8 @@ type TeacherPatch = {
 };
 type BatchPatch = {
   titleBn?: string;
+  batchYear?: number | null;
+  batchStatus?: CoachingBatch['batchStatus'] | null;
   startDate?: string | null;
   weekdayIds?: CoachingBatch['weekdayIds'];
   startTimeLocal?: string | null;
@@ -1827,6 +1883,19 @@ type BatchPatch = {
   noteBn?: string | null;
   isActive?: boolean;
 };
+
+function validateBatchMetadata(input: {
+  batchYear?: number | null;
+  batchStatus?: CoachingBatch['batchStatus'] | null;
+}): string | null {
+  if (input.batchYear != null && (!Number.isInteger(input.batchYear) || input.batchYear < 2027 || input.batchYear > 2100)) {
+    return 'ব্যাচের বছর ২০২৭ থেকে ২১০০ সালের মধ্যে নির্বাচন করুন।';
+  }
+  if (input.batchStatus != null && input.batchStatus !== 'new' && input.batchStatus !== 'old') {
+    return 'ব্যাচ নতুন নাকি পুরাতন—সঠিকভাবে নির্বাচন করুন।';
+  }
+  return null;
+}
 
 function validateBatchSchedule(input: {
   startDate?: string | null;
@@ -1980,11 +2049,15 @@ export async function adminCreateCoachingBatch(
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const title = input.titleBn.trim();
   if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };
+  const metadataError = validateBatchMetadata(input);
+  if (metadataError) return { success: false, error: metadataError };
   const { data, error } = await client
     .from('coaching_batches')
     .insert({
       listing_id: listingId,
       title_bn: title,
+      batch_year: input.batchYear ?? null,
+      batch_status: input.batchStatus ?? null,
       start_date: input.startDate?.trim() || null,
       ...(input.weekdayIds?.length ? { weekdays: input.weekdayIds } : {}),
       ...(input.startTimeLocal ? { start_time_local: input.startTimeLocal } : {}),
@@ -2010,6 +2083,12 @@ export async function adminUpdateCoachingBatch(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
   const payload: Record<string, unknown> = {};
+  if (patch.batchYear !== undefined || patch.batchStatus !== undefined) {
+    const metadataError = validateBatchMetadata(patch);
+    if (metadataError) return { success: false, error: metadataError };
+    if (patch.batchYear !== undefined) payload.batch_year = patch.batchYear;
+    if (patch.batchStatus !== undefined) payload.batch_status = patch.batchStatus;
+  }
   if (patch.titleBn !== undefined) {
     const title = patch.titleBn.trim();
     if (title.length < 2) return { success: false, error: 'ব্যাচের নাম লিখুন।' };

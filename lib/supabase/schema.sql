@@ -1938,7 +1938,7 @@ CREATE TABLE IF NOT EXISTS public.service_listings (
     image_url TEXT,
     logo_url TEXT,
     coaching_category TEXT
-        CHECK (coaching_category IS NULL OR coaching_category IN ('class_1_8', 'ssc', 'hsc', 'admission')),
+        CHECK (coaching_category IS NULL OR coaching_category IN ('class_1_8', 'ssc', 'hsc', 'bba', 'admission')),
     -- MCC area ids this listing serves. Empty = city-wide.
     area_ids TEXT[] NOT NULL DEFAULT '{}',
     -- Free-form highlight chips (e.g. wifi packages, bus amenities).

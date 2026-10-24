@@ -17,10 +17,10 @@
  * Mobile-first: every control is full width, tap targets are >= 44px, and the
  * area picker reuses the searchable MCC selector rather than a native multi-select.
  */
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { CheckCircle2, ImagePlus, Loader2, Plus, Trash2, X } from 'lucide-react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { CheckCircle2, ChevronDown, ImagePlus, Loader2, MapPin, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import LocationSelectInput from '@/components/LocationSelectInput';
+import { MCC_AREA_SOURCE } from '@/lib/locations';
 import {
   createOwnCoachingBatch,
   createCustomerServiceListing,
@@ -63,6 +63,7 @@ interface FormState {
   subtitleBn: string;
   descriptionBn: string;
   imageUrl: string;
+  photos: string[];
   addressBn: string;
   contactPhonePublic: string;
   /** coaching */
@@ -81,6 +82,8 @@ interface FormState {
 
 interface PendingBatch {
   key: string;
+  batchYear: string;
+  batchStatus: 'new' | 'old';
   startDate: string;
   weekdayIds: CoachingWeekday[];
   startTimeLocal: string;
@@ -130,6 +133,7 @@ function initialForm(category: CustomerServiceCategory, listing?: ServiceListing
     subtitleBn: listing?.subtitleBn ?? '',
     descriptionBn: listing?.descriptionBn ?? '',
     imageUrl: listing?.imageUrl ?? listing?.logoUrl ?? '',
+    photos: listing?.photos ?? [],
     addressBn: listing?.addressBn ?? '',
     contactPhonePublic: listing?.contactPhonePublic ?? '',
     monthlyFee:
@@ -200,8 +204,31 @@ export default function CustomerListingForm({
   const [wifiPackagesError, setWifiPackagesError] = useState('');
   const submittingRef = useRef(false);
 
+  const [areaSearch, setAreaSearch] = useState('');
+  const [areaOpen, setAreaOpen] = useState(false);
+  const areaWrapperRef = useRef<HTMLDivElement>(null);
+  const areaOptions = useMemo(() => {
+    if (category !== 'coaching') return [];
+    const q = areaSearch.trim().toLowerCase();
+    if (!q) return MCC_AREA_SOURCE.all().slice(0, 12);
+    return MCC_AREA_SOURCE.search(areaSearch).slice(0, 15);
+  }, [areaSearch, category]);
+  const selectedArea = useMemo(() => (selectedAreaId ? MCC_AREA_SOURCE.byId(selectedAreaId) : null), [selectedAreaId]);
+
+  useEffect(() => {
+    if (category !== 'coaching') return;
+    const handleClick = (e: MouseEvent) => {
+      if (areaWrapperRef.current && !areaWrapperRef.current.contains(e.target as Node)) {
+        setAreaOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [category]);
+
   const isEditing = Boolean(currentListing);
   const busy = submitting || uploading || wifiPackagesLoading;
+  const requiresBatchYear = ['ssc', 'hsc', 'bba'].includes(form.coachingCategory);
 
   const loadWifiPackages = useCallback(async () => {
     if (category !== 'wifi' || !initialListing) return;
@@ -331,6 +358,32 @@ export default function CustomerListingForm({
     }
   };
 
+  const onPickGalleryImage = async (file: File | undefined) => {
+    if (!file) return;
+    if (form.photos.length >= 4) {
+      setError('প্রচ্ছদ ছবির বাইরে সর্বোচ্চ ৪টি ছবি যোগ করা যাবে।');
+      return;
+    }
+    if (!user) {
+      setError('ছবি আপলোড করতে আগে লগইন করুন।');
+      return;
+    }
+    setUploading(true);
+    setError('');
+    try {
+      const result = await uploadServiceListingImage(user.id, file);
+      if (!result.success) {
+        setError(result.error);
+        return;
+      }
+      setForm((prev) => ({ ...prev, photos: [...prev.photos, result.data].slice(0, 4) }));
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const parseWifiPricingRows = () => {
     const rows: { id?: string; speedMbps: number; price: number }[] = [];
     for (const row of form.wifiPricingRows) {
@@ -362,6 +415,7 @@ export default function CustomerListingForm({
       summaryBn: currentListing?.summaryBn,
       descriptionBn: form.descriptionBn.trim() || undefined,
       imageUrl: form.imageUrl.trim() || undefined,
+      photos: category === 'coaching' ? form.photos : currentListing?.photos,
       addressBn: form.addressBn.trim() || undefined,
       areaIds: category === 'coaching'
         ? selectedAreaId ? [selectedAreaId] : []
@@ -444,9 +498,11 @@ export default function CustomerListingForm({
       batch.weekdayIds.length === 0 ||
       !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(batch.startTimeLocal) ||
       !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(batch.endTimeLocal) ||
-      batch.endTimeLocal <= batch.startTimeLocal
+      batch.endTimeLocal <= batch.startTimeLocal ||
+      (requiresBatchYear && !/^(202[7-9])$/.test(batch.batchYear)) ||
+      (batch.batchStatus !== 'new' && batch.batchStatus !== 'old')
     )) {
-      setError('প্রতিটি ব্যাচে শুরুর তারিখ, সপ্তাহের দিন এবং সঠিক শুরুর ও শেষের সময় দিন।');
+      setError('প্রতিটি ব্যাচে প্রযোজ্য বছর, নতুন/পুরাতন অবস্থা, তারিখ, সপ্তাহের দিন এবং সঠিক সময় দিন।');
       return;
     }
     const wifiPricingRows = category === 'wifi' ? parseWifiPricingRows() : [];
@@ -498,6 +554,8 @@ export default function CustomerListingForm({
           const batch = pendingBatches[index];
           const batchResult = await createOwnCoachingBatch(savedListing.id, {
             titleBn: 'নতুন ব্যাচ',
+            batchYear: requiresBatchYear ? Number(batch.batchYear) : undefined,
+            batchStatus: batch.batchStatus,
             startDate: batch.startDate,
             weekdayIds: batch.weekdayIds,
             startTimeLocal: batch.startTimeLocal,
@@ -606,6 +664,49 @@ export default function CustomerListingForm({
             <p className="text-[11.5px] text-ink-400">একটি ছবি দিন; সর্বোচ্চ ৫MB, JPG/PNG/WebP/AVIF।</p>
           </div>
         </div>
+        {category === 'coaching' && (
+          <div className="mt-4 border-t border-brand-100 pt-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-[12.5px] font-bold text-ink-800">অতিরিক্ত ছবি</p>
+                <p className="text-[11.5px] text-ink-400">প্রচ্ছদ ছবির পাশে সর্বোচ্চ ৪টি ছবি দেখানো হবে।</p>
+              </div>
+              <label className={`${ghostBtn} min-h-9 w-auto cursor-pointer px-3 text-[12px]`}>
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                ছবি যোগ করুন ({toBn(form.photos.length)}/৪)
+                <input
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/avif"
+                  className="sr-only"
+                  disabled={uploading || form.photos.length >= 4}
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    event.currentTarget.value = '';
+                    void onPickGalleryImage(file);
+                  }}
+                />
+              </label>
+            </div>
+            {form.photos.length > 0 && (
+              <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {form.photos.map((photo, index) => (
+                  <div key={`${photo}-${index}`} className="relative aspect-[4/3] overflow-hidden rounded-lg border border-brand-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={photo} alt={`অতিরিক্ত ছবি ${toBn(index + 1)}`} className="h-full w-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => set('photos', form.photos.filter((_, itemIndex) => itemIndex !== index))}
+                      className="absolute right-1 top-1 inline-flex min-h-8 items-center gap-1 rounded-md bg-white/95 px-2 text-[11px] font-bold text-rose-700 shadow-sm"
+                      aria-label={`অতিরিক্ত ছবি ${toBn(index + 1)} সরান`}
+                    >
+                      <X className="h-3.5 w-3.5" /> সরান
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       {/* Basic info */}
@@ -620,30 +721,19 @@ export default function CustomerListingForm({
           />
         </Field>
         {category === 'coaching' && (
-          <>
-            <Field label="কোচিং ক্যাটাগরি" required>
-              <select
-                required
-                value={form.coachingCategory}
-                onChange={(event) => changeCoachingCategory(event.target.value as CoachingCategory | '')}
-                className={inputClass}
-              >
-                <option value="">ক্যাটাগরি বেছে নিন</option>
-                {COACHING_CATEGORIES.map((item) => (
-                  <option key={item.id} value={item.id}>{item.labelBn}</option>
-                ))}
-              </select>
-            </Field>
-            <Field label="কোচিং সেন্টারের এলাকা*" required>
-              <LocationSelectInput
-                value={selectedAreaId || null}
-                onChange={(areaId) => setSelectedAreaId(areaId || '')}
-                placeholder="ময়মনসিংহের এলাকা বেছে নিন"
-                allowClear={true}
-                size="sm"
-              />
-            </Field>
-          </>
+          <Field label="কোচিং ক্যাটাগরি" required>
+            <select
+              required
+              value={form.coachingCategory}
+              onChange={(event) => changeCoachingCategory(event.target.value as CoachingCategory | '')}
+              className={inputClass}
+            >
+              <option value="">ক্যাটাগরি বেছে নিন</option>
+              {COACHING_CATEGORIES.map((item) => (
+                <option key={item.id} value={item.id}>{item.labelBn}</option>
+              ))}
+            </select>
+          </Field>
         )}
         <Field label="সংক্ষিপ্ত পরিচিতি">
           <input
@@ -667,7 +757,25 @@ export default function CustomerListingForm({
       {/* Location + contact */}
       <section className="space-y-3 rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
         <h2 className="text-[14px] font-extrabold text-ink-900">ঠিকানা ও যোগাযোগ</h2>
-        <Field label="সম্পূর্ণ ঠিকানা" required hint="বাড়ি/প্রতিষ্ঠান, সড়ক, এলাকা ও প্রয়োজনীয় পরিচিতিসহ ঠিকানা লিখুন।">
+        {category === 'coaching' && (
+          <Field label="এলাকা নির্বাচন করুন" required>
+            <input
+              value={areaSearch || selectedArea?.nameBn || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                setAreaSearch(val);
+                const match = MCC_AREA_SOURCE.all().find(
+                  (area) => area.nameBn.toLowerCase() === val.trim().toLowerCase()
+                );
+                setSelectedAreaId(match ? match.id : '');
+              }}
+              className={inputClass}
+              placeholder="এলাকার নাম লিখুন"
+              autoComplete="off"
+            />
+          </Field>
+        )}
+        <Field label="সম্পূর্ণ ঠিকানা" required hint="বাড়ি/প্রতিষ্ঠান, সড়ক, বিস্তারিত ঠিকানা লিখুন।">
           <textarea
             rows={3}
             maxLength={400}
@@ -963,6 +1071,47 @@ export default function CustomerListingForm({
                   <Trash2 className="h-3.5 w-3.5" /> সরান
                 </button>
               </div>
+              {requiresBatchYear && (
+                <Field label="ব্যাচের বছর" required>
+                  <select
+                    value={batch.batchYear}
+                    onChange={(event) => setPendingBatches((rows) => rows.map((row) =>
+                      row.key === batch.key ? { ...row, batchYear: event.target.value } : row
+                    ))}
+                    className={inputClass}
+                  >
+                    <option value="">বছর নির্বাচন করুন</option>
+                    {[2027, 2028, 2029].map((year) => (
+                      <option key={year} value={year}>{toBn(year)}</option>
+                    ))}
+                  </select>
+                </Field>
+              )}
+              <div>
+                <span className="mb-1 block text-[12.5px] font-bold text-ink-700">ব্যাচের ধরন *</span>
+                <div className="flex gap-2">
+                  {([
+                    ['new', 'নতুন ব্যাচ'],
+                    ['old', 'পুরাতন ব্যাচ'],
+                  ] as const).map(([value, label]) => (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={batch.batchStatus === value}
+                      onClick={() => setPendingBatches((rows) => rows.map((row) =>
+                        row.key === batch.key ? { ...row, batchStatus: value } : row
+                      ))}
+                      className={`min-h-10 rounded-lg border px-3 text-[12px] font-bold ${
+                        batch.batchStatus === value
+                          ? 'border-brand-700 bg-brand-700 text-white'
+                          : 'border-brand-200 bg-white text-brand-700'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <Field label="শুরুর তারিখ" required>
                   <input
@@ -1029,6 +1178,8 @@ export default function CustomerListingForm({
             type="button"
             onClick={() => setPendingBatches((rows) => [...rows, {
               key: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
+              batchYear: '',
+              batchStatus: 'new',
               startDate: '',
               weekdayIds: [],
               startTimeLocal: '',

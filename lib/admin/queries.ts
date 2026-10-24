@@ -2449,7 +2449,7 @@ export interface AdminServiceListingRow {
   description_bn: string | null;
   image_url: string | null;
   logo_url: string | null;
-  coaching_category: 'class_1_8' | 'ssc' | 'hsc' | 'admission' | null;
+  coaching_category: 'class_1_8' | 'ssc' | 'hsc' | 'bba' | 'admission' | null;
   area_ids: string[];
   tags: string[];
   monthly_fee_min: number | null;
@@ -2547,7 +2547,7 @@ export async function fetchServiceListings(params: ListParams, category?: string
   }
   if (params.area) query = query.contains('area_ids', [params.area]);
   if (params.kind) {
-    const coachingCategories = ['class_1_8', 'ssc', 'hsc', 'admission'];
+    const coachingCategories = ['class_1_8', 'ssc', 'hsc', 'bba', 'admission'];
     if (rpcCategory === 'coaching' && coachingCategories.includes(params.kind)) {
       query = query.eq('coaching_category', params.kind);
     } else {

@@ -33,7 +33,7 @@ export type CustomerServiceCategory = 'coaching' | 'wifi';
 
 export const CUSTOMER_SERVICE_CATEGORIES: CustomerServiceCategory[] = ['coaching', 'wifi'];
 
-export type CoachingCategory = 'class_1_8' | 'ssc' | 'hsc' | 'admission';
+export type CoachingCategory = 'class_1_8' | 'ssc' | 'hsc' | 'bba' | 'admission';
 
 /**
  * Moderation state of an owner-submitted listing.
@@ -80,7 +80,11 @@ export interface ServiceListing {
   descriptionBn?: string;
   imageUrl?: string;
   logoUrl?: string;
+  /** Gallery images; customer coaching profiles are limited to four. */
+  photos?: string[];
   coachingCategory?: CoachingCategory;
+  /** Active batch years, populated only for coaching directory filtering. */
+  coachingBatchYears?: number[];
   areaIds: string[];
   tags: string[];
   monthlyFeeMin?: number;
@@ -102,11 +106,6 @@ export interface ServiceListing {
   createdAt: string;
   updatedAt: string;
   // --- vehicle / bus directory fields -----------------------------------
-  // Curated listings may carry a cover plus a small gallery.
-  // All of it is optional: every field below is printed only when stored, so a
-  // row written by an older admin stays honest instead of showing invented
-  // zeroes.
-  photos?: string[];
   /** "Toyota Axio", "Honda Grace", "Bajaj RE" — distinct from the listing title. */
   modelNameBn?: string;
   modelYear?: number;
@@ -222,6 +221,8 @@ export interface CoachingBatch {
   id: string;
   listingId: string;
   titleBn: string;
+  batchYear?: number;
+  batchStatus?: 'new' | 'old';
   startDate?: string;
   weekdayIds: CoachingWeekday[];
   startTimeLocal?: string;
@@ -333,6 +334,7 @@ export interface CustomerServiceListingInput {
   descriptionBn?: string;
   imageUrl?: string;
   logoUrl?: string;
+  photos?: string[];
   areaIds: string[];
   /** Free-form highlight chips (coaching: classes/subjects/সুবিধা). */
   tags: string[];
@@ -606,6 +608,9 @@ export const COACHING_SUBJECTS_BY_CATEGORY: Record<
       'sociology', 'logic', 'history',
     ].includes(subject.id)
   ),
+  bba: COACHING_SUBJECTS.filter((subject) =>
+    ['accounting', 'business_studies', 'finance', 'economics', 'english', 'analytical_ability'].includes(subject.id)
+  ),
   admission: COACHING_SUBJECTS.filter((subject) =>
     [
       'bangla', 'english', 'math', 'higher_math', 'physics', 'chemistry', 'biology',
@@ -615,11 +620,12 @@ export const COACHING_SUBJECTS_BY_CATEGORY: Record<
   ),
 };
 
-/** Exactly the four directory categories used to classify coaching centres. */
+/** Directory categories used to classify coaching centres. */
 export const COACHING_CATEGORIES: { id: CoachingCategory; labelBn: string }[] = [
   { id: 'class_1_8', labelBn: 'ক্লাস ১–৮' },
   { id: 'ssc', labelBn: 'এসএসসি (ক্লাস ৯–১০)' },
   { id: 'hsc', labelBn: 'এইচএসসি' },
+  { id: 'bba', labelBn: 'বিবিএ' },
   { id: 'admission', labelBn: 'ভর্তি' },
 ];
 

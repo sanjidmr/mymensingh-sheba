@@ -56,7 +56,7 @@ export default function LocationPickerModal({
 
   const popularAreas = useMemo(() => source.popular(), [source]);
   const displayAreas = useMemo(
-    () => source.search(searchQuery),
+    () => searchQuery.trim() ? source.search(searchQuery) : source.all(),
     [source, searchQuery]
   );
 

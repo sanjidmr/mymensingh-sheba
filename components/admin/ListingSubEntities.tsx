@@ -281,6 +281,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
   const { error, notice, setError, setNotice } = useMessage();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [title, setTitle] = useState('');
+  const [batchYear, setBatchYear] = useState('');
+  const [batchStatus, setBatchStatus] = useState<'new' | 'old'>('new');
   const [startDate, setStartDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [note, setNote] = useState('');
@@ -307,6 +309,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
   const reset = () => {
     setEditingId(null);
     setTitle('');
+    setBatchYear('');
+    setBatchStatus('new');
     setStartDate('');
     setStartTime('');
     setNote('');
@@ -319,6 +323,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
     setNotice('');
     const payload = {
       titleBn: title,
+      batchYear: batchYear ? Number(batchYear) : undefined,
+      batchStatus,
       startDate: startDate || undefined,
       startTime,
       noteBn: note,
@@ -376,6 +382,33 @@ function BatchesEditor({ listingId }: { listingId: string }) {
         </p>
       )}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Field label="ব্যাচের বছর">
+          <select value={batchYear} onChange={(e) => setBatchYear(e.target.value)} className={inputClass}>
+            <option value="">নির্দিষ্ট নয়</option>
+            {[2027, 2028, 2029].map((year) => <option key={year} value={year}>{toBn(year)}</option>)}
+          </select>
+        </Field>
+        <div>
+          <span className="mb-1 block text-xs font-semibold text-admin-text">ব্যাচের ধরন</span>
+          <div className="flex gap-2">
+            {([
+              ['new', 'নতুন ব্যাচ'],
+              ['old', 'পুরাতন ব্যাচ'],
+            ] as const).map(([value, label]) => (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={batchStatus === value}
+                onClick={() => setBatchStatus(value)}
+                className={`min-h-10 rounded-md border px-3 text-xs font-semibold ${
+                  batchStatus === value ? 'border-admin-navy bg-admin-navy text-white' : 'border-admin-border text-admin-text'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
         <Field label="ব্যাচের নাম *">
           <input value={title} onChange={(e) => setTitle(e.target.value)} className={inputClass} />
         </Field>
@@ -417,7 +450,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
             <div key={b.id} className="flex flex-wrap items-start justify-between gap-2 rounded-md border border-admin-border p-3">
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-admin-text">
-                  {b.titleBn}
+                  {b.batchYear ? `${toBn(b.batchYear)} · ` : ''}
+                  {b.batchStatus === 'old' ? 'পুরাতন ব্যাচ' : 'নতুন ব্যাচ'} — {b.titleBn}
                   <span className={`ml-2 rounded px-1.5 py-0.5 text-[11px] ${b.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-admin-page text-admin-muted'}`}>
                     {b.isActive ? 'প্রকাশিত' : 'অপ্রকাশিত'}
                   </span>
@@ -436,6 +470,8 @@ function BatchesEditor({ listingId }: { listingId: string }) {
                   onClick={() => {
                     setEditingId(b.id);
                     setTitle(b.titleBn);
+                    setBatchYear(b.batchYear ? String(b.batchYear) : '');
+                    setBatchStatus(b.batchStatus ?? 'new');
                     setStartDate(b.startDate ?? '');
                     setStartTime(b.startTime ?? '');
                     setNote(b.noteBn ?? '');
