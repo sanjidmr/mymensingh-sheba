@@ -28,6 +28,8 @@ import { TUTOR_SUBJECTS } from '@/lib/filter-definitions';
 import { createClient } from '@/lib/supabase/client';
 import { fetchToletRequestsAsCustomer } from '@/lib/tolet-service';
 import type { ToletRequest } from '@/lib/tolet-types';
+import { fetchVehicleRequestsForCustomer } from '@/lib/catalog-service';
+import type { VehicleRequest } from '@/lib/catalog-types';
 
 const STATUS_CONFIGS = {
   new: { label: 'নতুন', badgeClass: 'bg-sky-50 text-sky-900 border-sky-200', icon: FileText },
@@ -37,6 +39,8 @@ const STATUS_CONFIGS = {
   completed: { label: 'সম্পন্ন', badgeClass: 'bg-brand-50 text-brand-800 border-brand-200', icon: CheckCircle2 },
   cancelled: { label: 'বাতিল', badgeClass: 'bg-brand-100 text-ink-700 border-brand-100', icon: X },
   rejected: { label: 'প্রত্যাখ্যাত', badgeClass: 'bg-rose-50 text-rose-500 border-rose-200', icon: AlertCircle },
+  approved: { label: 'অনুমোদিত', badgeClass: 'bg-brand-50 text-brand-800 border-brand-200', icon: CheckCircle2 },
+  closed: { label: 'বন্ধ', badgeClass: 'bg-brand-100 text-ink-700 border-brand-100', icon: X },
   submitted: { label: 'জমা দেওয়া হয়েছে', badgeClass: 'bg-amber-50 text-amber-900 border-amber-200', icon: Clock },
   assigned: { label: 'কর্মী নির্ধারিত হয়েছে', badgeClass: 'bg-sky-50 text-sky-900 border-sky-200', icon: CheckCircle2 },
 };
@@ -44,6 +48,7 @@ const STATUS_CONFIGS = {
 export default function RequestsPage() {
   const { requests, user } = useAuth();
   const [toletRequests, setToletRequests] = useState<ToletRequest[]>([]);
+  const [vehicleRequests, setVehicleRequests] = useState<VehicleRequest[]>([]);
   const [loadingTolet, setLoadingTolet] = useState(true);
   const [supportRequested, setSupportRequested] = useState<string | null>(null);
   const [cancellingServiceId, setCancellingServiceId] = useState<string | null>(null);
@@ -53,10 +58,14 @@ export default function RequestsPage() {
   useEffect(() => {
     if (!user) return;
     let active = true;
-    fetchToletRequestsAsCustomer(user.id)
-      .then((t) => {
+    Promise.all([
+      fetchToletRequestsAsCustomer(user.id),
+      fetchVehicleRequestsForCustomer(user.id),
+    ])
+      .then(([t, vehicles]) => {
         if (!active) return;
         setToletRequests(t);
+        setVehicleRequests(vehicles);
       })
       .catch((error: unknown) => {
         if (active) {
@@ -99,7 +108,7 @@ export default function RequestsPage() {
     }
   };
 
-  const allEmpty = requests.length === 0 && toletRequests.length === 0;
+  const allEmpty = requests.length === 0 && toletRequests.length === 0 && vehicleRequests.length === 0;
 
   return (
     <div className="space-y-5">
@@ -118,6 +127,11 @@ export default function RequestsPage() {
             <p className="text-xs sm:text-sm text-ink-500 mt-0.5">
               বাসা দেখার অনুরোধসহ সব সেবার বর্তমান অবস্থা এক জায়গায়
             </p>
+            {user?.publicId && (
+              <p className="mt-2 inline-flex rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1 font-mono text-xs font-extrabold tracking-wider text-brand-800">
+                আপনার প্রোফাইল আইডি: {user.publicId} · সহায়তায় এই আইডি উল্লেখ করুন
+              </p>
+            )}
           </div>
           {requestError && (
             <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-500">
@@ -156,6 +170,37 @@ export default function RequestsPage() {
           </div>
         ) : (
           <div className="space-y-4">
+            {vehicleRequests.length > 0 && (
+              <>
+                <h2 className="pt-3 text-sm font-bold text-ink-900">যানবাহন বুকিং অনুরোধ</h2>
+                {vehicleRequests.map((req) => {
+                  const statusConf = STATUS_CONFIGS[req.status] || STATUS_CONFIGS.submitted;
+                  const StatusIcon = statusConf.icon;
+                  return (
+                    <article key={req.id} className="rounded-xl border border-brand-100 bg-white p-4 sm:p-5">
+                      <div className="flex flex-wrap items-start justify-between gap-3">
+                        <div>
+                          <p className="font-mono text-sm font-extrabold tracking-wider text-brand-800">
+                            রেফারেন্স: {req.referenceCode || req.id}
+                          </p>
+                          <p className="mt-1 text-sm font-bold text-ink-900">{req.vehicleName || req.vehicleKind}</p>
+                          <p className="mt-1 text-xs text-ink-600">{req.contactName} · {req.contactPhone}</p>
+                          <p className="mt-1 text-xs text-ink-600">
+                            {getAreaById(req.pickupAreaId || '')?.nameBn || req.pickupAreaId} → {getAreaById(req.destinationAreaId || '')?.nameBn || req.destinationAreaId}
+                          </p>
+                        </div>
+                        <span className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-bold ${statusConf.badgeClass}`}>
+                          <StatusIcon className="h-3.5 w-3.5" />{statusConf.label}
+                        </span>
+                      </div>
+                      <p className="mt-3 border-t border-brand-100 pt-3 text-[11px] text-ink-500">
+                        জমার তারিখ: {new Date(req.createdAt).toLocaleDateString('bn-BD')}
+                      </p>
+                    </article>
+                  );
+                })}
+              </>
+            )}
             {toletRequests.length > 0 && (
               <>
                 <h2 className="text-sm font-bold text-ink-900 pt-3">বাসা দেখার অনুরোধ</h2>
@@ -207,7 +252,7 @@ export default function RequestsPage() {
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 mb-3">
                         <div>
                           <span className="text-[11px] font-semibold text-brand-700 uppercase tracking-wider">
-                            আইডি: #{req.id}
+                            রেফারেন্স: {req.referenceCode || `#${req.id}`}
                           </span>
                           <h3 className="text-base font-bold text-ink-900 mt-0.5">{req.serviceTitleBn}</h3>
                           {req.profileTitleBn && (
@@ -348,7 +393,7 @@ export default function RequestsPage() {
 
                       {supportRequested === req.id && (
                         <div className="mt-3 p-3 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900">
-                          আপনার সহায়তা অনুরোধটি নোট করা হয়েছে। অ্যাডমিন টিম শীঘ্রই পর্যালোচনা করে যোগাযোগ করবে।
+                          সহায়তা চাইতে যোগাযোগের সময় রেফারেন্স {req.referenceCode || req.id} এবং আপনার প্রোফাইল আইডি {user?.publicId || 'প্রোফাইল আইডি'} উল্লেখ করুন।
                         </div>
                       )}
                     </div>

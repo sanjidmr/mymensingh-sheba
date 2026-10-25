@@ -72,6 +72,8 @@ export const SERVICE_LISTING_STATUS_META: Record<
 
 export interface ServiceListing {
   id: string;
+  publicId?: string;
+  publicCode?: string;
   category: ServiceCategory;
   slug: string;
   titleBn: string;
@@ -493,6 +495,7 @@ export type VehicleRequestStatus = 'new' | 'reviewing' | 'contacted' | 'approved
 
 export interface VehicleRequest {
   id: string;
+  referenceCode?: string;
   vehicleListingId?: string;
   vehicleKind: VehicleKind;
   vehicleName?: string;
@@ -827,14 +830,13 @@ export const CATEGORY_UI: Record<ServiceCategory, CategoryUiConfig> = {
     category: 'coaching',
     route: '/coaching',
     title: 'কোচিং সেন্টার',
-    subtitle:
-      'ময়মনসিংহের কোচিং সেন্টারগুলো — ক্লাস, বিষয়, এলাকা ও মাসিক ফি অনুযায়ী খুঁজুন। প্রতিষ্ঠান নিজেই তথ্য যোগ করতে পারে, অ্যাডমিন অনুমোদনের পর প্রকাশিত হয়।',
+    subtitle: '',
     placeholder: 'কোচিং সেন্টার, এলাকা বা বিষয় লিখে খুঁজুন...',
     seoDescription:
       'ময়মনসিংহের কোচিং সেন্টার তালিকা। ক্লাস, বিষয়, এলাকা ও মাসিক ফি অনুযায়ী খুঁজে সরাসরি যোগাযোগ করুন।',
     noun: 'কোচিং',
     searchNoun: 'কোচিং সেন্টার',
-    highlights: ['তথ্য যাচাই করা হয়', 'মাসিক ফি স্পষ্ট', 'সরাসরি কল করুন'],
+    highlights: [],
     mobileCols: 1,
     desktopCols: 2,
     adminOwned: true,
@@ -844,8 +846,7 @@ export const CATEGORY_UI: Record<ServiceCategory, CategoryUiConfig> = {
     category: 'wifi',
     route: '/wifi',
     title: 'ওয়াইফাই ও ইন্টারনেট',
-    subtitle:
-      'ময়মনসিংহের লোকাল ইন্টারনেট প্রদানকারীদের স্পিড, মাসিক দাম ও সার্ভিস এলাকা একসঙ্গে দেখুন। প্রদানকারী নিজেই প্যাকেজ যোগ করতে পারে।',
+    subtitle: '',
     placeholder: 'প্রোভাইডার, প্যাকেজ বা এলাকা লিখে খুঁজুন...',
     seoDescription:
       'ময়মনসিংহের লোকাল ওয়াইফাই ও ইন্টারনেট প্রদানকারীদের স্পিড, মাসিক দাম ও সার্ভিস এলাকা দেখুন, তারপর সঠিক প্যাকেজ বেছে নিন।',

@@ -161,7 +161,7 @@ function communityPostWriteError(
  * needs the field, and the owner path reads it through `fn_my_service_listings`.
  */
 const PUBLIC_LISTING_COLUMNS =
-  'id, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
+  'id, public_id, public_code, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
 
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
@@ -204,6 +204,8 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: str(c.id),
+    publicId: optStr(c.publicId),
+    publicCode: optStr(c.publicCode),
     category: c.category as ServiceCategory,
     coachingCategory: isCoachingCategory(c.coachingCategory)
       ? c.coachingCategory
@@ -345,6 +347,7 @@ function mapVehicleRequest(row: Record<string, unknown>): VehicleRequest {
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: str(c.id),
+    referenceCode: optStr(c.referenceCode),
     vehicleListingId: optStr(c.vehicleListingId),
     vehicleKind: c.vehicleKind as VehicleKind,
     vehicleName: optStr(c.vehicleName),
@@ -560,7 +563,9 @@ export async function deleteCommunityPostDraft(kind: PostKind): Promise<WriteRes
  * guest submitting a vehicle request. `success` still means the database
  * confirmed the write; there is simply no row to hand back.
  */
-export type AckResult = { success: true } | { success: false; error: string };
+export type AckResult =
+  | { success: true; requestId?: string; referenceCode?: string; warning?: string }
+  | { success: false; error: string };
 
 // ---------------------------------------------------------------------------
 // Service listings (admin-curated)
@@ -2926,11 +2931,11 @@ export async function createVehicleRequest(
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),
     });
-    const result = await response.json() as { error?: string };
+    const result = await response.json() as { error?: string; requestId?: string; referenceCode?: string; warning?: string };
     if (!response.ok) {
       return { success: false, error: result.error || 'যানবাহনের অনুরোধ পাঠানো যায়নি।' };
     }
-    return { success: true };
+    return { success: true, requestId: result.requestId, referenceCode: result.referenceCode, warning: result.warning };
   } catch (error) {
     return {
       success: false,
@@ -2950,6 +2955,19 @@ export async function adminFetchVehicleRequests(): Promise<VehicleRequest[]> {
     .order('created_at', { ascending: false });
   if (error || !data) return [];
   return (data as Record<string, unknown>[]).map(mapVehicleRequest);
+}
+
+export async function fetchVehicleRequestsForCustomer(customerId: string): Promise<VehicleRequest[]> {
+  if (!isSupabaseConfigured) return [];
+  const client = createClient();
+  if (!client) throw new Error('ডেটাবেজ সংযোগ তৈরি করা যায়নি।');
+  const { data, error } = await client
+    .from('vehicle_requests')
+    .select('*')
+    .eq('customer_id', customerId)
+    .order('created_at', { ascending: false });
+  if (error) throw new Error(`যানবাহন অনুরোধ লোড করা যায়নি: ${error.message}`);
+  return (data ?? []).map((row) => mapVehicleRequest(row as Record<string, unknown>));
 }
 
 export async function adminSetVehicleRequestStatus(

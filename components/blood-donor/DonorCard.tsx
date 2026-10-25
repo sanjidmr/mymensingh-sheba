@@ -30,8 +30,7 @@
  */
 
 import React from 'react';
-import { BadgeCheck, ChevronDown, Droplets, MapPin, Phone } from 'lucide-react';
-import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { BadgeCheck, Droplets, MapPin, Phone } from 'lucide-react';
 import { resolveDonorPhotoUrl } from '@/lib/blood-donor-service';
 import { donorRecovery } from '@/lib/blood-donor-types';
 import { getAreaById } from '@/lib/locations';
@@ -85,7 +84,6 @@ export default function DonorCard({ donor }: DonorCardProps) {
   // from the call action below, which is why it sits OUTSIDE the card's `tel:`
   // link: a button nested inside an anchor is invalid, and a tap meant for the
   // detail must not place a call.
-  const [readinessOpen, setReadinessOpen] = React.useState(false);
 
   const body = (
     <>
@@ -113,13 +111,18 @@ export default function DonorCard({ donor }: DonorCardProps) {
               </span>
             )}
           </div>
+          <span className="mt-1 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
+            {donor.isAvailable ? 'রক্তদানে প্রস্তুত' : 'এখন উপলভ্য নন'}
+          </span>
           <p className="mt-1 flex items-center gap-1 truncate text-[12.5px] text-ink-500">
             <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
             <span className="truncate">{area?.nameBn || 'এলাকা জানা নেই'}</span>
-            {donor.weightKg ? (
-              <span className="shrink-0 text-ink-400">· {donor.weightKg} কেজি</span>
-            ) : null}
           </p>
+          {donor.publicId && (
+            <p className="mt-1 font-mono text-[11px] font-bold tracking-wide text-brand-700">
+              আইডি: {donor.publicId}
+            </p>
+          )}
         </div>
       </div>
 
@@ -150,27 +153,16 @@ export default function DonorCard({ donor }: DonorCardProps) {
       {body}
 
       <div className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-2.5">
-        <button
-          type="button"
-          onClick={() => setReadinessOpen((open) => !open)}
-          aria-expanded={readinessOpen}
-          className={`inline-flex min-h-9 items-center gap-1.5 text-[12px] font-bold text-ink-700 ${LIGHT_FOCUS}`}
-        >
+        <div className="inline-flex min-h-9 items-center gap-1.5 text-[12px] font-bold text-ink-700">
           <Droplets className="h-3.5 w-3.5 text-brand-600" strokeWidth={2.25} aria-hidden="true" />
           রক্তদানের বর্তমান প্রস্তুতি
-          <ChevronDown
-            className={`h-3.5 w-3.5 text-ink-400 transition-transform ${readinessOpen ? 'rotate-180' : ''}`}
-            aria-hidden="true"
-          />
-        </button>
-        {readinessOpen && (
-          <div className="mt-2 flex items-start gap-2">
-            <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${recovery.chipClassName}`}>
-              {recovery.labelBn}
-            </span>
-            <p className="text-[12px] leading-relaxed text-ink-600">{recovery.detailBn}</p>
-          </div>
-        )}
+        </div>
+        <div className="mt-1.5 flex items-start gap-2">
+          <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${recovery.chipClassName}`}>
+            {recovery.labelBn}
+          </span>
+          <p className="text-[12px] leading-relaxed text-ink-600">{recovery.detailBn}</p>
+        </div>
       </div>
 
       {callAction}

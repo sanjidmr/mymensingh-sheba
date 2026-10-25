@@ -136,23 +136,6 @@ export function composeDetailsBn(
 }
 
 /**
- * A short, human-quotable reference for the request.
- *
- * Derived from the row id rather than stored, so it can be regenerated
- * identically anywhere the request is displayed (customer's request list, admin
- * screen) without another column. Short enough to read out over the phone.
- */
-export function formatRequestReference(serviceSlug: string, id: string): string {
-  const code = (serviceSlug || 'req')
-    .split('-')
-    .map((part) => part[0])
-    .join('')
-    .toUpperCase()
-    .slice(0, 3);
-  return `MS-${code}-${id.replace(/-/g, '').slice(0, 6).toUpperCase()}`;
-}
-
-/**
  * Submits a service request to `public.service_requests`.
  *
  * Two things this does differently from `AuthContext.createServiceRequest`:
@@ -255,7 +238,7 @@ export async function submitServiceRequest(
       profile_title: draft.profileTitle ?? null,
       service_meta: hasServiceMeta ? serviceMeta : null,
     })
-    .select('id')
+    .select('id, reference_code')
     .single();
 
   if (error) {
@@ -268,6 +251,6 @@ export async function submitServiceRequest(
     ok: true,
     attachmentUrl,
     requestId,
-    reference: requestId ? formatRequestReference(draft.serviceSlug, requestId) : undefined,
+    reference: requestId ? data.reference_code ?? undefined : undefined,
   };
 }

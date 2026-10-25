@@ -123,6 +123,7 @@ function ProfileContent({ detail }: { detail: AdminUserDetail }) {
         <ProfilePanel
           title="ব্যক্তিগত তথ্য"
           fields={[
+            ['প্রোফাইল আইডি', text(profile.public_id) || '—'],
             ['ফোন নম্বর', phone || '—'],
             ['ইমেইল', text(profile.email) || '—'],
             ['ঠিকানা / এলাকা', area(profile.primary_area_id)],

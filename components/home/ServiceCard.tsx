@@ -81,7 +81,7 @@ export default function ServiceCard({
               {card.title}
             </h3>
             {showRating && card.rating != null && (
-              <span className="hidden shrink-0 items-center gap-1 rounded-md bg-amber-50 px-1.5 py-0.5 text-xs font-bold text-amber-700 sm:inline-flex">
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-50 px-1 py-0.5 text-[10px] font-bold text-amber-700 sm:px-1.5 sm:text-xs">
                 <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
                 {card.rating.toFixed(1)}
               </span>

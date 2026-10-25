@@ -65,6 +65,7 @@ export const HOME_MOVING_TIME_SLOTS = [
 /** Domain request shape used by the admin console (mirrors service_requests row). */
 export interface HomeMovingRequest {
   id: string;
+  referenceCode?: string;
   customerId: string;
   serviceSlug: 'home-moving';
   status: ServiceRequestStatus;

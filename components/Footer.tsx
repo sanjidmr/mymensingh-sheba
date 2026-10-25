@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Phone, Mail, ShieldCheck, Facebook, MessageCircle } from 'lucide-react';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
-import { CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
+import { CONTACT_FORM_ANCHOR, SITE_CONTACT } from '@/lib/site-contact';
 import {
   DEFAULT_FOOTER_CONTENT,
   mergeSiteContact,
@@ -108,10 +108,22 @@ export default function Footer() {
                   number that isn't published — the same rule the /contact page
                   follows. Previously this was a dead tel: link to an invented
                   number while /contact said none existed. */}
-              <div className="flex items-center gap-2.5 text-brand-100/70">
-                <Phone className="h-4 w-4 text-brand-300" />
-                {contact.phone || '০১৮০০-০০০০০০'}
-              </div>
+              {contact.phone ? (
+                <a
+                  href={`https://wa.me/${contact.phone.replace(/\D/g, '').replace(/^0/, '880')}`}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white"
+                >
+                  <Phone className="h-4 w-4 text-brand-300" />
+                  {contact.phone}
+                </a>
+              ) : (
+                <a href={`/#${CONTACT_FORM_ANCHOR}`} className="flex items-center gap-2.5 text-brand-100/70">
+                  <Phone className="h-4 w-4 text-brand-300" />
+                  {SITE_CONTACT.phonePendingBn}
+                </a>
+              )}
               <a href={`mailto:${contact.email}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
                 <Mail className="h-4 w-4 text-brand-300" />
                 {contact.email}

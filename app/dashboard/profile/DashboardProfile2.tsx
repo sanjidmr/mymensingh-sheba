@@ -114,6 +114,11 @@ function AvatarCard() {
           </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[14px] font-extrabold text-ink-900">{user!.fullName}</p>
+        {user!.publicId && (
+          <p className="mt-1 inline-flex rounded-md border border-brand-200 bg-brand-50 px-2 py-1 font-mono text-xs font-extrabold tracking-widest text-brand-800">
+            প্রোফাইল আইডি: {user!.publicId}
+          </p>
+        )}
         <p className="truncate text-[12px] text-ink-500">{user!.phone}{user!.email ? ` · ${user!.email}` : ''}</p>
         <p className="mt-0.5 truncate text-[11px] text-ink-400">{getAreaById(user!.primaryAreaId)?.nameBn ?? user!.primaryAreaId}</p>
         <button type="button" disabled={busy} onClick={() => ref.current?.click()} className={`mt-2 inline-flex min-h-[40px] items-center gap-1.5 rounded-xl border border-brand-200 bg-white px-3.5 text-[12px] font-bold text-brand-700 hover:bg-brand-50 disabled:opacity-50 ${LIGHT_FOCUS}`}>

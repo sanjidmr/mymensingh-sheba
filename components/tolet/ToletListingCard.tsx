@@ -112,6 +112,11 @@ export function ToletListingCard({
               {listing.title}
             </h3>
           </Link>
+          {listing.publicId && (
+            <p className="mt-1 font-mono text-[11px] font-bold tracking-wide text-emerald-800">
+              আইডি: {listing.publicId}
+            </p>
+          )}
 
           <p className="text-xs text-slate-500 line-clamp-1 mt-0.5">{listing.specificAddress}</p>
           {listing.availableFrom && (

@@ -147,6 +147,12 @@ export default function CatalogDetailView({
               {listing.titleBn}
             </h1>
 
+            {(listing.category === 'vehicle' ? listing.publicCode : listing.publicId) && (
+              <p className="mt-2 inline-flex rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1 font-mono text-sm font-extrabold tracking-wider text-brand-800">
+                আইডি: {listing.category === 'vehicle' ? listing.publicCode : listing.publicId}
+              </p>
+            )}
+
             {listing.subtitleBn && (
               <p className="mt-1.5 text-[15px] leading-relaxed text-ink-600 sm:text-base">
                 {listing.subtitleBn}

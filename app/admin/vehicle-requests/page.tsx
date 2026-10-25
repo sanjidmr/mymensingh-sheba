@@ -28,7 +28,7 @@ const columns: AdminColumn<AdminVehicleRequestRow>[] = [
     key: 'id',
     header: 'রিকোয়েস্ট আইডি',
     hideOnMobile: true,
-    render: (row) => <span className="font-mono text-[11px] text-ink-500">{row.id.slice(0, 8)}</span>,
+    render: (row) => <span className="font-mono text-[11px] font-bold text-brand-800">{row.reference_code || row.id.slice(0, 8)}</span>,
   },
   {
     key: 'vehicle',

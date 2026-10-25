@@ -12,6 +12,7 @@ import {
 } from './supabase/types';
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { requestAdminEmailAlert } from './admin-email-alerts';
+import { normalizeJsonArray } from './request-data';
 import { LAUNCH_SERVICES } from './services-data';
 import { MCC_AREAS } from './locations';
 import { isSafeInternalPath, type AppRole } from './auth-routes';
@@ -124,7 +125,7 @@ interface AuthContextType {
   toggleSaveItem: (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => Promise<{ success: boolean; error?: string }>;
   createServiceRequest: (
     request: Omit<ServiceRequestItem, 'id' | 'customerId' | 'createdAt' | 'status' | 'serviceTitleBn'>
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: boolean; error?: string; referenceCode?: string; requestId?: string }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -216,6 +217,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .order('created_at', { ascending: false });
       const mappedRequests = (requestRows ?? []).map((row: Record<string, unknown>) => {
         const camel = toCamelObject(row) as unknown as ServiceRequestItem;
+        camel.movingItems = normalizeJsonArray(camel.movingItems).filter(
+          (item): item is NonNullable<ServiceRequestItem['movingItems']>[number] =>
+            Boolean(item) &&
+            typeof item === 'object' &&
+            typeof (item as Record<string, unknown>).id === 'string' &&
+            typeof (item as Record<string, unknown>).labelBn === 'string'
+        );
+        camel.photoUrls = normalizeJsonArray(camel.photoUrls).filter(
+          (url): url is string => typeof url === 'string'
+        );
         const service = LAUNCH_SERVICES.find((s) => s.slug === camel.serviceSlug);
         camel.serviceTitleBn = service?.nameBn || camel.serviceSlug;
         if (!camel.profileTitleBn) {
@@ -1029,13 +1040,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ServiceRequestItem,
       'id' | 'customerId' | 'createdAt' | 'status' | 'serviceTitleBn'
     >
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; referenceCode?: string; requestId?: string }> => {
     if (!user) {
       return { success: false, error: 'অনুরোধ পাঠাতে লগইন করতে হবে।' };
     }
+
+    // Write first, then reflect it. A request that failed to persist must not
+    // appear in the customer's list as if it had been filed — and callers rely
+    // on this result to know whether the submission was really recorded.
+    let requestId: string | undefined;
+    let referenceCode: string | undefined;
+    if (isSupabaseConfigured) {
+      const client = createClient();
+      if (!client) return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি।' };
+      const generatedId = crypto.randomUUID();
+      const { data, error } = await client.from('service_requests').insert({
+        id: generatedId,
+        customer_id: user.id,
+        service_slug: requestData.serviceSlug,
+        status: 'new',
+        area_id: requestData.areaId,
+        address_line: requestData.addressLine,
+        contact_name: requestData.contactName,
+        contact_phone: requestData.contactPhone,
+        preferred_date: requestData.preferredDate || null,
+        preferred_time: requestData.preferredTime || null,
+        details: requestData.details || null,
+        profile_id: requestData.profileId || null,
+        profile_title: requestData.profileTitleBn || null,
+        service_type: requestData.serviceType || null,
+        attachment_url: requestData.attachmentUrl || null,
+        pickup_area_id: requestData.pickupAreaId || null,
+        destination_area_id: requestData.destinationAreaId || null,
+        pickup_address: requestData.pickupAddress || null,
+        destination_address: requestData.destinationAddress || null,
+        pickup_floor: requestData.pickupFloor || null,
+        destination_floor: requestData.destinationFloor || null,
+        has_lift: requestData.hasLift || false,
+        parking_info: requestData.parkingInfo || null,
+        moving_items: requestData.movingItems ?? [],
+        photo_urls: requestData.photoUrls ?? [],
+      })
+        .select('id, reference_code')
+        .single();
+      if (error || !data) {
+        return { success: false, error: `অনুরোধ সংরক্ষণ করা যায়নি: ${error?.message ?? 'সার্ভারের উত্তর পাওয়া যায়নি।'}` };
+      }
+      requestId = data.id;
+      referenceCode = data.reference_code ?? undefined;
+      if (requestId) void requestAdminEmailAlert('service_request', requestId);
+    }
+
     const newReq: ServiceRequestItem = {
       ...requestData,
-      id: `req-${Date.now()}`,
+      id: requestId ?? `req-${Date.now()}`,
+      referenceCode,
       customerId: user.id,
       status: 'new',
       serviceTitleBn:
@@ -1043,51 +1102,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         requestData.serviceSlug,
       createdAt: new Date().toISOString(),
     };
-
-    // Write first, then reflect it. A request that failed to persist must not
-    // appear in the customer's list as if it had been filed — and callers rely
-    // on this result to know whether the submission was really recorded.
-    if (isSupabaseConfigured) {
-      const client = createClient();
-      if (client) {
-        const requestId = crypto.randomUUID();
-        const { error } = await client.from('service_requests').insert({
-          id: requestId,
-          customer_id: user.id,
-          service_slug: requestData.serviceSlug,
-          status: 'new',
-          area_id: requestData.areaId,
-          address_line: requestData.addressLine,
-          contact_name: requestData.contactName,
-          contact_phone: requestData.contactPhone,
-          preferred_date: requestData.preferredDate || null,
-          preferred_time: requestData.preferredTime || null,
-          details: requestData.details || null,
-          profile_id: requestData.profileId || null,
-          profile_title: requestData.profileTitleBn || null,
-          service_type: requestData.serviceType || null,
-          attachment_url: requestData.attachmentUrl || null,
-          // Home Moving private request fields
-          pickup_area_id: requestData.pickupAreaId || null,
-          destination_area_id: requestData.destinationAreaId || null,
-          pickup_address: requestData.pickupAddress || null,
-          destination_address: requestData.destinationAddress || null,
-          pickup_floor: requestData.pickupFloor || null,
-          destination_floor: requestData.destinationFloor || null,
-          has_lift: requestData.hasLift || false,
-          parking_info: requestData.parkingInfo || null,
-          moving_items: requestData.movingItems ? JSON.stringify(requestData.movingItems) : '[]',
-          photo_urls: requestData.photoUrls ? JSON.stringify(requestData.photoUrls) : '[]',
-        });
-        if (error) {
-          return { success: false, error: `অনুরোধ সংরক্ষণ করা যায়নি: ${error.message}` };
-        }
-        void requestAdminEmailAlert('service_request', requestId);
-      }
-    }
-
     setRequests((prev) => [newReq, ...prev]);
-    return { success: true };
+    return { success: true, requestId, referenceCode };
   };
 
   return (

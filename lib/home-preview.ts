@@ -80,6 +80,7 @@ export function toletToPreviewCard(listing: ToletListing): HomePreviewCard {
       `${listing.bathrooms} বাথ`,
     ],
     mobileMeta: [
+      typeInfo.shortLabelBn,
       `৳${listing.rentPrice.toLocaleString('bn-BD')}/মাস`,
       `${listing.bedrooms} কক্ষ`,
     ],

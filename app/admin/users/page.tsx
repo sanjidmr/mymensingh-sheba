@@ -114,7 +114,7 @@ export default function AdminUsersPage() {
   const filtered = users.filter((u) => {
     if (!search) return true;
     const q = search.toLowerCase();
-    return u.fullName.toLowerCase().includes(q) || u.phone.includes(q) || u.id.includes(q);
+    return u.fullName.toLowerCase().includes(q) || u.phone.includes(q) || u.id.includes(q) || Boolean(u.publicId?.toLowerCase().includes(q));
   });
 
   if (loading) {
@@ -158,6 +158,11 @@ export default function AdminUsersPage() {
                           {u.fullName}
                         </Link>
                       </h3>
+                      {u.publicId && (
+                        <span className="rounded-md border border-brand-200 bg-brand-50 px-2 py-1 font-mono text-xs font-extrabold tracking-wider text-brand-800">
+                          আইডি {u.publicId}
+                        </span>
+                      )}
                       <span className="text-xs text-slate-500">ফোন: {u.phone}</span>
                       {u.email && <span className="text-xs text-slate-500">ইমেইল: {u.email}</span>}
                       <span className="text-[11px] text-slate-500">যোগদান: {new Date(u.createdAt).toLocaleDateString('bn-BD')}</span>

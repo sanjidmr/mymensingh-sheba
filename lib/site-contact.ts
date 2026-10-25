@@ -44,8 +44,8 @@ export const SITE_CONTACT: SiteContact = {
   phonePendingBn: 'সরাসরি সেবা নম্বর এখনো প্রকাশ করা হয়নি।',
   email: 'help@mymensinghsheba.com',
   socials: [
-    { icon: 'facebook', labelBn: 'Facebook পেজ', href: null },
-    { icon: 'messenger', labelBn: 'Messenger', href: null },
+    { icon: 'facebook', labelBn: 'Facebook পেজ', href: 'https://www.facebook.com/share/1YTmXUL8FU/' },
+    { icon: 'messenger', labelBn: 'Messenger', href: 'https://www.facebook.com/share/1YTmXUL8FU/' },
   ],
   officeAddress: null,
   officeAddressPendingBn:

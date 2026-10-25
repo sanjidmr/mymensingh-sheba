@@ -57,7 +57,7 @@ export default async function AdminVehicleRequestDetailPage({
     <>
       <PageHeader
         title="যানবাহন বুকিং অনুরোধ"
-        description={`রিকোয়েস্ট ${booking.id} · ${title} · জমা ${formatDateTime(booking.created_at)} · সর্বশেষ আপডেট ${formatDateTime(booking.updated_at)}`}
+        description={`রেফারেন্স ${booking.reference_code || booking.id} · ${title} · জমা ${formatDateTime(booking.created_at)} · সর্বশেষ আপডেট ${formatDateTime(booking.updated_at)}`}
         breadcrumb={{ href: '/admin/vehicle-requests', label: 'যানবাহন বুকিং অনুরোধ' }}
         actions={<VehicleRequestActions request={booking} vehicles={assignableVehicles} />}
       />

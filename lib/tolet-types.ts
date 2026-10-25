@@ -67,6 +67,7 @@ export interface ToletOwnerMeta {
 
 export interface ToletListing {
   id: string;
+  publicId?: string;
   ownerId: string;
   ownerName: string;
   ownerPhone?: string;

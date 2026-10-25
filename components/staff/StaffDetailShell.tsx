@@ -107,6 +107,11 @@ export function StaffDetailShell({
           <h1 className="text-[1.75rem] font-bold leading-tight sm:text-4xl">
             {profile.nameBn}
           </h1>
+          {profile.publicId && (
+            <p className="mt-2 inline-flex rounded-md border border-white/30 bg-white/10 px-2.5 py-1 font-mono text-sm font-extrabold tracking-wider text-white">
+              আইডি: {profile.publicId}
+            </p>
+          )}
           <p className={`mt-2 max-w-2xl text-base sm:text-lg ${heroText}`}>
             {profile.titleBn}
           </p>

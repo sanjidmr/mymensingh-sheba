@@ -66,12 +66,13 @@ export interface AdminTutorRequest {
 
 // PRIVACY: deliberately no private_phone / nid_number here.
 const PUBLIC_TUTOR_COLUMNS =
-  'id, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at, educations, current_activity, class_duration_minutes, preferred_student_type';
+  'id, public_id, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at, educations, current_activity, class_duration_minutes, preferred_student_type';
 
 function mapTutorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {}): HomeTutorProfile {
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: (c.id as string) || '',
+    publicId: (c.publicId as string) || undefined,
     userId: (c.userId as string) || '',
     status: (c.status as TutorProfileStatus) || 'draft',
     fullName: (c.fullName as string) || '',

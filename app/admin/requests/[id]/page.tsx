@@ -195,7 +195,7 @@ export default function AdminRequestDetailPage({
                   : isTutor
                     ? 'গৃহশিক্ষক রিকোয়েস্ট'
                     : 'সার্ভিস রিকোয়েস्ट'}{' '}
-                <span className="text-slate-400 font-semibold">#{req.id}</span>
+                <span className="font-mono text-slate-600 font-semibold">{req.referenceCode || `#${req.id}`}</span>
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 <span

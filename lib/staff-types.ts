@@ -16,6 +16,7 @@ export type StaffAvailability = 'available' | 'limited' | 'busy';
 
 export interface StaffProfile {
   id: string;
+  publicId?: string;
   serviceSlug: StaffServiceKey;
   nameBn: string;
   titleBn: string;

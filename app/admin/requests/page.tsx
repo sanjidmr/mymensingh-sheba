@@ -30,7 +30,7 @@ const columns: AdminColumn<AdminRequestRow>[] = [
     mobilePrimary: true,
     render: (row) => (
       <span className="block min-w-0">
-        <span className="block break-all font-mono text-xs text-admin-muted">{row.id}</span>
+        <span className="block font-mono text-xs font-bold text-admin-primary">{row.reference_code || row.id}</span>
         <span className="mt-1 block break-words font-semibold">{SERVICE_LABEL[row.service_slug] ?? row.service_slug}</span>
         {row.service_type && <span className="block break-words text-xs text-admin-muted">{row.service_type}</span>}
       </span>

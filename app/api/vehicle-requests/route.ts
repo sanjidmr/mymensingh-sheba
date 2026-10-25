@@ -168,5 +168,20 @@ export async function POST(request: Request) {
       : 'অনুরোধটি সংরক্ষণ করা যায়নি। তথ্য যাচাই করে আবার চেষ্টা করুন।';
     return NextResponse.json({ error: safeMessage }, { status: 400 });
   }
-  return NextResponse.json({ success: true, requestId: data }, { status: 201 });
+  const { data: savedRequest, error: referenceError } = await submissionClient
+    .from('vehicle_requests')
+    .select('reference_code')
+    .eq('id', data)
+    .single();
+  if (referenceError || !savedRequest?.reference_code) {
+    console.error('Vehicle request reference could not be loaded.', { code: referenceError?.code });
+    return NextResponse.json(
+      { success: true, requestId: data, warning: 'অনুরোধ জমা হয়েছে; রেফারেন্স নম্বরটি পরে দেখা যাবে।' },
+      { status: 201 }
+    );
+  }
+  return NextResponse.json(
+    { success: true, requestId: data, referenceCode: savedRequest.reference_code },
+    { status: 201 }
+  );
 }

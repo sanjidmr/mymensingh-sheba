@@ -45,6 +45,7 @@ export function mapHomeMovingRow(row: Record<string, unknown>): HomeMovingReques
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: (c.id as string) || '',
+    referenceCode: typeof c.referenceCode === 'string' ? c.referenceCode : undefined,
     customerId: (c.customerId as string) || '',
     serviceSlug: 'home-moving',
     status: (c.status as ServiceRequestStatus) || 'new',
@@ -202,6 +203,7 @@ export type AdminServiceSlug = StaffServiceKey | 'home-moving' | 'home-tutor';
 /** Normalized admin-console row for ANY managed service request. */
 export interface AdminRequestRow {
   id: string;
+  referenceCode?: string;
   serviceSlug: AdminServiceSlug;
   status: ServiceRequestStatus;
   customerId: string;
@@ -259,6 +261,7 @@ function staffToAdminRow(row: StaffRequest): AdminRequestRow {
 function movingToAdminRow(row: HomeMovingRequest): AdminRequestRow {
   return {
     id: row.id,
+    referenceCode: row.referenceCode,
     serviceSlug: 'home-moving',
     status: row.status,
     customerId: row.customerId,
@@ -324,12 +327,25 @@ export async function adminFetchManagedRequestById(
   id: string
 ): Promise<AdminRequestRow | null> {
   const moving = await adminFetchHomeMovingRequestById(id);
-  if (moving) return movingToAdminRow(moving);
+  if (moving) return addAdminRequestReference(movingToAdminRow(moving));
   const staff = await fetchStaffRequestByIdForUnion(id);
-  if (staff) return staffToAdminRow(staff);
+  if (staff) return addAdminRequestReference(staffToAdminRow(staff));
   const tutor = await fetchTutorRequestByIdForUnion(id);
-  if (tutor) return tutorToAdminRow(tutor);
+  if (tutor) return addAdminRequestReference(tutorToAdminRow(tutor));
   return null;
+}
+
+async function addAdminRequestReference(row: AdminRequestRow): Promise<AdminRequestRow> {
+  if (!isSupabaseConfigured) return row;
+  const client = createClient();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; রেফারেন্স লোড করা যায়নি।');
+  const { data, error } = await client
+    .from('service_requests')
+    .select('reference_code')
+    .eq('id', row.id)
+    .maybeSingle();
+  if (error) throw new Error(`রিকোয়েস্ট রেফারেন্স লোড করা যায়নি: ${error.message}`);
+  return { ...row, referenceCode: data?.reference_code ?? undefined };
 }
 
 /** Admin: update any managed request. Tutoring requests use their own facade. */

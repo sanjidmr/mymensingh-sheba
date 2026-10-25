@@ -259,13 +259,7 @@ export default function MarketplaceBrowser() {
           <h1 className="text-[22px] font-black leading-tight tracking-tight text-ink-900 sm:text-[28px]">
             ময়মনসিংহে কেনাকাটা ও বিক্রি, এখন এক জায়গায়
           </h1>
-          <p className="mt-2 max-w-2xl text-[13.5px] leading-relaxed text-ink-600 sm:text-[14.5px]">
-            মোবাইল থেকে আসবাবপত্র, বাইক থেকে বই — আপনার এলাকার ব্যবহৃত বা নতুন
-            পণ্যের বিজ্ঞাপন দিন, অথবা যা খুঁজছেন তা খুঁজে নিন। সব বিজ্ঞাপন অ্যাডমিন
-            যাচাই করে প্রকাশ করেন।
-          </p>
-
-          <div className="mt-4 flex flex-wrap items-center gap-2.5">
+          <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4">
             <Link
               href={createHref}
               className={`inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand-700 px-5 text-[14px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}

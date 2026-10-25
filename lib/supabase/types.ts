@@ -69,6 +69,7 @@ export type BloodRequestStatus =
 
 export interface UserProfile {
   id: string;
+  publicId?: string;
   fullName: string;
   phone: string;
   email?: string;
@@ -110,6 +111,7 @@ export interface ToletProfile {
 
 export interface HomeTutorProfile {
   id: string;
+  publicId?: string;
   userId: string;
   status: TutorProfileStatus;
   fullName: string;
@@ -193,6 +195,7 @@ export type BloodGroup = 'A+' | 'A-' | 'B+' | 'B-' | 'AB+' | 'AB-' | 'O+' | 'O-'
 
 export interface BloodDonorProfile {
   id: string;
+  publicId?: string;
   userId: string;
   status: BloodDonorStatus;
   fullName: string;
@@ -300,6 +303,7 @@ export type ServiceRequestStatus =
 
 export interface ServiceRequestItem {
   id: string;
+  referenceCode?: string;
   customerId: string;
   serviceSlug: string;
   serviceTitleBn: string;

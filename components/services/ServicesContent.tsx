@@ -1,13 +1,11 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import CommunityBandSection from '@/components/services/CommunityBandSection';
-import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
-import LocationSelectInput from '@/components/LocationSelectInput';
 import type { ServiceCategory } from '@/lib/services-data';
 
 const EMERGENCY_ROUTES: Record<string, string> = {
@@ -43,12 +41,8 @@ const COMMUNITY_ROUTES: Record<string, string> = {
  */
 export default function ServicesContent({ services }: { services: ServiceCategory[] }) {
   const searchParams = useSearchParams();
-  const initialArea = searchParams.get('area') || '';
   const initialQuery = searchParams.get('q') || '';
-  const [selectedArea, setSelectedArea] = useState<string>(initialArea);
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery);
-
-  const mccAreas = getAllMCCAreas();
 
   const filteredServices = services.filter((service) => {
     if (!searchQuery.trim()) return true;
@@ -68,49 +62,30 @@ export default function ServicesContent({ services }: { services: ServiceCategor
       breadcrumbs={[{ label: 'সেবা সমূহ' }]}
       compact
     >
-      {/* Filter & Search Bar */}
-      <div className="mb-8 rounded-2xl border border-brand-100/90 bg-white p-4 shadow-sm sm:p-6">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-3">
-          <div className="md:col-span-7">
-            <label className="mb-1 block text-xs font-semibold text-ink-700">
-              কী খুঁজছেন?
-            </label>
-            <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="যেমন: বাসা ভাড়া, ইলেকট্রিশিয়ান, ডাক্তার, চাকরি, বাস টিকিট..."
-                className="w-full rounded-xl border border-brand-100 bg-mist-50 py-2.5 pl-10 pr-4 text-sm text-ink-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-          </div>
-
-          <div className="md:col-span-5">
-            <label className="mb-1 block text-xs font-semibold text-ink-700">
-              এলাকা নির্বাচন:
-            </label>
-            <LocationSelectInput
-              id="services-area"
-              value={selectedArea || null}
-              onChange={(areaId) => setSelectedArea(areaId ?? '')}
-              placeholder="ময়মনসিংহ সিটি কর্পোরেশনের সব এলাকা"
-              source={createAreaSource(mccAreas)}
+      <div className="mb-5 rounded-xl border border-brand-100 bg-white p-3 shadow-sm sm:mb-8 sm:rounded-2xl sm:p-5">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between">
+          <h2 className="text-sm font-bold text-ink-800">সেবা ক্যাটাগরি</h2>
+          <label className="relative block w-full sm:max-w-md">
+            <span className="sr-only">কী খুঁজছেন?</span>
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-600" />
+            <input
+              type="search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="কী খুঁজছেন?"
+              className="min-h-10 w-full rounded-lg border border-brand-100 bg-mist-50 py-2 pl-9 pr-3 text-sm text-ink-900 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
             />
-          </div>
+          </label>
         </div>
       </div>
 
-      {/* Services Grid — two-up on a phone. Three-up squeezed the Bangla
-          headings into two-word fragments on a 360px screen. */}
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-3 sm:gap-4 lg:grid-cols-6">
         {filteredServices.map((service) => {
           const route =
             EMERGENCY_ROUTES[service.slug] ??
             COMMUNITY_ROUTES[service.slug] ??
             `/${service.slug}`;
-          const href = selectedArea ? `${route}?area=${selectedArea}` : route;
+          const href = route;
 
           const cardClass =
             'group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-brand-100/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 sm:rounded-xl';

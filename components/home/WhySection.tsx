@@ -29,6 +29,11 @@ const WHY_ITEMS = [
     title: '১০০% বিশ্বস্ত',
     text: 'স্বচ্ছ নীতিমালা, অ্যাডমিন যাচাই ও ব্যবহারকারীদের রিভিউ — তাই প্রতিটি প্রোফাইলে আস্থা রাখতে পারেন।',
   },
+  {
+    icon: MapPin,
+    title: 'ময়মনসিংহ সিটি কর্পোরেশন এলাকার ভেতরে',
+    text: 'লোকাল সেবা, লোকাল মানুষের জন্য',
+  },
 ];
 
 /**
@@ -68,21 +73,6 @@ export default function WhySection() {
             </Reveal>
           ))}
         </div>
-
-        {/* Local coverage */}
-        <Reveal delay={120}>
-          <div className="mx-auto mt-4 max-w-md rounded-2xl border border-brand-100 bg-white p-4 max-sm:mt-3 max-sm:p-3 sm:p-5">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-brand-50 text-brand-700 sm:h-11 sm:w-11">
-              <MapPin className="h-5 w-5" />
-            </span>
-            <h3 className="mt-3 text-[15px] font-bold leading-snug text-ink-900 max-sm:mt-2 max-sm:text-[13px]">
-              ময়মনসিংহ সিটি কর্পোরেশন এলাকার ভেতরে
-            </h3>
-            <p className="mt-1 text-[13px] leading-relaxed text-ink-500 max-sm:text-[11px]">
-              লোকাল সেবা, লোকাল মানুষের জন্য
-            </p>
-          </div>
-        </Reveal>
       </div>
     </section>
   );

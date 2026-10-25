@@ -35,7 +35,7 @@ import BloodDonorCard from '@/components/how-it-works/BloodDonorCard';
 const TAKING_STEPS = [
   {
     icon: Search,
-    step: 'ধাপ ১',
+    step: '১',
     title: 'সেবা নিতে চান',
     text: 'যেকোনো সেবা নেওয়ার পুরো প্রক্রিয়া তিনটি ধাপে।',
     points: [
@@ -47,14 +47,14 @@ const TAKING_STEPS = [
   },
   {
     icon: ClipboardList,
-    step: 'ধাপ ২',
+    step: '২',
     title: 'অনুরোধ বা যোগাযোগ জানান',
     text: 'কার্ডের ভেতরে থাকা "অনুরোধ করুন" ফর্মে সময় ও এলাকা লিখে পাঠান। অনুরোধটি সরাসরি প্ল্যাটফর্মের মাধ্যমেই কর্মী ও অ্যাডমিনের কাছে পৌঁছে যায়।',
     points: ['সময় ও এলাকা লিখে পাঠান', 'যা যা লাগবে বিস্তারিত লিখুন', 'অনুরোধ ট্র্যাক করা যায়'],
   },
   {
     icon: CheckCircle2,
-    step: 'ধাপ ৩',
+    step: '৩',
     title: 'কাজ নিশ্চিত করুন',
     text: 'অ্যাডমিন অনুরোধ যাচাই করে সঠিক সেবাদাতার সাথে জুড়ে দেয়। আপনার "আমার অনুরোধ" পেজ থেকে অগ্রগতি দেখুন এবং কাজ শেষে ফিডব্যাক দিন।',
     points: ['অ্যাডমিন ভেরিফাই', 'আমার অনুরোধ পেজে স্ট্যাটাস', 'রিভিউ ও রেটিং'],
@@ -245,19 +245,19 @@ export default function HowItWorksPage() {
       categoryBadge="সেবা গাইড"
       breadcrumbs={[{ label: 'কিভাবে কাজ করে' }]}
     >
-      <div className="space-y-10 sm:space-y-14">
+      <div className="space-y-7 sm:space-y-14">
         {/* ১ — সেবা নিতে চান */}
         <section>
           <SectionHeading
-            kicker="ধাপ ১"
+            kicker="সেবা গ্রহণ"
             title="সেবা নিতে চান"
             text="যেকোনো সেবা নেওয়ার পুরো প্রক্রিয়া তিনটি ধাপে।"
           />
-          <ol className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <ol className="mt-4 grid gap-3 sm:mt-6 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
             {TAKING_STEPS.map((item) => (
               <li
                 key={item.step}
-                className="flex h-full flex-col rounded-xl border border-brand-100/90 bg-white p-5"
+                className="flex h-full flex-col rounded-xl border border-brand-100/90 bg-white p-4 sm:p-5"
               >
                 <div className="flex items-center justify-between gap-3">
                   <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
@@ -267,7 +267,7 @@ export default function HowItWorksPage() {
                     {item.step}
                   </span>
                 </div>
-                <h3 className="mt-3.5 text-sm font-bold text-ink-900 sm:text-[15px]">{item.title}</h3>
+                <h3 className="mt-3 text-sm font-bold text-ink-900 sm:mt-3.5 sm:text-[15px]">{item.title}</h3>
                 <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500">{item.text}</p>
                 <ul className="mt-3 flex-1 space-y-1.5">
                   {item.points.map((point) => (
@@ -285,7 +285,7 @@ export default function HowItWorksPage() {
         {/* ২ — নিজে পোস্ট করা যায় */}
         <section>
           <SectionHeading
-            kicker="ধাপ ২"
+            kicker="নিজে পোস্ট"
             title="যেসব সেবায় আপনি নিজে পোস্ট করতে পারবেন"
             text="নিবন্ধন করে ফর্ম পূরণ করলেই বিজ্ঞাপন তৈরি হয়। অ্যাডমিন যাচাই করার পর সেটি সবার জন্য দেখা যায়।"
           />
@@ -355,7 +355,7 @@ export default function HowItWorksPage() {
         {/* ৩ — অ্যাডমিন ম্যানেজড */}
         <section>
           <SectionHeading
-            kicker="ধাপ ৩"
+            kicker="অ্যাডমিন সহায়তা"
             title="যেসব সেবায় অ্যাডমিনের সাথে যোগাযোগ করতে হবে"
             text="এই সেবাগুলোর কর্মী ও প্রোফাইল অ্যাডমিন টিম যাচাই করে পরিচালনা করে, তাই এখানে নিজে পোস্ট করার সুযোগ নেই।"
           />
@@ -394,7 +394,7 @@ export default function HowItWorksPage() {
         {/* ৪ — সরাসরি কল */}
         <section>
           <SectionHeading
-            kicker="ধাপ ৪"
+            kicker="সেবা খুঁজুন"
             title="জরুরি প্রয়োজনে সরাসরি কল"
             text="নিচের যেকোনো সেবায় ক্লিক করলে সরাসরি কল করার পেজে পৌঁছে যাবেন — সেখানেই সংশ্লিষ্ট নম্বরগুলো পাবেন।"
           />
@@ -418,7 +418,7 @@ export default function HowItWorksPage() {
         {/* ৫ — তথ্যমূলক সেবা */}
         <section>
           <SectionHeading
-            kicker="ধাপ ৫"
+            kicker="নিরাপদ ব্যবহার"
             title="তথ্যমূলক সেবা"
             text="এই ভাগগুলো এখন মূলত তথ্য ও নির্দেশনা দেয়। নিজে বিজ্ঞাপন দিতে চাইলে অ্যাডমিনের সাথে যোগাযোগ করুন — প্রয়োজন অনুযায়ী পোস্ট চালু করা হবে।"
           />

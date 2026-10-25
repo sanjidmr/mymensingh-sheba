@@ -9,10 +9,7 @@ import LocationSelectInput from '@/components/LocationSelectInput';
 import { uploadRequestAttachment } from '@/lib/home-moving-service';
 import {
   HOME_MOVING_FLOOR_OPTIONS,
-  HOME_MOVING_ITEMS,
-  HOME_MOVING_TIME_SLOTS,
 } from '@/lib/home-moving-types';
-import type { HomeMovingItem } from '@/lib/home-moving-types';
 import { normalizeBdPhone } from '@/lib/catalog-service';
 import { trackFormSubmit } from '@/lib/site-analytics';
 
@@ -28,7 +25,7 @@ export default function MovingRequestWizard() {
   const [destinationAddress, setDestinationAddress] = useState('');
   const [preferredDate, setPreferredDate] = useState('');
   const [preferredTime, setPreferredTime] = useState('');
-  const [items, setItems] = useState<HomeMovingItem[]>([]);
+  const [items, setItems] = useState('');
   const [pickupFloor, setPickupFloor] = useState('');
   const [destinationFloor, setDestinationFloor] = useState('');
   const [hasLift, setHasLift] = useState(false);
@@ -38,25 +35,19 @@ export default function MovingRequestWizard() {
   const [contactName, setContactName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
   const [error, setError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
+  const [requestReference, setRequestReference] = useState('');
 
-  const toggleItem = (itemId: string, labelBn: string, allowQuantity: boolean) => {
-    setItems((current) => {
-      if (current.some((item) => item.id === itemId)) {
-        return current.filter((item) => item.id !== itemId);
-      }
-      return [...current, { id: itemId, labelBn, quantity: allowQuantity ? 1 : undefined }];
+  const clearFieldError = (name: string) => {
+    setFieldErrors((previous) => {
+      if (!previous[name]) return previous;
+      const next = { ...previous };
+      delete next[name];
+      return next;
     });
-  };
-
-  const updateQuantity = (itemId: string, quantity: number) => {
-    setItems((current) =>
-      current.map((item) =>
-        item.id === itemId ? { ...item, quantity: Math.max(1, Math.min(50, quantity)) } : item
-      )
-    );
   };
 
   const handlePhoto = async (file?: File) => {
@@ -93,6 +84,7 @@ export default function MovingRequestWizard() {
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError('');
+    const nextErrors: Record<string, string> = {};
     const contactNameValue = contactName;
     const contactPhoneValue = contactPhone;
     const latinPhone = contactPhoneValue.replace(/[০-৯]/g, (digit) =>
@@ -101,45 +93,37 @@ export default function MovingRequestWizard() {
     const normalizedPhone = normalizeBdPhone(latinPhone);
 
     if (!pickupAreaId || !destinationAreaId) {
-      setError('পিকআপ ও গন্তব্য—দুই এলাকার ঠিকানা নির্বাচন করুন।');
-      return;
+      if (!pickupAreaId) nextErrors.pickupArea = 'পিকআপ এলাকা নির্বাচন করুন।';
+      if (!destinationAreaId) nextErrors.destinationArea = 'গন্তব্য এলাকা নির্বাচন করুন।';
     }
-    if (!validateMovingRoute(pickupAreaId, destinationAreaId).valid) {
-      setError('পিকআপ ও গন্তব্যের জন্য আলাদা, সঠিক এলাকা নির্বাচন করুন।');
-      return;
+    if (pickupAreaId && destinationAreaId && !validateMovingRoute(pickupAreaId, destinationAreaId).valid) {
+      nextErrors.destinationArea = 'পিকআপ ও গন্তব্যের জন্য আলাদা, সঠিক এলাকা নির্বাচন করুন।';
     }
-    if (!pickupAddress.trim() || !destinationAddress.trim()) {
-      setError('পিকআপ ও গন্তব্য বাসার বিস্তারিত ঠিকানা লিখুন।');
-      return;
-    }
-    if (!preferredDate || !preferredTime) {
-      setError('শিফটিংয়ের তারিখ ও পছন্দের সময় নির্বাচন করুন।');
-      return;
-    }
+    if (!pickupAddress.trim()) nextErrors.pickupAddress = 'পিকআপ বাসার বিস্তারিত ঠিকানা লিখুন।';
+    if (!destinationAddress.trim()) nextErrors.destinationAddress = 'গন্তব্য বাসার বিস্তারিত ঠিকানা লিখুন।';
+    if (!preferredDate) nextErrors.preferredDate = 'শিফটিংয়ের তারিখ নির্বাচন করুন।';
+    if (!preferredTime.trim()) nextErrors.preferredTime = 'পছন্দের সময় লিখুন।';
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-    if (preferredDate < today) {
-      setError('শিফটিংয়ের তারিখ আজ বা ভবিষ্যতের হতে হবে।');
-      return;
-    }
-    if (items.length === 0) {
-      setError('কমপক্ষে একটি মালামাল নির্বাচন করুন।');
-      return;
-    }
-    if (!pickupFloor || !destinationFloor) {
-      setError('পিকআপ ও গন্তব্য বাসার তলা নির্বাচন করুন।');
-      return;
-    }
-    if (contactNameValue.trim().length < 3) {
-      setError('আপনার নাম লিখুন।');
-      return;
-    }
-    if (!normalizedPhone || !/^01[3-9]\d{8}$/.test(normalizedPhone)) {
-      setError('সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।');
+    if (preferredDate && preferredDate < today) nextErrors.preferredDate = 'শিফটিংয়ের তারিখ আজ বা ভবিষ্যতের হতে হবে।';
+    if (!items.trim()) nextErrors.items = 'কোন মালামাল সরাতে হবে তা লিখুন।';
+    if (!pickupFloor) nextErrors.pickupFloor = 'পিকআপ বাসার তলা নির্বাচন করুন।';
+    if (!destinationFloor) nextErrors.destinationFloor = 'গন্তব্য বাসার তলা নির্বাচন করুন।';
+    if (contactNameValue.trim().length < 3) nextErrors.contactName = 'নাম কমপক্ষে ৩ অক্ষরের হতে হবে।';
+    if (!normalizedPhone || !/^01[3-9]\d{8}$/.test(normalizedPhone)) nextErrors.contactPhone = 'সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।';
+    setFieldErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) {
+      setError('চিহ্নিত তথ্যগুলো ঠিক করে আবার জমা দিন।');
       return;
     }
     if (!user) {
       setError('অনুরোধ পাঠাতে লগইন করুন।');
+      return;
+    }
+    const pickupId = typeof pickupAreaId === 'string' ? pickupAreaId : '';
+    const destinationId = typeof destinationAreaId === 'string' ? destinationAreaId : '';
+    if (!pickupId || !destinationId || !preferredDate) {
+      setError('চিহ্নিত তথ্যগুলো ঠিক করে আবার জমা দিন।');
       return;
     }
 
@@ -148,21 +132,21 @@ export default function MovingRequestWizard() {
       const result = await createServiceRequest({
         serviceSlug: 'home-moving',
         contactName: contactNameValue.trim(),
-        contactPhone: normalizedPhone,
-        pickupAreaId,
-        destinationAreaId,
+        contactPhone: normalizedPhone || '',
+        pickupAreaId: pickupId,
+        destinationAreaId: destinationId,
         pickupAddress: pickupAddress.trim(),
         destinationAddress: destinationAddress.trim(),
         preferredDate,
         preferredTime,
-        movingItems: items,
+        movingItems: [{ id: 'custom', labelBn: items.trim() }],
         pickupFloor,
         destinationFloor,
         hasLift,
         parkingInfo: parkingInfo.trim() || undefined,
         details: description.trim() || undefined,
         photoUrls: photoUrl ? [photoUrl] : [],
-        areaId: pickupAreaId,
+        areaId: pickupId,
         addressLine: pickupAddress.trim(),
       });
 
@@ -170,6 +154,7 @@ export default function MovingRequestWizard() {
         setError(result.error || 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
         return;
       }
+      setRequestReference(result.referenceCode || '');
       trackFormSubmit({ ctaType: 'home_moving_request', category: 'home-moving' });
       setRequestSent(true);
     } catch (cause) {
@@ -187,6 +172,11 @@ export default function MovingRequestWizard() {
         <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-600">
           অনুরোধটি অ্যাডমিন টিমের তালিকায় জমা হয়েছে। তারা তথ্য যাচাই করে খরচ ও সময় চূড়ান্ত করতে আপনার সঙ্গে যোগাযোগ করবেন।
         </p>
+        {requestReference && (
+          <p className="mx-auto mt-3 inline-flex rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-800">
+            রেফারেন্স নম্বর: {requestReference}
+          </p>
+        )}
         <Link href="/profile/requests" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white hover:bg-brand-800">
           আমার অনুরোধ দেখুন
         </Link>
@@ -221,17 +211,21 @@ export default function MovingRequestWizard() {
       <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-4 sm:grid-cols-2 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">১. পিকআপ ও গন্তব্য</legend>
         <div className="space-y-3">
-          <LocationSelectInput value={pickupAreaId} onChange={setPickupAreaId} placeholder="পিকআপ এলাকা বেছে নিন" label="পিকআপ এলাকা *" />
+          <LocationSelectInput value={pickupAreaId} onChange={(value) => { setPickupAreaId(value); clearFieldError('pickupArea'); }} placeholder="পিকআপ এলাকা বেছে নিন" label="পিকআপ এলাকা *" />
+          {fieldErrors.pickupArea && <FieldError>{fieldErrors.pickupArea}</FieldError>}
           <div>
             <label htmlFor="moving-pickup-address" className={LABEL_CLASS}>পিকআপ বাসার বিস্তারিত ঠিকানা *</label>
-            <input id="moving-pickup-address" value={pickupAddress} onChange={(event) => setPickupAddress(event.target.value)} placeholder="এলাকা, রোড ও বাসা নম্বর" className={FIELD_CLASS} required />
+            <input id="moving-pickup-address" value={pickupAddress} onChange={(event) => { setPickupAddress(event.target.value); clearFieldError('pickupAddress'); }} placeholder="এলাকা, রোড ও বাসা নম্বর" className={`${FIELD_CLASS} ${fieldErrors.pickupAddress ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.pickupAddress)} required />
+            {fieldErrors.pickupAddress && <FieldError>{fieldErrors.pickupAddress}</FieldError>}
           </div>
         </div>
         <div className="space-y-3">
-          <LocationSelectInput value={destinationAreaId} onChange={setDestinationAreaId} placeholder="গন্তব্য এলাকা বেছে নিন" label="গন্তব্য এলাকা *" />
+          <LocationSelectInput value={destinationAreaId} onChange={(value) => { setDestinationAreaId(value); clearFieldError('destinationArea'); }} placeholder="গন্তব্য এলাকা বেছে নিন" label="গন্তব্য এলাকা *" />
+          {fieldErrors.destinationArea && <FieldError>{fieldErrors.destinationArea}</FieldError>}
           <div>
             <label htmlFor="moving-destination-address" className={LABEL_CLASS}>গন্তব্য বাসার বিস্তারিত ঠিকানা *</label>
-            <input id="moving-destination-address" value={destinationAddress} onChange={(event) => setDestinationAddress(event.target.value)} placeholder="এলাকা, রোড ও বাসা নম্বর" className={FIELD_CLASS} required />
+            <input id="moving-destination-address" value={destinationAddress} onChange={(event) => { setDestinationAddress(event.target.value); clearFieldError('destinationAddress'); }} placeholder="এলাকা, রোড ও বাসা নম্বর" className={`${FIELD_CLASS} ${fieldErrors.destinationAddress ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.destinationAddress)} required />
+            {fieldErrors.destinationAddress && <FieldError>{fieldErrors.destinationAddress}</FieldError>}
           </div>
         </div>
       </fieldset>
@@ -240,32 +234,21 @@ export default function MovingRequestWizard() {
         <legend className="px-2 text-sm font-extrabold text-slate-900">২. তারিখ, সময় ও মালামাল</legend>
         <div>
           <label htmlFor="moving-date" className={LABEL_CLASS}>শিফটিংয়ের সম্ভাব্য তারিখ *</label>
-          <input id="moving-date" type="date" min={new Date().toISOString().slice(0, 10)} value={preferredDate} onChange={(event) => setPreferredDate(event.target.value)} className={FIELD_CLASS} required />
+          <input id="moving-date" type="date" min={new Date().toISOString().slice(0, 10)} value={preferredDate} onChange={(event) => { setPreferredDate(event.target.value); clearFieldError('preferredDate'); }} className={`${FIELD_CLASS} ${fieldErrors.preferredDate ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.preferredDate)} required />
+          <button type="button" onClick={() => { const today = new Date(); setPreferredDate(`${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`); clearFieldError('preferredDate'); }} className="mt-1.5 min-h-9 rounded-lg border border-brand-200 px-3 text-xs font-bold text-brand-800 hover:bg-brand-50">
+            আজকেই
+          </button>
+          {fieldErrors.preferredDate && <FieldError>{fieldErrors.preferredDate}</FieldError>}
         </div>
         <div>
           <label htmlFor="moving-time" className={LABEL_CLASS}>পছন্দের সময় *</label>
-          <select id="moving-time" value={preferredTime} onChange={(event) => setPreferredTime(event.target.value)} className={FIELD_CLASS} required>
-            <option value="">সময় বেছে নিন</option>
-            {HOME_MOVING_TIME_SLOTS.map((slot) => <option key={slot} value={slot}>{slot}</option>)}
-          </select>
+          <input id="moving-time" value={preferredTime} onChange={(event) => { setPreferredTime(event.target.value); clearFieldError('preferredTime'); }} placeholder="যেমন: সকাল ১০টা অথবা দুপুরের পর" className={`${FIELD_CLASS} ${fieldErrors.preferredTime ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.preferredTime)} required />
+          {fieldErrors.preferredTime && <FieldError>{fieldErrors.preferredTime}</FieldError>}
         </div>
         <div className="sm:col-span-2">
-          <span className={LABEL_CLASS}>কোন কোন মালামাল নিতে হবে? *</span>
-          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {HOME_MOVING_ITEMS.map((option) => {
-              const selected = items.some((item) => item.id === option.id);
-              const item = items.find((entry) => entry.id === option.id);
-              return (
-                <label key={option.id} className="flex min-h-11 items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 text-sm text-slate-700">
-                  <input type="checkbox" checked={selected} onChange={() => toggleItem(option.id, option.labelBn, option.allowQuantity)} className="h-4 w-4 accent-brand-700" />
-                  <span className="flex-1">{option.labelBn}</span>
-                  {selected && option.allowQuantity && (
-                    <input aria-label={`${option.labelBn} সংখ্যা`} type="number" min={1} max={50} value={item?.quantity ?? 1} onChange={(event) => updateQuantity(option.id, Number(event.target.value))} className="w-16 rounded-md border border-slate-200 px-2 py-1 text-center" />
-                  )}
-                </label>
-              );
-            })}
-          </div>
+          <label htmlFor="moving-items" className={LABEL_CLASS}>সরানোর মালামালের তালিকা *</label>
+          <textarea id="moving-items" value={items} onChange={(event) => { setItems(event.target.value); clearFieldError('items'); }} placeholder="যেমন: ২টি খাট, আলমারি, ফ্রিজ, ৪টি চেয়ার..." rows={4} className={`${FIELD_CLASS} resize-y ${fieldErrors.items ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.items)} required />
+          {fieldErrors.items && <FieldError>{fieldErrors.items}</FieldError>}
         </div>
       </fieldset>
 
@@ -273,17 +256,19 @@ export default function MovingRequestWizard() {
         <legend className="px-2 text-sm font-extrabold text-slate-900">৩. বাসা ও প্রবেশপথের তথ্য</legend>
         <div>
           <label htmlFor="moving-pickup-floor" className={LABEL_CLASS}>পিকআপ বাসার তলা *</label>
-          <select id="moving-pickup-floor" value={pickupFloor} onChange={(event) => setPickupFloor(event.target.value)} className={FIELD_CLASS} required>
+          <select id="moving-pickup-floor" value={pickupFloor} onChange={(event) => { setPickupFloor(event.target.value); clearFieldError('pickupFloor'); }} className={`${FIELD_CLASS} ${fieldErrors.pickupFloor ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.pickupFloor)} required>
             <option value="">তলা বেছে নিন</option>
             {HOME_MOVING_FLOOR_OPTIONS.map((floor) => <option key={floor.id} value={floor.id}>{floor.labelBn}</option>)}
           </select>
+          {fieldErrors.pickupFloor && <FieldError>{fieldErrors.pickupFloor}</FieldError>}
         </div>
         <div>
           <label htmlFor="moving-destination-floor" className={LABEL_CLASS}>গন্তব্য বাসার তলা *</label>
-          <select id="moving-destination-floor" value={destinationFloor} onChange={(event) => setDestinationFloor(event.target.value)} className={FIELD_CLASS} required>
+          <select id="moving-destination-floor" value={destinationFloor} onChange={(event) => { setDestinationFloor(event.target.value); clearFieldError('destinationFloor'); }} className={`${FIELD_CLASS} ${fieldErrors.destinationFloor ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.destinationFloor)} required>
             <option value="">তলা বেছে নিন</option>
             {HOME_MOVING_FLOOR_OPTIONS.map((floor) => <option key={floor.id} value={floor.id}>{floor.labelBn}</option>)}
           </select>
+          {fieldErrors.destinationFloor && <FieldError>{fieldErrors.destinationFloor}</FieldError>}
         </div>
         <label className="flex min-h-11 items-center gap-2 text-sm font-medium text-slate-700">
           <input type="checkbox" checked={hasLift} onChange={(event) => setHasLift(event.target.checked)} className="h-4 w-4 accent-brand-700" />
@@ -299,11 +284,13 @@ export default function MovingRequestWizard() {
         <legend className="px-2 text-sm font-extrabold text-slate-900">৪. যোগাযোগ ও অতিরিক্ত তথ্য</legend>
         <div>
           <label htmlFor="moving-contact-name" className={LABEL_CLASS}>আপনার নাম *</label>
-          <input id="moving-contact-name" name="contactName" value={contactName} onChange={(event) => setContactName(event.target.value)} className={FIELD_CLASS} autoComplete="off" required />
+          <input id="moving-contact-name" name="contactName" value={contactName} onChange={(event) => { setContactName(event.target.value); clearFieldError('contactName'); }} className={`${FIELD_CLASS} ${fieldErrors.contactName ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.contactName)} autoComplete="off" required />
+          {fieldErrors.contactName && <FieldError>{fieldErrors.contactName}</FieldError>}
         </div>
         <div>
           <label htmlFor="moving-contact-phone" className={LABEL_CLASS}>মোবাইল নম্বর *</label>
-          <input id="moving-contact-phone" name="contactPhone" type="tel" inputMode="tel" value={contactPhone} onChange={(event) => setContactPhone(event.target.value)} className={FIELD_CLASS} autoComplete="off" required />
+          <input id="moving-contact-phone" name="contactPhone" type="tel" inputMode="tel" value={contactPhone} onChange={(event) => { setContactPhone(event.target.value); clearFieldError('contactPhone'); }} className={`${FIELD_CLASS} ${fieldErrors.contactPhone ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.contactPhone)} autoComplete="off" required />
+          {fieldErrors.contactPhone && <FieldError>{fieldErrors.contactPhone}</FieldError>}
         </div>
         <div>
           <label htmlFor="moving-description" className={LABEL_CLASS}>আরও কিছু জানাতে চান?</label>
@@ -325,4 +312,8 @@ export default function MovingRequestWizard() {
       </div>
     </form>
   );
+}
+
+function FieldError({ children }: { children: React.ReactNode }) {
+  return <p role="alert" className="mt-1 text-xs font-semibold text-rose-700">{children}</p>;
 }

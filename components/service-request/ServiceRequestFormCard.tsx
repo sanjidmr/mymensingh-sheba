@@ -739,6 +739,19 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                 }}
                 className={controlClass()}
               />
+              <button
+                type="button"
+                onClick={() => {
+                  const today = new Date();
+                  setTop(
+                    'preferredDate',
+                    `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+                  );
+                }}
+                className="mt-1.5 min-h-9 rounded-lg border border-brand-200 px-3 text-xs font-bold text-brand-800 hover:bg-brand-50"
+              >
+                আজকেই
+              </button>
             </Field>
 
             {config.showTimeField && (

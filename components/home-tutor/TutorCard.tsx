@@ -120,6 +120,11 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
             </span>
           )}
         </div>
+        {tutor.publicId && (
+          <p className="mt-1 font-mono text-[11px] font-bold tracking-wide text-brand-700">
+            আইডি: {tutor.publicId}
+          </p>
+        )}
 
         {tutor.qualification ? (
           <p className="mt-1 flex items-start gap-1 text-[13px] leading-snug text-ink-700">

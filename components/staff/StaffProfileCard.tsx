@@ -83,6 +83,11 @@ export function StaffProfileCard({ profile, serviceUi, imageless = false }: Staf
         <h3 className="font-bold text-slate-900 text-base sm:text-lg leading-snug line-clamp-1">
           {profile.nameBn}
         </h3>
+        {profile.publicId && (
+          <p className="mt-1 font-mono text-[11px] font-bold tracking-wide text-brand-700">
+            আইডি: {profile.publicId}
+          </p>
+        )}
         <p className="text-xs text-slate-600 mt-0.5 line-clamp-2 leading-snug">
           {profile.titleBn}
         </p>

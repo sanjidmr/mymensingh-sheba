@@ -1,5 +1,6 @@
 export interface AdminUserRow {
   id: string;
+  publicId?: string;
   fullName: string;
   phone: string;
   email?: string;

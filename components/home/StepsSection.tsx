@@ -7,7 +7,7 @@ import Reveal from '@/components/home/Reveal';
 const STEPS = [
   {
     icon: MousePointerClick,
-    step: 'ঝুঁজুন',
+    step: 'খুঁজুন',
     title: 'সেবা বেছে নিন',
     text: 'ইলেক্ট্রিশিয়ান, প্লাম্বার, বাসা, গৃহশিক্ষক, গৃহকর্মী কিংবা রক্তদাতা — এলাকা ও বাজেট অনুযায়ী প্রোফাইল দেখুন।',
   },
@@ -39,14 +39,14 @@ export default function StepsSection() {
             জানার জন্য
           </span>
           <h2 className="mx-auto mt-2 max-w-2xl text-balance text-2xl font-extrabold leading-tight tracking-tight text-ink-900 sm:text-3xl">
-            সেবা পাওয়া যত সহজ, তিন ধাপেই
+            সেবা পাওয়া এখন সহজ
           </h2>
           <p className="mx-auto mt-2 max-w-2xl text-balance text-sm leading-relaxed text-ink-500 sm:text-[15px]">
             জটিল কিছু নয় — খুঁজুন, অনুরোধ জানান, নিরাপদে কাজ সম্পন্ন করুন।
           </p>
         </div>
 
-        <ol className="relative mt-5 grid gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
+        <ol className="relative mt-4 grid gap-2 sm:mt-5 sm:grid-cols-2 sm:gap-4 lg:grid-cols-3">
           {/* Connector (desktop) */}
           <div
             aria-hidden="true"
@@ -54,7 +54,7 @@ export default function StepsSection() {
           />
           {STEPS.map((item, i) => (
             <Reveal key={item.step} delay={i * 80} as="li">
-              <div className="relative flex h-full flex-col rounded-xl border border-brand-100 bg-white p-5 transition-shadow duration-300 hover:shadow-md hover:shadow-brand-900/5 sm:p-6">
+              <div className="relative flex h-full flex-col rounded-xl border border-brand-100 bg-white p-3.5 transition-shadow duration-300 hover:shadow-md hover:shadow-brand-900/5 sm:p-6">
                 <div className="flex items-center justify-between gap-3">
                   <span className="inline-flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700 sm:h-14 sm:w-14">
                     <item.icon className="h-6 w-6 sm:h-7 sm:w-7" />
@@ -63,8 +63,8 @@ export default function StepsSection() {
                     {item.step}
                   </span>
                 </div>
-                <h3 className="mt-4 text-[15px] font-bold text-ink-900">{item.title}</h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-ink-500">{item.text}</p>
+                <h3 className="mt-2.5 text-[15px] font-bold text-ink-900 sm:mt-4">{item.title}</h3>
+                <p className="mt-1 text-[12px] leading-relaxed text-ink-500 sm:mt-1.5 sm:text-[13px]">{item.text}</p>
               </div>
             </Reveal>
           ))}

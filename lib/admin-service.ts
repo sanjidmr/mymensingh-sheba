@@ -130,7 +130,7 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
     for (let offset = 0; ; offset += pageSize) {
       const profilesRes = await client
         .from('profiles')
-        .select('id,full_name,phone,email,role,status,is_verified,created_at')
+        .select('id,public_id,full_name,phone,email,role,status,is_verified,created_at')
         .order('created_at', { ascending: false })
         .range(offset, offset + pageSize - 1);
       if (profilesRes.error) throw new Error(profilesRes.error.message);
@@ -153,6 +153,7 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
         const base = toCamelObject(profile as Record<string, unknown>) as unknown as UserProfile;
         return {
           id: base.id,
+          publicId: base.publicId,
           fullName: base.fullName || '—',
           phone: base.phone || '—',
           email: base.email,

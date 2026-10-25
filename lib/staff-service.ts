@@ -45,12 +45,13 @@ export const staffStorageConfigured = isSupabaseConfigured;
 // ---------------------------------------------------------------------------
 
 const PUBLIC_PROFILE_COLUMNS =
-  'id, service_slug, name_bn, title_bn, image_url, areas, work_types, work_mode, time_slot, experience_years, availability, is_emergency, salary_min, salary_max, rate_label, about_bn, is_verified, is_active, created_at, updated_at';
+  'id, public_id, service_slug, name_bn, title_bn, image_url, areas, work_types, work_mode, time_slot, experience_years, availability, is_emergency, salary_min, salary_max, rate_label, about_bn, is_verified, is_active, created_at, updated_at';
 
 function mapProfileRow(row: Record<string, unknown>, opts: { admin?: boolean } = {}): StaffProfile {
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: (c.id as string) || '',
+    publicId: (c.publicId as string) || undefined,
     serviceSlug: (c.serviceSlug as StaffServiceKey) || 'kajer-bua',
     nameBn: (c.nameBn as string) || '',
     titleBn: (c.titleBn as string) || '',

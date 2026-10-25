@@ -126,6 +126,11 @@ export default function VehicleDetail({ slug }: { slug: string }) {
             {subLine && (
               <p className="mt-1 text-[13.5px] font-medium text-ink-600">{subLine}</p>
             )}
+            {listing.publicCode && (
+              <p className="mt-2 inline-flex rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 font-mono text-sm font-extrabold tracking-wider text-brand-800">
+                যানবাহন আইডি: {listing.publicCode}
+              </p>
+            )}
             {listing.summaryBn && (
               <p className="mt-2.5 text-[13.5px] leading-relaxed text-ink-700">
                 {listing.summaryBn}

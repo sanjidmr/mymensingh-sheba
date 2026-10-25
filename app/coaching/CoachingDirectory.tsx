@@ -163,6 +163,7 @@ export default function CoachingDirectory() {
       renderCard={renderCard}
       banner={
         <div className="space-y-3">
+          <OwnerListingCta category="coaching" />
           <section aria-labelledby="coaching-categories-heading" className="rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-4">
             <h2 id="coaching-categories-heading" className="text-sm font-extrabold text-ink-900">
               কোচিংয়ের ক্যাটাগরি
@@ -188,7 +189,6 @@ export default function CoachingDirectory() {
               })}
             </div>
           </section>
-          <OwnerListingCta category="coaching" />
         </div>
       }
       action={<AdminListingLink category="coaching" label="কোচিং যোগ করুন" />}

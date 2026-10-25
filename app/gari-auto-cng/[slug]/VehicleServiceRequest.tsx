@@ -95,6 +95,7 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
+  const [requestReference, setRequestReference] = useState('');
   const [fieldError, setFieldError] = useState<Record<string, string>>({});
   const [manualDistance, setManualDistance] = useState('');
 
@@ -160,7 +161,8 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
         routeKind: 'service',
       });
       setStatus('sent');
-      setMessage('আপনার অনুরোধ পাঠানো হয়েছে। অ্যাডমিন শীঘ্রই যোগাযোগ করবেন।');
+      setRequestReference(result.referenceCode ?? '');
+      setMessage(result.warning ?? 'আপনার অনুরোধ পাঠানো হয়েছে। অ্যাডমিন শীঘ্রই যোগাযোগ করবেন।');
     } else {
       setStatus('error');
       setMessage(result.error);
@@ -183,8 +185,14 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
           সেবা নেওয়ার অনুরোধ পাঠানো হয়েছে
         </h2>
         <p className="mt-1.5 text-[13px] leading-relaxed text-ink-600">{message}</p>
+        {requestReference && (
+          <p className="mt-2 font-mono text-sm font-extrabold tracking-wider text-brand-800">
+            রিকোয়েস্ট রেফারেন্স: {requestReference}
+          </p>
+        )}
         <p className="mt-3 rounded-xl bg-white/70 p-3 text-[12.5px] leading-relaxed text-ink-600">
           <strong className="font-bold text-ink-900">{listing.titleBn}</strong>
+          {listing.publicCode && <><br />যানবাহন আইডি: {listing.publicCode}</>}
           <br />
           {pickup.trim()} → {destination.trim()}
           {date ? ` · ${date}` : ''}

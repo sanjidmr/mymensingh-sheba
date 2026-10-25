@@ -108,7 +108,7 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
         it. The select drives the same `areas` filter group the shared matcher
         reads, so it composes with search exactly like the drawer would.
       */}
-      <div className="mb-3 grid grid-cols-[1fr_auto] gap-2 sm:max-w-md">
+      <div className="mb-3 grid grid-cols-1 gap-2 sm:max-w-lg sm:grid-cols-[1fr_auto]">
         <label htmlFor={`${service}-search`} className="sr-only">
           {ui.title} খুঁজুন
         </label>
@@ -118,7 +118,7 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
           value={controller.query}
           onChange={(e) => controller.setQuery(e.target.value)}
           placeholder={ui.placeholder}
-          className={`min-h-[44px] w-full rounded-lg border border-brand-100 bg-white px-3 text-sm outline-none transition-colors placeholder:text-ink-400 focus:border-brand-500 ${LIGHT_FOCUS}`}
+          className={`min-h-12 w-full rounded-lg border border-brand-100 bg-white px-3 text-base outline-none transition-colors placeholder:text-ink-400 focus:border-brand-500 sm:text-sm ${LIGHT_FOCUS}`}
         />
         <label htmlFor={`${service}-area`} className="sr-only">
           এলাকা

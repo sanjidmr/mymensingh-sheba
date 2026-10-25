@@ -1524,6 +1524,7 @@ export async function fetchAdminPostById(id: string): Promise<{
 
 export interface AdminRequestRow {
   id: string;
+  reference_code?: string | null;
   customer_id: string;
   service_slug: string;
   service_type: string | null;
@@ -1642,7 +1643,7 @@ export async function fetchServiceRequests(params: ListParams): Promise<AdminSer
   let query = client
     .from('service_requests')
     .select(
-      'id, customer_id, service_slug, service_type, profile_title, profile_id, contact_name, contact_phone, area_id, address_line, details, preferred_date, preferred_time, status, quotation, admin_notes, service_meta, pickup_area_id, destination_area_id, pickup_address, destination_address, pickup_floor, destination_floor, has_lift, parking_info, moving_items, photo_urls, attachment_url, created_at, updated_at',
+      'id, reference_code, customer_id, service_slug, service_type, profile_title, profile_id, contact_name, contact_phone, area_id, address_line, details, preferred_date, preferred_time, status, quotation, admin_notes, service_meta, pickup_area_id, destination_area_id, pickup_address, destination_address, pickup_floor, destination_floor, has_lift, parking_info, moving_items, photo_urls, attachment_url, created_at, updated_at',
       { count: 'exact' }
     )
     .in('service_slug', [...HOME_SERVICE_SLUGS])
@@ -1654,7 +1655,7 @@ export async function fetchServiceRequests(params: ListParams): Promise<AdminSer
     const safeTerm = term.replace(/[%_,().*\\"]/g, ' ').replace(/[\[\]]/g, ' ').trim();
     if (safeTerm) {
       const filters = [
-        searchFilter(safeTerm, ['contact_name', 'contact_phone', 'service_slug', 'profile_title']),
+        searchFilter(safeTerm, ['reference_code', 'contact_name', 'contact_phone', 'service_slug', 'profile_title']),
         validUuid(safeTerm) ? `id.eq.${safeTerm}` : undefined,
       ].filter((value): value is string => Boolean(value));
       if (filters.length) query = query.or(filters.join(','));
@@ -1710,7 +1711,7 @@ export async function fetchServiceRequestById(id: string): Promise<AdminRequestR
   const { data, error } = await admin.client
     .from('service_requests')
     .select(
-      'id, customer_id, service_slug, service_type, profile_title, profile_id, contact_name, contact_phone, area_id, address_line, details, preferred_date, preferred_time, status, quotation, admin_notes, service_meta, pickup_area_id, destination_area_id, pickup_address, destination_address, pickup_floor, destination_floor, has_lift, parking_info, moving_items, photo_urls, attachment_url, created_at, updated_at'
+      'id, reference_code, customer_id, service_slug, service_type, profile_title, profile_id, contact_name, contact_phone, area_id, address_line, details, preferred_date, preferred_time, status, quotation, admin_notes, service_meta, pickup_area_id, destination_area_id, pickup_address, destination_address, pickup_floor, destination_floor, has_lift, parking_info, moving_items, photo_urls, attachment_url, created_at, updated_at'
     )
     .eq('id', id)
     .in('service_slug', [...HOME_SERVICE_SLUGS])
@@ -1925,6 +1926,7 @@ export async function fetchAdminStaffProfile(id: string): Promise<{
 
 export interface AdminVehicleRequestRow {
   id: string;
+  reference_code?: string | null;
   vehicle_listing_id: string | null;
   vehicle_kind: string;
   vehicle_listing_kind: VehicleKind | null;
@@ -1973,13 +1975,13 @@ export async function fetchVehicleRequests(params: ListParams): Promise<Paged<Ad
   let query = client
     .from('vehicle_requests')
     .select(
-      'id, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, estimated_distance_km, distance_source, rate_per_km, minimum_fare, estimated_fare, additional_fee, additional_fee_note_bn, assigned_vehicle_listing_id, assigned_driver_name, assigned_driver_phone, admin_notes, status, created_at, updated_at',
+      'id, reference_code, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, estimated_distance_km, distance_source, rate_per_km, minimum_fare, estimated_fare, additional_fee, additional_fee_note_bn, assigned_vehicle_listing_id, assigned_driver_name, assigned_driver_phone, admin_notes, status, created_at, updated_at',
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  const term = searchFilter(params.search, ['contact_name', 'contact_phone', 'vehicle_name', 'notes']);
+  const term = searchFilter(params.search, ['reference_code', 'contact_name', 'contact_phone', 'vehicle_name', 'notes']);
   if (term) {
     const safeId = params.search?.trim();
     const filters = [term, safeId && validUuid(safeId) ? `id.eq.${safeId}` : undefined]
@@ -2066,7 +2068,7 @@ export async function fetchVehicleRequestById(id: string): Promise<{
   const { data, error } = await admin.client
     .from('vehicle_requests')
     .select(
-      'id, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, estimated_distance_km, distance_source, rate_per_km, minimum_fare, estimated_fare, additional_fee, additional_fee_note_bn, assigned_vehicle_listing_id, assigned_driver_name, assigned_driver_phone, admin_notes, status, created_at, updated_at'
+      'id, reference_code, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, estimated_distance_km, distance_source, rate_per_km, minimum_fare, estimated_fare, additional_fee, additional_fee_note_bn, assigned_vehicle_listing_id, assigned_driver_name, assigned_driver_phone, admin_notes, status, created_at, updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -2438,6 +2440,7 @@ export async function fetchReports(params: ListParams): Promise<Paged<AdminRepor
 
 export interface AdminServiceListingRow {
   id: string;
+  public_id: string;
   category: 'coaching' | 'wifi' | 'bus' | 'vehicle';
   owner_id: string | null;
   status: 'draft' | 'pending' | 'approved' | 'rejected';
@@ -2496,7 +2499,7 @@ export interface AdminServiceListingPage extends Paged<AdminServiceListingRow> {
 }
 
 const SERVICE_LISTING_SELECT =
-  'id, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
+  'id, public_id, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
 
 export async function fetchServiceListings(params: ListParams, category?: string): Promise<AdminServiceListingPage> {
   const admin = await getAdminDataClient();
@@ -2536,7 +2539,7 @@ export async function fetchServiceListings(params: ListParams, category?: string
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
 
   const term = searchFilter(params.search, [
-    'title_bn', 'slug', 'subtitle_bn', 'summary_bn', 'description_bn',
+    'public_id', 'title_bn', 'slug', 'subtitle_bn', 'summary_bn', 'description_bn',
     'origin_bn', 'destination_bn', 'operator_bn', 'address_bn', 'model_name_bn', 'driver_name_bn',
   ]);
   if (term) query = query.or(term);

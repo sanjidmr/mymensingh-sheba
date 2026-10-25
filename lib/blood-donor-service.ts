@@ -35,6 +35,7 @@ function mapDonorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: (c.id as string) || '',
+    publicId: (c.publicId as string) || undefined,
     userId: (c.userId as string) || '',
     status: (c.status as BloodDonorStatus) || 'draft',
     fullName: (c.fullName as string) || '',
@@ -146,6 +147,7 @@ export interface PublicDonorFilters {
 // honest empty state; it never mixes sample rows into live data.
 function filterDemoDonors(filters?: PublicDonorFilters): BloodDonorProfile[] {
   return DEMO_DONOR_PROFILES.filter((donor) => {
+    if (!donor.isAvailable) return false;
     if (filters?.bloodGroup && filters.bloodGroup !== 'all') {
       if (donor.bloodGroup !== filters.bloodGroup) return false;
     }

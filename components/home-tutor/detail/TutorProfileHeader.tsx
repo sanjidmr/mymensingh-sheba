@@ -93,6 +93,11 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
               {tutor.qualification}
             </p>
           )}
+          {tutor.publicId && (
+            <p className="mt-2 inline-flex rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1 font-mono text-sm font-extrabold tracking-wider text-brand-800">
+              আইডি: {tutor.publicId}
+            </p>
+          )}
 
           <div className="mt-3 flex flex-wrap items-center gap-1.5">
             <span

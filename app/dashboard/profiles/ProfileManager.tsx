@@ -451,12 +451,18 @@ export default function ProfileManager() {
                       <Link
                         href={card.href}
                         className={cn(
-                          'inline-flex min-h-9 items-center gap-1.5 self-start rounded-lg border border-ink-900/[0.12] px-3 text-[11.5px] font-semibold text-ink-800 transition-colors hover:bg-mist-50',
+                          'group flex min-h-[72px] items-center gap-3 rounded-2xl border border-brand-100 bg-white p-3.5 text-left transition-colors hover:border-brand-300',
                           LIGHT_FOCUS
                         )}
                       >
-                        <Plus className="h-3.5 w-3.5 text-ink-500" aria-hidden="true" />
-                        {card.title}
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                          <Icon className="h-5 w-5" aria-hidden="true" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[14px] font-extrabold text-ink-900">{card.title}</span>
+                          <span className="mt-0.5 block truncate text-[11.5px] text-ink-500">{card.description}</span>
+                        </span>
+                        <Plus className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
                       </Link>
                     )}
                     {!hasProfile && error && (card.key === 'wifi' || card.key === 'coaching') && (
