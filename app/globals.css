@@ -194,6 +194,11 @@
       padding-bottom: 0;
     }
 
+    body:has([data-onboarding-shell]),
+    body:has([data-welcome-shell]) {
+      padding-bottom: 0;
+    }
+
   }
 
   ::selection {

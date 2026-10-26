@@ -92,6 +92,11 @@ export default function MarketDetail({ slug }: { slug: string }) {
         if (!active) return;
         setPost(data);
         if (data) {
+          if (!user) {
+            setContact(null);
+            setPhase('none');
+            return;
+          }
           setPhase('loading');
           // The contact is a second request because it is a separate permission
           // question from reading the post. Fetching the post first also means
@@ -113,7 +118,7 @@ export default function MarketDetail({ slug }: { slug: string }) {
     return () => {
       active = false;
     };
-  }, [slug]);
+  }, [slug, user]);
 
   // Same category first, then anything else, so the row is never empty on a
   // small marketplace. Excludes this post.

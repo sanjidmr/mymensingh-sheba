@@ -3,7 +3,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, MapPin, Phone, UserRound } from 'lucide-react';
-import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import SplashScreen from '@/components/site/SplashScreen';
 import { useAuth } from '@/lib/auth-context';
@@ -98,28 +97,28 @@ function OnboardingForm({ user }: { user: UserProfile }) {
   return (
     <div className="flex min-h-screen flex-col bg-mist-50">
       <Navbar />
-      <main className="flex flex-1 items-center px-4 py-8 sm:px-6 sm:py-12">
-        <div className="mx-auto grid w-full max-w-4xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-12">
+      <main data-onboarding-shell className="flex flex-1 items-start px-3 py-4 sm:items-center sm:px-6 sm:py-8">
+        <div className="mx-auto grid w-full max-w-4xl gap-4 sm:gap-6 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-10">
           <section className="max-w-md">
-            <p className="text-xs font-extrabold tracking-[0.12em] text-brand-600">
+            <p className="text-[11px] font-extrabold tracking-[0.12em] text-brand-600 sm:text-xs">
               আপনার অ্যাকাউন্ট সেটআপ
             </p>
-            <h1 className="mt-3 text-3xl font-extrabold leading-tight tracking-tight text-ink-900 sm:text-4xl">
+            <h1 className="mt-1.5 text-2xl font-extrabold leading-tight tracking-tight text-ink-900 sm:mt-3 sm:text-4xl">
               আপনার এলাকার সেবাগুলো পেতে
               <span className="mt-1 block text-brand-700">আর মাত্র এক ধাপ</span>
             </h1>
-            <p className="mt-4 max-w-sm text-sm leading-7 text-ink-600 sm:text-base">
+            <p className="mt-2 max-w-sm text-[13px] leading-6 text-ink-600 sm:mt-4 sm:text-base sm:leading-7">
               সঠিক সেবা ও স্থানীয় সহায়তা পৌঁছে দিতে আপনার কয়েকটি তথ্য দরকার।
               এগুলো আপনার প্রোফাইলে নিরাপদে সংরক্ষিত থাকবে।
             </p>
-            <div className="mt-6 h-1 w-16 bg-red-600" aria-hidden="true" />
+            <div className="mt-3 h-1 w-12 bg-red-600 sm:mt-6 sm:w-16" aria-hidden="true" />
           </section>
 
-          <section className="border border-brand-100 bg-white p-5 shadow-sm sm:p-8">
+          <section className="min-w-0 rounded-xl border border-brand-100 bg-white p-4 shadow-sm sm:p-7">
             <h2 className="text-lg font-extrabold text-ink-900">প্রয়োজনীয় তথ্য</h2>
             <p className="mt-1 text-sm text-ink-500">তারকা (*) চিহ্নিত তথ্যগুলো পূরণ করুন।</p>
 
-            <form onSubmit={handleSubmit} className="mt-6 space-y-5" noValidate>
+            <form onSubmit={handleSubmit} className="mt-4 space-y-4 sm:mt-6 sm:space-y-5" noValidate>
               <div>
                 <label htmlFor="onboarding-name" className="mb-2 block text-sm font-bold text-ink-700">
                   আপনার নাম <span className="text-red-600">*</span>
@@ -217,7 +216,6 @@ function OnboardingForm({ user }: { user: UserProfile }) {
           </section>
         </div>
       </main>
-      <Footer />
     </div>
   );
 }

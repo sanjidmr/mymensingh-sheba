@@ -29,8 +29,10 @@ import { areaFilterGroupMulti, type MatchableRecord } from '@/lib/directory-filt
 import { useDirectoryController } from '@/lib/use-directory-controller';
 import type { SearchableFields } from '@/lib/directory-search';
 import { getAreaById } from '@/lib/locations';
+import { useAuth } from '@/lib/auth-context';
 
 export default function EmergencyDirectory({ service }: { service: EmergencyService }) {
+  const { user } = useAuth();
   const ui = EMERGENCY_UI[service];
   const [contacts, setContacts] = useState<EmergencyContact[]>([]);
   const [loading, setLoading] = useState(true);
@@ -147,7 +149,7 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
           {error}
         </div>
       ) : results.length === 0 ? (
-        <EmergencyEmpty ui={ui} hasAnyData={contacts.length > 0} />
+        <EmergencyEmpty ui={ui} hasAnyData={contacts.length > 0} isLoggedIn={Boolean(user)} />
       ) : (
         <>
           <p className="mb-2.5 text-[12px] font-semibold text-ink-500">
@@ -179,9 +181,11 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
 function EmergencyEmpty({
   ui,
   hasAnyData,
+  isLoggedIn,
 }: {
   ui: (typeof EMERGENCY_UI)[EmergencyService];
   hasAnyData: boolean;
+  isLoggedIn: boolean;
 }) {
   return (
     <div className="rounded-xl border border-dashed border-brand-200 bg-white px-5 py-8 text-center">
@@ -194,10 +198,10 @@ function EmergencyEmpty({
           : 'অ্যাডমিন যাচাই করা তথ্য যোগ করা হলে এখানে দেখা যাবে। নিজে থেকে কোনো নম্বর বসানো হয় না।'}
       </p>
       <a
-        href="/contact#contact-form"
+        href={isLoggedIn ? '/contact#contact-form' : `/login?next=${encodeURIComponent('/contact#contact-form')}`}
         className={`mt-3 inline-flex min-h-[44px] items-center justify-center rounded-lg border border-brand-200 bg-white px-4 text-sm font-bold text-brand-700 transition-colors hover:bg-mist-50 ${LIGHT_FOCUS}`}
       >
-        তথ্য জানান / অনুরোধ পাঠান
+        {isLoggedIn ? 'তথ্য জানান / অনুরোধ পাঠান' : 'তথ্য জানাতে লগইন করুন'}
       </a>
     </div>
   );

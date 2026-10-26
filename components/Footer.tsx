@@ -12,6 +12,7 @@ import {
   mergeLaunchServices,
   type SiteContentOverrides,
 } from '@/lib/site-content';
+import { useAuth } from '@/lib/auth-context';
 
 /**
  * The public footer.
@@ -23,6 +24,7 @@ import {
  * exist.
  */
 export default function Footer() {
+  const { user, isLoading } = useAuth();
   const currentYear = 2026;
   const [overrides, setOverrides] = useState<SiteContentOverrides>();
 
@@ -108,7 +110,7 @@ export default function Footer() {
                   number that isn't published — the same rule the /contact page
                   follows. Previously this was a dead tel: link to an invented
                   number while /contact said none existed. */}
-              {contact.phone ? (
+              {contact.phone && user ? (
                 <a
                   href={`https://wa.me/${contact.phone.replace(/\D/g, '').replace(/^0/, '880')}`}
                   target="_blank"
@@ -118,20 +120,31 @@ export default function Footer() {
                   <Phone className="h-4 w-4 text-brand-300" />
                   {contact.phone}
                 </a>
+              ) : !user || isLoading ? (
+                <Link href="/login" className="flex items-center gap-2.5 text-brand-100/70">
+                  <Phone className="h-4 w-4 text-brand-300" />
+                  যোগাযোগে লগইন করুন
+                </Link>
               ) : (
                 <a href={`/#${CONTACT_FORM_ANCHOR}`} className="flex items-center gap-2.5 text-brand-100/70">
                   <Phone className="h-4 w-4 text-brand-300" />
                   {SITE_CONTACT.phonePendingBn}
                 </a>
               )}
-              <a href={`mailto:${contact.email}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
-                <Mail className="h-4 w-4 text-brand-300" />
-                {contact.email}
-              </a>
+              {user && !isLoading && (
+                <a href={`mailto:${contact.email}`} className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white">
+                  <Mail className="h-4 w-4 text-brand-300" />
+                  {contact.email}
+                </a>
+              )}
             </div>
 
             <div className="mt-3 flex items-center gap-2.5">
-              {contact.socials.length > 0 ? (
+              {!user || isLoading ? (
+                <Link href="/login" className="text-xs font-semibold text-brand-100/70 hover:text-white">
+                  চ্যাট বা বার্তার জন্য লগইন করুন
+                </Link>
+              ) : contact.socials.length > 0 ? (
                 contact.socials.map((social) =>
                   social.href ? (
                     <a

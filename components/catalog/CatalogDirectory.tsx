@@ -48,6 +48,8 @@ export interface CatalogDirectoryProps {
   renderCard: (listing: ServiceListing) => React.ReactNode;
   /** Header action, e.g. an admin "add" link. */
   action?: React.ReactNode;
+  /** Compact signed-in-owner action next to the filter control. */
+  inlineAction?: React.ReactNode;
   /**
    * Extra controls rendered between the search bar and the results, wired to
    * the live controller. Used by the bus page for its destination picker, which
@@ -75,6 +77,7 @@ export default function CatalogDirectory({
   sorters,
   renderCard,
   action,
+  inlineAction,
   renderTools,
   banner,
 }: CatalogDirectoryProps) {
@@ -184,6 +187,7 @@ export default function CatalogDirectory({
         sortOptions={sortOptions}
         currentSort={controller.sort}
         onSortChange={controller.setSort}
+        inlineAction={inlineAction}
       />
 
       {renderTools ? <div className="mt-2.5">{renderTools(controller)}</div> : null}
@@ -256,16 +260,6 @@ function UnpopulatedState({
       <h2 className="text-base font-extrabold text-ink-900">
         এখনো কোনো {ui.noun} যোগ করা হয়নি
       </h2>
-      <p className="mx-auto mt-1.5 max-w-md text-[13px] leading-relaxed text-ink-500">
-        {ui.adminOwned
-          ? 'এই তালিকাটি অ্যাডমিন পরিচালনা করেন। যাচাই করা তথ্য যোগ করা হলে এখানে দেখা যাবে।'
-          : 'এখনো কোনো তথ্য যোগ করা হয়নি।'}
-      </p>
-      {ui.adminOwned && (
-        <p className="mx-auto mt-3 max-w-md rounded-lg border border-brand-100 bg-mist-50 px-3 py-2 text-[11.5px] leading-relaxed text-ink-500">
-          অ্যাডমিন? কনসোল থেকে যাচাই করা তথ্য যোগ করুন — নকল কোনো তথ্য এখানে দেখানো হয় না।
-        </p>
-      )}
       <CatalogResetHint label="সব ফিল্টার মুছুন" />
     </div>
   );

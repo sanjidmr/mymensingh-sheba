@@ -12,11 +12,7 @@
  *   1. Is this the right blood group?               → the group token, top-left
  *   2. Where are they?                              → the area line
  *   3. How do I reach them?                         → the call action, bottom
- *   4. (Opt-in) Are they fit to give right now?     → the readiness panel, if shown
- *
- * The readiness panel is the donor's to publish. It renders only when the donor
- * turned it on, and it collapses by default: a card must not imply "fit to give
- * right now" for someone who never said so.
+ *   4. Are they currently available?                → the donor's saved status
  *
  * Calling
  * -------
@@ -30,11 +26,12 @@
  */
 
 import React from 'react';
+import Link from 'next/link';
 import { BadgeCheck, Droplets, MapPin, Phone } from 'lucide-react';
 import { resolveDonorPhotoUrl } from '@/lib/blood-donor-service';
-import { donorRecovery } from '@/lib/blood-donor-types';
 import { getAreaById } from '@/lib/locations';
 import type { BloodDonorProfile } from '@/lib/supabase/types';
+import { useAuth } from '@/lib/auth-context';
 
 export interface DonorCardProps {
   donor: BloodDonorProfile;
@@ -77,9 +74,9 @@ function telHref(phone?: string): string | undefined {
 }
 
 export default function DonorCard({ donor }: DonorCardProps) {
+  const { user, isLoading } = useAuth();
   const area = getAreaById(donor.areaId);
-  const recovery = donorRecovery(donor);
-  const href = telHref(donor.contactPhone);
+  const href = user ? telHref(donor.contactPhone) : undefined;
   // The readiness panel is opt-in and opens on demand. It is a separate control
   // from the call action below, which is why it sits OUTSIDE the card's `tel:`
   // link: a button nested inside an anchor is invalid, and a tap meant for the
@@ -111,8 +108,12 @@ export default function DonorCard({ donor }: DonorCardProps) {
               </span>
             )}
           </div>
-          <span className="mt-1 inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[11px] font-bold text-emerald-800">
-            {donor.isAvailable ? 'রক্তদানে প্রস্তুত' : 'এখন উপলভ্য নন'}
+          <span className={`mt-1 inline-flex rounded-full border px-2 py-0.5 text-[11px] font-bold ${
+            donor.isAvailable
+              ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+              : 'border-mist-200 bg-mist-100 text-ink-600'
+          }`}>
+            {donor.isAvailable ? 'প্রস্তুত' : 'প্রস্তুত নন'}
           </span>
           <p className="mt-1 flex items-center gap-1 truncate text-[12.5px] text-ink-500">
             <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
@@ -132,7 +133,21 @@ export default function DonorCard({ donor }: DonorCardProps) {
     </>
   );
 
-  const callAction = href ? (
+  const callAction = isLoading ? (
+    <span aria-hidden="true" className="mt-3.5 h-11 animate-pulse rounded-xl bg-mist-100" />
+  ) : !donor.isAvailable ? (
+    <span className="mt-3.5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-mist-200 bg-mist-50 px-4 text-sm font-bold text-ink-500">
+      বর্তমানে কলের জন্য প্রস্তুত নন
+    </span>
+  ) : !user ? (
+    <Link
+      href={`/login?next=${encodeURIComponent('/blood-donor')}`}
+      className="mt-3.5 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800"
+    >
+      <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
+      লগইন করে নম্বর দেখুন
+    </Link>
+  ) : href ? (
     <a
       href={href}
       aria-label={`${donor.fullName} (${donor.bloodGroup}) — কল করুন`}
@@ -151,20 +166,6 @@ export default function DonorCard({ donor }: DonorCardProps) {
   return (
     <article className="flex flex-col rounded-2xl border border-mist-200 bg-white p-3.5 shadow-[0_1px_2px_rgba(7,39,31,0.04)] sm:p-4">
       {body}
-
-      <div className="mt-3 rounded-xl border border-mist-200 bg-mist-50 p-2.5">
-        <div className="inline-flex min-h-9 items-center gap-1.5 text-[12px] font-bold text-ink-700">
-          <Droplets className="h-3.5 w-3.5 text-brand-600" strokeWidth={2.25} aria-hidden="true" />
-          রক্তদানের বর্তমান প্রস্তুতি
-        </div>
-        <div className="mt-1.5 flex items-start gap-2">
-          <span className={`mt-0.5 shrink-0 rounded-full border px-2 py-0.5 text-[11px] font-bold ${recovery.chipClassName}`}>
-            {recovery.labelBn}
-          </span>
-          <p className="text-[12px] leading-relaxed text-ink-600">{recovery.detailBn}</p>
-        </div>
-      </div>
-
       {callAction}
     </article>
   );

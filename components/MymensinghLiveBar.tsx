@@ -31,7 +31,8 @@ import {
   LIVE_FRESHNESS_MS,
   PRAYER_METHOD_NAME,
 } from '@/lib/mymensingh-live';
-import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
+import { SITE_CONTACT } from '@/lib/site-contact';
+import { useAuth } from '@/lib/auth-context';
 
 interface PrayerState {
   status: 'loading' | 'ok' | 'error';
@@ -131,6 +132,7 @@ function BarModal({
 }
 
 export default function MymensinghLiveBar() {
+  const { user, isLoading: authLoading } = useAuth();
   const [prayers, setPrayers] = useState<PrayerState>({
     status: 'loading',
     prayers: null,
@@ -147,6 +149,7 @@ export default function MymensinghLiveBar() {
   const [nowTick, setNowTick] = useState<number>(0);
   const [showWeather, setShowWeather] = useState(false);
   const [showPrayers, setShowPrayers] = useState(false);
+  const [sitePhone, setSitePhone] = useState<string | null>(null);
 
   const prayerStampRef = useRef(0);
   const prayerDateRef = useRef<DhakaDateParts | null>(null);
@@ -154,6 +157,20 @@ export default function MymensinghLiveBar() {
 
   const closeWeather = useCallback(() => setShowWeather(false), []);
   const closePrayers = useCallback(() => setShowPrayers(false), []);
+
+  useEffect(() => {
+    let active = true;
+    fetch('/api/site-content', { cache: 'no-store' })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((payload) => {
+        const phone = payload?.overrides?.site_contact?.phone;
+        if (active && typeof phone === 'string') setSitePhone(phone);
+      })
+      .catch(() => undefined);
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const loadPrayers = useCallback(async () => {
     const stamp = Date.now();
@@ -257,21 +274,27 @@ export default function MymensinghLiveBar() {
 
   const divider = <span className="h-4 w-px shrink-0 bg-white/15" aria-hidden="true" />;
 
-  // Hotline badge. Reads from SITE_CONTACT so it can never point at a number
-  // that isn't published. Until a real number exists this becomes a link to
-  // the contact form instead of a dead tel: action.
-  const hotline = SITE_CONTACT.phone ? (
+  // The contact endpoint releases the hotline only to signed-in visitors.
+  const hotline = sitePhone && user ? (
     <a
-      href={`tel:${SITE_CONTACT.phone}`}
+      href={`tel:${sitePhone}`}
       className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300 transition-colors hover:bg-accent-400/20 hover:text-accent-200"
     >
       <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-      হটলাইন: {SITE_CONTACT.phone}
+      হটলাইন: {sitePhone}
     </a>
+  ) : !user && !authLoading ? (
+    <Link
+      href="/login"
+      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300 transition-colors hover:bg-accent-400/20"
+    >
+      <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+      যোগাযোগে লগইন করুন
+    </Link>
   ) : (
     <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
       <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-      {SITE_CONTACT.phone ? `হটলাইন: ${SITE_CONTACT.phone}` : '০১৮০০-০০০০০০'}
+      {SITE_CONTACT.phonePendingBn}
     </span>
   );
 
@@ -293,15 +316,20 @@ export default function MymensinghLiveBar() {
         {today ? formatBanglaDate(today) : ''}
       </span>
       {divider}
-      {clone && !SITE_CONTACT.phone ? (
+      {clone && !user ? (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
           <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-          ০১৮০০-০০০০০০
+          যোগাযোগে লগইন করুন
         </span>
-      ) : clone && SITE_CONTACT.phone ? (
+      ) : clone && !sitePhone ? (
         <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
           <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-          হটলাইন: {SITE_CONTACT.phone}
+          জরুরি সেবা
+        </span>
+      ) : clone && sitePhone ? (
+        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
+          <Phone className="h-3.5 w-3.5" aria-hidden="true" />
+          হটলাইন: {sitePhone}
         </span>
       ) : hotline}
       {weather.value && (

@@ -2441,6 +2441,7 @@ export async function fetchReports(params: ListParams): Promise<Paged<AdminRepor
 export interface AdminServiceListingRow {
   id: string;
   public_id: string;
+  public_code: string;
   category: 'coaching' | 'wifi' | 'bus' | 'vehicle';
   owner_id: string | null;
   status: 'draft' | 'pending' | 'approved' | 'rejected';
@@ -2499,7 +2500,7 @@ export interface AdminServiceListingPage extends Paged<AdminServiceListingRow> {
 }
 
 const SERVICE_LISTING_SELECT =
-  'id, public_id, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
+  'id, public_id, public_code, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, admission_fee, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, travel_days, stops_bn, journey_duration_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, contact_phone_private, owner_id, status, rejection_reason, is_active, is_featured, created_at, updated_at';
 
 export async function fetchServiceListings(params: ListParams, category?: string): Promise<AdminServiceListingPage> {
   const admin = await getAdminDataClient();

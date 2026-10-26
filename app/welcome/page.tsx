@@ -4,7 +4,6 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowRight, House, UserRound } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import Footer from '@/components/Footer';
 import Navbar from '@/components/Navbar';
 import SplashScreen from '@/components/site/SplashScreen';
 import { useAuth } from '@/lib/auth-context';
@@ -32,7 +31,7 @@ export default function WelcomePage() {
   return (
     <div className="flex min-h-screen flex-col bg-mist-50">
       <Navbar />
-      <main className="flex flex-1 items-center justify-center px-4 py-10 sm:px-6 sm:py-16">
+      <main data-welcome-shell className="flex flex-1 items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
         <section className="mms-welcome-card w-full max-w-2xl border border-brand-100 bg-white px-6 py-9 text-center shadow-sm sm:px-12 sm:py-14">
           <span className="mx-auto flex h-14 w-14 items-center justify-center border border-brand-200 bg-brand-50 text-brand-700">
             <UserRound className="h-6 w-6" aria-hidden="true" />
@@ -66,7 +65,6 @@ export default function WelcomePage() {
           </div>
         </section>
       </main>
-      <Footer />
     </div>
   );
 }

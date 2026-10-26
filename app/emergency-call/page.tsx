@@ -44,7 +44,7 @@ export default function EmergencyCallPage() {
   return (
     <RoutePlaceholderShell
       title="জরুরি প্রয়োজনে সরাসরি কল"
-      subtitle="জরুরি অবস্থায় নিচের নম্বরে সরাসরি কল করুন। নম্বর না থাকা সেবাগুলোর জন্য প্ল্যাটফর্মে অনুরোধ পাঠালে অ্যাডমিন সংযুক্ত করে দেবে।"
+      subtitle="জরুরি অবস্থায় নিচের নম্বরে সরাসরি কল করুন। অন্য কোনো সেবার অনুরোধ পাঠাতে আগে লগইন করতে হবে।"
       categoryBadge="জরুরি সেবা"
       breadcrumbs={[{ label: 'জরুরি কল' }]}
     >

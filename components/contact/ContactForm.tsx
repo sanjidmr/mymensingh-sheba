@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState, useTransition } from 'react';
+import Link from 'next/link';
 import {
   AlertCircle,
   CheckCircle2,
@@ -22,6 +23,7 @@ import {
 } from '@/lib/contact-types';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { sendContactMessage, type ContactActionState } from '@/app/contact/actions';
+import { useAuth } from '@/lib/auth-context';
 
 type Status = 'idle' | 'submitting' | 'success' | 'error';
 
@@ -56,6 +58,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
  * focus to the first one.
  */
 export default function ContactForm() {
+  const { user, isLoading } = useAuth();
   const [values, setValues] = useState<ContactFormValues>(EMPTY_CONTACT_FORM);
   const [errors, setErrors] = useState<ContactFieldErrors>({});
   const [status, setStatus] = useState<Status>('idle');
@@ -65,6 +68,31 @@ export default function ContactForm() {
 
   const fieldRefs = useRef<Partial<Record<ContactField, HTMLElement | null>>>({});
   const formRef = useRef<HTMLFormElement | null>(null);
+
+  if (isLoading || !user) {
+    return (
+      <section
+        id="contact-form"
+        aria-labelledby="contact-form-heading"
+        className="scroll-mt-24 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm sm:p-8"
+      >
+        <h2 id="contact-form-heading" className="text-xl font-extrabold text-ink-900">
+          বার্তা পাঠাতে লগইন করুন
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-ink-500">
+          ওয়েবসাইট ঘুরে দেখতে অ্যাকাউন্ট লাগবে না। তবে বার্তা পাঠাতে লগইন করতে হবে।
+        </p>
+        {!isLoading && (
+          <Link
+            href={`/login?next=${encodeURIComponent('/contact#contact-form')}`}
+            className={`mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-bold text-white ${LIGHT_FOCUS}`}
+          >
+            লগইন করুন
+          </Link>
+        )}
+      </section>
+    );
+  }
 
   const setField = (field: ContactField, value: string) => {
     setValues((prev) => ({ ...prev, [field]: value }));

@@ -12,7 +12,7 @@
  */
 import React from 'react';
 import Link from 'next/link';
-import { PlusCircle, Store } from 'lucide-react';
+import { PlusCircle } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import type { CustomerServiceCategory } from '@/lib/catalog-types';
@@ -28,21 +28,13 @@ export default function OwnerListingCta({ category }: { category: CustomerServic
   const href = user ? createHref : `/login?next=${encodeURIComponent(createHref)}`;
 
   return (
-    <div className="flex flex-col gap-2 rounded-xl border border-brand-100 bg-mist-50 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-      <p className="flex items-start gap-2 text-[12.5px] leading-relaxed text-ink-600">
-        <Store className="mt-0.5 h-4 w-4 shrink-0 text-brand-600" aria-hidden="true" />
-        <span>
-          আপনার {LABEL[category]} পরিচালনা করেন? নিজেই তথ্য যোগ করুন — অ্যাডমিন
-          অনুমোদনের পর এখানে দেখা যাবে।
-        </span>
-      </p>
-      <Link
-        href={href}
-        className={`inline-flex min-h-[40px] shrink-0 items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-3.5 text-[12.5px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
-      >
-        <PlusCircle className="h-4 w-4" aria-hidden="true" />
-        প্রতিষ্ঠান যোগ করুন
-      </Link>
-    </div>
+    <Link
+      href={href}
+      aria-label={`${LABEL[category]} প্রতিষ্ঠান যোগ করুন`}
+      className={`inline-flex min-h-10 w-full items-center justify-center gap-1 rounded-lg border border-brand-200 bg-white px-2 text-[11px] font-extrabold text-brand-800 transition-colors hover:bg-brand-50 sm:min-h-[42px] sm:w-auto sm:px-3 sm:text-xs ${LIGHT_FOCUS}`}
+    >
+      <PlusCircle className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+      প্রতিষ্ঠান যোগ করুন
+    </Link>
   );
 }

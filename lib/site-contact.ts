@@ -7,8 +7,9 @@
  * "not published yet" state that still offers a working alternative action
  * (the message form) instead of a dead link or a made-up number/address.
  *
- * To publish a channel: fill the value here — every page that shows contact
- * details (Contact, and anything importing this module) updates at once.
+ * The phone number is intentionally server-only and is supplied to signed-in
+ * visitors by the site-content endpoint. Never put a private contact value in
+ * this client-safe module.
  */
 
 export interface SocialLink {
@@ -40,13 +41,10 @@ export interface SiteContact {
 }
 
 export const SITE_CONTACT: SiteContact = {
-  phone: '01408489418',
+  phone: null,
   phonePendingBn: 'সরাসরি সেবা নম্বর এখনো প্রকাশ করা হয়নি।',
-  email: 'help@mymensinghsheba.com',
-  socials: [
-    { icon: 'facebook', labelBn: 'Facebook পেজ', href: 'https://www.facebook.com/share/1YTmXUL8FU/' },
-    { icon: 'messenger', labelBn: 'Messenger', href: 'https://www.facebook.com/share/1YTmXUL8FU/' },
-  ],
+  email: '',
+  socials: [],
   officeAddress: null,
   officeAddressPendingBn:
     'এখনো কোনো স্থায়ী ভূমিকস্থ অফিস ঠিকানা প্রকাশ করা হয়নি। ঠিকানা প্রকাশিত হলে এখানেই তা যুক্ত হবে।',

@@ -19,24 +19,13 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, GraduationCap, BadgeCheck, Star, Clock, Landmark } from 'lucide-react';
+import { Star } from 'lucide-react';
 import type { HomeTutorProfile } from '@/lib/supabase/types';
 import {
-  TUTOR_TEACHING_MODE_LABELS,
-  TUTOR_AVAILABILITY_LABELS,
-  formatTutorFee,
   sortTutorClasses,
 } from '@/lib/home-tutor-types';
-import { getAreaById } from '@/lib/locations';
 import { resolveTutorPhotoUrl } from '@/lib/home-tutor-service';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
-
-/** Availability chips in ink/brand tones, matching the detail page header. */
-const AVAILABILITY_CHIP: Record<string, string> = {
-  available: 'border-brand-200 bg-brand-50 text-brand-700',
-  limited: 'border-accent-200 bg-accent-100/70 text-accent-700',
-  busy: 'border-mist-200 bg-mist-100 text-ink-500',
-};
 
 export function TutorAvatar({
   tutor,
@@ -72,138 +61,75 @@ export function TutorRatingBadge({ tutor }: { tutor: HomeTutorProfile }) {
 }
 
 export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
-  const areas = tutor.preferredAreas
-    .map((id) => getAreaById(id)?.nameBn)
-    .filter((n): n is string => Boolean(n));
-  const availability = TUTOR_AVAILABILITY_LABELS[tutor.availability];
   const subjects = tutor.preferredSubjects.filter(Boolean);
-  // Class chips in primary → admission order, matching the detail page, so a
-  // reader moving between the two sees the same order and not a reshuffle.
   const classes = sortTutorClasses(tutor.preferredClasses);
+  const photo = resolveTutorPhotoUrl(tutor.profilePhotoUrl);
 
   return (
     <Link
       href={`/home-tutor/${tutor.id}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-mist-200 bg-white no-underline transition-shadow duration-150 hover:border-brand-200 hover:shadow-[0_4px_16px_rgba(7,39,31,0.08)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+      className="group flex min-w-0 items-stretch overflow-hidden rounded-2xl border border-brand-100 bg-white p-2 shadow-[0_2px_10px_rgba(7,39,31,0.04)] no-underline transition duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_10px_24px_rgba(7,39,31,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:p-2.5"
     >
-      {/* Photo strip. Fixed 4:3 so a row of cards never jitters while images
-          load, and short enough that the fee is still above the fold. */}
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-mist-100">
-        {tutor.profilePhotoUrl ? (
+      <div className="relative h-[100px] w-[84px] shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-brand-50 to-mist-100 sm:h-[112px] sm:w-24">
+        {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={tutor.profilePhotoUrl}
+            src={photo}
             alt={tutor.fullName}
             loading="lazy"
-            className="h-full w-full object-cover object-top"
+            className="h-full w-full object-cover object-[center_25%] transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
           <div className="flex h-full w-full items-center justify-center">
-            <span className="text-4xl font-black text-brand-300">
+            <span className="text-3xl font-black text-brand-300">
               {tutor.fullName.charAt(0) || '?'}
             </span>
           </div>
         )}
       </div>
 
-      <div className="flex flex-1 flex-col p-4">
-        <div className="flex items-start gap-1.5">
-          <h3 className="min-w-0 flex-1 line-clamp-2 text-base font-extrabold leading-snug text-ink-900">
+      <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-1 sm:px-4">
+        <div className="flex min-w-0 items-center gap-1.5">
+          <h3 className="min-w-0 flex-1 truncate text-[14px] font-extrabold leading-snug text-ink-900 sm:text-base">
             {tutor.fullName}
           </h3>
-          {tutor.isVerified && (
-            <BadgeCheck className="h-4 w-4 shrink-0 text-brand-600" aria-label="অ্যাডমিন যাচাই করা" />
-          )}
-          {tutor.isDemo && (
-            <span className="shrink-0 rounded-full border border-accent-200 bg-accent-100/70 px-2 py-1 text-xs font-bold text-accent-800">
-              নমুনা
-            </span>
-          )}
-        </div>
-        {tutor.publicId && (
-          <p className="mt-1 font-mono text-[11px] font-bold tracking-wide text-brand-700">
-            আইডি: {tutor.publicId}
-          </p>
-        )}
-
-        {tutor.qualification ? (
-          <p className="mt-1 flex items-start gap-1 text-[13px] leading-snug text-ink-700">
-            <GraduationCap className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-300" aria-hidden="true" />
-            <span className="line-clamp-1">{tutor.qualification}</span>
-          </p>
-        ) : null}
-
-        {/* The fee, first and largest. It is the comparison number. */}
-        <p className="mt-2.5 text-[15px] font-black leading-tight text-brand-800">
-          {formatTutorFee(tutor.expectedSalary)}
-        </p>
-
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-          <span
-            className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-semibold ${
-              AVAILABILITY_CHIP[tutor.availability] ?? AVAILABILITY_CHIP.busy
-            }`}
-          >
-            <Clock className="h-3 w-3" aria-hidden="true" />
-            {availability.labelBn}
-          </span>
-          <TutorRatingBadge tutor={tutor} />
         </div>
 
         {classes.length > 0 && (
-          <ul className="mt-2.5 flex flex-wrap gap-1.5">
-            {classes.slice(0, 2).map((c) => (
+          <ul className="mt-2 flex flex-wrap gap-1">
+            {classes.slice(0, 3).map((c) => (
               <li
                 key={c}
-                className="rounded-md border border-mist-200 bg-mist-50 px-2.5 py-1 text-xs font-medium leading-snug text-ink-800"
+                className="max-w-full truncate rounded-md border border-mist-200 bg-mist-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-ink-700 sm:text-[11px]"
               >
                 {c}
               </li>
             ))}
-            {classes.length > 2 && (
-              <li className="text-xs font-semibold text-ink-600">
-                +{toBengaliDigits(classes.length - 2)}
+            {classes.length > 3 && (
+              <li className="rounded-md bg-mist-50 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
+                +{toBengaliDigits(classes.length - 3)}
               </li>
             )}
           </ul>
         )}
 
         {subjects.length > 0 && (
-          <ul className="mt-1.5 flex flex-wrap gap-1.5">
-            {subjects.slice(0, 3).map((s) => (
+          <ul className="mt-1.5 flex flex-wrap gap-1">
+            {subjects.slice(0, 2).map((s) => (
               <li
                 key={s}
-                className="rounded-md border border-brand-100 bg-brand-50 px-2.5 py-1 text-xs font-medium leading-snug text-brand-800"
+                className="max-w-full truncate rounded-md border border-brand-100 bg-brand-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-brand-800 sm:text-[11px]"
               >
                 {s}
               </li>
             ))}
-            {subjects.length > 3 && (
-              <li className="text-xs font-semibold text-ink-600">
-                +{toBengaliDigits(subjects.length - 3)}
+            {subjects.length > 2 && (
+              <li className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+                +{toBengaliDigits(subjects.length - 2)}
               </li>
             )}
           </ul>
         )}
-
-        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
-          <span className="flex min-w-0 items-start gap-1 text-xs leading-relaxed text-ink-700">
-            {areas.length > 0 ? (
-              <>
-                <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-300" aria-hidden="true" />
-                <span className="line-clamp-2">{areas.join(', ')}</span>
-              </>
-            ) : tutor.institution ? (
-              <>
-                <Landmark className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ink-300" aria-hidden="true" />
-                <span className="line-clamp-2">{tutor.institution}</span>
-              </>
-            ) : null}
-          </span>
-          <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-brand-700 px-2.5 py-1.5 text-[11.5px] font-bold text-white transition-colors group-hover:bg-brand-800">
-            বিস্তারিত
-          </span>
-        </div>
       </div>
     </Link>
   );

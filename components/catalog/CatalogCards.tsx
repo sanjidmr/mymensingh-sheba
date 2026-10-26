@@ -20,6 +20,7 @@ import Link from 'next/link';
 import { BadgeCheck, MapPin, Phone, Star } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { toBn } from '@/lib/catalog-types';
+import { useAuth } from '@/lib/auth-context';
 
 /**
  * Star + count summary for a rated listing.
@@ -166,6 +167,7 @@ export interface BannerCardProps {
   areaLabel?: string;
   chips?: (string | undefined | false)[];
   description?: string;
+  publicCode?: string;
   isVerified?: boolean;
   badge?: string;
   actionLabel?: string;
@@ -198,6 +200,7 @@ export function BannerCard({
   areaLabel,
   chips,
   description,
+  publicCode,
   isVerified,
   badge,
   actionLabel,
@@ -252,6 +255,12 @@ export function BannerCard({
         >
           {title}
         </h3>
+
+        {publicCode && (
+          <p className="mt-0.5 font-mono text-[10px] font-bold tracking-wide text-brand-700">
+            আইডি: {publicCode}
+          </p>
+        )}
 
         {subtitle && (
           <p className="mt-0.5 line-clamp-2 text-xs leading-snug text-ink-600 sm:text-sm">
@@ -315,6 +324,7 @@ export interface TileCardProps {
   priceLabel?: string;
   priceSuffix?: string;
   areaLabel?: string;
+  publicCode?: string;
   chips?: (string | undefined | false)[];
   badge?: string;
   badgeTone?: 'brand' | 'accent' | 'urgent';
@@ -332,6 +342,7 @@ export function TileCard({
   priceLabel,
   priceSuffix,
   areaLabel,
+  publicCode,
   chips,
   badge,
   badgeTone = 'brand',
@@ -379,6 +390,12 @@ export function TileCard({
         <h3 className="mt-1 line-clamp-2 text-[14px] font-bold leading-snug text-ink-900 sm:text-base">
           {title}
         </h3>
+
+        {publicCode && (
+          <p className="mt-0.5 font-mono text-[10px] font-bold tracking-wide text-brand-700">
+            আইডি: {publicCode}
+          </p>
+        )}
 
         {subtitle && (
           <p className={`mt-0.5 line-clamp-2 text-xs leading-snug text-ink-600 sm:text-sm ${mobileMinimal ? 'hidden sm:block' : ''}`}>
@@ -507,6 +524,7 @@ export function ContactRow({
   notes,
   isVerified,
 }: ContactRowProps) {
+  const { user } = useAuth();
   const hasPhone = Boolean(phone && phone.trim());
   const dialPhone = phone
     ?.replace(/[০-৯]/g, (digit) => String('০১২৩৪৫৬৭৮৯'.indexOf(digit)))
@@ -515,14 +533,14 @@ export function ContactRow({
     ? `+${dialPhone.slice(1).replace(/\+/g, '')}`
     : dialPhone?.replace(/\+/g, '');
   return (
-    <article className="flex flex-col rounded-xl border border-brand-100 bg-white p-4 transition-colors hover:border-brand-200 sm:p-4">
-      <div className="flex items-start justify-between gap-2">
+    <article className="flex flex-col items-center rounded-xl border border-brand-100 bg-white p-4 text-center transition-colors hover:border-brand-200 sm:p-5">
+      <div className="flex w-full items-start justify-center gap-2 text-center">
         <div className="min-w-0">
-          <h3 className="text-[15px] font-bold leading-snug text-ink-900 sm:text-base">
+          <h3 className="break-words text-[15px] font-bold leading-snug text-ink-900 sm:text-base">
             {name}
           </h3>
           {organization && (
-            <p className="mt-0.5 text-[12px] leading-snug text-ink-600 sm:text-[13px]">
+            <p className="mt-1 text-[12px] leading-snug text-ink-600 sm:text-[13px]">
               {organization}
             </p>
           )}
@@ -539,20 +557,20 @@ export function ContactRow({
       </div>
 
       {areaLabel && (
-        <p className="mt-1.5 flex items-center gap-1 text-xs text-ink-600 sm:text-xs">
+        <p className="mt-1.5 flex items-center justify-center gap-1 text-xs text-ink-600 sm:text-xs">
           <MapPin className="h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
           <span className="truncate">{areaLabel}</span>
         </p>
       )}
 
       {address && (
-        <p className="mt-1 text-[12px] leading-relaxed text-ink-600 sm:text-[13px]">
+        <p className="mt-1 max-w-prose text-[12px] leading-relaxed text-ink-600 sm:text-[13px]">
           {address}
         </p>
       )}
 
       {notes && (
-        <p className="mt-1.5 text-[12px] leading-relaxed text-ink-600 sm:text-[13px]">
+        <p className="mt-1.5 max-w-prose text-[12px] leading-relaxed text-ink-600 sm:text-[13px]">
           {notes}
         </p>
       )}
@@ -569,10 +587,14 @@ export function ContactRow({
           </a>
         ) : (
           <Link
-            href="/contact#contact-form"
+            href={
+              user
+                ? '/contact#contact-form'
+                : `/login?next=${encodeURIComponent('/contact#contact-form')}`
+            }
             className={`inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-lg border border-brand-200 bg-white px-4 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50 ${LIGHT_FOCUS}`}
           >
-            অনুরোধ পাঠান
+            {user ? 'অনুরোধ পাঠান' : 'অনুরোধে লগইন করুন'}
           </Link>
         )}
       </div>

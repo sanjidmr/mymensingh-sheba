@@ -108,6 +108,7 @@ export default function VehicleDirectory() {
         title={listing.titleBn}
         subtitle={listing.subtitleBn}
         imageUrl={listing.imageUrl}
+        publicCode={listing.publicCode}
         priceLabel={price?.label}
         priceSuffix={price?.suffix}
         areaLabel={areaNames(listing.areaIds)}

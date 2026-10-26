@@ -9,7 +9,7 @@ import ContactPostCta from '@/components/contact/ContactPostCta';
 import ContactFaq from '@/components/contact/ContactFaq';
 import ContactLocation from '@/components/contact/ContactLocation';
 import ContactClosing from '@/components/contact/ContactClosing';
-import { getSiteContentOverrides } from '@/lib/site-content-server';
+import { getSiteContentForViewer } from '@/lib/site-content-server';
 import { mergeSiteContact } from '@/lib/site-content';
 
 export const metadata: Metadata = {
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
 };
 
 export default async function ContactPage() {
-  const overrides = await getSiteContentOverrides();
+  const overrides = await getSiteContentForViewer();
   const contact = mergeSiteContact(overrides);
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">

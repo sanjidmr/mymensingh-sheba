@@ -36,6 +36,7 @@ export interface DirectorySearchBarProps {
   sortOptions?: { id: string; labelBn: string }[];
   currentSort?: string;
   onSortChange?: (id: string) => void;
+  inlineAction?: React.ReactNode;
 }
 
 /**
@@ -60,6 +61,7 @@ export default function DirectorySearchBar({
   sortOptions,
   currentSort = 'newest',
   onSortChange,
+  inlineAction,
 }: DirectorySearchBarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draft, setDraft] = useState<FilterState>(filterState);
@@ -112,20 +114,23 @@ export default function DirectorySearchBar({
           )}
         </div>
 
-        <button
-          type="button"
-          onClick={openSheet}
-          aria-haspopup="dialog"
-          className={`inline-flex min-h-[46px] w-full shrink-0 items-center justify-center gap-2 rounded-lg bg-brand-700 px-4 text-sm font-bold text-white transition-colors hover:bg-brand-800 sm:w-auto ${LIGHT_FOCUS}`}
-        >
-          <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {filterLabel}
-          {activeCount > 0 && (
-            <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-400 px-1 text-[11px] font-extrabold text-brand-950">
-              {activeCount}
-            </span>
-          )}
-        </button>
+        <div className={`grid shrink-0 gap-2 ${inlineAction ? 'w-full grid-cols-2 sm:w-auto' : 'w-full sm:w-auto'}`}>
+          <button
+            type="button"
+            onClick={openSheet}
+            aria-haspopup="dialog"
+            className={`inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-bold text-white transition-colors hover:bg-brand-800 sm:min-h-[42px] sm:text-sm ${LIGHT_FOCUS}`}
+          >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
+            {filterLabel}
+            {activeCount > 0 && (
+              <span className="inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-accent-400 px-1 text-[11px] font-extrabold text-brand-950">
+                {activeCount}
+              </span>
+            )}
+          </button>
+          {inlineAction}
+        </div>
       </div>
 
       {/* Count + sort */}

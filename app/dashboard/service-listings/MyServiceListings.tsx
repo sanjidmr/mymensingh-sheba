@@ -79,6 +79,7 @@ export default function MyServiceListings() {
                   <div className="min-w-0">
                     <span className={`inline-flex whitespace-nowrap rounded-full px-2 py-1 text-xs font-bold ${status.className}`}>{status.labelBn}</span>
                     <h2 className="mt-2 font-extrabold text-ink-900">{row.titleBn}</h2>
+                    {row.publicCode && <p className="mt-1 font-mono text-xs font-bold text-brand-700">আইডি: {row.publicCode}</p>}
                     <p className="mt-1 text-sm text-ink-500">{row.category === 'coaching' ? 'কোচিং সেন্টার' : 'WiFi প্রদানকারী'} · {status.descriptionBn}</p>
                     {row.rejectionReason && <p className="mt-2 rounded-md bg-rose-50 p-2 text-sm text-rose-800">কারণ: {row.rejectionReason}</p>}
                   </div>

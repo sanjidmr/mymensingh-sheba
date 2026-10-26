@@ -70,9 +70,10 @@ interface Props {
   listing: ServiceListing;
   /** The kind implied by the listing this request was opened from. */
   defaultKind?: VehicleKind;
+  onSuccess?: (referenceCode: string, message: string) => void;
 }
 
-export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
+export default function VehicleServiceRequest({ listing, defaultKind, onSuccess }: Props) {
   const kindOfListing = useMemo(
     () =>
       listing.tags.find((t): t is VehicleKind =>
@@ -161,8 +162,12 @@ export default function VehicleServiceRequest({ listing, defaultKind }: Props) {
         routeKind: 'service',
       });
       setStatus('sent');
-      setRequestReference(result.referenceCode ?? '');
-      setMessage(result.warning ?? 'আপনার অনুরোধ পাঠানো হয়েছে। অ্যাডমিন শীঘ্রই যোগাযোগ করবেন।');
+      const referenceCode = result.referenceCode ?? '';
+      const confirmationMessage =
+        result.warning ?? 'আপনার অনুরোধ অ্যাডমিন টিমের কাছে পাঠানো হয়েছে।';
+      setRequestReference(referenceCode);
+      setMessage(confirmationMessage);
+      onSuccess?.(referenceCode, confirmationMessage);
     } else {
       setStatus('error');
       setMessage(result.error);

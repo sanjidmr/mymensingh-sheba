@@ -92,6 +92,7 @@ export default function BusDirectory() {
         title={listing.titleBn}
         subtitle={listing.operatorBn || route || listing.subtitleBn}
         imageUrl={listing.imageUrl}
+        publicCode={listing.publicCode}
         priceLabel={fare || undefined}
         priceSuffix={fare ? 'ভাড়া' : undefined}
         areaLabel={route || areaNames(listing.areaIds)}

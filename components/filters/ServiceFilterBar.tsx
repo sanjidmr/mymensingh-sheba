@@ -22,7 +22,7 @@ import {
   TUTOR_FEE_PRESETS,
   TUTOR_AVAILABILITY_OPTIONS,
 } from '@/lib/filter-definitions';
-import { getAreaById } from '@/lib/locations';
+import { getAllMCCAreas, getAreaById } from '@/lib/locations';
 import ServiceFilterDrawer from './ServiceFilterDrawer';
 import LocationPickerModal from '@/components/LocationPickerModal';
 
@@ -36,6 +36,7 @@ interface ServiceFilterBarProps {
   currentSort?: string;
   onSortChange?: (sortId: string) => void;
   subjectOptions?: { id: string; labelBn: string }[];
+  inlineAction?: React.ReactNode;
 }
 
 export default function ServiceFilterBar({
@@ -48,6 +49,7 @@ export default function ServiceFilterBar({
   currentSort = 'newest',
   onSortChange,
   subjectOptions,
+  inlineAction,
 }: ServiceFilterBarProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
   const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
@@ -200,6 +202,7 @@ export default function ServiceFilterBar({
 
   // 9c. Experience (Staff services)
   if (
+    serviceType !== 'home-tutor' &&
     typeof filterValues.experienceYears === 'string' &&
     filterValues.experienceYears !== 'all'
   ) {
@@ -452,6 +455,133 @@ export default function ServiceFilterBar({
     typeof filterValues.areaId === 'string' ? filterValues.areaId : undefined
   );
 
+  if (serviceType === 'home-tutor') {
+    const areas = getAllMCCAreas({ activeOnly: true }).map((area) => ({
+      id: area.id,
+      labelBn: area.nameBn,
+    }));
+    const updateTutorFilter = (key: string, value: string) => {
+      const next = { ...filterValues };
+      if (!value || value === 'all') delete next[key];
+      else next[key] = value;
+      onFilterChange(next);
+    };
+
+    return (
+      <section className="mb-3 rounded-xl border border-mist-200 bg-white p-2 sm:mb-4 sm:rounded-2xl sm:p-3">
+        <div className="flex min-w-0 items-center justify-between gap-1.5 sm:gap-2">
+          <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
+            {inlineAction}
+            <button
+              type="button"
+              aria-expanded={isDrawerOpen}
+              onClick={() => setIsDrawerOpen((open) => !open)}
+              className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-brand-700 px-2 text-[11px] font-bold text-white transition-colors hover:bg-brand-800 sm:min-h-10 sm:gap-2 sm:rounded-xl sm:px-3.5 sm:text-[13px]"
+            >
+              <SlidersHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
+              ফিল্টার
+              {activeCount > 0 && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-400 px-1 text-[10px] font-extrabold text-brand-950 sm:h-5 sm:min-w-5 sm:text-[11px]">
+                  {activeCount}
+                </span>
+              )}
+            </button>
+            {activeCount > 0 && (
+              <button
+                type="button"
+                onClick={onResetFilters}
+                aria-label="সব ফিল্টার মুছুন"
+                className="inline-flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-bold text-ink-500 hover:bg-mist-50 sm:min-h-10 sm:px-2"
+              >
+                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+                <span className="hidden sm:inline">মুছুন</span>
+              </button>
+            )}
+          </div>
+          <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-3">
+            <span className="shrink-0 text-[10px] text-ink-500 sm:text-xs">
+              <strong className="text-ink-800">{totalResults}</strong> জন
+            </span>
+            {sortOptions && onSortChange && (
+              <label className="flex min-w-0 items-center gap-1 sm:gap-1.5">
+                <span className="sr-only sm:not-sr-only">সাজান</span>
+                <select
+                  aria-label="গৃহশিক্ষক সাজান"
+                  value={currentSort}
+                  onChange={(event) => onSortChange(event.target.value)}
+                  className="min-h-9 w-[86px] min-w-0 rounded-lg border border-brand-100 bg-mist-50 px-1 text-[10px] font-medium text-ink-800 sm:min-h-10 sm:w-auto sm:max-w-36 sm:px-2 sm:text-xs"
+                >
+                  {sortOptions.map((option) => (
+                    <option key={option.id} value={option.id}>{option.labelBn}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+          </div>
+        </div>
+
+        {isDrawerOpen && (
+          <div className="mt-3 grid grid-cols-2 gap-2.5 border-t border-mist-100 pt-3 sm:grid-cols-3 lg:grid-cols-4">
+            <TutorSelect
+              label="এলাকা"
+              value={String(filterValues.areaId ?? 'all')}
+              options={[{ id: 'all', labelBn: 'সব এলাকা' }, ...areas]}
+              onChange={(value) => updateTutorFilter('areaId', value)}
+            />
+            <TutorSelect
+              label="শ্রেণি"
+              value={String(filterValues.classLevel ?? 'all')}
+              options={TUTOR_CLASSES}
+              onChange={(value) => updateTutorFilter('classLevel', value)}
+            />
+            <TutorSelect
+              label="বিষয়"
+              value={String(filterValues.subject ?? 'all')}
+              options={subjectOptions ?? TUTOR_SUBJECTS}
+              onChange={(value) => updateTutorFilter('subject', value)}
+            />
+            <TutorSelect
+              label="পড়ানোর মাধ্যম"
+              value={String(filterValues.mode ?? 'all')}
+              options={TUTOR_TEACHING_MODES}
+              onChange={(value) => updateTutorFilter('mode', value)}
+            />
+            <TutorSelect
+              label="শিক্ষকের ধরন"
+              value={String(filterValues.gender ?? 'all')}
+              options={TUTOR_GENDERS}
+              onChange={(value) => updateTutorFilter('gender', value)}
+            />
+            <TutorSelect
+              label="অভিজ্ঞতা"
+              value={String(filterValues.experienceYears ?? 'all')}
+              options={TUTOR_EXPERIENCE_OPTIONS}
+              onChange={(value) => updateTutorFilter('experienceYears', value)}
+            />
+            <TutorSelect
+              label="শিক্ষাগত যোগ্যতা"
+              value={String(filterValues.education ?? 'all')}
+              options={TUTOR_EDUCATION_OPTIONS}
+              onChange={(value) => updateTutorFilter('education', value)}
+            />
+            <TutorSelect
+              label="মাসিক বেতন"
+              value={String(filterValues.salaryPreset ?? 'all')}
+              options={TUTOR_FEE_PRESETS}
+              onChange={(value) => updateTutorFilter('salaryPreset', value)}
+            />
+            <TutorSelect
+              label="প্রাপ্যতা"
+              value={String(filterValues.availability ?? 'all')}
+              options={TUTOR_AVAILABILITY_OPTIONS}
+              onChange={(value) => updateTutorFilter('availability', value)}
+            />
+          </div>
+        )}
+      </section>
+    );
+  }
+
   return (
     <div className="mb-6 space-y-3">
       {/* Top Bar: Controls + Results Counter */}
@@ -594,5 +724,32 @@ export default function ServiceFilterBar({
         title="সেবার এলাকা বেছে নিন"
       />
     </div>
+  );
+}
+
+function TutorSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { id: string; labelBn: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="min-w-0">
+      <span className="mb-1 block truncate text-[11px] font-semibold text-ink-600">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="min-h-10 w-full min-w-0 rounded-lg border border-brand-100 bg-white px-2 text-xs text-ink-800 focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-500"
+      >
+        {options.map((option) => (
+          <option key={option.id} value={option.id}>{option.labelBn}</option>
+        ))}
+      </select>
+    </label>
   );
 }

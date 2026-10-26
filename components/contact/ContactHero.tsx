@@ -68,7 +68,7 @@ export default function ContactHero({
           </li>
           <li className="flex items-center gap-2 text-xs font-medium text-brand-200/90 sm:text-[13px]">
             <MessageCircleQuestion className="h-3.5 w-3.5 shrink-0 text-accent-400" aria-hidden="true" />
-            নিবন্ধন ছাড়াই বার্তা পাঠানো যায়
+            বার্তা পাঠাতে লগইন প্রয়োজন
           </li>
         </ul>
 

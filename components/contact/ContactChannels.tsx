@@ -1,3 +1,5 @@
+'use client';
+
 import Link from 'next/link';
 import {
   Mail,
@@ -9,6 +11,7 @@ import {
 import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
 import type { mergeSiteContact } from '@/lib/site-content';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { useAuth } from '@/lib/auth-context';
 
 type ChannelState = 'ready' | 'pending';
 
@@ -42,8 +45,30 @@ export default function ContactChannels({
 }: {
   contact: ReturnType<typeof mergeSiteContact>;
 }) {
+  const { user, isLoading } = useAuth();
   const messenger = contact.socials.find((s) => s.icon === 'messenger');
   const facebook = contact.socials.find((s) => s.icon === 'facebook');
+
+  if (isLoading || !user) {
+    return (
+      <div className="rounded-2xl border border-brand-100 bg-white p-5 sm:p-6">
+        <h2 className="text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl">
+          যোগাযোগের উপায়
+        </h2>
+        <p className="mt-2 text-sm leading-relaxed text-ink-500">
+          ফোন, চ্যাট বা বার্তা পাঠাতে লগইন করুন। জরুরি সেবার নম্বরগুলো আলাদা জরুরি সেবা পাতায় পাবেন।
+        </p>
+        {!isLoading && (
+          <Link
+            href={`/login?next=${encodeURIComponent('/contact')}`}
+            className={`mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-bold text-white ${LIGHT_FOCUS}`}
+          >
+            লগইন করুন
+          </Link>
+        )}
+      </div>
+    );
+  }
 
   const channels: Channel[] = [
     {

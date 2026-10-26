@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { PlusCircle, Lock, Loader2 } from 'lucide-react';
+import { Lock, Loader2, PlusCircle } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
@@ -166,30 +166,10 @@ function HomeTutorContent() {
 
   return (
     <RoutePlaceholderShell
-      title="গৃহশিক্ষক (Home Tutor) — ময়মনসিংহ"
+      title="গৃহশিক্ষক — ময়মনসিংহ"
       breadcrumbs={[{ label: 'গৃহশিক্ষক' }]}
       compact
     >
-      {/* Top Banner with Post Profile CTA */}
-      <div className="mb-3 flex flex-col gap-3 border-b border-mist-200 pb-3 sm:mb-5 sm:flex-row sm:items-end sm:justify-between sm:pb-5">
-        <div className="min-w-0">
-          <h2 className="mt-1 text-[16px] font-extrabold leading-snug text-ink-900 sm:text-[18px]">
-            শিক্ষার্থী ও অভিজ্ঞ গৃহশিক্ষক খুঁজুন অথবা পড়াতে প্রোফাইল খুলুন
-          </h2>
-          <p className="mt-1 max-w-xl text-[12.5px] leading-relaxed text-ink-500">
-            একই অ্যাকাউন্ট ব্যবহার করে গৃহ শিক্ষক প্রোফাইল তৈরি ও আপডেট করতে পারবেন।
-          </p>
-        </div>
-
-        <Link
-          href="/profile/home-tutor/setup"
-          className={`inline-flex min-h-11 shrink-0 items-center gap-1.5 self-start rounded-xl bg-brand-700 px-4 text-[12.5px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:self-auto ${LIGHT_FOCUS}`}
-        >
-          <PlusCircle className="w-4 h-4" />
-          <span>গৃহ শিক্ষক প্রোফাইল খুলুন</span>
-        </Link>
-      </div>
-
       {/* Centralized Filter Bar */}
       <ServiceFilterBar
         serviceType="home-tutor"
@@ -201,6 +181,17 @@ function HomeTutorContent() {
         currentSort={sortBy}
         onSortChange={setSortBy}
         subjectOptions={subjectOptions}
+        inlineAction={
+          <Link
+            href="/profile/home-tutor/setup"
+            aria-label="গৃহশিক্ষক প্রোফাইল খুলুন"
+            title="গৃহশিক্ষক প্রোফাইল খুলুন"
+            className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2 text-[10px] font-extrabold text-brand-800 transition-colors hover:bg-brand-100 sm:min-h-10 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs ${LIGHT_FOCUS}`}
+          >
+            <PlusCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
+            <span className="whitespace-nowrap">গৃহশিক্ষক প্রোফাইল খুলুন</span>
+          </Link>
+        }
       />
 
       {loading ? (
@@ -214,7 +205,7 @@ function HomeTutorContent() {
           areaName={activeArea?.nameBn}
         />
       ) : (
-        <div className="grid grid-cols-1 gap-5 max-sm:grid-cols-2 max-sm:gap-3 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 sm:gap-3 xl:grid-cols-3">
           {filteredTutors.map((tutor) => (
             <TutorCard key={tutor.id} tutor={tutor} />
           ))}

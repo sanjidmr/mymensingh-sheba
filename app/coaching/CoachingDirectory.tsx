@@ -135,6 +135,7 @@ export default function CoachingDirectory() {
         title={listing.titleBn}
         subtitle={listing.subtitleBn}
         imageUrl={listing.imageUrl || listing.logoUrl}
+        publicCode={listing.publicCode}
         priceLabel={fee}
         priceSuffix={fee ? '/মাস' : undefined}
         areaLabel={areaNames(listing.areaIds)}
@@ -162,13 +163,11 @@ export default function CoachingDirectory() {
       sorters={SORTERS}
       renderCard={renderCard}
       banner={
-        <div className="space-y-3">
-          <OwnerListingCta category="coaching" />
-          <section aria-labelledby="coaching-categories-heading" className="rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-4">
+        <section aria-labelledby="coaching-categories-heading" className="rounded-2xl border border-brand-100 bg-white p-3 sm:p-3.5">
             <h2 id="coaching-categories-heading" className="text-sm font-extrabold text-ink-900">
               কোচিংয়ের ক্যাটাগরি
             </h2>
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
+            <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
               {COACHING_CATEGORIES.map((category) => {
                 const selected = selectedCategory === category.id;
                 return (
@@ -177,7 +176,7 @@ export default function CoachingDirectory() {
                     type="button"
                     aria-pressed={selected}
                     onClick={() => setSelectedCategory(selected ? null : category.id)}
-                    className={`min-h-11 rounded-xl border px-3 py-2 text-[12px] font-bold transition-colors ${
+                    className={`min-h-9 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-colors sm:min-h-10 sm:px-3 sm:text-xs ${
                       selected
                         ? 'border-brand-700 bg-brand-700 text-white'
                         : 'border-brand-200 bg-white text-ink-700 hover:bg-mist-50'
@@ -189,8 +188,8 @@ export default function CoachingDirectory() {
               })}
             </div>
           </section>
-        </div>
       }
+      inlineAction={<OwnerListingCta category="coaching" />}
       action={<AdminListingLink category="coaching" label="কোচিং যোগ করুন" />}
     />
   );

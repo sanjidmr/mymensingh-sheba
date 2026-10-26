@@ -1,6 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 import { cache } from 'react';
 import type { SiteContentOverrides } from './site-content';
+import { createServerSideClient } from './supabase/server';
+import {
+  SITE_CONTACT_EMAIL,
+  SITE_CONTACT_PHONE,
+  SITE_CONTACT_SOCIALS,
+} from './site-contact.server';
 
 const OVERRIDE_KEYS = new Set([
   'homepage_sections',
@@ -151,4 +157,43 @@ export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverri
   }
 
   return overrides;
+});
+
+export const getSiteContentForViewer = cache(async (): Promise<SiteContentOverrides> => {
+  const overrides = await getSiteContentOverrides();
+  const client = await createServerSideClient();
+  const { data, error } = client
+    ? await client.auth.getUser()
+    : { data: { user: null }, error: null };
+
+  if (error) {
+    console.error('Site contact access could not be verified.', error.message);
+  }
+  if (error || !data.user) {
+    const contact = overrides.site_contact;
+    return {
+      ...overrides,
+      site_contact: contact
+        ? {
+            ...contact,
+            phone: null,
+            email: '',
+            socials: contact.socials?.map((social) => ({ ...social, href: null })),
+          }
+        : undefined,
+    };
+  }
+
+  return {
+    ...overrides,
+    site_contact: {
+      ...overrides.site_contact,
+      phone: overrides.site_contact?.phone ?? SITE_CONTACT_PHONE,
+      email: overrides.site_contact?.email ?? SITE_CONTACT_EMAIL,
+      socials:
+        overrides.site_contact?.socials && overrides.site_contact.socials.length > 0
+          ? overrides.site_contact.socials
+          : SITE_CONTACT_SOCIALS,
+    },
+  };
 });

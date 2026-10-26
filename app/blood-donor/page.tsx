@@ -23,9 +23,8 @@ import type { BloodDonorProfile } from '@/lib/supabase/types';
 function BloodDonorContent() {
   const searchParams = useSearchParams();
 
-  // Blood group is the only filter on this page — see the dedicated control in
-  // `ServiceFilterBar`. Area/availability were removed from this surface so the
-  // emergency path stays one tap.
+  // Blood group remains the only filter; donor readiness is shown directly on
+  // each card from the saved availability field.
   const initialGroup = searchParams.get('group') || searchParams.get('bloodGroup') || 'all';
   /** Set by the `/blood-donor/[id]` redirect — which card to bring into view. */
   const focusDonorId = searchParams.get('donor');

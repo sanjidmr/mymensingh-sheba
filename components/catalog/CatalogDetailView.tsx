@@ -14,6 +14,7 @@
  */
 import React from 'react';
 import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { ArrowLeft, MapPin, MessageCircle, Phone } from 'lucide-react';
 import DirectoryShell from '@/components/directory/DirectoryShell';
 import { ListingMedia, TileCard } from '@/components/catalog/CatalogCards';
@@ -147,9 +148,9 @@ export default function CatalogDetailView({
               {listing.titleBn}
             </h1>
 
-            {(listing.category === 'vehicle' ? listing.publicCode : listing.publicId) && (
+            {listing.publicCode && (
               <p className="mt-2 inline-flex rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1 font-mono text-sm font-extrabold tracking-wider text-brand-800">
-                আইডি: {listing.category === 'vehicle' ? listing.publicCode : listing.publicId}
+                আইডি: {listing.publicCode}
               </p>
             )}
 
@@ -332,10 +333,9 @@ export function CatalogDetailMissing({ ui }: { ui: CategoryUiConfig }) {
 /**
  * The contact block.
  *
- * The private number is only ever rendered when the database actually holds
- * one, and it is fetched with an admin check inside the service layer, so a
- * signed-out reader receives a real number or no number — never a placeholder
- * and never a national hotline standing in for a local one.
+ * Contact details are only returned to authenticated visitors. Guests can read
+ * the listing but must sign in before the number or contact actions are sent to
+ * the browser.
  */
 export function ContactBlock({
   phone,
@@ -349,6 +349,27 @@ export function ContactBlock({
    */
   hideRequestFallback?: boolean;
 }) {
+  const { user, isLoading } = useAuth();
+  const pathname = usePathname();
+  if (isLoading || !user) {
+    return (
+      <div className="rounded-xl border border-brand-100 bg-white p-3.5 sm:p-4">
+        <h2 className="text-[14px] font-bold text-ink-900 sm:text-base">যোগাযোগ</h2>
+        <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-500">
+          যোগাযোগের নম্বর দেখতে ও কল/বার্তা পাঠাতে লগইন করুন।
+        </p>
+        {!isLoading && (
+          <Link
+            href={`/login?next=${encodeURIComponent(pathname || '/')}`}
+            className={`mt-3 inline-flex min-h-[44px] w-full items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+          >
+            লগইন করুন
+          </Link>
+        )}
+      </div>
+    );
+  }
+
   if (!phone) {
     return (
       <div className="rounded-xl border border-brand-100 bg-white p-3.5 sm:p-4">

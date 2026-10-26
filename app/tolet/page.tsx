@@ -190,15 +190,6 @@ function ToletDirectory() {
       subtitle="ময়মনসিংহ সিটি কর্পোরেশন এলাকার যাচাই করা ফ্ল্যাট, মেস ও সিট ভাড়ার বিজ্ঞাপন।"
       breadcrumbs={[{ label: 'বাসা ভাড়া' }]}
       highlights={['যাচাই করা বিজ্ঞাপন', 'সরাসরি মালিকের সাথে', 'মধ্যস্বত্বভোগী নেই']}
-      action={
-        <Link
-          href="/profile/tolet/new"
-          className={`inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-lg bg-brand-700 px-3.5 text-[13px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:w-auto ${LIGHT_FOCUS}`}
-        >
-          <PlusCircle className="h-4 w-4" aria-hidden="true" />
-          আপনার বাসা ভাড়া দিন
-        </Link>
-      }
     >
       <DirectorySearchBar
         value={controller.query}
@@ -213,6 +204,15 @@ function ToletDirectory() {
         sortOptions={SORT_OPTIONS}
         currentSort={controller.sort}
         onSortChange={controller.setSort}
+        inlineAction={
+          <Link
+            href="/profile/tolet/new"
+            className={`inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2 text-[11px] font-extrabold text-brand-800 transition-colors hover:bg-brand-100 sm:min-h-[42px] sm:gap-2 sm:px-3 sm:text-sm ${LIGHT_FOCUS}`}
+          >
+            <PlusCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="whitespace-nowrap">আপনার বাসা ভাড়া দিন</span>
+          </Link>
+        }
       />
 
       <div className="mt-2.5">

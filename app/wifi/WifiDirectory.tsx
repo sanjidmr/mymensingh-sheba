@@ -79,6 +79,7 @@ export default function WifiDirectory() {
         title={listing.titleBn}
         subtitle={listing.subtitleBn}
         imageUrl={listing.logoUrl || listing.imageUrl}
+        publicCode={listing.publicCode}
         priceLabel={price || undefined}
         priceSuffix={price ? '/মাস' : undefined}
         packageLines={packages.map((item) =>
@@ -114,7 +115,7 @@ export default function WifiDirectory() {
       sortOptions={SORT_OPTIONS}
       sorters={SORTERS}
       renderCard={renderCard}
-      banner={<OwnerListingCta category="wifi" />}
+      inlineAction={<OwnerListingCta category="wifi" />}
       action={<AdminListingLink category="wifi" label="প্রোভাইডার যোগ করুন" />}
     />
   );

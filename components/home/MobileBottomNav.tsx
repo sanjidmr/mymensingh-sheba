@@ -21,7 +21,7 @@ const ITEMS = [
  * Routes that own the whole screen and should not carry site navigation —
  * the admin console and the auth screens. Everything else keeps the bar.
  */
-const BARE_ROUTES = ['/admin', '/login', '/register', '/forgot-password', '/design-system'];
+const BARE_ROUTES = ['/admin', '/login', '/register', '/forgot-password', '/onboarding', '/welcome', '/design-system'];
 
 function isBareRoute(pathname: string): boolean {
   return BARE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));

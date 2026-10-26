@@ -3,7 +3,7 @@
 import React, { use, useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Flag, ShieldAlert, Info } from 'lucide-react';
+import { Flag, ShieldAlert, Info, Truck, ArrowRight } from 'lucide-react';
 
 import Navbar from '@/components/Navbar';
 import { PropertyGallery } from '@/components/tolet/detail/PropertyGallery';
@@ -359,6 +359,29 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
             )}
           </aside>
         </div>
+
+        <section className="mt-5 flex flex-col gap-3 rounded-2xl border border-brand-100 bg-white p-4 shadow-sm sm:mt-6 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div className="flex min-w-0 items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+              <Truck className="h-5 w-5" aria-hidden="true" />
+            </span>
+            <div className="min-w-0">
+              <h2 className="text-sm font-extrabold text-ink-900 sm:text-base">
+                নতুন বাসায় উঠতে শিফটিং সহায়তা লাগবে?
+              </h2>
+              <p className="mt-1 text-xs leading-relaxed text-ink-600 sm:text-sm">
+                বাসা ভাড়া নেওয়ার পর পিকআপ/ভ্যান ও শ্রমিকসহ বাসা পাল্টানোর সেবা এক জায়গা থেকেই নিন।
+              </p>
+            </div>
+          </div>
+          <Link
+            href="/home-moving"
+            className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-bold text-white transition-colors hover:bg-brand-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2"
+          >
+            বাসা পাল্টানোর সেবা নিন
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </Link>
+        </section>
 
         <SimilarProperties listings={similar} />
 

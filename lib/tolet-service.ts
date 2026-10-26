@@ -59,7 +59,7 @@ function mapListingRow(row: RawListingRow): ToletListing {
   const isDemo = typeof c.id === 'string' && c.id.startsWith('demo-');
   return {
     id: c.id as string,
-    publicId: (c.publicId as string) || undefined,
+    publicId: (c.serviceCode as string) || (c.publicId as string) || undefined,
     ownerId: (c.ownerId as string) || 'demo-owner',
     ownerName:
       (owner?.full_name as string) || (isDemo ? 'নমুনা মালিক' : '') || (c.ownerName as string) || '',

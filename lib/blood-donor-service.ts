@@ -35,7 +35,7 @@ function mapDonorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: (c.id as string) || '',
-    publicId: (c.publicId as string) || undefined,
+    publicId: (c.serviceCode as string) || (c.publicId as string) || undefined,
     userId: (c.userId as string) || '',
     status: (c.status as BloodDonorStatus) || 'draft',
     fullName: (c.fullName as string) || '',

@@ -8,6 +8,7 @@ import {
   type ContactSubject,
 } from '@/lib/contact-types';
 import { submitContactMessage, type ContactSubmitResult } from '@/lib/contact-service';
+import { createServerSideClient } from '@/lib/supabase/server';
 
 /**
  * Server action behind the /contact form.
@@ -36,6 +37,28 @@ export const INITIAL_CONTACT_STATE: ContactActionState = {
 export async function sendContactMessage(
   values: ContactFormValues
 ): Promise<ContactActionState> {
+  const client = await createServerSideClient();
+  if (!client) {
+    return {
+      status: 'error',
+      errors: {},
+      formErrorBn: 'ডেটাবেজ সংযোগ নেই। পরে আবার চেষ্টা করুন।',
+      fallbackEmail: null,
+    };
+  }
+  const {
+    data: { user },
+    error: authError,
+  } = await client.auth.getUser();
+  if (authError || !user) {
+    return {
+      status: 'error',
+      errors: {},
+      formErrorBn: 'বার্তা পাঠাতে আগে লগইন করুন।',
+      fallbackEmail: null,
+    };
+  }
+
   const errors = validateContactForm(values);
 
   if (hasContactErrors(errors)) {
@@ -57,6 +80,7 @@ export async function sendContactMessage(
     // Safe: `subject` is non-empty because validation passed above.
     subject: values.subject as ContactSubject,
     message: values.message,
+    userId: user.id,
   });
 
   if (!result.ok) {

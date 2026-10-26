@@ -38,7 +38,7 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
       render: (row) => (
         <span className="block min-w-0">
           <span className="block break-words font-semibold">{row.title_bn}</span>
-        <span className="block font-mono text-[10px] font-bold text-brand-700">আইডি: {row.public_id}</span>
+        <span className="block font-mono text-[10px] font-bold text-brand-700">আইডি: {row.public_code ?? row.public_id}</span>
         <span className="block break-all font-mono text-[10px] text-admin-muted">{row.slug}</span>
         </span>
       ),

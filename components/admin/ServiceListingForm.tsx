@@ -418,6 +418,11 @@ export default function ServiceListingForm({
           : 'শুধু সরবরাহ করা তথ্য লিখুন। তথ্য যাচাইয়ের আলাদা ডেটাবেস ক্ষেত্র নেই; প্রকাশনার অবস্থা তথ্য-যাচাইয়ের প্রমাণ নয়।'}
         breadcrumb={{ href: `/admin/directories/${category}`, label: `${LABEL[category]} তালিকা` }}
       />
+      {listing?.public_code && (
+        <p className="rounded-lg border border-admin-border bg-white px-4 py-3 text-sm font-semibold text-admin-text">
+          সার্ভিস ID: <span className="font-mono font-bold text-brand-700">{listing.public_code}</span>
+        </p>
+      )}
       <form onSubmit={submit} className="space-y-4">
         {isVehicle ? (
           <>

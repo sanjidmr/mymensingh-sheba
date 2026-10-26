@@ -18,14 +18,33 @@ const EMERGENCY_PUBLIC_PATHS = new Set([
   '/fireservice',
 ]);
 
+const PUBLIC_API_PATHS = new Set([
+  '/api/site-content',
+  '/api/vehicle-route',
+  '/api/tolet/events',
+]);
+
+const AUTH_REQUIRED_PAGE_PATHS = [
+  '/admin',
+  '/dashboard',
+  '/profile',
+  '/onboarding',
+  '/welcome',
+];
+
 const ROUTE_AUTHENTICATED_API_PATHS = new Set([
   '/api/admin-email-alerts/worker',
   '/api/admin-email-alerts/webhook',
 ]);
 
-function isPublicPath(pathname: string): boolean {
+function isPublicPage(pathname: string): boolean {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/';
-  return AUTH_PUBLIC_PATHS.has(normalizedPath) || EMERGENCY_PUBLIC_PATHS.has(normalizedPath);
+  if (AUTH_PUBLIC_PATHS.has(normalizedPath) || EMERGENCY_PUBLIC_PATHS.has(normalizedPath)) {
+    return true;
+  }
+  return !AUTH_REQUIRED_PAGE_PATHS.some(
+    (path) => normalizedPath === path || normalizedPath.startsWith(`${path}/`)
+  );
 }
 
 function copyAuthCookies(
@@ -60,8 +79,8 @@ function loginRequiredResponse(
 }
 
 /**
- * Refreshes Supabase sessions and requires authentication across the site,
- * except for sign-in flows and emergency-service pages.
+ * Refreshes Supabase sessions. Public content is available to guests; account,
+ * admin and private API routes still require an authenticated session.
  *
  * Why this file exists at all: `@supabase/ssr` stores the session in cookies,
  * and a cookie is only refreshed when the browser sends it along and the
@@ -78,8 +97,12 @@ export async function middleware(request: NextRequest) {
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const pathname = request.nextUrl.pathname.replace(/\/+$/, '') || '/';
   const isRouteAuthenticatedApi = ROUTE_AUTHENTICATED_API_PATHS.has(pathname);
-  const isPublic = isPublicPath(pathname) || isRouteAuthenticatedApi;
   const isApiRequest = request.nextUrl.pathname.startsWith('/api/');
+  const isPublic = isApiRequest
+    ? PUBLIC_API_PATHS.has(pathname) ||
+      EMERGENCY_PUBLIC_PATHS.has(pathname) ||
+      isRouteAuthenticatedApi
+    : isPublicPage(pathname);
 
   const createResponse = () => {
     const nextResponse = NextResponse.next({

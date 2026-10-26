@@ -161,7 +161,7 @@ function communityPostWriteError(
  * needs the field, and the owner path reads it through `fn_my_service_listings`.
  */
 const PUBLIC_LISTING_COLUMNS =
-  'id, public_id, public_code, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, contact_phone_public, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
+  'id, public_id, public_code, category, coaching_category, slug, title_bn, subtitle_bn, summary_bn, description_bn, image_url, logo_url, area_ids, tags, monthly_fee_min, monthly_fee_max, price_min, price_max, speed_mbps, fare_min, fare_max, origin_bn, destination_bn, operator_bn, address_bn, rating_avg, rating_count, seat_count, photos, travel_days, stops_bn, journey_duration_bn, model_name_bn, model_year, has_ac, driver_included, driver_name_bn, available_time_bn, price_note_bn, rate_per_km, minimum_fare, additional_fee, additional_fee_note_bn, available_facilities, unavailable_facilities, owner_id, admission_info_bn, admission_fee, connection_fee, terms_bn, is_active, is_featured, created_at, updated_at';
 
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
@@ -642,13 +642,9 @@ export async function fetchServiceListingBySlug(
 }
 
 /**
- * A single listing by slug, including the private contact number.
- *
- * The number belongs in the schema for the admin who typed it, but publishing
- * it is a moderation decision, not a row-visibility one. RLS cannot hide a
- * column, so the service layer gates this read behind an admin check instead of
- * relying on the public column list alone. A non-admin gets the row with no
- * number attached, and the detail page renders a request button in its place.
+ * A single listing by slug, including its member-visible contact number.
+ * Guest reads never select contact columns; the contact RPC independently
+ * checks authentication. Admins continue to use the admin-only listing RPC.
  */
 export async function fetchServiceListingForContact(
   category: ServiceCategory,
@@ -660,7 +656,33 @@ export async function fetchServiceListingForContact(
   const client = createClient();
   if (!client) return null;
   const isAdmin = await currentUserIsAdmin();
-  if (!isAdmin) return fetchServiceListingBySlug(category, slug);
+  if (!isAdmin) {
+    const { data: authData, error: authError } = await client.auth.getUser();
+    const listing = await fetchServiceListingBySlug(category, slug);
+    if (!listing || authError || !authData.user) return listing;
+
+    const { data: contact, error: contactError } = await client
+      .rpc('fn_authenticated_service_listing_contact', {
+        p_category: category,
+        p_slug: slug,
+      })
+      .maybeSingle();
+    if (contactError) {
+      console.error('Service listing contact lookup failed.', contactError.message);
+      return listing;
+    }
+    const contactPhonePublic =
+      contact &&
+      typeof contact === 'object' &&
+      'contact_phone_public' in contact &&
+      typeof contact.contact_phone_public === 'string'
+        ? contact.contact_phone_public
+        : undefined;
+    return {
+      ...listing,
+      contactPhonePublic,
+    };
+  }
 
   // contact_phone_private is column-revoked; only the admin-gated
   // fn_admin_service_listing RPC may return it.
@@ -773,7 +795,7 @@ export async function adminDeleteServiceListing(
 // member can save a `draft` or send a row to `pending`, never to `approved`.
 
 /** Columns the owner may read back after a write (no private contact column). */
-const OWNER_LISTING_COLUMNS = `${PUBLIC_LISTING_COLUMNS}, status, rejection_reason, published_at`;
+const OWNER_LISTING_COLUMNS = `${PUBLIC_LISTING_COLUMNS}, contact_phone_public, status, rejection_reason, published_at`;
 
 /** Labels used in the "which category" copy and notification text. */
 const CUSTOMER_CATEGORY_LABEL: Record<CustomerServiceCategory, string> = {

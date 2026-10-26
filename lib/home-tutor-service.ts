@@ -66,13 +66,25 @@ export interface AdminTutorRequest {
 
 // PRIVACY: deliberately no private_phone / nid_number here.
 const PUBLIC_TUTOR_COLUMNS =
+  'id, public_id, service_code, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at, educations, current_activity, class_duration_minutes, preferred_student_type';
+const PUBLIC_TUTOR_COLUMNS_WITHOUT_SERVICE_CODE =
   'id, public_id, user_id, status, full_name, gender, institution, department, qualification, experience_years, preferred_areas, preferred_classes, preferred_subjects, expected_salary, days_per_week, bio, student_id_card_url, profile_photo_url, teaching_mode, availability, is_verified, rating_avg, rating_count, published_at, created_at, updated_at, educations, current_activity, class_duration_minutes, preferred_student_type';
+
+function isMissingServiceCodeColumn(error: { code?: string; message?: string }): boolean {
+  return Boolean(
+    error.message?.toLowerCase().includes('service_code') &&
+      (error.code === 'PGRST204' ||
+        error.code === '42703' ||
+        error.message.toLowerCase().includes('schema cache') ||
+        error.message.toLowerCase().includes('does not exist'))
+  );
+}
 
 function mapTutorRow(row: Record<string, unknown>, opts: { admin?: boolean } = {}): HomeTutorProfile {
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: (c.id as string) || '',
-    publicId: (c.publicId as string) || undefined,
+    publicId: (c.serviceCode as string) || (c.publicId as string) || undefined,
     userId: (c.userId as string) || '',
     status: (c.status as TutorProfileStatus) || 'draft',
     fullName: (c.fullName as string) || '',
@@ -177,14 +189,30 @@ export async function fetchPublishedTutors(): Promise<HomeTutorProfile[]> {
   if (!isSupabaseConfigured) return withTutorShowcase(mockFetchPublishedTutors());
   const client = createClient();
   if (!client) return [];
-  const { data, error } = await client
+  const initialResult = await client
     .from('home_tutor_profiles')
     .select(PUBLIC_TUTOR_COLUMNS)
     .eq('status', 'approved')
     .order('published_at', { ascending: false });
+  let data: Record<string, unknown>[] | null =
+    initialResult.data as Record<string, unknown>[] | null;
+  let error = initialResult.error;
+  if (error && isMissingServiceCodeColumn(error)) {
+    console.warn('Tutor service-code migration is not applied; using existing public IDs.');
+    const fallbackResult = await client
+      .from('home_tutor_profiles')
+      .select(PUBLIC_TUTOR_COLUMNS_WITHOUT_SERVICE_CODE)
+      .eq('status', 'approved')
+      .order('published_at', { ascending: false });
+    data = fallbackResult.data as Record<string, unknown>[] | null;
+    error = fallbackResult.error;
+  }
   // With Supabase configured the directory is real approvals only: a query
   // error or an empty approval list is an honest empty state, never a sample.
-  if (error) return [];
+  if (error) {
+    console.error('Published home-tutor directory could not be loaded.', error);
+    return [];
+  }
   return (data || [])
     .map((row) => mapTutorRow(row as Record<string, unknown>))
     .map((t) => ({ ...t, privatePhone: '__protected__' }));
@@ -198,13 +226,31 @@ export async function fetchPublishedTutorById(id: string): Promise<HomeTutorProf
   }
   const client = createClient();
   if (!client) return null;
-  const { data, error } = await client
+  const initialResult = await client
     .from('home_tutor_profiles')
     .select(PUBLIC_TUTOR_COLUMNS)
     .eq('id', id)
     .eq('status', 'approved')
     .maybeSingle();
-  if (error || !data) return null;
+  let data: Record<string, unknown> | null =
+    initialResult.data as Record<string, unknown> | null;
+  let error = initialResult.error;
+  if (error && isMissingServiceCodeColumn(error)) {
+    console.warn('Tutor service-code migration is not applied; using existing public IDs.');
+    const fallbackResult = await client
+      .from('home_tutor_profiles')
+      .select(PUBLIC_TUTOR_COLUMNS_WITHOUT_SERVICE_CODE)
+      .eq('id', id)
+      .eq('status', 'approved')
+      .maybeSingle();
+    data = fallbackResult.data as Record<string, unknown> | null;
+    error = fallbackResult.error;
+  }
+  if (error) {
+    console.error('Published home-tutor profile could not be loaded.', error);
+    return null;
+  }
+  if (!data) return null;
   return { ...mapTutorRow(data as Record<string, unknown>), privatePhone: '__protected__' };
 }
 
