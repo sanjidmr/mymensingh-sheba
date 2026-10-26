@@ -82,9 +82,15 @@ export default function AdminSiteReviewsPage() {
                       <span className={`rounded-md px-2 py-1 text-[11px] font-semibold ${
                         review.status === 'published'
                           ? 'bg-emerald-50 text-emerald-800'
-                          : 'bg-slate-100 text-slate-600'
+                          : review.status === 'pending'
+                            ? 'bg-amber-50 text-amber-800'
+                            : 'bg-slate-100 text-slate-600'
                       }`}>
-                        {review.status === 'published' ? 'প্রকাশিত' : 'আড়াল করা'}
+                        {review.status === 'published'
+                          ? 'প্রকাশিত'
+                          : review.status === 'pending'
+                            ? 'অনুমোদনের অপেক্ষায়'
+                            : 'আড়াল করা'}
                       </span>
                     </div>
                     <div className="mt-2 flex items-center gap-1 text-amber-600" aria-label={`${review.rating} স্টার`}>
@@ -110,7 +116,7 @@ export default function AdminSiteReviewsPage() {
                   >
                     {review.status === 'published'
                       ? <><EyeOff className="h-4 w-4" /> আড়াল করুন</>
-                      : <><Eye className="h-4 w-4" /> প্রকাশ করুন</>}
+                      : <><Eye className="h-4 w-4" /> {review.status === 'pending' ? 'অনুমোদন করে প্রকাশ করুন' : 'প্রকাশ করুন'}</>}
                   </button>
                 </div>
               </article>

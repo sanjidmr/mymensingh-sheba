@@ -1,11 +1,6 @@
 /**
- * Mymensingh Sheba — homepage service reviews.
- *
- * Same shape as the other service modules (`contact-service.ts` etc.): Supabase
- * when configured, otherwise the caller is told honestly that nothing was
- * stored. The homepage "আপনার রিভিউ দিন" modal used to keep reviews only in the
- * visitor's browser; these functions move the store to the `site_reviews`
- * table so every review actually reaches the platform.
+ * Mymensingh Sheba — authenticated homepage reviews with admin moderation.
+ * Supabase RLS keeps new submissions pending until an admin publishes them.
  */
 import { isSupabaseConfigured, createClient } from './supabase/client';
 
@@ -16,7 +11,7 @@ export interface SiteReview {
   rating: number;
   body: string;
   createdAt: string;
-  status: 'published' | 'hidden';
+  status: 'pending' | 'published' | 'hidden';
 }
 
 export interface ReviewSubmitInput {
@@ -24,7 +19,7 @@ export interface ReviewSubmitInput {
   service: string;
   rating: number;
   body: string;
-  userId?: string;
+  userId: string;
 }
 
 export interface ReviewSubmitResult {
@@ -49,7 +44,7 @@ interface RawReviewRow {
   rating?: number | null;
   body?: string | null;
   created_at?: string | null;
-  status?: 'published' | 'hidden' | null;
+  status?: 'pending' | 'published' | 'hidden' | null;
 }
 
 function mapRow(row: RawReviewRow): SiteReview {
@@ -60,7 +55,7 @@ function mapRow(row: RawReviewRow): SiteReview {
     rating: Number(row.rating ?? 0),
     body: (row.body ?? '').trim(),
     createdAt: row.created_at ?? new Date().toISOString(),
-    status: row.status === 'hidden' ? 'hidden' : 'published',
+    status: row.status === 'pending' ? 'pending' : row.status === 'hidden' ? 'hidden' : 'published',
   };
 }
 
@@ -77,11 +72,11 @@ function submitErrorMessage(code?: string): string {
   return 'রিভিউ জমা হয়নি। ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন।';
 }
 
-/** Newest published reviews, for the modal's "আপনাদের মতামত" list. */
+/** Newest published reviews, shown in the homepage review section. */
 export async function fetchPublishedSiteReviews(limit = 24): Promise<SiteReview[]> {
-  if (!isSupabaseConfigured) return [];
+  if (!isSupabaseConfigured) throw new Error('রিভিউ সেবা এখন চালু নেই।');
   const client = createClient();
-  if (!client) return [];
+  if (!client) throw new Error('রিভিউ সেবা এখন চালু নেই।');
 
   const { data, error } = await client
     .from('site_reviews')
@@ -90,11 +85,17 @@ export async function fetchPublishedSiteReviews(limit = 24): Promise<SiteReview[
     .order('created_at', { ascending: false })
     .limit(limit);
 
-  if (error || !Array.isArray(data)) return [];
+  if (error) {
+    console.error('site_reviews_fetch_failed', { code: error.code ?? 'unknown' });
+    throw new Error('রিভিউ লোড করা যায়নি। একটু পরে আবার চেষ্টা করুন।');
+  }
+  if (!Array.isArray(data)) {
+    throw new Error('রিভিউর তথ্য পাওয়া যায়নি।');
+  }
   return (data as RawReviewRow[]).map(mapRow);
 }
 
-/** Store one review. Validation is assumed to have run on the client. */
+/** Store one review for admin approval. Validation is also enforced by RLS. */
 export async function submitSiteReview(
   input: ReviewSubmitInput
 ): Promise<ReviewSubmitResult> {
@@ -121,7 +122,8 @@ export async function submitSiteReview(
       service,
       rating: input.rating,
       body,
-      user_id: input.userId || null,
+      user_id: input.userId,
+      status: 'pending',
     });
     if (!error) return { ok: true, persisted: true, errorBn: '' };
     console.error('site_review_insert_failed', { code: error.code ?? 'unknown' });

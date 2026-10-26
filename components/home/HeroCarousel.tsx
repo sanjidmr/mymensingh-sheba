@@ -35,7 +35,7 @@ import type { PublicHeroSlide } from '@/lib/hero-service';
  *     a ref, so it keeps running for as long as the tab is open, without a
  *     refresh and without re-fetching an image.
  *
- * Gentle autoplay, pause on hover/focus, ghost arrows (desktop) and small dots.
+ * Gentle autoplay, pause on hover/focus, swipe gestures, and desktop controls.
  * Respects `prefers-reduced-motion` (autoplay off, no transitions: the track
  * then walks the real slides and never enters the clone edges).
  *
@@ -116,6 +116,7 @@ export default function HeroCarousel({
   const [paused, setPaused] = useState(false);
   const posRef = useRef(1);
   const snapTimerRef = useRef<number | null>(null);
+  const touchStartXRef = useRef<number | null>(null);
   const reduced = usePrefersReducedMotion();
 
   const setPosBoth = useCallback((value: number) => {
@@ -218,6 +219,23 @@ export default function HeroCarousel({
     snap();
   };
 
+  const onTouchStart = (event: React.TouchEvent<HTMLDivElement>) => {
+    touchStartXRef.current = event.touches[0]?.clientX ?? null;
+  };
+
+  const onTouchEnd = (event: React.TouchEvent<HTMLDivElement>) => {
+    const startX = touchStartXRef.current;
+    touchStartXRef.current = null;
+    if (startX === null) return;
+
+    const endX = event.changedTouches[0]?.clientX;
+    if (endX === undefined) return;
+
+    const distance = endX - startX;
+    if (distance > 40) prev();
+    else if (distance < -40) next();
+  };
+
   const displayIndex = pos === 0 ? N - 1 : pos === N + 1 ? 0 : pos - 1;
   const frameStyle = { backgroundImage: cssUrl(active[0].image) };
 
@@ -230,10 +248,15 @@ export default function HeroCarousel({
     >
       <div className="mx-auto w-full max-w-none px-0 pb-0 pt-0 sm:max-w-7xl sm:px-6 sm:pb-2 sm:pt-3 lg:px-8 lg:pb-3 lg:pt-4">
         <div
-          className="group/carousel relative overflow-hidden rounded-none bg-cover bg-center bg-mist-100 shadow-none ring-0 sm:rounded-2xl sm:shadow-xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-brand-900/10 lg:rounded-3xl"
+          className="group/carousel relative touch-pan-y overflow-hidden rounded-none bg-cover bg-center bg-mist-100 shadow-none ring-0 sm:rounded-2xl sm:shadow-xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-brand-900/10 lg:rounded-3xl"
           style={frameStyle}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
+          onTouchStart={onTouchStart}
+          onTouchEnd={onTouchEnd}
+          onTouchCancel={() => {
+            touchStartXRef.current = null;
+          }}
         >
           {/* Sliding track — clones included, so `pos` may never run past it */}
           <div
@@ -287,7 +310,7 @@ export default function HeroCarousel({
         </div>
 
         {/* Controls stay outside the image so every slide remains unobstructed. */}
-        <div className="mt-2 flex items-center justify-center gap-2">
+        <div className="mt-2 hidden items-center justify-center gap-2 sm:flex">
           <button
             type="button"
             onClick={prev}

@@ -104,8 +104,8 @@ export const HOMEPAGE_SECTIONS = [
   { key: 'row_news', label: 'স্থানীয় খবর ও ঘোষণা' },
   { key: 'steps', label: 'কিভাবে কাজ করে' },
   { key: 'testimonials', label: 'টেস্টিমোনিয়াল' },
-  { key: 'why', label: 'কেন আমরা' },
   { key: 'reviews', label: 'রিভিউ' },
+  { key: 'why', label: 'কেন আমরা' },
   { key: 'final_cta', label: 'শেষ CTA' },
 ] as const;
 

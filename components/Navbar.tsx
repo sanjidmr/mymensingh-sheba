@@ -55,7 +55,7 @@ function PostMenuButton({ compact = false }: { compact?: boolean }) {
             className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-800 transition-colors hover:bg-brand-50"
           >
             <FilePlus2 className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-            নতুন পোস্ট করুন
+            পোস্ট করুন
           </Link>
           <Link
             href="/dashboard/profiles"
@@ -63,7 +63,7 @@ function PostMenuButton({ compact = false }: { compact?: boolean }) {
             className="flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-800 transition-colors hover:bg-brand-50"
           >
             <UserRound className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
-            নতুন প্রোফাইল বানান
+            সেবা প্রোফাইল খুলুন
           </Link>
         </div>
       )}

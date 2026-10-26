@@ -270,7 +270,7 @@ export default function ProfileManager() {
         <section aria-labelledby="profile-options-heading">
           <div className="mb-2">
             <h2 id="profile-options-heading" className="text-[14px] font-bold text-ink-900">
-              নতুন প্রোফাইল খুলুন
+              সেবা প্রোফাইল খুলুন
             </h2>
             <p className="mt-0.5 text-[12px] text-ink-500">
               প্রতিটি সেবার একটি অ্যাকাউন্ট এখান থেকে পরিচালনা করুন।

@@ -30,7 +30,7 @@ import { fetchPublicHeroSlides } from '@/lib/hero-service';
  *   → সার্ভিস রো: বাসা ভাড়া → গৃহশিক্ষক → গাড়ি ভাড়া (৫টি ছোট imageless কার্ড এক রোতে)
  *   → ময়মনসিংহ কমিউনিটির জন্য
  *   → সার্ভিস রো: রক্তদাতা → WiFi ও কোচিং → স্থানীয় খবর ও ঘোষণা
- *   → কীভাবে কাজ করে → এলাকার মতামত → কেন আমরা → রিভিউ মডাল → শেষ কল-টু-অ্যাকশন
+ *   → কীভাবে কাজ করে → রিভিউ → কেন আমরা → শেষ কল-টু-অ্যাকশন
  *
  * This is a Server Component so it can read the admin's homepage overrides
  * (section visibility, card order, card titles) from `platform_settings` before
@@ -157,8 +157,8 @@ export default async function HomePage() {
         )}
 
         {visible('steps') && <StepsSection />}
-        {visible('why') && <WhySection />}
         {visible('reviews') && <ReviewSection />}
+        {visible('why') && <WhySection />}
         {visible('final_cta') && <FinalCtaSection />}
       </main>
 

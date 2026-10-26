@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { Check, ChevronDown, MapPin } from 'lucide-react';
 import { DARK_FOCUS } from './AboutSectionBits';
 
@@ -25,25 +26,24 @@ export default function AboutHero({
   return (
     <section
       aria-labelledby="about-hero-heading"
-      className="relative overflow-hidden bg-brand-950 text-brand-100"
+      className="relative isolate overflow-hidden bg-brand-950 text-brand-100"
     >
-      {/* Mobile only — the /sheba1.png photograph sits behind the hero on
-          phones, where the plain forest surface left a lot of dead space. The
-          dark scrim keeps the gold CTA and white heading readable on top, and
-          `lg:hidden` leaves the desktop treatment exactly as it was. */}
-      <div aria-hidden="true" className="absolute inset-0 lg:hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/sheba1.png"
+      <div aria-hidden="true" className="absolute inset-0 -z-10">
+        <Image
+          src="/mymensingh1.jpg"
           alt=""
-          className="h-full w-full object-cover object-center"
+          fill
+          priority
+          sizes="100vw"
+          className="object-cover object-center"
         />
-        <div className="absolute inset-0 bg-gradient-to-b from-brand-950/92 via-brand-950/88 to-brand-950/95" />
+        <div className="absolute inset-0 bg-gradient-to-r from-brand-950/95 via-brand-950/85 to-brand-950/50" />
+        <div className="absolute inset-0 bg-gradient-to-t from-brand-950/70 via-transparent to-brand-950/20" />
       </div>
 
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -right-20 -top-16 hidden h-[28rem] w-[28rem] text-brand-800/70 lg:block"
+        className="pointer-events-none absolute -right-20 -top-16 hidden h-[28rem] w-[28rem] text-white/20 lg:block"
       >
         <MapPin className="h-full w-full" strokeWidth={0.5} />
       </div>
@@ -102,7 +102,7 @@ export default function AboutHero({
           ))}
         </ul>
 
-        <p className="mt-6 hidden items-center gap-2 text-[11px] font-semibold text-brand-400 sm:flex">
+        <p className="mt-6 hidden items-center gap-2 text-[11px] font-semibold text-emerald-100/80 sm:flex">
           <span aria-hidden="true" className="h-px w-8 bg-brand-700" />
           আরও পড়ুন
           <ChevronDown
