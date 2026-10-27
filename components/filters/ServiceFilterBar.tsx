@@ -166,7 +166,7 @@ export default function ServiceFilterBar({
   if (filterValues.isEmergency) {
     activeChips.push({
       key: 'isEmergency',
-      label: '⚡ জরুরি অন-কল',
+      label: 'জরুরি অন-কল',
     });
   }
 
@@ -174,7 +174,7 @@ export default function ServiceFilterBar({
   if (filterValues.isAvailableNow) {
     activeChips.push({
       key: 'isAvailableNow',
-      label: '🩸 রক্তদানে প্রস্তুত',
+      label: 'রক্তদানে প্রস্তুত',
     });
   }
 

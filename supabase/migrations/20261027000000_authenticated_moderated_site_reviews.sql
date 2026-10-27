@@ -26,6 +26,19 @@ WITH CHECK (
     AND body IS NOT NULL AND length(trim(body)) >= 10 AND length(body) <= 1500
 );
 
+DROP POLICY IF EXISTS "Admins read all site reviews" ON public.site_reviews;
+CREATE POLICY "Admins read all site reviews"
+ON public.site_reviews FOR SELECT
+TO authenticated
+USING (public.is_admin());
+
+DROP POLICY IF EXISTS "Admins update site review moderation" ON public.site_reviews;
+CREATE POLICY "Admins update site review moderation"
+ON public.site_reviews FOR UPDATE
+TO authenticated
+USING (public.is_admin())
+WITH CHECK (public.is_admin());
+
 COMMENT ON TABLE public.site_reviews IS
     'Authenticated users submit pending homepage reviews; admins moderate; only published reviews are public.';
 

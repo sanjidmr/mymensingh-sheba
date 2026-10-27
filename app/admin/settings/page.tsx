@@ -108,12 +108,12 @@ export default function AdminSettingsPage() {
   }
 
   const serviceConfig = [
-    { key: 'tolet', label: 'বাসা ভাড়া (To-Let)', icon: '🏠' },
-    { key: 'home-tutor', label: 'গৃহশিক্ষক', icon: '📚' },
-    { key: 'home-moving', label: 'বাসা পাল্টানো', icon: '🚚' },
-    { key: 'kajerBua', label: 'কাজের বুয়া', icon: '🧹' },
-    { key: 'electrician', label: 'ইলেক্ট্রিশিয়ান', icon: '⚡' },
-    { key: 'plumber', label: 'প্লাম্বার', icon: '🔧' },
+    { key: 'tolet', label: 'বাসা ভাড়া (To-Let)' },
+    { key: 'home-tutor', label: 'গৃহশিক্ষক' },
+    { key: 'home-moving', label: 'বাসা পাল্টানো' },
+    { key: 'kajerBua', label: 'কাজের বুয়া' },
+    { key: 'electrician', label: 'ইলেক্ট্রিশিয়ান' },
+    { key: 'plumber', label: 'প্লাম্বার' },
   ] as const;
 
   const notificationConfig = [
@@ -136,8 +136,8 @@ export default function AdminSettingsPage() {
           </div>
         )}
         {success && (
-          <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2">
-            <CheckCircle2 className="w-4 h-4" /> {success}
+          <div className="mb-4 p-3 rounded-xl bg-slate-100 border border-slate-200 text-xs text-slate-800 flex items-center gap-2">
+            <CheckCircle2 className="w-4 h-4 text-slate-700" /> {success}
           </div>
         )}
 
@@ -161,7 +161,7 @@ export default function AdminSettingsPage() {
                   min="0"
                   value={feeRules.messSeatFee}
                   onChange={(e) => handleFeeChange('messSeatFee', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">নির্দিষ্ট ফি</p>
               </div>
@@ -172,7 +172,7 @@ export default function AdminSettingsPage() {
                   min="0"
                   value={feeRules.tier1Max10k}
                   onChange={(e) => handleFeeChange('tier1Max10k', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">টিয়ার ১</p>
               </div>
@@ -183,7 +183,7 @@ export default function AdminSettingsPage() {
                   min="0"
                   value={feeRules.tier2Max20k}
                   onChange={(e) => handleFeeChange('tier2Max20k', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">টিয়ার ২</p>
               </div>
@@ -194,7 +194,7 @@ export default function AdminSettingsPage() {
                   min="0"
                   value={feeRules.tier3Above20k}
                   onChange={(e) => handleFeeChange('tier3Above20k', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-600"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
                 />
                 <p className="text-[11px] text-slate-500 mt-1">টিয়ার ৩</p>
               </div>
@@ -213,17 +213,16 @@ export default function AdminSettingsPage() {
               </div>
             </div>
             <div className="space-y-3">
-              {serviceConfig.map(({ key, label, icon }) => (
+              {serviceConfig.map(({ key, label }) => (
                 <div key={key} className="flex items-center justify-between p-3 rounded-xl bg-slate-50 border border-slate-100">
                   <div className="flex items-center gap-3">
-                    <span className="text-xl">{icon}</span>
                     <span className="font-medium text-slate-900 text-sm">{label}</span>
                   </div>
                   <button
                     type="button"
                     onClick={() => handleToggleService(key, !settings?.serviceAvailability[key])}
                     className={`relative w-12 h-7 rounded-full transition-colors ${
-                      settings?.serviceAvailability[key] ? 'bg-emerald-600' : 'bg-slate-300'
+                      settings?.serviceAvailability[key] ? 'bg-slate-700' : 'bg-slate-300'
                     }`}
                     aria-label={settings?.serviceAvailability[key] ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
                   >
@@ -281,7 +280,7 @@ export default function AdminSettingsPage() {
               type="button"
               disabled={saving}
               onClick={handleSave}
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white text-sm font-semibold disabled:opacity-50"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white text-sm font-semibold disabled:opacity-50"
             >
               {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               <span>{saving ? 'সংরক্ষণ হচ্ছে...' : 'সেটিংস সংরক্ষণ করুন'}</span>

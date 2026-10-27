@@ -102,6 +102,16 @@ export async function submitSiteReview(
   const name = input.name.trim();
   const service = input.service.trim();
   const body = input.body.trim();
+  const userId = input.userId.trim();
+
+  if (!userId) {
+    return {
+      ok: false,
+      persisted: false,
+      errorBn: 'রিভিউ দিতে আগে লগইন করুন।',
+    };
+  }
+
   if (name.length < 2 || service.length < 2 || !Number.isInteger(input.rating) ||
       input.rating < 1 || input.rating > 5 ||
       body.length < 10 || body.length > 1500) {
@@ -122,7 +132,7 @@ export async function submitSiteReview(
       service,
       rating: input.rating,
       body,
-      user_id: input.userId,
+      user_id: userId,
       status: 'pending',
     });
     if (!error) return { ok: true, persisted: true, errorBn: '' };
@@ -153,7 +163,7 @@ export async function fetchAdminSiteReviews(): Promise<SiteReview[]> {
     .order('created_at', { ascending: false })
     .limit(200);
   if (error) {
-    if (error.code === '42P01' || error.code === 'PGRST205') {
+    if (error.code === '42P01' || error.code === 'PGRST205' || error.code === 'PGRST204') {
       throw new Error('site_reviews টেবিল পাওয়া যায়নি। Supabase-এ 20261017160000_site_reviews.sql migration প্রয়োগ করুন।');
     }
     throw new Error(`সাইট রিভিউ লোড হয়নি (কোড: ${error.code || 'unknown'})।`);
