@@ -19,12 +19,14 @@ export default function WelcomePage() {
       router.replace('/login?next=%2Fwelcome');
     } else if (user.role === 'admin') {
       router.replace('/admin');
+    } else if (user.role === 'news_editor') {
+      router.replace('/news/editor');
     } else if (!isOnboardingComplete(user)) {
       router.replace('/onboarding');
     }
   }, [isLoading, router, user]);
 
-  if (isLoading || !user || user.role === 'admin' || !isOnboardingComplete(user)) {
+  if (isLoading || !user || user.role === 'admin' || user.role === 'news_editor' || !isOnboardingComplete(user)) {
     return <SplashScreen />;
   }
 

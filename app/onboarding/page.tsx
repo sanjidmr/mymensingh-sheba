@@ -25,12 +25,16 @@ export default function OnboardingPage() {
       router.replace('/admin');
       return;
     }
+    if (user.role === 'news_editor') {
+      router.replace('/news/editor');
+      return;
+    }
     if (isOnboardingComplete(user)) {
       router.replace('/welcome');
     }
   }, [isLoading, router, user]);
 
-  if (isLoading || !user || user.role === 'admin' || isOnboardingComplete(user)) {
+  if (isLoading || !user || user.role === 'admin' || user.role === 'news_editor' || isOnboardingComplete(user)) {
     return <SplashScreen />;
   }
 

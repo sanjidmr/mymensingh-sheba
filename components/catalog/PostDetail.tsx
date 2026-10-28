@@ -32,6 +32,7 @@ import {
   type CommunityPost,
   type PostKind,
 } from '@/lib/catalog-types';
+import { deskHref, deskLabel, formatNewsTimestamp } from '@/lib/news/news-utils';
 
 /** Resolves a taxonomy id found in `tags` to its Bangla label. */
 function pickTag(tags: string[] | undefined, entries: readonly { id: string; labelBn: string }[]): string | undefined {
@@ -111,7 +112,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
 
   if (loading) {
     return (
-      <Frame>
+      <Frame kind={kind}>
         <div>
           <div className="h-48 animate-pulse rounded-xl bg-mist-100" aria-hidden="true" />
           <p className="mt-4 text-center text-sm text-ink-500">লোড হচ্ছে…</p>
@@ -122,7 +123,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
 
   if (!post) {
     return (
-      <Frame>
+      <Frame kind={kind}>
         <div className="mx-auto max-w-2xl py-10 text-center">
           {loadError ? (
             <>
@@ -183,8 +184,11 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
         }${post.salaryMax != null ? bnTaka(post.salaryMax) : ''}`
       : undefined;
 
+  const isNews = kind === 'news';
+  const published = formatNewsTimestamp(post.publishedAt || post.createdAt);
+
   return (
-    <Frame>
+    <Frame kind={kind}>
       <div>
         <Link
           href={meta.route}
@@ -222,9 +226,21 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
           </div>
         )}
 
-        <article className="mt-3 overflow-hidden rounded-xl border border-brand-100 bg-white">
+        <article
+          className={
+            isNews
+              ? 'mt-4 border-t-2 border-[#141414] pt-4'
+              : 'mt-3 overflow-hidden rounded-xl border border-brand-100 bg-white'
+          }
+        >
           {post.coverImageUrl && (
-            <div className="relative aspect-[16/9] w-full overflow-hidden bg-mist-100">
+            <div
+              className={
+                isNews
+                  ? 'relative aspect-[16/9] w-full overflow-hidden bg-[#f2f0ea]'
+                  : 'relative aspect-[16/9] w-full overflow-hidden bg-mist-100'
+              }
+            >
               <ListingMedia
                 src={post.coverImageUrl}
                 alt={post.titleBn}
@@ -233,51 +249,100 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
             </div>
           )}
 
-          <div className="p-4 sm:p-6">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-extrabold text-brand-700">
-                {POST_META[kind]}
-              </span>
-              {post.kind === 'buy_sell' && post.marketplaceStatus === 'sold' && (
-                <span className="rounded bg-slate-100 px-2 py-1 text-xs font-extrabold text-slate-700">
-                  বিক্রি হয়েছে
+          <div className={isNews ? 'pt-4' : 'p-4 sm:p-6'}>
+            {isNews ? (
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#0c3b2e]">
+                <Link href={deskHref(post.category)} className="hover:text-[#0a3227]">
+                  {deskLabel(post.category)}
+                </Link>
+                {post.isFeatured && post.status === 'approved' && (
+                  <>
+                    <span aria-hidden="true" className="text-[#c2bcb0]">
+                      •
+                    </span>
+                    <span className="text-[#8a6b2f]">নির্বাচিত</span>
+                  </>
+                )}
+              </div>
+            ) : (
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="rounded border border-brand-100 bg-mist-50 px-2 py-1 text-xs font-extrabold text-brand-700">
+                  {POST_META[kind]}
                 </span>
-              )}
-              {post.kind === 'buy_sell' && post.marketplaceStatus === 'closed' && (
-                <span className="rounded bg-mist-100 px-2 py-1 text-xs font-extrabold text-ink-600">
-                  বন্ধ
-                </span>
-              )}
-              {post.category && (
-                <span className="truncate text-[13px] font-bold text-brand-700">
-                  {tagLabel(post.category)}
-                </span>
-              )}
-              {post.isFeatured && post.status === 'approved' && (
-                <span className="rounded bg-accent-400 px-2 py-1 text-xs font-extrabold text-brand-950">
-                  ফিচার্ড
-                </span>
-              )}
-            </div>
+                {post.kind === 'buy_sell' && post.marketplaceStatus === 'sold' && (
+                  <span className="rounded bg-slate-100 px-2 py-1 text-xs font-extrabold text-slate-700">
+                    বিক্রি হয়েছে
+                  </span>
+                )}
+                {post.kind === 'buy_sell' && post.marketplaceStatus === 'closed' && (
+                  <span className="rounded bg-mist-100 px-2 py-1 text-xs font-extrabold text-ink-600">
+                    বন্ধ
+                  </span>
+                )}
+                {post.category && (
+                  <span className="truncate text-[13px] font-bold text-brand-700">
+                    {tagLabel(post.category)}
+                  </span>
+                )}
+                {post.isFeatured && post.status === 'approved' && (
+                  <span className="rounded bg-accent-400 px-2 py-1 text-xs font-extrabold text-brand-950">
+                    ফিচার্ড
+                  </span>
+                )}
+              </div>
+            )}
 
-            <h1 className="mt-2 text-2xl font-extrabold leading-snug text-ink-900 sm:text-3xl">
+            <h1
+              className={
+                isNews
+                  ? 'mt-2 font-[family-name:var(--font-news-serif)] text-[28px] font-black leading-[1.18] tracking-[-0.01em] text-[#141414] sm:text-[38px]'
+                  : 'mt-2 text-2xl font-extrabold leading-snug text-ink-900 sm:text-3xl'
+              }
+            >
               {post.titleBn}
             </h1>
 
-            {(post.authorName || areaName) && (
-              <p className="mt-2 text-sm leading-relaxed text-ink-600">
-                {post.authorName
-                  ? kind === 'news'
-                    ? `সূত্র: ${post.authorName}`
-                    : post.authorName
-                  : null}
-                {post.authorName && areaName ? ' · ' : ''}
-                {areaName || ''}
-              </p>
+            {isNews ? (
+              <div className="mt-3 flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-[#ded9ce] pb-3 text-[11px] text-[#8a857b]">
+                <span className="font-semibold text-[#5f5a51]">
+                  {post.authorName?.trim() || 'সংবাদ ডেস্ক'}
+                </span>
+                {areaName && (
+                  <>
+                    <span aria-hidden="true" className="text-[#c2bcb0]">•</span>
+                    <span>{areaName}</span>
+                  </>
+                )}
+                {(published.exact || published.relative) && (
+                  <>
+                    <span aria-hidden="true" className="text-[#c2bcb0]">•</span>
+                    <time
+                      dateTime={post.publishedAt || post.createdAt}
+                      title={published.relative}
+                    >
+                      {published.exact ?? published.relative}
+                    </time>
+                  </>
+                )}
+              </div>
+            ) : (
+              (post.authorName || areaName) && (
+                <p className="mt-2 text-sm leading-relaxed text-ink-600">
+                  {post.authorName || null}
+                  {post.authorName && areaName ? ' · ' : ''}
+                  {areaName || ''}
+                </p>
+              )
             )}
 
             {post.summaryBn && (
-              <p className="mt-3 rounded-lg border border-brand-100 bg-mist-50 p-3.5 text-[15px] font-medium leading-relaxed text-ink-800 sm:p-4 sm:text-base">
+              <p
+                className={
+                  isNews
+                    ? 'mt-4 border-l-2 border-[#0c3b2e] pl-3.5 text-[16px] font-medium leading-[1.75] text-[#3f3b34] sm:text-[17px]'
+                    : 'mt-3 rounded-lg border border-brand-100 bg-mist-50 p-3.5 text-[15px] font-medium leading-relaxed text-ink-800 sm:p-4 sm:text-base'
+                }
+              >
                 {post.summaryBn}
               </p>
             )}
@@ -311,7 +376,13 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
             ) : null}
 
             {post.bodyBn && (
-              <div className="mt-4 space-y-3 text-[15px] leading-[1.8] text-ink-800 sm:text-base">
+              <div
+                className={
+                  isNews
+                    ? 'mt-5 space-y-4 text-[16px] leading-[1.9] text-[#242424] sm:text-[17px]'
+                    : 'mt-4 space-y-3 text-[15px] leading-[1.8] text-ink-800 sm:text-base'
+                }
+              >
                 {post.bodyBn
                   .split(/\n{2,}/)
                   .map((para) => para.trim())
@@ -323,11 +394,15 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
             )}
 
             {tagLabels(post.tags).length > 0 && (
-              <ul className="mt-4 flex flex-wrap gap-1.5">
+              <ul className="mt-5 flex flex-wrap gap-1.5">
                 {tagLabels(post.tags).map((tag) => (
                   <li
                     key={tag}
-                    className="rounded border border-brand-100 bg-mist-50 px-2.5 py-1 text-[13px] font-medium text-ink-700"
+                    className={
+                      isNews
+                        ? 'border border-[#ded9ce] bg-[#faf8f2] px-2.5 py-1 text-[11.5px] font-medium text-[#5f5a51]'
+                        : 'rounded border border-brand-100 bg-mist-50 px-2.5 py-1 text-[13px] font-medium text-ink-700'
+                    }
                   >
                     {tag}
                   </li>
@@ -397,10 +472,58 @@ function Fact({ label, value }: { label: string; value: string }) {
   );
 }
 
-function Frame({ children }: { children: React.ReactNode }) {
+function Frame({ children, kind }: { children: React.ReactNode; kind: PostKind }) {
   // No global Footer, matching the other listing and detail pages: the article
   // ends the page and the fixed mobile bottom nav (mounted in the root layout)
   // is the last thing on screen.
+  //
+  // A news story keeps the newspaper's paper-and-ink frame so it reads as the
+  // same publication as `/news`; jobs and marketplace posts keep the service
+  // site's navbar and card styling.
+  if (kind === 'news') {
+    return (
+      <div className="flex min-h-screen flex-col overflow-x-clip bg-white text-[#141414]">
+        <header className="border-b border-[#ded9ce]">
+          <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+            <Link href="/news" className="flex min-w-0 items-center gap-2.5">
+              <span
+                aria-hidden="true"
+                className="flex h-9 w-9 shrink-0 items-center justify-center bg-[#0c3b2e] font-[family-name:var(--font-news-serif)] text-[19px] font-bold leading-none text-white"
+              >
+                ম
+              </span>
+              <span className="min-w-0">
+                <span className="block text-[8.5px] font-bold uppercase tracking-[0.22em] text-[#8a6b2f]">
+                  ময়মনসিংহ শেবা · সংবাদ
+                </span>
+                <span className="block font-[family-name:var(--font-news-serif)] text-[18px] font-black leading-tight sm:text-[20px]">
+                  ময়মনসিংহের <span className="text-[#0c3b2e]">নিউজ</span>
+                </span>
+              </span>
+            </Link>
+            <div className="flex shrink-0 items-center gap-3">
+              <Link
+                href="/news"
+                className="text-[11.5px] font-bold text-[#0c3b2e] transition-colors hover:text-[#0a3227]"
+              >
+                প্রচ্ছদ
+              </Link>
+              <Link
+                href="/news/create"
+                className="hidden h-9 items-center bg-[#0c3b2e] px-3 text-[11.5px] font-bold text-white transition-colors hover:bg-[#0a3227] sm:inline-flex"
+              >
+                সংবাদ পাঠান
+              </Link>
+            </div>
+          </div>
+        </header>
+        <main className="mx-auto w-full max-w-[760px] flex-1 px-4 py-5 sm:px-6 sm:py-8">
+          {children}
+        </main>
+      </div>
+    );
+  }
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">
       <Navbar />

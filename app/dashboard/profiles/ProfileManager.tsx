@@ -481,7 +481,7 @@ export default function ProfileManager() {
       <ApprovalExplainer />
 
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-ink-900/[0.06] pt-4 text-[12px] text-ink-500">
-        <span>সাধারণ পোস্ট (সংবাদ, চাকরি, কেনাবেচা) আলাদা পেজে তৈরি হয়।</span>
+        <span>চাকরি ও কেনাবেচার পোস্ট আলাদা পেজে তৈরি হয়।</span>
         <Link href="/dashboard/profile" className={cn('font-semibold text-ink-700 hover:text-ink-900 hover:underline', LIGHT_FOCUS)}>
           অ্যাকাউন্ট সেটিংস
         </Link>

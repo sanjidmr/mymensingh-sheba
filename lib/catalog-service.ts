@@ -2592,6 +2592,17 @@ export async function createCommunityPost(
   if (!userId) return { success: false, error: NOT_SIGNED_IN };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  if (input.kind === 'news') {
+    const { data: profile, error: profileError } = await client
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (profileError || !profile || !['admin', 'news_editor'].includes(profile.role)) {
+      return { success: false, error: 'শুধুমাত্র অ্যাডমিন বা নিউজ এডিটররা সংবাদ প্রকাশ করতে পারেন।' };
+    }
+  }
   // Resolve the display name from the authenticated profile instead of trusting
   // the optional authorName supplied by a specific form.
   const { data: profile, error: profileError } = await client
@@ -2657,6 +2668,16 @@ export async function updateCommunityPost(
     .maybeSingle();
   if (currentError) return { success: false, error: currentError.message };
   if (!current) return { success: false, error: 'পোস্টটি পাওয়া যায়নি অথবা এটি আপনার নয়।' };
+  if (current.kind === 'news') {
+    const { data: profile, error: profileError } = await client
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (profileError || !profile || !['admin', 'news_editor'].includes(profile.role)) {
+      return { success: false, error: 'নিউজ সম্পাদক ছাড়া কোনো ব্যবহারকারী সংবাদ সম্পাদনা করতে পারবে না।' };
+    }
+  }
   const validationError = communityPostWriteError(
     { ...patch, kind: current.kind as PostKind },
     false,
@@ -2738,6 +2759,25 @@ export async function deleteCommunityPost(id: string): Promise<WriteResult> {
   if (!userId) return { success: false, error: NOT_SIGNED_IN };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
+
+  const { data: current, error: currentError } = await client
+    .from('community_posts')
+    .select('kind')
+    .eq('id', id)
+    .eq('author_id', userId)
+    .maybeSingle();
+  if (currentError) return { success: false, error: currentError.message };
+  if (current?.kind === 'news') {
+    const { data: profile, error: profileError } = await client
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle();
+    if (profileError || !profile || !['admin', 'news_editor'].includes(profile.role)) {
+      return { success: false, error: 'নিউজ পোস্ট মুছে ফেলার জন্য অ্যাডমিন বা নিউজ এডিটর হওয়া আবশ্যক।' };
+    }
+  }
+
   const { error } = await client
     .from('community_posts')
     .delete()

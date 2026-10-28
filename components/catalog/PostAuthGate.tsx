@@ -72,6 +72,30 @@ export default function PostAuthGate({
     );
   }
 
+  const canManageNews = user.role === 'admin' || user.role === 'news_editor';
+  if (!canManageNews) {
+    return (
+      <div className="min-h-screen bg-mist-50">
+        <Navbar />
+        <main className="mx-auto max-w-xl px-3 py-12 text-center">
+          <div className="rounded-2xl border border-brand-100 bg-white p-8 shadow-sm">
+            <h1 className="text-xl font-black text-ink-900">সংবাদ প্রকাশের অনুমতি নেই</h1>
+            <p className="mt-3 text-sm leading-relaxed text-ink-600">
+              শুধুমাত্র অ্যাডমিন বা নির্ধারিত নিউজ এডিটররা সংবাদ প্রকাশ, সম্পাদনা ও ড্রাফট পরিচালনা করতে পারেন।
+            </p>
+            <Link
+              href="/news"
+              className={`mt-6 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+            >
+              সংবাদ পাতা দেখুন
+            </Link>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
   return <>{children}</>;
 }
 

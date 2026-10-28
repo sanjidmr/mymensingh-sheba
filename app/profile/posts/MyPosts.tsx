@@ -53,7 +53,6 @@ const GROUPS: {
 ];
 
 const CREATE_LINKS = [
-  { href: '/news/create', label: 'সংবাদ' },
   { href: '/jobs/create', label: 'চাকরির খবর' },
   { href: '/buy-sell/create', label: 'বিক্রয়ের পোস্ট' },
 ];
@@ -78,7 +77,7 @@ export default function MyPosts() {
       try {
         const data = await fetchMyPosts();
         if (active) {
-          setPosts(data);
+          setPosts(data.filter((post) => post.kind !== 'news'));
           setLoadError('');
         }
       } catch (cause) {
@@ -210,7 +209,7 @@ export default function MyPosts() {
                             post={post}
                             href={
                               post.status === 'approved'
-                                ? `${ROUTE[post.kind]}/${post.slug}`
+                                ? `${ROUTE[post.kind as Exclude<PostKind, 'news'>]}/${post.slug}`
                                 : `/profile/posts/${post.kind}/${post.id}/edit`
                             }
                           />
@@ -228,8 +227,7 @@ export default function MyPosts() {
 }
 
 /** Public route per post kind. */
-const ROUTE: Record<PostKind, string> = {
-  news: '/news',
+const ROUTE: Record<Exclude<PostKind, 'news'>, string> = {
   job: '/jobs',
   buy_sell: '/buy-sell',
 };

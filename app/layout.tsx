@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next';
-import { Noto_Sans_Bengali } from 'next/font/google';
+import { Noto_Sans_Bengali, Noto_Serif_Bengali } from 'next/font/google';
 import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
 import PageViewTracker from '@/components/analytics/PageViewTracker';
@@ -17,6 +17,18 @@ const notoBengali = Noto_Sans_Bengali({
   subsets: ['bengali', 'latin'],
   weight: ['300', '400', '500', '600', '700', '800'],
   variable: '--font-sans',
+  display: 'swap',
+});
+
+/**
+ * The news desk's display face. A Bangla serif gives the masthead and lead
+ * headlines the weight of a printed front page while the rest of the site keeps
+ * its established sans-serif voice.
+ */
+const notoSerifBengali = Noto_Serif_Bengali({
+  subsets: ['bengali', 'latin'],
+  weight: ['400', '600', '700', '900'],
+  variable: '--font-news-serif',
   display: 'swap',
 });
 
@@ -65,7 +77,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="bn" translate="no" className={`${notoBengali.variable} scroll-smooth`}>
+    <html
+      lang="bn"
+      translate="no"
+      className={`${notoBengali.variable} ${notoSerifBengali.variable} scroll-smooth`}
+    >
       <body className="min-h-screen bg-mist-50 text-ink-900 antialiased font-sans selection:bg-accent-200 selection:text-brand-800">
         <SitePreloader />
         <PageViewTracker />

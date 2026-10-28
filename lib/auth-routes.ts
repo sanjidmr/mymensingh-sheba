@@ -8,10 +8,12 @@
  * from an email, user metadata, a URL parameter or client state.
  */
 
-export type AppRole = 'admin' | 'customer';
+export type AppRole = 'admin' | 'news_editor' | 'customer';
 
 /** The admin console entry route. */
 export const ADMIN_HOME = '/admin';
+/** The dedicated news-editor dashboard. */
+export const NEWS_EDITOR_HOME = '/news/editor';
 /** The customer account/profile entry route (`/profile` redirects to `/dashboard`). */
 export const CUSTOMER_HOME = '/profile';
 
@@ -20,9 +22,16 @@ export function isAdminRole(role: string | null | undefined): boolean {
   return role === 'admin';
 }
 
+/** True only for the verified `news_editor` role. */
+export function isNewsEditorRole(role: string | null | undefined): boolean {
+  return role === 'news_editor';
+}
+
 /** Default landing route for a resolved role. */
 export function roleHome(role: string | null | undefined): string {
-  return isAdminRole(role) ? ADMIN_HOME : CUSTOMER_HOME;
+  if (isAdminRole(role)) return ADMIN_HOME;
+  if (isNewsEditorRole(role)) return NEWS_EDITOR_HOME;
+  return CUSTOMER_HOME;
 }
 
 /**
@@ -67,6 +76,12 @@ export function resolveAuthRedirect(
   if (isAdminRole(role)) {
     // Keep explicit admin targets; never default an admin into the customer area.
     return CUSTOMER_AREAS.some((area) => inArea(target, area)) ? ADMIN_HOME : target;
+  }
+
+  if (isNewsEditorRole(role)) {
+    const targetIsAdmin = inArea(target, ADMIN_AREA);
+    const targetIsCustomer = CUSTOMER_AREAS.some((area) => inArea(target, area));
+    return targetIsAdmin || targetIsCustomer ? NEWS_EDITOR_HOME : target;
   }
 
   // Customer: never allow the admin area as a post-auth destination.

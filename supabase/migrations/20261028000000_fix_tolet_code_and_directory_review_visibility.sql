@@ -15,7 +15,7 @@ BEGIN
     IF TG_TABLE_NAME = 'staff_profiles' THEN
         code_prefix := CASE NEW.service_slug
             WHEN 'kajer-bua' THEN 'KBU'
-            WHEN 'electrician' THEN 'ELC'
+            WHEN 'electrician' THEN 'ELC'   
             WHEN 'plumber' THEN 'PLB'
             WHEN 'ac-fridge' THEN 'ACR'
             ELSE 'STF'

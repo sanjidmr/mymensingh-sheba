@@ -17,13 +17,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       router.replace(`/login?redirect=${encodeURIComponent('/dashboard')}`);
       return;
     }
-    // A verified admin belongs in the console, never in the customer dashboard.
+    // A verified admin or news editor belongs in their own area, never in the
+    // customer dashboard.
     if (user.role === 'admin') {
       router.replace(ADMIN_HOME);
     }
+    if (user.role === 'news_editor') {
+      router.replace('/news/editor');
+    }
   }, [isLoading, user, router]);
 
-  if (isLoading || !user || user.role === 'admin') {
+  if (isLoading || !user || user.role === 'admin' || user.role === 'news_editor') {
     return <SplashScreen />;
   }
 

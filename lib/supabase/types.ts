@@ -1,6 +1,8 @@
-export type UserRole = 'customer' | 'admin';
+export type UserRole = 'customer' | 'admin' | 'news_editor';
 
 export type UserAccountStatus = 'active' | 'suspended' | 'blocked';
+
+export type NotificationTargetRole = 'customer' | 'admin';
 
 export type ServiceProfileStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'paused' | 'suspended';
 

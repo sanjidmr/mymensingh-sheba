@@ -719,7 +719,7 @@ export default function DashboardHome() {
               <EmptyState
                 icon={FileText}
                 title="এখনো কোনো পোস্ট নেই"
-                body="বাসা ভাড়া, চাকরি, কেনাবেচা বা সংবাদ—আপনার প্রথম পোস্ট তৈরি করুন।"
+                body="বাসা ভাড়া, চাকরি বা কেনাবেচা—আপনার প্রথম পোস্ট তৈরি করুন।"
                 action={
                   <Link href="/dashboard/new" className={PRIMARY_BUTTON}>
                     <PlusCircle className="h-4 w-4" aria-hidden="true" />

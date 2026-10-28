@@ -236,11 +236,11 @@ export function mergeRows(
   postViewsBySlug: Record<string, number> = {}
 ): DashboardRow[] {
   return [
-    ...posts.map((post) => postRow(post, postViewsBySlug[post.slug])),
+    ...posts.filter((post) => post.kind !== 'news').map((post) => postRow(post, postViewsBySlug[post.slug])),
     ...listings.map((listing) => listingRow(listing, listingStats[listing.id])),
     ...(tutor ? [profileRow(tutor, 'tutor')] : []),
     ...(donor ? [profileRow(donor, 'donor')] : []),
-    ...drafts,
+    ...drafts.filter((row) => row.draftKind !== 'news'),
   ].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
   );

@@ -39,7 +39,7 @@ function LoginForm() {
   // form for a second time.
   useEffect(() => {
     if (authLoading || !user) return;
-    if (user.role !== 'admin' && !isOnboardingComplete(user)) {
+    if (user.role !== 'admin' && user.role !== 'news_editor' && !isOnboardingComplete(user)) {
       window.location.replace('/onboarding');
       return;
     }

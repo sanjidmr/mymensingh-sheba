@@ -24,10 +24,10 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
       router.replace(`/login?next=${encodeURIComponent(pathname)}`);
       return;
     }
-    // A verified admin is not a customer: never leave them in the customer
-    // account area. This also covers a page refresh on /profile or /dashboard.
-    if (!isLoading && user && user.role === 'admin') {
-      router.replace(ADMIN_HOME);
+    // A verified admin or news editor belongs in their own area, never in the
+    // customer account flow. This also covers a page refresh on /profile or /dashboard.
+    if (!isLoading && user && (user.role === 'admin' || user.role === 'news_editor')) {
+      router.replace(user.role === 'admin' ? ADMIN_HOME : '/news/editor');
     }
   }, [devOpened, isLoading, user, router, pathname]);
 
@@ -35,7 +35,7 @@ export default function ProfileLayout({ children }: { children: React.ReactNode 
     return <>{children}</>;
   }
 
-  if (isLoading || !user || user.role === 'admin') {
+  if (isLoading || !user || user.role === 'admin' || user.role === 'news_editor') {
     return <SplashScreen />;
   }
 

@@ -45,12 +45,11 @@ const CATEGORY_FILTERS = [
   { id: 'tolet', label: 'বাসাভাড়া' },
   { id: 'tutor', label: 'গৃহশিক্ষক' },
   { id: 'donor', label: 'রক্তদাতা' },
-  { id: 'news', label: 'নিউজ' },
   { id: 'job', label: 'চাকরি' },
   { id: 'buy_sell', label: 'কেনাবেচা' },
 ];
 
-const DRAFT_KINDS: PostKind[] = ['news', 'job', 'buy_sell'];
+const DRAFT_KINDS: PostKind[] = ['job', 'buy_sell'];
 
 function draftValues(value: unknown): Record<string, string> | null {
   if (!value || typeof value !== 'object' || !('values' in value)) return null;
@@ -84,7 +83,7 @@ export default function DashboardPosts() {
   const params = useSearchParams();
   const draftCleanupValue = params.get('draftCleanup');
   const draftCleanupKind: PostKind | null =
-    draftCleanupValue === 'news' || draftCleanupValue === 'job' || draftCleanupValue === 'buy_sell'
+    draftCleanupValue === 'job' || draftCleanupValue === 'buy_sell'
       ? draftCleanupValue
       : null;
   const initialStatus = params.get('status');
@@ -130,7 +129,7 @@ export default function DashboardPosts() {
             ),
           ];
         });
-        setPosts(userPosts);
+        setPosts(userPosts.filter((post) => post.kind !== 'news'));
         setListings(userListings);
         setDraftRows(drafts);
         setLoadError('');

@@ -198,7 +198,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // The verified role lives in the trusted `profiles` row, never in user
       // metadata or the email address. Everything downstream (routing, guards)
       // branches on this value.
-      const role: AppRole = profile.role === 'admin' ? 'admin' : 'customer';
+      const role: AppRole =
+        profile.role === 'admin'
+          ? 'admin'
+          : profile.role === 'news_editor'
+            ? 'news_editor'
+            : 'customer';
       setUser({ ...profile, status: profile.status || 'active' });
 
       const { data: toletRow } = await client.rpc('fn_my_tolet_profile').maybeSingle();

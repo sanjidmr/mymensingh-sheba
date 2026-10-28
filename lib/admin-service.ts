@@ -151,13 +151,16 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
 
       rows.push(...profiles.map((profile) => {
         const base = toCamelObject(profile as Record<string, unknown>) as unknown as UserProfile;
+        const role = base.role === 'customer' || base.role === 'admin' || base.role === 'news_editor'
+          ? base.role
+          : 'customer';
         return {
           id: base.id,
           publicId: base.publicId,
           fullName: base.fullName || '—',
           phone: base.phone || '—',
           email: base.email,
-          role: base.role,
+          role,
           status: base.status,
           isVerified: base.isVerified,
           createdAt: base.createdAt,

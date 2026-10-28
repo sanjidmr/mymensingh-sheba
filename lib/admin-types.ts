@@ -1,10 +1,12 @@
+export type AdminUserRole = 'customer' | 'admin' | 'news_editor';
+
 export interface AdminUserRow {
   id: string;
   publicId?: string;
   fullName: string;
   phone: string;
   email?: string;
-  role: 'customer' | 'admin';
+  role: AdminUserRole;
   status: 'active' | 'suspended' | 'blocked';
   isVerified: boolean;
   createdAt: string;

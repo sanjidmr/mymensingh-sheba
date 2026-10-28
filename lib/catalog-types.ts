@@ -647,11 +647,14 @@ export const BUS_TYPES: { id: string; labelBn: string }[] = [
 /** News desk categories. */
 export const NEWS_CATEGORIES: { id: string; labelBn: string }[] = [
   { id: 'mymensingh', labelBn: 'ময়মনসিংহ' },
-  { id: 'local', labelBn: 'স্থানীয়' },
+  { id: 'national', labelBn: 'জাতীয়' },
+  { id: 'politics', labelBn: 'রাজনীতি' },
   { id: 'education', labelBn: 'শিক্ষা' },
   { id: 'jobs', labelBn: 'চাকরি' },
-  { id: 'business', labelBn: 'ব্যবসা' },
-  { id: 'service', labelBn: 'সেবা' },
+  { id: 'economy', labelBn: 'অর্থনীতি' },
+  { id: 'sports', labelBn: 'খেলাধুলা' },
+  { id: 'entertainment', labelBn: 'বিনোদন' },
+  { id: 'technology', labelBn: 'প্রযুক্তি' },
   { id: 'others', labelBn: 'অন্যান্য' },
 ];
 

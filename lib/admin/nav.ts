@@ -149,6 +149,23 @@ export const ADMIN_NAV: AdminNavGroup[] = [
     ],
   },
   {
+    title: 'News Management',
+    items: [
+      {
+        href: '/admin/news',
+        label: 'সংবাদ ম্যানেজমেন্ট',
+        icon: FileText,
+        description: 'প্রধান সংবাদ, বিভাগ ও প্রকাশনার অবস্থা পরিচালনা',
+      },
+      {
+        href: '/admin/news/editors',
+        label: 'নিউজ এডিটর ম্যানেজমেন্ট',
+        icon: Users,
+        description: 'এডিটর অ্যাকাউন্ট, অনুমতি ও অ্যাক্টিভেশন পরিচালনা',
+      },
+    ],
+  },
+  {
     title: 'Business & Analytics',
     items: [
       {

@@ -32,7 +32,12 @@ export async function GET(request: NextRequest) {
           .eq('id', user.id)
           .maybeSingle();
         if (profile && (profile.status ?? 'active') === 'active') {
-          role = profile.role === 'admin' ? 'admin' : 'customer';
+          role =
+            profile.role === 'admin'
+              ? 'admin'
+              : profile.role === 'news_editor'
+                ? 'news_editor'
+                : 'customer';
           needsOnboarding =
             role === 'customer' &&
             !isOnboardingComplete({

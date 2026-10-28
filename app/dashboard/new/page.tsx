@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { Home, ShoppingBag, Briefcase, Newspaper } from 'lucide-react';
+import { Home, ShoppingBag, Briefcase } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 
 export const metadata: Metadata = {
@@ -12,7 +12,6 @@ const SERVICES = [
   { href: '/profile/tolet/new', icon: Home, label: 'বাসা ভাড়া', hint: 'ফ্ল্যাট, রুম, সাবলেট, মেস' },
   { href: '/buy-sell/create', icon: ShoppingBag, label: 'কেনাবেচা', hint: 'পুরনো বা নতুন পণ্য' },
   { href: '/jobs/create', icon: Briefcase, label: 'চাকরি', hint: 'নিয়োগ বিজ্ঞপ্তি দিন' },
-  { href: '/news/create', icon: Newspaper, label: 'সংবাদ', hint: 'স্থানীয় খবর জানান' },
 ];
 
 export default function Page() {
