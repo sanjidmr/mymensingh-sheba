@@ -38,7 +38,7 @@ export default function NewsMasthead({
             </Link>
           </div>
           <Link
-            href="/news/create"
+            href="/contact?subject=news_submission#contact-form"
             className="inline-flex items-center gap-1 font-semibold text-[#0c3b2e] transition-colors hover:text-[#0a3227] md:hidden"
           >
             সংবাদ পাঠান
@@ -85,7 +85,7 @@ export default function NewsMasthead({
           <div className="flex items-center justify-end gap-2">
             <NewsSearch items={searchItems} />
             <Link
-              href="/news/create"
+              href="/contact?subject=news_submission#contact-form"
               className="hidden h-10 items-center gap-1.5 bg-[#0c3b2e] px-3.5 text-[12px] font-bold text-white transition-colors hover:bg-[#0a3227] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#0c3b2e] focus-visible:ring-offset-2 sm:inline-flex"
             >
               <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
@@ -98,7 +98,7 @@ export default function NewsMasthead({
       {/* Section rail */}
       <nav
         aria-label="সংবাদ বিভাগ"
-        className="sticky top-0 z-40 border-y border-[#141414]/15 bg-white/95 backdrop-blur-md"
+        className="border-y border-[#141414]/15 bg-white/95"
       >
         <div className="mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8">
           <div className="no-scrollbar flex min-h-11 items-stretch gap-0 overflow-x-auto">
@@ -134,7 +134,7 @@ export default function NewsMasthead({
               );
             })}
             <Link
-              href="/news/create"
+              href="/contact?subject=news_submission#contact-form"
               className="ml-auto hidden shrink-0 items-center whitespace-nowrap pl-4 text-[12px] font-bold text-[#0c3b2e] hover:text-[#0a3227] lg:flex"
             >
               আপনার খবর পাঠান →

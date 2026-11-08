@@ -111,6 +111,21 @@ are tracked independently from the in-app notification.
 
 ### cPanel worker and Brevo webhook
 
+Build the application with Node.js 22 from the project root. The project
+`.npmrc` includes development dependencies even when npm runs with
+`NODE_ENV=production`; this is required because `next.config.ts` needs
+TypeScript during `next build`. Install dependencies with `npm ci` (do not use
+`npm ci --omit=dev`), then run:
+
+```sh
+CIRCLE_NODE_TOTAL=1 NEXT_PRIVATE_BUILD_WORKER=1 npm run build
+```
+
+The `postbuild` script copies `public` and `.next/static` into `.next/standalone`.
+Keep the cPanel application root and startup command aligned with the existing
+deployment configuration; the project startup script is
+`node .next/standalone/server.js`.
+
 1. Add the server-only environment variables in the cPanel Node.js application
    configuration (or the private environment file used by the deployed Next.js
    process): `ADMIN_EMAIL_WORKER_SECRET` and `BREVO_WEBHOOK_SECRET`, each a

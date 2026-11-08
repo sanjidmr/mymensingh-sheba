@@ -259,12 +259,12 @@ export default function MarketplaceBrowser() {
           <h1 className="text-[22px] font-black leading-tight tracking-tight text-ink-900 sm:text-[28px]">
             ময়মনসিংহে কেনাকাটা ও বিক্রি, এখন এক জায়গায়
           </h1>
-          <div className="mt-3 flex flex-wrap items-center gap-2.5 sm:mt-4">
+          <div className="mt-3 flex flex-nowrap items-center gap-2 sm:mt-4 sm:gap-2.5">
             <Link
               href={createHref}
-              className={`inline-flex min-h-12 items-center gap-2 rounded-xl bg-brand-700 px-5 text-[14px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+              className={`inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-xl bg-brand-700 px-2 text-[12px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:min-h-12 sm:flex-none sm:gap-2 sm:px-5 sm:text-[14px] ${LIGHT_FOCUS}`}
             >
-              <PlusCircle className="h-4.5 w-4.5" strokeWidth={2.25} aria-hidden="true" />
+              <PlusCircle className="h-4 w-4 shrink-0 sm:h-4.5 sm:w-4.5" strokeWidth={2.25} aria-hidden="true" />
               পণ্য বিক্রি করুন
             </Link>
             <button
@@ -272,9 +272,9 @@ export default function MarketplaceBrowser() {
               onClick={() => setCategoriesOpen((open) => !open)}
               aria-expanded={categoriesOpen}
               aria-controls="market-categories"
-              className={`inline-flex min-h-12 items-center gap-2 rounded-xl border border-brand-200 bg-white px-5 text-[14px] font-bold text-brand-700 transition-colors hover:bg-brand-50 ${LIGHT_FOCUS}`}
+              className={`inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-1 whitespace-nowrap rounded-xl border border-brand-200 bg-white px-2 text-[12px] font-bold text-brand-700 transition-colors hover:bg-brand-50 sm:min-h-12 sm:flex-none sm:gap-2 sm:px-5 sm:text-[14px] ${LIGHT_FOCUS}`}
             >
-              <Tag className="h-4 w-4" aria-hidden="true" />
+              <Tag className="h-4 w-4 shrink-0" aria-hidden="true" />
               {categoriesOpen ? 'ক্যাটাগরি লুকান' : 'ক্যাটাগরি দেখুন'}
             </button>
           </div>
@@ -346,6 +346,8 @@ export default function MarketplaceBrowser() {
             sortOptions={SORT_OPTIONS}
             currentSort={controller.sort}
             onSortChange={controller.setSort}
+            compactSearch
+            mobileSearchWithFilter
           />
         </div>
 

@@ -29,10 +29,11 @@ export interface CommunityDirectoryProps {
   subtitle: string;
   placeholder: string;
   noun: string;
-  highlights: string[];
+  highlights?: string[];
   /** Where the "add a post" button points, and the label for it. */
   createHref: string;
   createLabel: string;
+  createActionInline?: boolean;
   /** Requires a signed-in account. Shown as a login prompt instead of a button. */
   requiresAuth: boolean;
   filterGroups: FilterGroup[];
@@ -55,6 +56,7 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
     highlights,
     createHref,
     createLabel,
+    createActionInline = false,
     requiresAuth,
     filterGroups,
     sortOptions,
@@ -116,7 +118,7 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
       subtitle={subtitle}
       breadcrumbs={[{ label: title }]}
       highlights={highlights}
-      action={
+      action={createActionInline ? undefined : (
         needsLogin ? (
           <Link
             href={`/login?next=${encodeURIComponent(createHref)}`}
@@ -132,7 +134,7 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
             {createLabel}
           </Link>
         )
-      }
+      )}
     >
       <DirectorySearchBar
         value={controller.query}
@@ -147,6 +149,24 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
         sortOptions={sortOptions}
         currentSort={controller.sort}
         onSortChange={controller.setSort}
+        compactSearch={createActionInline}
+        inlineAction={createActionInline ? (
+          needsLogin ? (
+            <Link
+              href={`/login?next=${encodeURIComponent(createHref)}`}
+              className={`inline-flex min-h-10 w-full items-center justify-center rounded-lg border border-brand-200 bg-white px-2 text-[11px] font-extrabold text-brand-800 transition-colors hover:bg-brand-50 sm:min-h-[42px] sm:px-3 sm:text-sm ${LIGHT_FOCUS}`}
+            >
+              পোস্ট করতে লগইন
+            </Link>
+          ) : (
+            <Link
+              href={createHref}
+              className={`inline-flex min-h-10 w-full items-center justify-center rounded-lg bg-brand-700 px-2 text-[11px] font-extrabold text-white transition-colors hover:bg-brand-800 sm:min-h-[42px] sm:px-3 sm:text-sm ${LIGHT_FOCUS}`}
+            >
+              {createLabel}
+            </Link>
+          )
+        ) : undefined}
       />
 
       <div className="mt-2.5">

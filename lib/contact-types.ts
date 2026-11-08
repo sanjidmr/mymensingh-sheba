@@ -8,6 +8,7 @@
 
 export type ContactSubject =
   | 'general'
+  | 'news_submission'
   | 'service_info'
   | 'post_service'
   | 'correction'
@@ -23,6 +24,7 @@ export interface ContactSubjectOption {
 
 export const CONTACT_SUBJECTS: ContactSubjectOption[] = [
   { value: 'general', labelBn: 'সাধারণ জিজ্ঞাসা', hintBn: 'প্ল্যাটফর্ম নিয়ে সাধারণ কোনো প্রশ্ন' },
+  { value: 'news_submission', labelBn: 'খবর পাঠান', hintBn: 'স্থানীয় খবর, ঘটনা বা তথ্য আমাদের জানাতে' },
   { value: 'service_info', labelBn: 'কোনো সেবা সম্পর্কে জানতে চাই', hintBn: 'নির্দিষ্ট সেবা কীভাবে কাজ করে' },
   { value: 'post_service', labelBn: 'নিজের সেবা পোস্ট করতে চাই', hintBn: 'আপনার সেবা মানুষের কাছে পৌঁছে দিতে চাইলে' },
   { value: 'correction', labelBn: 'কোনো তথ্য সংশোধন করতে চাই', hintBn: 'কোনো প্রোফাইল বা তথ্যে ভুল চোখে পড়লে' },

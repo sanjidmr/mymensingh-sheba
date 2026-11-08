@@ -20,6 +20,7 @@ import {
   type ContactField,
   type ContactFieldErrors,
   type ContactFormValues,
+  type ContactSubject,
 } from '@/lib/contact-types';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { sendContactMessage, type ContactActionState } from '@/app/contact/actions';
@@ -57,9 +58,15 @@ function FieldError({ id, message }: { id: string; message?: string }) {
  * round-trip still highlights the exact inputs that need attention and moves
  * focus to the first one.
  */
-export default function ContactForm() {
+export default function ContactForm({ initialSubject = '' }: { initialSubject?: ContactSubject | '' }) {
   const { user, isLoading } = useAuth();
-  const [values, setValues] = useState<ContactFormValues>(EMPTY_CONTACT_FORM);
+  const returnTo = initialSubject
+    ? `/contact?subject=${encodeURIComponent(initialSubject)}#contact-form`
+    : '/contact#contact-form';
+  const [values, setValues] = useState<ContactFormValues>(() => ({
+    ...EMPTY_CONTACT_FORM,
+    subject: initialSubject,
+  }));
   const [errors, setErrors] = useState<ContactFieldErrors>({});
   const [status, setStatus] = useState<Status>('idle');
   const [formError, setFormError] = useState('');
@@ -84,7 +91,7 @@ export default function ContactForm() {
         </p>
         {!isLoading && (
           <Link
-            href={`/login?next=${encodeURIComponent('/contact#contact-form')}`}
+            href={`/login?next=${encodeURIComponent(returnTo)}`}
             className={`mt-4 inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-bold text-white ${LIGHT_FOCUS}`}
           >
             লগইন করুন
@@ -148,7 +155,7 @@ export default function ContactForm() {
   };
 
   const reset = () => {
-    setValues(EMPTY_CONTACT_FORM);
+    setValues({ ...EMPTY_CONTACT_FORM, subject: initialSubject });
     setErrors({});
     setStatus('idle');
     setFormError('');

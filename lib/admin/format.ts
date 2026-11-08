@@ -96,6 +96,7 @@ export interface StatusOption {
  */
 export const STATUS_OPTIONS: Record<string, StatusOption[]> = {
   community_posts: [
+    { value: 'draft', label: 'খসড়া', tone: 'neutral' },
     { value: 'pending', label: 'অপেক্ষমাণ', tone: 'warning' },
     { value: 'approved', label: 'অনুমোদিত', tone: 'success' },
     { value: 'rejected', label: 'প্রত্যাখ্যাত', tone: 'danger' },

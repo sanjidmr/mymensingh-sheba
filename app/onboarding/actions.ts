@@ -56,8 +56,8 @@ export async function completeOnboarding(input: {
   if (!profile) {
     return { success: false, error: 'আপনার প্রোফাইল পাওয়া যায়নি। সহায়তার জন্য যোগাযোগ করুন।' };
   }
-  if (profile.role === 'admin') {
-    return { success: false, error: 'প্রশাসক অ্যাকাউন্টের জন্য এই সেটআপ প্রয়োজন নেই।' };
+  if (profile.role === 'admin' || profile.role === 'news_editor') {
+    return { success: false, error: 'এই অ্যাকাউন্টের জন্য গ্রাহক সেটআপ প্রয়োজন নেই।' };
   }
 
   const existingProfile = {

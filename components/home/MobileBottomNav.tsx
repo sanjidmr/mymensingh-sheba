@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { SITE_NAV_LINKS } from '@/lib/site-navigation';
 import { useAuth } from '@/lib/auth-context';
+import { ACCOUNT_LINKS } from '@/lib/account-navigation';
 
 const PRIMARY_ITEMS = [
   { name: 'হোম', href: '/', icon: Home },
@@ -72,11 +73,13 @@ export default function MobileBottomNav() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
-  const [sheet, setSheet] = useState<{ type: 'menu' | 'post'; path: string } | null>(null);
+  const [sheet, setSheet] = useState<{ type: 'menu' | 'post' | 'profile'; path: string } | null>(null);
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const postTriggerRef = useRef<HTMLButtonElement>(null);
+  const profileTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
+  const profileCloseButtonRef = useRef<HTMLButtonElement>(null);
 
   /*
     The open sheet remembers the route it was opened on. A navigation changes
@@ -85,6 +88,7 @@ export default function MobileBottomNav() {
   */
   const menuOpen = sheet?.type === 'menu' && sheet.path === pathname;
   const postOpen = sheet?.type === 'post' && sheet.path === pathname;
+  const profileOpen = sheet?.type === 'profile' && sheet.path === pathname;
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -113,6 +117,24 @@ export default function MobileBottomNav() {
     };
   }, [postOpen]);
 
+  useEffect(() => {
+    if (!profileOpen) return;
+    const trigger = profileTriggerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setSheet(null);
+    };
+    const focusTimer = window.setTimeout(() => profileCloseButtonRef.current?.focus(), 40);
+    window.addEventListener('keydown', closeOnEscape);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = previousOverflow;
+      trigger?.focus();
+    };
+  }, [profileOpen]);
+
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
     if (href === '/profile') {
@@ -136,6 +158,14 @@ export default function MobileBottomNav() {
       current?.type === 'post' && current.path === pathname
         ? null
         : { type: 'post', path: pathname }
+    );
+  };
+
+  const openProfileSheet = () => {
+    setSheet((current) =>
+      current?.type === 'profile' && current.path === pathname
+        ? null
+        : { type: 'profile', path: pathname }
     );
   };
 
@@ -233,6 +263,106 @@ export default function MobileBottomNav() {
               </div>
             )}
           </div>
+        </section>
+      </div>
+
+      {/* Customer account destinations live in one sheet opened by the profile tab. */}
+      <div
+        aria-hidden={!profileOpen}
+        onClick={() => setSheet(null)}
+        className={`fixed inset-0 z-[70] bg-brand-950/35 transition-opacity duration-300 lg:hidden ${
+          profileOpen ? 'opacity-100' : 'pointer-events-none opacity-0'
+        }`}
+      >
+        <section
+          id="mobile-profile-menu"
+          role="dialog"
+          aria-modal={profileOpen ? true : undefined}
+          aria-hidden={!profileOpen}
+          aria-label="প্রোফাইল নেভিগেশন"
+          inert={!profileOpen}
+          onClick={(event) => event.stopPropagation()}
+          className={`absolute inset-x-0 bottom-0 max-h-[82dvh] overflow-y-auto rounded-t-3xl border-t border-brand-100 bg-white px-4 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-3 shadow-2xl transition-transform duration-300 ease-out ${
+            profileOpen ? 'translate-y-0' : 'translate-y-full'
+          }`}
+        >
+          <div aria-hidden="true" className="mx-auto mb-2 h-1 w-10 rounded-full bg-brand-100" />
+          <div className="flex items-start justify-between gap-3 border-b border-brand-100 pb-3">
+            <div>
+              <h2 className="text-base font-extrabold text-brand-950">আপনার প্রোফাইল</h2>
+              <p className="mt-0.5 text-xs text-ink-500">
+                {user ? user.fullName : 'অ্যাকাউন্টে লগইন করুন'}
+              </p>
+            </div>
+            <button
+              ref={profileCloseButtonRef}
+              type="button"
+              onClick={() => setSheet(null)}
+              aria-label="প্রোফাইল মেনু বন্ধ করুন"
+              className="-mr-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-ink-600 transition-colors hover:bg-mist-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-600"
+            >
+              <X className="h-5 w-5" aria-hidden="true" />
+            </button>
+          </div>
+
+          {user ? (
+            <nav aria-label="কাস্টমার অ্যাকাউন্ট" className="mt-2 grid gap-1">
+              {ACCOUNT_LINKS.map((item) => {
+                const Icon = item.icon;
+                const active = isActive(item.href);
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setSheet(null)}
+                    aria-current={active ? 'page' : undefined}
+                    className={`flex min-h-12 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition-colors ${
+                      active ? 'bg-brand-50 text-brand-800' : 'text-ink-700 hover:bg-mist-50'
+                    }`}
+                  >
+                    <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-brand-700' : 'text-ink-400'}`} aria-hidden="true" />
+                    <span className="min-w-0 flex-1">{item.label}</span>
+                    {active && <span aria-hidden="true" className="h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                    <ChevronRight className="h-4 w-4 shrink-0 text-ink-300" aria-hidden="true" />
+                  </Link>
+                );
+              })}
+            </nav>
+          ) : authLoading ? (
+            <div aria-hidden="true" className="mt-4 h-24 animate-pulse rounded-xl bg-brand-50" />
+          ) : (
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <Link
+                href="/login?next=%2Fdashboard"
+                onClick={() => setSheet(null)}
+                className="flex min-h-11 items-center justify-center rounded-xl border border-brand-200 text-sm font-bold text-brand-800"
+              >
+                লগইন
+              </Link>
+              <Link
+                href="/register"
+                onClick={() => setSheet(null)}
+                className="flex min-h-11 items-center justify-center rounded-xl bg-accent-400 text-sm font-bold text-brand-950"
+              >
+                রেজিস্ট্রেশন
+              </Link>
+            </div>
+          )}
+
+          {!authLoading && user && (
+            <div className="mt-3 border-t border-brand-100 pt-3">
+              <button
+                type="button"
+                onClick={() => void handleLogout()}
+                disabled={loggingOut}
+                className="flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-rose-200 bg-rose-50 text-sm font-bold text-rose-800 transition-colors hover:bg-rose-100 disabled:cursor-wait disabled:opacity-60"
+              >
+                <LogOut className="h-4 w-4" aria-hidden="true" />
+                {loggingOut ? 'লগআউট হচ্ছে…' : 'লগআউট'}
+              </button>
+              {logoutError && <p role="alert" className="mt-2 text-center text-xs font-semibold text-rose-700">{logoutError}</p>}
+            </div>
+          )}
         </section>
       </div>
 
@@ -365,18 +495,22 @@ export default function MobileBottomNav() {
             <span className="text-[10px] font-semibold">পোস্ট</span>
           </button>
 
-          <Link
-            href="/profile"
-            aria-current={isActive('/profile') ? 'page' : undefined}
+          <button
+            ref={profileTriggerRef}
+            type="button"
+            onClick={openProfileSheet}
+            aria-label={profileOpen ? 'প্রোফাইল মেনু বন্ধ করুন' : 'প্রোফাইল মেনু খুলুন'}
+            aria-expanded={profileOpen}
+            aria-controls="mobile-profile-menu"
             className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
-              isActive('/profile')
+              isActive('/profile') || profileOpen
                 ? 'border-brand-700 text-brand-700'
                 : 'border-transparent text-ink-400 hover:text-ink-700'
             }`}
           >
-            <UserRound className={`h-5 w-5 ${isActive('/profile') ? 'text-brand-700' : ''}`} />
+            <UserRound className={`h-5 w-5 ${isActive('/profile') || profileOpen ? 'text-brand-700' : ''}`} />
             <span className="text-[10px] font-semibold">প্রোফাইল</span>
-          </Link>
+          </button>
         </div>
       </nav>
     </>

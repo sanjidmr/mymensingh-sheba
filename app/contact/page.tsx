@@ -11,6 +11,7 @@ import ContactLocation from '@/components/contact/ContactLocation';
 import ContactClosing from '@/components/contact/ContactClosing';
 import { getSiteContentForViewer } from '@/lib/site-content-server';
 import { mergeSiteContact } from '@/lib/site-content';
+import type { ContactSubject } from '@/lib/contact-types';
 
 export const metadata: Metadata = {
   title: 'যোগাযোগ করুন — Mymensingh Sheba',
@@ -18,7 +19,15 @@ export const metadata: Metadata = {
     'Mymensingh Sheba-এর সাথে যোগাযোগ করুন — প্রশ্ন, পরামর্শ, সমস্যা বা সহযোগিতার জন্য। অনলাইনে বার্তা পাঠান, অথবা নিজের সেবা ময়মনসিংহের মানুষের কাছে পৌঁছে দিন।',
 };
 
-export default async function ContactPage() {
+export default async function ContactPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ subject?: string | string[] }>;
+}) {
+  const params = await searchParams;
+  const requestedSubject = Array.isArray(params.subject) ? params.subject[0] : params.subject;
+  const initialSubject: ContactSubject | '' =
+    requestedSubject === 'news_submission' ? 'news_submission' : '';
   const overrides = await getSiteContentForViewer();
   const contact = mergeSiteContact(overrides);
   return (
@@ -40,7 +49,7 @@ export default async function ContactPage() {
         </nav>
 
         <ContactHero contact={contact} />
-        <ContactComposer contact={contact} />
+        <ContactComposer key={initialSubject} contact={contact} initialSubject={initialSubject} />
         <ContactPostCta />
         <ContactFaq />
         <ContactLocation contact={contact} />

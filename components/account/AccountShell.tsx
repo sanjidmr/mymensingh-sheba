@@ -4,42 +4,14 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  Bookmark,
-  CircleAlert,
-  ClipboardList,
-  FileText,
-  LayoutDashboard,
   LogOut,
-  Mail,
-  Settings,
-  UserRound,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { cn } from '@/lib/utils';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
-
-const ACCOUNT_LINKS = [
-  { href: '/dashboard', label: 'ওভারভিউ', shortLabel: 'ওভারভিউ', icon: LayoutDashboard },
-  { href: '/dashboard/posts', label: 'আমার পোস্ট', shortLabel: 'আমার পোস্ট', icon: FileText },
-  {
-    href: '/dashboard/profiles',
-    label: 'সেবা প্রোফাইল খুলুন',
-    shortLabel: 'সেবা প্রোফাইল',
-    icon: UserRound,
-  },
-  { href: '/profile/saved', label: 'সংরক্ষিত পোস্ট', shortLabel: 'সংরক্ষিত পোস্ট', icon: Bookmark },
-  { href: '/dashboard/messages', label: 'বার্তা', shortLabel: 'বার্তা', icon: Mail },
-  { href: '/dashboard/complaints', label: 'অভিযোগ', shortLabel: 'অভিযোগ', icon: CircleAlert },
-  {
-    href: '/profile/requests',
-    label: 'আমার রিকোয়েস্ট',
-    shortLabel: 'আমার রিকোয়েস্ট',
-    icon: ClipboardList,
-  },
-  { href: '/dashboard/profile', label: 'প্রোফাইল সেটিংস', shortLabel: 'প্রোফাইল সেটিংস', icon: Settings },
-] as const;
+import { ACCOUNT_LINKS } from '@/lib/account-navigation';
 
 /**
  * Shared shell for the signed-in customer account.
@@ -147,44 +119,6 @@ export default function AccountShell({ children }: { children: React.ReactNode }
         </aside>
 
         <div className="min-w-0 flex-1 lg:max-w-5xl">
-          <nav className="mb-4 lg:hidden" aria-label="অ্যাকাউন্ট মেনু">
-            <p className="mb-2 text-[11.5px] font-medium text-ink-500">আপনার অ্যাকাউন্ট</p>
-            <div className="grid grid-cols-3 gap-1 sm:grid-cols-4">
-              {ACCOUNT_LINKS.map((item) => {
-                const Icon = item.icon;
-                const active = isActive(item.href);
-                return (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'relative flex min-h-10 min-w-0 flex-col items-center justify-center gap-1 rounded-lg border px-1 py-1.5 text-center text-[10px] font-semibold leading-tight transition-colors sm:min-h-12 sm:flex-row sm:gap-2 sm:px-2.5 sm:py-2 sm:text-left sm:text-[12px] sm:leading-snug',
-                      active
-                        ? 'border-ink-900 bg-white text-ink-900 shadow-[0_1px_2px_rgba(16,24,20,0.06)]'
-                        : 'border-ink-900/[0.07] bg-white text-ink-600 hover:border-ink-900/15 hover:bg-mist-50 hover:text-ink-900',
-                      LIGHT_FOCUS
-                    )}
-                  >
-                    <Icon
-                      className={cn(
-                        'h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4',
-                        active ? 'text-ink-800' : 'text-ink-400'
-                      )}
-                      aria-hidden="true"
-                    />
-                    <span className="min-w-0 break-words sm:text-left">{item.shortLabel}</span>
-                    {active && (
-                      <span
-                        aria-hidden="true"
-                        className="absolute right-1.5 top-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500 sm:static"
-                      />
-                    )}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
           {children}
         </div>
       </main>

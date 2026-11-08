@@ -37,6 +37,8 @@ export interface DirectorySearchBarProps {
   currentSort?: string;
   onSortChange?: (id: string) => void;
   inlineAction?: React.ReactNode;
+  compactSearch?: boolean;
+  mobileSearchWithFilter?: boolean;
 }
 
 /**
@@ -62,6 +64,8 @@ export default function DirectorySearchBar({
   currentSort = 'newest',
   onSortChange,
   inlineAction,
+  compactSearch = false,
+  mobileSearchWithFilter = false,
 }: DirectorySearchBarProps) {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [draft, setDraft] = useState<FilterState>(filterState);
@@ -88,7 +92,7 @@ export default function DirectorySearchBar({
   return (
     <div className="rounded-xl border border-brand-100 bg-white p-2.5 shadow-xs sm:p-3">
       {/* Search row */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+      <div className={`flex gap-2 sm:flex-row sm:items-center ${mobileSearchWithFilter ? 'flex-row items-center' : 'flex-col'}`}>
         <div className="relative min-w-0 flex-1">
           <Search
             className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-brand-500"
@@ -100,7 +104,7 @@ export default function DirectorySearchBar({
             onChange={(e) => onChange(e.target.value)}
             placeholder={placeholder}
             aria-label={placeholder}
-            className="min-h-[46px] w-full rounded-lg border border-brand-100 bg-mist-50 pl-9 pr-9 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20"
+            className={`w-full rounded-lg border border-brand-100 bg-mist-50 pl-9 pr-9 text-sm text-ink-900 placeholder:text-ink-400 focus:border-brand-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-brand-600/20 ${compactSearch ? 'min-h-10 sm:min-h-[46px]' : 'min-h-[46px]'}`}
           />
           {value && (
             <button
@@ -114,7 +118,7 @@ export default function DirectorySearchBar({
           )}
         </div>
 
-        <div className={`grid shrink-0 gap-2 ${inlineAction ? 'w-full grid-cols-2 sm:w-auto' : 'w-full sm:w-auto'}`}>
+        <div className={`grid shrink-0 gap-2 ${mobileSearchWithFilter ? 'w-auto grid-cols-1 sm:w-auto' : inlineAction ? 'w-full grid-cols-2 sm:w-auto' : 'w-full sm:w-auto'}`}>
           <button
             type="button"
             onClick={openSheet}

@@ -13,11 +13,15 @@ import {
 } from 'lucide-react';
 import { PageHeader, Panel } from '@/components/admin/PageHeader';
 import { AdminEmpty, AdminError } from '@/components/admin/States';
+import AnalyticsAutoRefresh from '@/components/admin/AnalyticsAutoRefresh';
+import WebsiteBusinessAnalytics from '@/components/admin/WebsiteBusinessAnalytics';
+import { resolveAnalyticsDateRange } from '@/lib/admin/analytics-date';
 import {
   CTA_TYPE_LABELS,
   DEVICE_LABELS,
   EVENT_TYPE_LABELS,
   SERVICE_LABELS,
+  fetchWebsiteBusinessAnalytics,
   fetchWebsiteAnalytics,
 } from '@/lib/admin/website-analytics';
 import type {
@@ -34,6 +38,7 @@ type SearchParams = Promise<{
   category?: string;
   route?: string;
   eventType?: string;
+  range?: string;
 }>;
 
 const SERVICE_CATEGORY_SLUGS = new Set([
@@ -43,13 +48,6 @@ const SERVICE_CATEGORY_SLUGS = new Set([
   'basha-paltano',
   'ac-fridge',
 ]);
-
-function localDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function bn(value: number): string {
   return value.toLocaleString('bn-BD');
@@ -323,7 +321,7 @@ function WebsiteAnalyticsSections({ data }: { data: WebsiteAnalyticsData }) {
         <StatTile
           label="আনুমানিক ইউনিক ভিজিটর"
           value={totals.uniqueVisitors}
-          hint={`নতুন ${bn(totals.newVisitors)} · ফিরে আসা ${bn(totals.returningVisitors)}`}
+          hint={`নতুন ${bn(totals.newVisitors)} · ফিরে আসা ${bn(totals.returningVisitors)}; legacy-এর নতুন/ফিরে আসা অজানা`}
           icon={Users}
         />
         <StatTile
@@ -332,8 +330,12 @@ function WebsiteAnalyticsSections({ data }: { data: WebsiteAnalyticsData }) {
           hint="এক ট্যাব-সেশনে একবার"
           icon={TrendingUp}
         />
+        <StatTile label="লগইন করা ইউনিক ব্যবহারকারী" value={totals.loggedInVisitors} icon={UserCheck} />
+        <StatTile label="অতিথি ইউনিক ভিজিটর" value={totals.guestVisitors} icon={Users} />
         <StatTile label="আজকের ভিজিটর" value={totals.todayVisitors} icon={UserCheck} />
         <StatTile label="আজকের পেজ ভিউ" value={totals.todayPageViews} icon={ChartNoAxesColumnIncreasing} />
+        <StatTile label="গতকালের ভিজিটর" value={totals.previousDayVisitors} icon={UserCheck} />
+        <StatTile label="গতকালের পেজ ভিউ" value={totals.previousDayPageViews} icon={ChartNoAxesColumnIncreasing} />
         <StatTile
           label="CTA বাটন ক্লিক"
           value={totals.ctaClicks}
@@ -347,6 +349,18 @@ function WebsiteAnalyticsSections({ data }: { data: WebsiteAnalyticsData }) {
           icon={Phone}
         />
       </div>
+
+      <Panel
+        title="ট্রাফিক শ্রেণিবিন্যাস"
+        description="পরিচিত bot ও admin/editor traffic visitor total থেকে বাদ। পরিচয় সংরক্ষণ সম্ভব নয় এমন traffic unique visitor হিসাবে গণনা হয় না; legacy event পুরোনো unclassified রেকর্ড।"
+      >
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <StatTile label="চিহ্নিত bot event" value={data.trafficQuality.botEvents} icon={Users} />
+          <StatTile label="অভ্যন্তরীণ admin/editor event" value={data.trafficQuality.internalEvents} icon={UserCheck} />
+          <StatTile label="পরিচয় অনির্দিষ্ট event" value={data.trafficQuality.unidentifiedEvents} icon={Users} />
+          <StatTile label="পুরোনো unclassified event" value={data.trafficQuality.legacyEvents} icon={Eye} />
+        </div>
+      </Panel>
 
       <div className="grid gap-4 xl:grid-cols-2">
         <TrendBars
@@ -510,28 +524,37 @@ function WebsiteAnalyticsSections({ data }: { data: WebsiteAnalyticsData }) {
 
 export default async function WebsiteAnalyticsPage({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
-  const today = localDateString(new Date());
-  const monthAgo = new Date();
-  monthAgo.setDate(monthAgo.getDate() - 29);
-  const from = params.from ?? localDateString(monthAgo);
-  const to = params.to ?? today;
+  const { from, to, preset } = resolveAnalyticsDateRange(params);
   const category = params.category?.trim() || undefined;
   const route = params.route?.trim() || undefined;
   const eventType = params.eventType || undefined;
 
-  const result = await fetchWebsiteAnalytics({ from, to, category, route, eventType });
+  const [result, businessResult] = await Promise.all([
+    fetchWebsiteAnalytics({ from, to, category, route, eventType }),
+    fetchWebsiteBusinessAnalytics({ from, to }),
+  ]);
+  const presetHref = (range: 'today' | 'yesterday' | '7d' | '30d') => {
+    const query = new URLSearchParams({ range });
+    if (category) query.set('category', category);
+    if (route) query.set('route', route);
+    if (eventType) query.set('eventType', eventType);
+    return `?${query.toString()}`;
+  };
 
   return (
     <div className="space-y-5">
       <PageHeader
         title="ওয়েবসাইট অ্যানালিটিক্স"
-        description="প্রকৃত site_events ও tolet_listing_events থেকে ডেটাবেজ-স্তরে সংকলিত পরিসংখ্যান। কোনো অনুমান বা নকল ডেটা নেই।"
+        description="Asia/Dhaka দিনসীমায় database records থেকে সংকলিত। নতুন ডেটা সর্বোচ্চ ৬০ সেকেন্ডের মধ্যে refresh হয়।"
         breadcrumb={{ href: '/admin/analytics', label: 'অ্যানালিটিক্স' }}
         actions={
-          <span className="inline-flex items-center gap-1.5 rounded-md border border-admin-border bg-white px-3 py-2 text-xs text-admin-muted">
-            <CalendarDays className="h-4 w-4" aria-hidden="true" />
-            {from} → {to}
-          </span>
+          <div className="flex flex-col items-end gap-1">
+            <span className="inline-flex items-center gap-1.5 rounded-md border border-admin-border bg-white px-3 py-2 text-xs text-admin-muted">
+              <CalendarDays className="h-4 w-4" aria-hidden="true" />
+              {from} → {to}
+            </span>
+            <AnalyticsAutoRefresh />
+          </div>
         }
       />
 
@@ -539,6 +562,30 @@ export default async function WebsiteAnalyticsPage({ searchParams }: { searchPar
         method="get"
         className="grid gap-3 rounded-admin-card border border-admin-border bg-white p-4 shadow-admin-card sm:grid-cols-2 xl:grid-cols-[1fr_1fr_1fr_1fr_1fr_auto] xl:items-end"
       >
+        <div className="flex flex-wrap gap-2 sm:col-span-2 xl:col-span-6" aria-label="দ্রুত তারিখ নির্বাচন">
+          {([
+            ['today', 'আজ'],
+            ['yesterday', 'গতকাল'],
+            ['7d', 'গত ৭ দিন'],
+            ['30d', 'গত ৩০ দিন'],
+          ] as const).map(([range, label]) => (
+            <Link
+              key={range}
+              href={presetHref(range)}
+              aria-current={preset === range ? 'date' : undefined}
+              className={`rounded-md border px-3 py-1.5 text-xs font-semibold ${
+                preset === range
+                  ? 'border-admin-navy bg-admin-navy text-white'
+                  : 'border-admin-border bg-white text-admin-text hover:bg-admin-page'
+              }`}
+            >
+              {label}
+            </Link>
+          ))}
+          <span className="self-center text-xs text-admin-muted">
+            নির্বাচিত: {from} – {to}
+          </span>
+        </div>
         <label className="grid gap-1.5 text-xs font-semibold text-admin-text">
           শুরু
           <input
@@ -612,7 +659,19 @@ export default async function WebsiteAnalyticsPage({ searchParams }: { searchPar
           message={result.error}
         />
       ) : result.data ? (
-        <WebsiteAnalyticsSections data={result.data} />
+        <>
+          <WebsiteAnalyticsSections data={result.data} />
+          {businessResult.error ? (
+            <AdminError
+              title={businessResult.unavailable ? 'ব্যবসায়িক মেট্রিক অনুপলভ্য' : 'ব্যবসায়িক তথ্য লোড করা যায়নি'}
+              message={businessResult.error}
+            />
+          ) : businessResult.data ? (
+            <WebsiteBusinessAnalytics data={businessResult.data} />
+          ) : (
+            <AdminError title="ব্যবসায়িক তথ্য লোড করা যায়নি" message="অ্যানালিটিক্স ডেটা ফেরত আসেনি।" />
+          )}
+        </>
       ) : (
         <AdminError title="তথ্য লোড করা যায়নি" message="কোনো অ্যানালিটিক্স ডেটা ফেরত আসেনি।" />
       )}

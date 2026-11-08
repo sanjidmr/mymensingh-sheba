@@ -119,7 +119,7 @@ export async function POST(request: Request) {
     }
     const { data: profile, error: profileError } = await client
       .from('profiles')
-      .select('status')
+      .select('role, status')
       .eq('id', userData.user.id)
       .maybeSingle();
     if (profileError) {
@@ -127,6 +127,9 @@ export async function POST(request: Request) {
     }
     if (!profile || profile.status !== 'active') {
       return NextResponse.json({ error: 'এই অ্যাকাউন্ট থেকে অনুরোধ পাঠানো যাচ্ছে না।' }, { status: 403 });
+    }
+    if (profile.role === 'news_editor') {
+      return NextResponse.json({ error: 'এই অ্যাকাউন্ট থেকে যানবাহন অনুরোধ পাঠানো যাবে না।' }, { status: 403 });
     }
     customerId = userData.user.id;
   }

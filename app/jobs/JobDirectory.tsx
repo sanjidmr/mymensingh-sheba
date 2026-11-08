@@ -52,9 +52,9 @@ export default function JobDirectory() {
       subtitle="ময়মনসিংহে চাকরি ও ফ্রিল্যান্স কাজের খবর — বেতন, যোগ্যতা ও এলাকা অনুযায়ী খুঁজুন।"
       placeholder="পদের নাম, প্রতিষ্ঠান বা এলাকা লিখে খুঁজুন..."
       noun="চাকরি"
-      highlights={['বেতন ও যোগ্যতা স্পষ্ট', 'সদস্যদের পোস্ট', 'অ্যাডমিন অনুমোদনের পর প্রকাশ']}
       createHref={CREATE_HREF}
       createLabel="চাকরির খবর দিন"
+      createActionInline
       requiresAuth
       filterGroups={filterGroups}
       sortOptions={SORT_OPTIONS}

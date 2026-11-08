@@ -3,7 +3,7 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Check, Eye, Pencil, Star, Trash2, X } from 'lucide-react';
+import { ArrowUpRight, Check, Eye, Pencil, Star, Trash2, X } from 'lucide-react';
 import type { AdminPostRow } from '@/lib/admin/queries';
 import {
   setPostStatus,
@@ -80,6 +80,16 @@ export default function PostActions({ post }: { post: AdminPostRow }) {
     <>
       <div className="flex flex-wrap items-center gap-1.5">
         <Link
+          href={post.kind === 'news' ? `/admin/news/${post.id}/preview` : post.kind === 'job' ? `/jobs/${post.slug}` : `/buy-sell/${post.slug}`}
+          target="_blank"
+          rel="noreferrer"
+          aria-label="সাইটে প্রিভিউ দেখুন"
+          title="সাইটে প্রিভিউ"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-admin-border bg-white text-admin-muted hover:bg-admin-page hover:text-admin-navy"
+        >
+          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
+        <Link
           href={`/admin/posts/${post.id}`}
           aria-label="বিস্তারিত"
           title="বিস্তারিত"
@@ -97,7 +107,7 @@ export default function PostActions({ post }: { post: AdminPostRow }) {
         </Link>
         {post.status !== 'rejected' && (
           <>
-            {isPending && (
+            {(isPending || post.status === 'draft') && (
               <Button
                 size="sm"
                 variant="success"

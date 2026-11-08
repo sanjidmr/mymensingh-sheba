@@ -3,17 +3,11 @@ import { fetchAdminAnalytics } from '@/lib/admin/queries';
 import type { AdminAnalytics, AdminAnalyticsRow } from '@/lib/admin/queries';
 import { PageHeader, Panel } from '@/components/admin/PageHeader';
 import { AdminEmpty, AdminError } from '@/components/admin/States';
+import { dhakaDateString, shiftAnalyticsDate } from '@/lib/admin/analytics-date';
 
 export const dynamic = 'force-dynamic';
 
 type SearchParams = Promise<{ from?: string; to?: string }>;
-
-function localDateString(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
 
 function displayLabel(key: string): string {
   const directLabels: Record<string, string> = {
@@ -209,10 +203,8 @@ export default async function AdminAnalyticsPage({
   searchParams: SearchParams;
 }) {
   const params = await searchParams;
-  const today = localDateString(new Date());
-  const monthAgo = new Date();
-  monthAgo.setDate(monthAgo.getDate() - 29);
-  const from = params.from ?? localDateString(monthAgo);
+  const today = dhakaDateString(new Date());
+  const from = params.from ?? shiftAnalyticsDate(today, -29);
   const to = params.to ?? today;
   const result = await fetchAdminAnalytics(from, to);
 

@@ -62,6 +62,16 @@ export interface WebsiteAnalyticsData {
     formSubmits: number;
     todayPageViews: number;
     todayVisitors: number;
+    previousDayPageViews: number;
+    previousDayVisitors: number;
+    guestVisitors: number;
+    loggedInVisitors: number;
+  };
+  trafficQuality: {
+    botEvents: number;
+    internalEvents: number;
+    unidentifiedEvents: number;
+    legacyEvents: number;
   };
   daily: WebsiteAnalyticsTrendPoint[];
   weekly: WebsiteAnalyticsTrendPoint[];
@@ -90,8 +100,35 @@ export interface WebsiteAnalyticsData {
   };
 }
 
+export interface WebsiteBusinessAnalyticsData {
+  accounts: {
+    total: number;
+    new: number;
+    byRole: WebsiteAnalyticsRow[];
+  };
+  profiles: WebsiteAnalyticsRow[];
+  posts: WebsiteAnalyticsRow[];
+  requests: WebsiteAnalyticsRow[];
+  finance: {
+    income: number;
+    due: number;
+    records: number;
+    byService: {
+      key: string;
+      income: number;
+      due: number;
+      records: number;
+    }[];
+    expensesTracked: boolean;
+  };
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === 'number' && Number.isFinite(value);
 }
 
 function toNumber(value: unknown): number {
@@ -103,15 +140,50 @@ function toNullableString(value: unknown): string | null {
 }
 
 function toRow(value: unknown): WebsiteAnalyticsRow | null {
-  if (!isRecord(value) || typeof value.key !== 'string') return null;
-  const row: WebsiteAnalyticsRow = { key: value.key, count: toNumber(value.count) };
-  if (value.secondaryCount !== undefined) row.secondaryCount = toNumber(value.secondaryCount);
+  if (
+    !isRecord(value) ||
+    typeof value.key !== 'string' ||
+    typeof value.count !== 'number' ||
+    !Number.isFinite(value.count) ||
+    (value.secondaryCount !== undefined &&
+      (typeof value.secondaryCount !== 'number' || !Number.isFinite(value.secondaryCount)))
+  ) return null;
+  const row: WebsiteAnalyticsRow = { key: value.key, count: value.count };
+  if (typeof value.secondaryCount === 'number') row.secondaryCount = value.secondaryCount;
   return row;
 }
 
 function toRowList(value: unknown): WebsiteAnalyticsRow[] {
   if (!Array.isArray(value)) return [];
   return value.map(toRow).filter((row): row is WebsiteAnalyticsRow => row !== null);
+}
+
+function isValidRowList(value: unknown): boolean {
+  return Array.isArray(value) && value.every((item) => toRow(item) !== null);
+}
+
+function isValidContentList(value: unknown): boolean {
+  return Array.isArray(value) &&
+    value.every((item) => isRecord(item) && toRow(item) !== null);
+}
+
+function isValidTrendList(value: unknown): boolean {
+  return Array.isArray(value) && value.every((item) =>
+    isRecord(item) &&
+    typeof item.key === 'string' &&
+    isFiniteNumber(item.pageViews) &&
+    isFiniteNumber(item.visitors) &&
+    (item.sessions === undefined || isFiniteNumber(item.sessions))
+  );
+}
+
+function isValidServiceCtaList(value: unknown): boolean {
+  return Array.isArray(value) && value.every((item) =>
+    isRecord(item) &&
+    typeof item.key === 'string' &&
+    isFiniteNumber(item.count) &&
+    (item.category === undefined || item.category === null || typeof item.category === 'string')
+  );
 }
 
 function toContentRowList(value: unknown): WebsiteAnalyticsContentRow[] {
@@ -133,10 +205,15 @@ function toServiceCtaList(value: unknown): WebsiteAnalyticsServiceCtaRow[] {
   if (!Array.isArray(value)) return [];
   const rows: WebsiteAnalyticsServiceCtaRow[] = [];
   for (const item of value) {
-    if (!isRecord(item) || typeof item.key !== 'string') continue;
+    if (
+      !isRecord(item) ||
+      typeof item.key !== 'string' ||
+      typeof item.count !== 'number' ||
+      !Number.isFinite(item.count)
+    ) continue;
     rows.push({
       key: item.key,
-      count: toNumber(item.count),
+      count: item.count,
       category: toNullableString(item.category),
     });
   }
@@ -147,13 +224,22 @@ function toTrendList(value: unknown): WebsiteAnalyticsTrendPoint[] {
   if (!Array.isArray(value)) return [];
   const points: WebsiteAnalyticsTrendPoint[] = [];
   for (const item of value) {
-    if (!isRecord(item) || typeof item.key !== 'string') continue;
+    if (
+      !isRecord(item) ||
+      typeof item.key !== 'string' ||
+      typeof item.pageViews !== 'number' ||
+      !Number.isFinite(item.pageViews) ||
+      typeof item.visitors !== 'number' ||
+      !Number.isFinite(item.visitors) ||
+      (item.sessions !== undefined &&
+        (typeof item.sessions !== 'number' || !Number.isFinite(item.sessions)))
+    ) continue;
     const point: WebsiteAnalyticsTrendPoint = {
       key: item.key,
-      pageViews: toNumber(item.pageViews),
-      visitors: toNumber(item.visitors),
+      pageViews: item.pageViews,
+      visitors: item.visitors,
     };
-    if (item.sessions !== undefined) point.sessions = toNumber(item.sessions);
+    if (typeof item.sessions === 'number') point.sessions = item.sessions;
     points.push(point);
   }
   return points;
@@ -180,25 +266,105 @@ function toToletListings(value: unknown): WebsiteToletTopListing[] {
   return rows;
 }
 
+function toFinancialRows(value: unknown): WebsiteBusinessAnalyticsData['finance']['byService'] | null {
+  if (!Array.isArray(value)) return null;
+  const rows: WebsiteBusinessAnalyticsData['finance']['byService'] = [];
+  for (const item of value) {
+    if (
+      !isRecord(item) ||
+      typeof item.key !== 'string' ||
+      !isFiniteNumber(item.income) ||
+      !isFiniteNumber(item.due) ||
+      !isFiniteNumber(item.records)
+    ) return null;
+    rows.push({ key: item.key, income: item.income, due: item.due, records: item.records });
+  }
+  return rows;
+}
+
 function parseWebsiteAnalytics(value: unknown): WebsiteAnalyticsData | null {
   if (!isRecord(value)) return null;
   const totals = value.totals;
-  if (!isRecord(totals)) return null;
+  const trafficQuality = value.trafficQuality;
+  if (
+    !isRecord(totals) ||
+    !isFiniteNumber(totals.pageViews) ||
+    !isFiniteNumber(totals.sessions) ||
+    !isFiniteNumber(totals.uniqueVisitors) ||
+    !isFiniteNumber(totals.newVisitors) ||
+    !isFiniteNumber(totals.returningVisitors) ||
+    !isFiniteNumber(totals.ctaClicks) ||
+    !isFiniteNumber(totals.formSubmits) ||
+    !isFiniteNumber(totals.todayPageViews) ||
+    !isFiniteNumber(totals.todayVisitors) ||
+    !isFiniteNumber(totals.previousDayPageViews) ||
+    !isFiniteNumber(totals.previousDayVisitors) ||
+    !isFiniteNumber(totals.guestVisitors) ||
+    !isFiniteNumber(totals.loggedInVisitors) ||
+    !isRecord(trafficQuality) ||
+    !isFiniteNumber(trafficQuality.botEvents) ||
+    !isFiniteNumber(trafficQuality.internalEvents) ||
+    !isFiniteNumber(trafficQuality.unidentifiedEvents) ||
+    !isFiniteNumber(trafficQuality.legacyEvents) ||
+    !isValidTrendList(value.daily) ||
+    !isValidTrendList(value.weekly) ||
+    !isValidTrendList(value.monthly) ||
+    !isValidRowList(value.topPages) ||
+    !isValidRowList(value.landingPages) ||
+    !isValidContentList(value.topContent) ||
+    !isValidRowList(value.topCategories) ||
+    !isValidRowList(value.ctaClicks) ||
+    !isValidRowList(value.formSubmits) ||
+    !isValidServiceCtaList(value.serviceCtas) ||
+    !isValidRowList(value.devices) ||
+    !isValidRowList(value.referrers)
+  ) return null;
 
-  const tolet = isRecord(value.tolet) ? value.tolet : {};
-  const requests = isRecord(value.requests) ? value.requests : {};
+  const tolet = value.tolet;
+  const requests = value.requests;
+  if (
+    !isRecord(tolet) ||
+    !isFiniteNumber(tolet.views) ||
+    !isFiniteNumber(tolet.callClicks) ||
+    !isFiniteNumber(tolet.whatsappClicks) ||
+    !isFiniteNumber(tolet.favorites) ||
+    !isFiniteNumber(tolet.shares) ||
+    !isFiniteNumber(tolet.uniqueVisitors) ||
+    !Array.isArray(tolet.topListings) ||
+    !tolet.topListings.every((item) =>
+      isRecord(item) &&
+      typeof item.listingId === 'string' &&
+      isFiniteNumber(item.views) &&
+      isFiniteNumber(item.callClicks) &&
+      isFiniteNumber(item.whatsappClicks) &&
+      isFiniteNumber(item.contactClicks)
+    ) ||
+    !isRecord(requests) ||
+    !isFiniteNumber(requests.vehicleRequests) ||
+    !isValidRowList(requests.serviceRequests)
+  ) return null;
 
   return {
     totals: {
-      pageViews: toNumber(totals.pageViews),
-      sessions: toNumber(totals.sessions),
-      uniqueVisitors: toNumber(totals.uniqueVisitors),
-      newVisitors: toNumber(totals.newVisitors),
-      returningVisitors: toNumber(totals.returningVisitors),
-      ctaClicks: toNumber(totals.ctaClicks),
-      formSubmits: toNumber(totals.formSubmits),
-      todayPageViews: toNumber(totals.todayPageViews),
-      todayVisitors: toNumber(totals.todayVisitors),
+      pageViews: totals.pageViews,
+      sessions: totals.sessions,
+      uniqueVisitors: totals.uniqueVisitors,
+      newVisitors: totals.newVisitors,
+      returningVisitors: totals.returningVisitors,
+      ctaClicks: totals.ctaClicks,
+      formSubmits: totals.formSubmits,
+      todayPageViews: totals.todayPageViews,
+      todayVisitors: totals.todayVisitors,
+      previousDayPageViews: totals.previousDayPageViews,
+      previousDayVisitors: totals.previousDayVisitors,
+      guestVisitors: totals.guestVisitors,
+      loggedInVisitors: totals.loggedInVisitors,
+    },
+    trafficQuality: {
+      botEvents: trafficQuality.botEvents,
+      internalEvents: trafficQuality.internalEvents,
+      unidentifiedEvents: trafficQuality.unidentifiedEvents,
+      legacyEvents: trafficQuality.legacyEvents,
     },
     daily: toTrendList(value.daily),
     weekly: toTrendList(value.weekly),
@@ -254,7 +420,7 @@ export async function fetchWebsiteAnalytics(
     return { data: null, unavailable: true, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
   }
 
-  const { data, error } = await admin.client.rpc('get_website_analytics', {
+  const { data, error } = await admin.client.rpc('get_website_analytics_v2', {
     p_from: from,
     p_to: to,
     p_category: filters.category ?? null,
@@ -268,6 +434,76 @@ export async function fetchWebsiteAnalytics(
     return { data: null, unavailable: false, error: 'অ্যানালিটিক্সের ডেটা ফরম্যাট সঠিক নয়।' };
   }
   return { data: parsed, unavailable: false };
+}
+
+export async function fetchWebsiteBusinessAnalytics(
+  filters: Pick<WebsiteAnalyticsFilters, 'from' | 'to'>
+): Promise<{ data: WebsiteBusinessAnalyticsData | null; unavailable: boolean; error?: string }> {
+  const { from, to } = filters;
+  const isDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
+  if (!isDate(from) || !isDate(to) || to < from) {
+    return { data: null, unavailable: false, error: 'তারিখের সীমা সঠিক নয়।' };
+  }
+  const span = (new Date(`${to}T00:00:00Z`).getTime() - new Date(`${from}T00:00:00Z`).getTime()) / 86400000;
+  if (span > 366) {
+    return { data: null, unavailable: false, error: 'সর্বোচ্চ ৩৬৭ দিনের পরিসর বেছে নিন।' };
+  }
+
+  const admin = await getAdminDataClient();
+  if (!admin) {
+    return { data: null, unavailable: true, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
+  }
+  const { data, error } = await admin.client.rpc('get_website_business_analytics', {
+    p_from: from,
+    p_to: to,
+  });
+  if (error) return { data: null, unavailable: false, error: error.message };
+  if (
+    !isRecord(data) ||
+    !isRecord(data.accounts) ||
+    !isFiniteNumber(data.accounts.total) ||
+    !isFiniteNumber(data.accounts.new) ||
+    !isRecord(data.finance) ||
+    !isFiniteNumber(data.finance.income) ||
+    !isFiniteNumber(data.finance.due) ||
+    !isFiniteNumber(data.finance.records)
+  ) {
+    return { data: null, unavailable: false, error: 'ব্যবসায়িক অ্যানালিটিক্সের ডেটা ফরম্যাট সঠিক নয়।' };
+  }
+  const byService = toFinancialRows(data.finance.byService);
+  if (
+    !byService ||
+    !isValidRowList(data.accounts.byRole) ||
+    !isValidRowList(data.profiles) ||
+    !isValidRowList(data.posts) ||
+    !isValidRowList(data.requests)
+  ) {
+    return { data: null, unavailable: false, error: 'আর্থিক রেকর্ডের ডেটা ফরম্যাট সঠিক নয়।' };
+  }
+  const byRole = toRowList(data.accounts.byRole);
+  const profiles = toRowList(data.profiles);
+  const posts = toRowList(data.posts);
+  const requests = toRowList(data.requests);
+  return {
+    data: {
+      accounts: {
+        total: toNumber(data.accounts.total),
+        new: toNumber(data.accounts.new),
+        byRole,
+      },
+      profiles,
+      posts,
+      requests,
+      finance: {
+        income: data.finance.income,
+        due: data.finance.due,
+        records: data.finance.records,
+        byService,
+        expensesTracked: data.finance.expensesTracked === true,
+      },
+    },
+    unavailable: false,
+  };
 }
 
 /** Human labels for the event/CTA vocabularies the rollup returns. */
@@ -309,6 +545,12 @@ export const SERVICE_LABELS: Record<string, string> = {
   buy_sell: 'কেনাবেচা',
   'buy-sell': 'কেনাবেচা',
   tolet: 'বাসা ভাড়া',
+  vehicle: 'যানবাহন',
+  staff: 'কর্মী',
+  blood_donor: 'রক্তদাতা',
+  wifi: 'WiFi',
+  coaching: 'কোচিং',
+  other: 'অন্যান্য',
 };
 
 export const DEVICE_LABELS: Record<string, string> = {

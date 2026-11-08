@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useId, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
@@ -81,10 +81,12 @@ function PostMenuButton({ compact = false }: { compact?: boolean }) {
  * area links plus the "ময়মনসিংহ পরিচিতি" page. Mobile keeps the compact bar
  * (logo + hamburger, 44px targets) with a polished drawer.
  */
-export default function Navbar() {
+export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolean }) {
   const [scrolled, setScrolled] = useState(false);
+  const [navHidden, setNavHidden] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
+  const lastScrollY = useRef(0);
   const pathname = usePathname();
   const router = useRouter();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
@@ -94,11 +96,25 @@ export default function Navbar() {
   // blur after scrolling so content never collides with the links.
   const onHome = pathname === '/';
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => {
+      const currentY = window.scrollY;
+      setScrolled(currentY > 12);
+      if (hideOnScroll) {
+        if (currentY <= 12) {
+          setNavHidden(false);
+        } else if (currentY > lastScrollY.current + 4) {
+          setNavHidden(true);
+        } else if (currentY < lastScrollY.current - 4) {
+          setNavHidden(false);
+        }
+      }
+      lastScrollY.current = currentY;
+    };
+    lastScrollY.current = window.scrollY;
     onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [hideOnScroll]);
 
   const isActive = (href: string) => {
     if (href === '/') return pathname === '/';
@@ -133,6 +149,10 @@ export default function Navbar() {
       <MymensinghLiveBar />
       <header
         className={`sticky top-0 z-50 ${
+          hideOnScroll
+            ? `transition-transform duration-300 ease-in-out ${navHidden ? '-translate-y-full' : 'translate-y-0'}`
+            : ''
+        } ${
           onHome
             ? scrolled
               ? 'border-b border-brand-100/80 bg-mist-50/90 shadow-sm shadow-brand-900/5 backdrop-blur-md'

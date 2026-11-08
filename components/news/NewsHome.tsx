@@ -16,6 +16,8 @@ import {
 } from '@/lib/news/news-utils';
 import NewsMasthead from './NewsMasthead';
 import NewsImage from './NewsImage';
+import Navbar from '@/components/Navbar';
+import Footer from '@/components/Footer';
 
 const CONTAINER = 'mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8';
 const HAIRLINE = 'border-[#ded9ce]';
@@ -47,14 +49,15 @@ export default function NewsHome({
   const filtered = filterNews(ordered, { category, query: searchQuery });
 
   return (
-    <div className="min-h-screen overflow-x-clip bg-white text-[#141414]">
+    <div className="flex min-h-screen flex-col overflow-x-clip bg-white text-[#141414]">
+      <Navbar hideOnScroll />
       <NewsMasthead
         todayLabel={todayLabel}
         searchItems={searchable}
         activeCategory={category || undefined}
       />
 
-      <main className={CONTAINER}>
+      <main className={`${CONTAINER} flex-1`}>
         {failed ? (
           <LoadFailure />
         ) : ordered.length === 0 ? (
@@ -71,7 +74,7 @@ export default function NewsHome({
         )}
       </main>
 
-      <NewsFooter />
+      <Footer />
     </div>
   );
 }
@@ -729,7 +732,7 @@ function SendNewsBox() {
         স্থানীয় ঘটনা, তথ্য বা ছবি পাঠালে যাচাই ও অনুমোদনের পর প্রকাশ করা হবে।
       </p>
       <Link
-        href="/news/create"
+        href="/contact?subject=news_submission#contact-form"
         className="mt-3 inline-flex h-9 items-center gap-1.5 bg-[#0c3b2e] px-3.5 text-[11.5px] font-bold text-white transition-colors hover:bg-[#0a3227]"
       >
         <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
@@ -758,7 +761,7 @@ function EmptyNewsroom() {
       </p>
       <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
         <Link
-          href="/news/create"
+          href="/contact?subject=news_submission#contact-form"
           className="inline-flex h-10 items-center gap-1.5 bg-[#0c3b2e] px-5 text-[12px] font-bold text-white transition-colors hover:bg-[#0a3227]"
         >
           <PenLine className="h-3.5 w-3.5" aria-hidden="true" />
@@ -795,53 +798,5 @@ function LoadFailure() {
         আবার চেষ্টা করুন
       </Link>
     </section>
-  );
-}
-
-function NewsFooter() {
-  const year = new Date().getFullYear();
-  return (
-    <footer className="mt-10 border-t-2 border-[#141414] bg-[#faf8f2]">
-      <div className={`${CONTAINER} py-7`}>
-        <div className="grid gap-6 sm:grid-cols-[1.4fr_1fr]">
-          <div>
-            <p className="text-[9px] font-bold uppercase tracking-[0.22em] text-[#8a6b2f]">
-              ময়মনসিংহ শেবা · সংবাদ ডেস্ক
-            </p>
-            <p className={`${SERIF} mt-1 text-[22px] font-black leading-tight text-[#141414]`}>
-              ময়মনসিংহের <span className="text-[#0c3b2e]">নিউজ</span>
-            </p>
-            <p className={`${MUTED} mt-2 max-w-md text-[11.5px] leading-relaxed`}>
-              ময়মনসিংহ ও আশপাশের এলাকার স্থানীয় সংবাদ, নাগরিক কণ্ঠ ও প্রয়োজনীয়
-              তথ্য। প্রকাশিত সব সংবাদ মডারেটরের যাচাই ও অনুমোদনের পর প্রকাশিত হয়।
-            </p>
-          </div>
-          <nav aria-label="সংবাদ ফুটার" className="grid grid-cols-2 gap-x-5 gap-y-2 text-[12px]">
-            {[
-              { href: '/news', label: 'প্রচ্ছদ' },
-              { href: '/news/create', label: 'সংবাদ পাঠান' },
-              { href: '/news?category=mymensingh', label: 'ময়মনসিংহ' },
-              { href: '/jobs', label: 'চাকরি' },
-              { href: '/buy-sell', label: 'কেনাবেচা' },
-              { href: '/', label: 'ময়মনসিংহ শেবা' },
-              { href: '/contact', label: 'যোগাযোগ' },
-              { href: '/about', label: 'আমাদের সম্পর্কে' },
-            ].map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="font-semibold text-[#38352f] transition-colors hover:text-[#0c3b2e]"
-              >
-                {link.label}
-              </Link>
-            ))}
-          </nav>
-        </div>
-        <div className="mt-6 flex flex-col gap-1.5 border-t border-[#ded9ce] pt-3 text-[10.5px] text-[#8a857b] sm:flex-row sm:items-center sm:justify-between">
-          <p>© {toBn(year)} ময়মনসিংহ শেবা। সর্বস্বত্ব সংরক্ষিত।</p>
-          <p>ময়মনসিংহের সংবাদ, ময়মনসিংহের কণ্ঠ।</p>
-        </div>
-      </div>
-    </footer>
   );
 }

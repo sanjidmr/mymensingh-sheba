@@ -1067,12 +1067,13 @@ export interface AdminPostRow {
   author_name: string | null;
   author_phone: string | null;
   whatsapp_number: string | null;
-  status: 'pending' | 'approved' | 'rejected';
+  status: 'draft' | 'pending' | 'approved' | 'rejected';
   is_featured: boolean;
   rejection_reason: string | null;
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  view_count?: number;
 }
 
 export async function fetchPosts(params: ListParams): Promise<Paged<AdminPostRow>> {
@@ -1133,6 +1134,7 @@ export async function fetchPosts(params: ListParams): Promise<Paged<AdminPostRow
 
 export interface AdminPostCounts {
   total: number;
+  draft: number;
   pending: number;
   approved: number;
   rejected: number;
@@ -1142,7 +1144,7 @@ export async function fetchPostCounts(kind?: string): Promise<{
   counts: AdminPostCounts;
   error?: string;
 }> {
-  const empty = { total: 0, pending: 0, approved: 0, rejected: 0 };
+  const empty = { total: 0, draft: 0, pending: 0, approved: 0, rejected: 0 };
   const admin = await getAdminDataClient();
   if (!admin) return { counts: empty, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
   if (kind && !['news', 'job', 'buy_sell'].includes(kind)) {
@@ -1156,17 +1158,19 @@ export async function fetchPostCounts(kind?: string): Promise<{
     if (status) query = query.eq('status', status);
     return query;
   };
-  const [total, pending, approved, rejected] = await Promise.all([
+  const [total, draft, pending, approved, rejected] = await Promise.all([
     countFor(),
+    countFor('draft'),
     countFor('pending'),
     countFor('approved'),
     countFor('rejected'),
   ]);
-  const failed = [total, pending, approved, rejected].find((result) => result.error);
+  const failed = [total, draft, pending, approved, rejected].find((result) => result.error);
   if (failed?.error) return { counts: empty, error: failed.error.message };
   return {
     counts: {
       total: total.count ?? 0,
+      draft: draft.count ?? 0,
       pending: pending.count ?? 0,
       approved: approved.count ?? 0,
       rejected: rejected.count ?? 0,

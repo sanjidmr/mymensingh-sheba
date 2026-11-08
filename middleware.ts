@@ -30,6 +30,7 @@ const AUTH_REQUIRED_PAGE_PATHS = [
   '/profile',
   '/onboarding',
   '/welcome',
+  '/news/editor',
 ];
 
 const ROUTE_AUTHENTICATED_API_PATHS = new Set([
@@ -161,7 +162,7 @@ export async function middleware(request: NextRequest) {
   if (!isPublic && user) {
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('role, full_name, phone, primary_area_id, onboarding_completed_at')
+      .select('role, status, full_name, phone, primary_area_id, onboarding_completed_at')
       .eq('id', user.id)
       .maybeSingle();
 
@@ -187,6 +188,13 @@ export async function middleware(request: NextRequest) {
     const isOnboardingPath = pathname === '/onboarding';
     const isWelcomePath = pathname === '/welcome';
     const isAdmin = profile.role === 'admin';
+    const isNewsEditor = profile.role === 'news_editor';
+    const isAdminPath = pathname === '/admin' || pathname.startsWith('/admin/');
+    const isCustomerAccountPath =
+      pathname === '/dashboard' ||
+      pathname.startsWith('/dashboard/') ||
+      pathname === '/profile' ||
+      pathname.startsWith('/profile/');
     const onboardingComplete = isOnboardingComplete({
       fullName: profile.full_name,
       phone: profile.phone,
@@ -201,7 +209,27 @@ export async function middleware(request: NextRequest) {
       return copyAuthCookies(NextResponse.redirect(adminUrl), response.cookies.getAll());
     }
 
-    if (!isAdmin && !onboardingComplete && !isOnboardingPath) {
+    if (isNewsEditor) {
+      const editorUrl = request.nextUrl.clone();
+      editorUrl.pathname = '/news/editor';
+      editorUrl.search = '';
+
+      if (profile.status !== 'active') {
+        const revokedResponse = isApiRequest
+          ? NextResponse.json({ error: 'News editor access has been revoked' }, { status: 403 })
+          : new NextResponse('এই নিউজ এডিটর অ্যাকাউন্টের প্রবেশাধিকার বন্ধ করা হয়েছে।', {
+              status: 403,
+              headers: { 'Cache-Control': 'private, no-store, max-age=0' },
+            });
+        return copyAuthCookies(revokedResponse, response.cookies.getAll());
+      }
+
+      if (isAdminPath || isCustomerAccountPath || isOnboardingPath || isWelcomePath) {
+        return copyAuthCookies(NextResponse.redirect(editorUrl), response.cookies.getAll());
+      }
+    }
+
+    if (!isAdmin && !isNewsEditor && !onboardingComplete && !isOnboardingPath) {
       if (isApiRequest) {
         return copyAuthCookies(
           NextResponse.json({ error: 'Profile setup required' }, { status: 403 }),
@@ -214,14 +242,14 @@ export async function middleware(request: NextRequest) {
       return copyAuthCookies(NextResponse.redirect(onboardingUrl), response.cookies.getAll());
     }
 
-    if (!isAdmin && onboardingComplete && isOnboardingPath) {
+    if (!isAdmin && !isNewsEditor && onboardingComplete && isOnboardingPath) {
       const welcomeUrl = request.nextUrl.clone();
       welcomeUrl.pathname = '/welcome';
       welcomeUrl.search = '';
       return copyAuthCookies(NextResponse.redirect(welcomeUrl), response.cookies.getAll());
     }
 
-    if (!isAdmin && !onboardingComplete && isWelcomePath) {
+    if (!isAdmin && !isNewsEditor && !onboardingComplete && isWelcomePath) {
       const onboardingUrl = request.nextUrl.clone();
       onboardingUrl.pathname = '/onboarding';
       onboardingUrl.search = '';

@@ -67,6 +67,7 @@ const inFlight = new Set<string>();
  * in-app browsers) so tracking still works for the current page view.
  */
 let memoryVisitorId: string | null = null;
+let persistentVisitorId = false;
 
 function randomId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -79,14 +80,23 @@ export function getVisitorId(): string {
   if (typeof window === 'undefined') return 'server';
   try {
     const existing = window.localStorage.getItem(VISITOR_KEY);
-    if (existing) return existing;
+    if (existing) {
+      persistentVisitorId = true;
+      return existing;
+    }
     const created = randomId();
     window.localStorage.setItem(VISITOR_KEY, created);
+    persistentVisitorId = true;
     return created;
   } catch {
+    persistentVisitorId = false;
     if (!memoryVisitorId) memoryVisitorId = randomId();
     return memoryVisitorId;
   }
+}
+
+export function hasPersistentVisitorId(): boolean {
+  return persistentVisitorId;
 }
 
 // ---------------------------------------------------------------------------

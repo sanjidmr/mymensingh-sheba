@@ -2,6 +2,7 @@ import type { mergeSiteContact } from '@/lib/site-content';
 import ContactChannels from './ContactChannels';
 import ContactForm from './ContactForm';
 import Reveal from '@/components/home/Reveal';
+import type { ContactSubject } from '@/lib/contact-types';
 
 /**
  * ContactComposer — contact information on the left, the form on the right.
@@ -14,8 +15,10 @@ import Reveal from '@/components/home/Reveal';
  */
 export default function ContactComposer({
   contact,
+  initialSubject,
 }: {
   contact: ReturnType<typeof mergeSiteContact>;
+  initialSubject?: ContactSubject | '';
 }) {
   return (
     <section
@@ -29,7 +32,7 @@ export default function ContactComposer({
           </Reveal>
 
           <Reveal delay={90}>
-            <ContactForm />
+            <ContactForm initialSubject={initialSubject} />
           </Reveal>
         </div>
       </div>

@@ -7,11 +7,9 @@
  * and the payload shape live in exactly one place. It writes to
  * `public.site_events` (see supabase/migrations/20261014000000_website_analytics.sql).
  *
- * It is deliberately separate from `lib/tolet-tracking.ts`: To-Let engagement
- * already has its own table (`tolet_listing_events`) and its own per-listing
- * semantics, and copying those events into `site_events` would double-count
- * every listing view. This module covers the *rest* of the site, and the admin
- * rollup reads both tables.
+ * To-Let listing engagement still has its own table and per-listing semantics.
+ * Route page views also include To-Let detail routes; the admin rollup keeps
+ * route views separate from the session-deduplicated listing engagement panel.
  *
  * WHAT EACH EVENT MEANS — and does not
  * ------------------------------------
@@ -36,15 +34,12 @@
  *
  * FAILURE POLICY
  * --------------
- * Fire and forget, exactly like the To-Let tracker. If Supabase is not
- * configured, if the migration has not been applied, or if the network fails,
- * the visitor's action still completes and nothing is shown to them. Analytics
- * must never cost a booking.
+ * Writes are fire-and-forget through a same-origin server endpoint. A tracking
+ * failure is logged and never blocks the visitor's action.
  */
 'use client';
 
-import { isSupabaseConfigured, createClient } from './supabase/client';
-import { getVisitorId } from './tolet-tracking';
+import { getVisitorId, hasPersistentVisitorId } from './tolet-tracking';
 
 // Reuse the same visitor key the To-Let tracker writes, so the two systems
 // agree on who is a repeat visitor. `getVisitorId()` reads it.
@@ -94,6 +89,7 @@ export type RouteKind =
 function isExcludedPath(path: string): boolean {
   return (
     path.startsWith('/admin') ||
+    path.startsWith('/news/editor') ||
     path.startsWith('/api') ||
     path.startsWith('/design-system') ||
     path === '/login' ||
@@ -101,16 +97,6 @@ function isExcludedPath(path: string): boolean {
     path === '/forgot-password' ||
     path === '/reset-password'
   );
-}
-
-function isPostCreationPath(path: string): boolean {
-  const [root, action] = path.split('/').filter(Boolean);
-  return (root === 'jobs' || root === 'buy-sell' || root === 'news') && action === 'create';
-}
-
-function isToletDetailPath(path: string): boolean {
-  const segments = path.split('/').filter(Boolean);
-  return segments[0] === 'tolet' && segments.length === 2;
 }
 
 export function shouldTrackPath(path: string): boolean {
@@ -255,45 +241,39 @@ interface EventPayload {
   ctaType?: CtaClickType | FormSubmitType | null;
 }
 
-/**
- * One browser client for the whole page load. `createClient()` builds a fresh
- * client on every call and a busy page can emit several events, so the result is
- * cached here rather than re-created per event.
- */
-let cachedClient: ReturnType<typeof createClient> | null = null;
-function getClient(): ReturnType<typeof createClient> {
-  if (cachedClient) return cachedClient;
-  cachedClient = createClient();
-  return cachedClient;
-}
-
 async function writeEvent(payload: EventPayload): Promise<void> {
   if (typeof window === 'undefined') return;
   if (!shouldTrackPath(payload.path)) return;
-  if (!isSupabaseConfigured) return;
 
   try {
-    const client = getClient();
-    if (!client) return;
-
     const classified = classifyPath(payload.path);
-    const row: Record<string, unknown> = {
-      event_type: payload.eventType,
-      path: payload.path,
-      route_kind: payload.routeKind ?? classified.routeKind,
-      content_id: payload.contentId ?? classified.contentId,
-      category: payload.category ?? classified.category,
-      cta_type: payload.ctaType ?? null,
-      device_type: deviceType(),
-      referrer_host: referrerHost(),
-      visitor_id: getVisitorId(),
-      session_id: getSessionId(),
-    };
-
-    const { error } = await client.from('site_events').insert(row);
-    if (error) console.warn('Website analytics event could not be recorded.', error.message);
+    const response = await fetch('/api/analytics/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      keepalive: true,
+      body: JSON.stringify({
+        eventId: randomEventId(),
+        eventType: payload.eventType,
+        path: payload.path,
+        routeKind: payload.routeKind ?? classified.routeKind,
+        contentId: payload.contentId ?? classified.contentId,
+        category: payload.category ?? classified.category,
+        ctaType: payload.ctaType ?? null,
+        deviceType: deviceType(),
+        referrerHost: referrerHost(),
+        visitorId: getVisitorId(),
+        identityPersistent: hasPersistentVisitorId(),
+        sessionId: getSessionId(),
+      }),
+    });
+    if (!response.ok) {
+      console.error('Website analytics event could not be recorded.', {
+        eventType: payload.eventType,
+        status: response.status,
+      });
+    }
   } catch (error) {
-    console.warn('Website analytics event could not be recorded.', error);
+    console.error('Website analytics event could not be recorded.', error);
   }
 }
 
@@ -301,15 +281,17 @@ async function writeEvent(payload: EventPayload): Promise<void> {
 // Public API
 // ---------------------------------------------------------------------------
 
-/**
- * A millisecond window during which an identical page_view path is ignored.
- * React Strict Mode runs effects twice on mount and a remount can re-fire the
- * same path; both are absorbed here as a second safety net behind the
- * navigation tracker's own guard.
- */
-const PAGE_VIEW_DEDUPE_MS = 700;
-const recentPageViews = new Map<string, number>();
 let lastActiveVisitorAt = 0;
+
+function randomEventId(): string {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+    return crypto.randomUUID();
+  }
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (digit) => {
+    const value = Math.floor(Math.random() * 16);
+    return (digit === 'x' ? value : (value & 0x3) | 0x8).toString(16);
+  });
+}
 
 /**
  * Records a page view, and — once per session — a session_start carrying the
@@ -319,58 +301,43 @@ let lastActiveVisitorAt = 0;
 export function trackPageView(path: string): void {
   if (typeof window === 'undefined') return;
   if (!shouldTrackPath(path)) return;
-  const isCreationPage = isPostCreationPath(path);
-  const isToletDetail = isToletDetailPath(path);
-
-  const now = Date.now();
-  const last = recentPageViews.get(path);
-  if (last !== undefined && now - last < PAGE_VIEW_DEDUPE_MS) return;
-  recentPageViews.set(path, now);
-  // Bound the map so a long browsing session cannot grow it without limit.
-  if (recentPageViews.size > 50) recentPageViews.clear();
-
   let firstInSession = false;
-  if (!isCreationPage) {
-    try {
-      firstInSession = !window.sessionStorage.getItem(SESSION_STARTED_KEY);
-      if (firstInSession) window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
-    } catch {
-      firstInSession = true;
-    }
+  try {
+    firstInSession = !window.sessionStorage.getItem(SESSION_STARTED_KEY);
+    if (firstInSession) window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
+  } catch {
+    firstInSession = true;
   }
 
-  if (firstInSession && !isCreationPage) {
+  if (firstInSession) {
     void writeEvent({ eventType: 'session_start', path });
   }
-  if (!isCreationPage && !isToletDetail) {
-    void writeEvent({ eventType: 'page_view', path });
-  }
+  void writeEvent({ eventType: 'page_view', path });
 }
 
 /** Records a lightweight heartbeat for the opaque browser visitor id. */
 export function trackActiveVisitor(path: string): void {
   if (typeof window === 'undefined' || !shouldTrackPath(path)) return;
-  if (!isSupabaseConfigured) return;
   const now = Date.now();
   if (now - lastActiveVisitorAt < 20_000) return;
   lastActiveVisitorAt = now;
 
-  const client = getClient();
-  if (!client) {
-    lastActiveVisitorAt = 0;
-    return;
-  }
-
-  void Promise.resolve(client.rpc('fn_record_active_visitor', {
-    p_visitor_id: getVisitorId(),
-  })).then(({ error }) => {
-    if (error) {
+  void fetch('/api/analytics/active-visitors', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    keepalive: true,
+    body: JSON.stringify({
+      visitorId: getVisitorId(),
+      identityPersistent: hasPersistentVisitorId(),
+    }),
+  }).then((response) => {
+    if (!response.ok) {
       lastActiveVisitorAt = 0;
-      console.warn('Active visitor heartbeat could not be recorded.', error.message);
+      console.error('Active visitor heartbeat could not be recorded.', response.status);
     }
   }).catch((error: unknown) => {
     lastActiveVisitorAt = 0;
-    console.warn('Active visitor heartbeat could not be recorded.', error);
+    console.error('Active visitor heartbeat could not be recorded.', error);
   });
 }
 
