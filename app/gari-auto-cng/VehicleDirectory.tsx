@@ -147,34 +147,34 @@ function VehicleBookingCards() {
       <Link
         href="/gari-auto-cng/book/auto"
         aria-label="অটো ভাড়া করুন"
-        className="group flex min-h-0 min-w-0 flex-col items-center rounded-xl border border-orange-200 bg-[#fffaf3] p-2 text-center shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700 sm:p-3"
+        className="group flex min-w-0 flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700"
       >
-        <span className="relative block aspect-[2/1] w-full overflow-hidden rounded-lg bg-white">
+        <span className="relative block aspect-square w-full">
           <Image
             src="/auto.jpg"
             alt="অটো ভাড়া"
             fill
             sizes="(max-width: 640px) 45vw, 220px"
-            className="object-cover object-left"
+            className="object-contain"
           />
         </span>
-        <span className="mt-1.5 text-xs font-extrabold leading-tight text-ink-950 sm:mt-2 sm:text-sm">অটো ভাড়া করুন</span>
+        <span className="mt-1 text-xs font-extrabold leading-tight text-ink-950 sm:text-sm">অটো ভাড়া করুন</span>
       </Link>
       <Link
         href="/gari-auto-cng/book/cng"
         aria-label="CNG ভাড়া করুন"
-        className="group flex min-h-0 min-w-0 flex-col items-center rounded-xl border border-emerald-200 bg-[#f5faf6] p-2 text-center shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:p-3"
+        className="group flex min-w-0 flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
       >
-        <span className="relative block aspect-[2/1] w-full overflow-hidden rounded-lg bg-white">
+        <span className="relative block aspect-square w-full">
           <Image
             src="/cng.jpg"
             alt="CNG ভাড়া"
             fill
             sizes="(max-width: 640px) 45vw, 220px"
-            className="object-cover object-right"
+            className="object-contain"
           />
         </span>
-        <span className="mt-1.5 text-xs font-extrabold leading-tight text-ink-950 sm:mt-2 sm:text-sm">CNG ভাড়া করুন</span>
+        <span className="mt-1 text-xs font-extrabold leading-tight text-ink-950 sm:text-sm">CNG ভাড়া করুন</span>
       </Link>
     </section>
   );

@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
+import Link from 'next/link';
 import { Mail, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
@@ -303,6 +304,26 @@ export default function SupportCenter({ mode }: { mode: SupportMode }) {
             ? 'সমস্যা জানান এবং সাপোর্ট টিমের সাড়া ও অগ্রগতি এক জায়গায় দেখুন।'
             : 'সাপোর্ট টিমের সাথে আপনার ব্যক্তিগত কথোপকথন দেখুন ও নতুন বার্তা পাঠান।'}
         </p>
+        <nav aria-label="বার্তা ও অভিযোগ" className="mt-3 flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/messages"
+            aria-current={!isComplaints ? 'page' : undefined}
+            className={`inline-flex min-h-9 items-center rounded-lg px-3 text-xs font-bold transition-colors ${
+              !isComplaints ? 'bg-brand-700 text-white' : 'border border-brand-100 bg-white text-ink-600 hover:bg-brand-50'
+            }`}
+          >
+            বার্তা
+          </Link>
+          <Link
+            href="/dashboard/complaints"
+            aria-current={isComplaints ? 'page' : undefined}
+            className={`inline-flex min-h-9 items-center rounded-lg px-3 text-xs font-bold transition-colors ${
+              isComplaints ? 'bg-brand-700 text-white' : 'border border-brand-100 bg-white text-ink-600 hover:bg-brand-50'
+            }`}
+          >
+            অভিযোগ
+          </Link>
+        </nav>
       </header>
 
       {isComplaints ? (

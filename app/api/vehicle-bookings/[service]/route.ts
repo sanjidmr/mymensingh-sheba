@@ -2,7 +2,7 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { normalizeBdPhone } from '@/lib/contact-types';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { sendTelegram } from '@/lib/telegram';
+import { notifyOrder } from '@/lib/notify-order.server';
 
 export const runtime = 'nodejs';
 
@@ -123,7 +123,7 @@ export async function POST(
       additional_info: extra || null,
       customer_id: customerId,
     })
-    .select('id')
+    .select('*')
     .single();
 
   if (error?.code === '23505') {
@@ -146,38 +146,7 @@ export async function POST(
     return NextResponse.json({ error: 'অনুরোধটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 500 });
   }
 
-  const serviceLabel = serviceType === 'auto' ? 'অটো' : 'CNG';
-  const requestedTime = requestedAt.toLocaleString('bn-BD', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dhaka',
-  });
-  const submittedTime = new Date().toLocaleString('bn-BD', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dhaka',
-  });
-  const message = [
-    '🔔 নতুন বুকিং!',
-    `🆔 Booking ID: ${data.id}`,
-    `👤 নাম: ${name}`,
-    `📞 ফোন: +880${phone.slice(1)}`,
-    `🛠 সার্ভিস: ${serviceLabel}`,
-    `📍 বর্তমান ঠিকানা: ${address}`,
-    `🚏 উঠার স্থান: ${pickup}`,
-    `🏁 গন্তব্য: ${destination}`,
-    `🕐 যাত্রার সময়: ${requestedTime} (Asia/Dhaka)`,
-    `📝 অতিরিক্ত তথ্য: ${extra || 'নেই'}`,
-    `📨 অনুরোধ জমার সময়: ${submittedTime} (Asia/Dhaka)`,
-  ].join('\n');
-  try {
-    await sendTelegram(message);
-  } catch (notificationError) {
-    console.error('Vehicle booking was saved, but its Telegram notification failed.', {
-      bookingId: data.id,
-      reason: notificationError instanceof Error ? notificationError.message : 'unknown',
-    });
-  }
+  await notifyOrder(data as Record<string, unknown>, serviceType, `/admin/vehicle-bookings/${serviceType}`);
 
   return NextResponse.json({ success: true, bookingId: data.id }, { status: 201 });
 }

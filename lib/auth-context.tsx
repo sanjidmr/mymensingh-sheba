@@ -11,7 +11,6 @@ import {
   NotificationItem,
 } from './supabase/types';
 import { createClient, isSupabaseConfigured } from './supabase/client';
-import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { normalizeJsonArray } from './request-data';
 import { LAUNCH_SERVICES } from './services-data';
 import { MCC_AREAS } from './locations';
@@ -1056,44 +1055,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let requestId: string | undefined;
     let referenceCode: string | undefined;
     if (isSupabaseConfigured) {
-      const client = createClient();
-      if (!client) return { success: false, error: 'ডেটাবেজ সংযোগ তৈরি করা যায়নি।' };
-      const generatedId = crypto.randomUUID();
-      const { data, error } = await client.from('service_requests').insert({
-        id: generatedId,
-        customer_id: user.id,
-        service_slug: requestData.serviceSlug,
-        status: 'new',
-        area_id: requestData.areaId,
-        address_line: requestData.addressLine,
-        contact_name: requestData.contactName,
-        contact_phone: requestData.contactPhone,
-        preferred_date: requestData.preferredDate || null,
-        preferred_time: requestData.preferredTime || null,
-        details: requestData.details || null,
-        profile_id: requestData.profileId || null,
-        profile_title: requestData.profileTitleBn || null,
-        service_type: requestData.serviceType || null,
-        attachment_url: requestData.attachmentUrl || null,
-        pickup_area_id: requestData.pickupAreaId || null,
-        destination_area_id: requestData.destinationAreaId || null,
-        pickup_address: requestData.pickupAddress || null,
-        destination_address: requestData.destinationAddress || null,
-        pickup_floor: requestData.pickupFloor || null,
-        destination_floor: requestData.destinationFloor || null,
-        has_lift: requestData.hasLift || false,
-        parking_info: requestData.parkingInfo || null,
-        moving_items: requestData.movingItems ?? [],
-        photo_urls: requestData.photoUrls ?? [],
-      })
-        .select('id, reference_code')
-        .single();
-      if (error || !data) {
-        return { success: false, error: `অনুরোধ সংরক্ষণ করা যায়নি: ${error?.message ?? 'সার্ভারের উত্তর পাওয়া যায়নি।'}` };
+      let response: Response;
+      try {
+        response = await fetch('/api/order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            service_type: requestData.serviceSlug,
+            service_slug: requestData.serviceSlug,
+            service_label: requestData.serviceType || null,
+            area_id: requestData.areaId,
+            address_line: requestData.addressLine,
+            contact_name: requestData.contactName,
+            contact_phone: requestData.contactPhone,
+            preferred_date: requestData.preferredDate || null,
+            preferred_time: requestData.preferredTime || null,
+            details: requestData.details || null,
+            profile_id: requestData.profileId || null,
+            profile_title: requestData.profileTitleBn || null,
+            attachment_url: requestData.attachmentUrl || null,
+            pickup_area_id: requestData.pickupAreaId || null,
+            destination_area_id: requestData.destinationAreaId || null,
+            pickup_address: requestData.pickupAddress || null,
+            destination_address: requestData.destinationAddress || null,
+            pickup_floor: requestData.pickupFloor || null,
+            destination_floor: requestData.destinationFloor || null,
+            has_lift: requestData.hasLift || false,
+            parking_info: requestData.parkingInfo || null,
+            moving_items: requestData.movingItems ?? [],
+            photo_urls: requestData.photoUrls ?? [],
+          }),
+        });
+      } catch {
+        return { success: false, error: 'অনুরোধ সংরক্ষণ করা যায়নি। ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন।' };
       }
-      requestId = data.id;
-      referenceCode = data.reference_code ?? undefined;
-      if (requestId) void requestAdminTelegramAlert('service_request', requestId);
+      let result: {
+        success?: boolean;
+        requestId?: string;
+        reference?: string;
+        error?: string;
+      };
+      try {
+        result = await response.json() as typeof result;
+      } catch {
+        return { success: false, error: 'সার্ভার থেকে সঠিক উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।' };
+      }
+      if (!response.ok || !result.success || !result.requestId) {
+        return { success: false, error: result.error || 'অনুরোধ সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' };
+      }
+      requestId = result.requestId;
+      referenceCode = result.reference;
     }
 
     const newReq: ServiceRequestItem = {

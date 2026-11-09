@@ -1,9 +1,8 @@
 'use client';
 
-import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { uploadRequestAttachment } from '@/lib/staff-service';
 import { getAreaById } from '@/lib/locations';
-import { requestAdminTelegramAlert } from '@/lib/admin-telegram-alerts';
 import {
   formatAnswersBn,
   type ServiceRequestPageConfig,
@@ -182,11 +181,6 @@ export async function submitServiceRequest(
     };
   }
 
-  const client = createClient();
-  if (!client) {
-    return { ok: false, error: 'সার্ভার সংযোগ কাজ করছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।' };
-  }
-
   // `service_type` stores the Bangla label rather than the option id: the admin
   // request screens render this column as-is, so an id would show up as
   // "short_circuit" to the person who has to act on the request. The id is kept
@@ -219,38 +213,51 @@ export async function submitServiceRequest(
 
   const details = composeDetailsBn(draft.pageConfig, answers, draft.details);
 
-  const { data, error } = await client
-    .from('service_requests')
-    .insert({
-      customer_id: customerId,
-      service_slug: draft.serviceSlug,
-      status: 'new',
-      area_id: draft.areaId,
-      address_line: draft.addressLine.trim(),
-      contact_name: draft.contactName.trim(),
-      contact_phone: draft.contactPhone.replace(/[^\d+]/g, ''),
-      service_type: serviceTypeLabel ?? draft.serviceType ?? null,
-      details: details || null,
-      preferred_date: draft.preferredDate || null,
-      preferred_time: draft.preferredTime || null,
-      attachment_url: attachmentUrl ?? null,
-      profile_id: draft.profileId ?? null,
-      profile_title: draft.profileTitle ?? null,
-      service_meta: hasServiceMeta ? serviceMeta : null,
-    })
-    .select('id, reference_code')
-    .single();
-
-  if (error) {
-    return { ok: false, error: `অনুরোধ পাঠানো যায়নি: ${error.message}` };
+  let response: Response;
+  try {
+    response = await fetch('/api/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        service_type: draft.serviceSlug,
+        service_slug: draft.serviceSlug,
+        service_label: serviceTypeLabel ?? draft.serviceType ?? null,
+        area_id: draft.areaId,
+        address_line: draft.addressLine.trim(),
+        contact_name: draft.contactName.trim(),
+        contact_phone: draft.contactPhone,
+        details: details || null,
+        preferred_date: draft.preferredDate || null,
+        preferred_time: draft.preferredTime || null,
+        attachment_url: attachmentUrl ?? null,
+        profile_id: draft.profileId ?? null,
+        profile_title: draft.profileTitle ?? null,
+        service_meta: hasServiceMeta ? serviceMeta : null,
+      }),
+    });
+  } catch {
+    return { ok: false, error: 'অনুরোধ পাঠানো যায়নি। ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন।' };
+  }
+  let result: {
+    success?: boolean;
+    requestId?: string;
+    reference?: string;
+    attachmentUrl?: string;
+    error?: string;
+  };
+  try {
+    result = await response.json() as typeof result;
+  } catch {
+    return { ok: false, error: 'সার্ভার থেকে সঠিক উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।' };
+  }
+  if (!response.ok || !result.success || !result.requestId) {
+    return { ok: false, error: result.error || 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।' };
   }
 
-  const requestId = data?.id;
-  if (requestId) void requestAdminTelegramAlert('service_request', requestId);
   return {
     ok: true,
-    attachmentUrl,
-    requestId,
-    reference: requestId ? data.reference_code ?? undefined : undefined,
+    attachmentUrl: result.attachmentUrl,
+    requestId: result.requestId,
+    reference: result.reference,
   };
 }

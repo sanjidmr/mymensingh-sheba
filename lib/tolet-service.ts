@@ -149,28 +149,6 @@ function mapReportRow(row: Record<string, unknown>, reporterName = ''): ListingR
   };
 }
 
-function toListingInputObject(input: Partial<ToletListingInput>): Record<string, unknown> {
-  return toSnakeObject({
-    title: input.title,
-    propertyType: input.propertyType,
-    areaId: input.areaId,
-    specificAddress: input.specificAddress,
-    rentPrice: input.rentPrice,
-    bedrooms: input.bedrooms,
-    bathrooms: input.bathrooms,
-    balconies: input.balconies,
-    hasDrawingRoom: input.hasDrawingRoom,
-    hasDiningRoom: input.hasDiningRoom,
-    floor: input.floor,
-    totalRooms: input.totalRooms,
-    availableFrom: input.availableFrom,
-    facilities: input.facilities,
-    unavailableFacilities: input.unavailableFacilities,
-    description: input.description,
-    photos: input.photos,
-  });
-}
-
 // ---------------------------------------------------------------------------
 // Showcase fallback
 // ---------------------------------------------------------------------------
@@ -332,24 +310,24 @@ export async function createListing(
     const listing = mockCreateListing(input, ownerId, ownerName, ownerVerified, targetStatus);
     return { success: true, listing };
   }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-
-  const payload = {
-    ...toListingInputObject(input),
-    owner_id: ownerId,
-    status: targetStatus,
-  };
-  const { data, error } = await client
-    .from('tolet_listings')
-    .insert(payload)
-    .select('*')
-    .single();
-  if (error) return { success: false, error: error.message };
-  if (targetStatus === 'pending_review' && data?.id) {
-    void requestAdminTelegramAlert('tolet_listing', data.id);
+  try {
+    const response = await fetch('/api/tolet/listings', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ owner_id: ownerId, mode, input }),
+    });
+    const result = await response.json() as {
+      success?: boolean;
+      listing?: RawListingRow;
+      error?: string;
+    };
+    if (!response.ok || !result.success || !result.listing) {
+      return { success: false, error: result.error || 'বিজ্ঞাপনটি সংরক্ষণ করা যায়নি।' };
+    }
+    return { success: true, listing: mapListingRow(result.listing) };
+  } catch {
+    return { success: false, error: 'সার্ভার থেকে উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।' };
   }
-  return { success: true, listing: mapListingRow(data as RawListingRow) };
 }
 
 export async function updateListingOwned(
@@ -368,35 +346,24 @@ export async function updateListingOwned(
     if (!listing) return { success: false, error: 'বিজ্ঞাপনটি পাওয়া যায়নি' };
     return { success: true, listing };
   }
-  const client = createClient();
-  if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-
-  const payload: Record<string, unknown> = toListingInputObject(input);
-  let shouldAlertOnSubmit = false;
-  if (mode === 'submit') {
-    const existing = await fetchListingById(listingId);
-    if (existing && (existing.status === 'rejected' || existing.status === 'draft' || existing.status === 'archived' || existing.status === 'unavailable')) {
-      payload.status = 'pending_review';
-      shouldAlertOnSubmit = true;
+  try {
+    const response = await fetch('/api/tolet/listings', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ listing_id: listingId, owner_id: ownerId, mode, input }),
+    });
+    const result = await response.json() as {
+      success?: boolean;
+      listing?: RawListingRow;
+      error?: string;
+    };
+    if (!response.ok || !result.success || !result.listing) {
+      return { success: false, error: result.error || 'বিজ্ঞাপনটি হালনাগাদ করা যায়নি।' };
     }
-    if (payload.status === 'pending_review' && existing?.status !== 'pending_review') {
-      payload.rejection_reason = null;
-    }
+    return { success: true, listing: mapListingRow(result.listing) };
+  } catch {
+    return { success: false, error: 'সার্ভার থেকে উত্তর পাওয়া যায়নি। আবার চেষ্টা করুন।' };
   }
-
-  const { data, error } = await client
-    .from('tolet_listings')
-    .update(payload)
-    .eq('id', listingId)
-    .eq('owner_id', ownerId)
-    .select('*')
-    .maybeSingle();
-  if (error) return { success: false, error: error.message };
-  if (!data) return { success: false, error: 'বিজ্ঞাপনটি পাওয়া যায়নি' };
-  if (shouldAlertOnSubmit && data.status === 'pending_review') {
-    void requestAdminTelegramAlert('tolet_listing', data.id);
-  }
-  return { success: true, listing: mapListingRow(data as RawListingRow) };
 }
 
 export async function archiveOwnListing(

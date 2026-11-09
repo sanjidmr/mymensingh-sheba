@@ -29,6 +29,8 @@
    TELEGRAM_BOT_TOKEN=""
    TELEGRAM_CHAT_ID=""
    ADMIN_TELEGRAM_WORKER_SECRET=""
+   ORDER_TELEGRAM_DELIVERY_MODE="api"
+   ORDER_TELEGRAM_WEBHOOK_SECRET=""
    ```
 
    `/admin` uses a signed-in Supabase admin account by default. The
@@ -45,12 +47,18 @@
    Without this project-level setting, Supabase intentionally returns no
    session and the app cannot safely sign the user in automatically.
 
-   Booking requests are saved to Supabase before an awaited Telegram send is
-   attempted. Other admin events are written to a durable Telegram outbox and
-   delivered by the worker. Keep the bot token, chat ID, worker secret, and
-   Supabase service-role key server-only; never use `NEXT_PUBLIC_` names.
-   `.env.local` is ignored by Git. Supabase Auth email/verification settings
-   remain separate from these admin notifications.
+   The default `ORDER_TELEGRAM_DELIVERY_MODE="api"` saves requests to Supabase
+   and awaits a Telegram send. To use the optional database webhook instead,
+   set it to `webhook`, set a random `ORDER_TELEGRAM_WEBHOOK_SECRET`, and add
+   Supabase webhooks for `service_requests`, `vehicle_requests`,
+   `vehicle_bookings`, and `tolet_listings` to `/api/order/webhook` with the
+   `x-webhook-secret` header. Use INSERT for the first three tables; for
+   `tolet_listings`, enable INSERT and UPDATE to include resubmissions. Use one
+   delivery mode at a time. Telegram failures are logged and do not undo a
+   saved request. Other admin events use the durable Telegram outbox. Keep all
+   Telegram secrets and the Supabase service-role key server-only; never use
+   `NEXT_PUBLIC_` names. `.env.local` is ignored by Git. Supabase Auth
+   email/verification settings remain separate from these admin notifications.
 
 3. Run the dev server:
 
@@ -89,14 +97,18 @@ already been applied. These are retained migration history; the later
 `20261110120000_telegram_notifications.sql` migration renames the outbox and
 worker objects, removes provider-specific schema, and disables the old booking
 outbox trigger. Apply it after the vehicle-bookings table and all earlier
-migrations. Do not edit or delete migrations that have already been applied.
+migrations, then apply
+`supabase/migrations/20261110130000_direct_order_telegram_notifications.sql`
+to disable duplicate generic service-request and To-Let outbox events and
+enable full old-row data for To-Let update webhooks. Do not edit or delete
+migrations that have already been applied.
 
-Database triggers enqueue admin Telegram alerts transactionally for service
-requests, pending To-Let listings, reports, safety/payment complaints,
-customer-submitted service listings, community posts, vehicle and blood
-requests, and pending To-Let-owner, tutor, and donor profiles. Booking API
-requests send their detailed Telegram notification directly after the
-database insert. Queue delivery failures do not undo a saved database record.
+Database triggers enqueue admin Telegram alerts transactionally for reports,
+safety/payment complaints, customer-submitted service listings, community
+posts, vehicle and blood requests, and pending To-Let-owner, tutor, and donor
+profiles. Service, To-Let listing, and vehicle order APIs send detailed
+Telegram notifications after their database writes. A Telegram failure is
+logged and does not undo a saved database record.
 
 ### Telegram worker
 

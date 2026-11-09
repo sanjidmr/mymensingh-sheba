@@ -5,6 +5,7 @@ import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
   Bell,
+  Bookmark,
   BookOpen,
   CalendarDays,
   Camera,
@@ -19,6 +20,7 @@ import {
   Heart,
   Loader2,
   MapPin,
+  MessageCircle,
   Pencil,
   Phone,
   PhoneCall,
@@ -1065,11 +1067,13 @@ export default function DashboardHome() {
           className="order-5 xl:order-none xl:col-start-2 xl:row-start-3"
         >
           <SectionHeader id="quick-heading" title="দ্রুত কাজ" />
-          <div className="grid grid-cols-2 gap-1.5 px-4 pb-4 sm:px-5 sm:pb-5">
+          <div className="grid grid-cols-2 gap-1.5 px-4 pb-4 sm:grid-cols-3 sm:px-5 sm:pb-5">
             <QuickAction href="/dashboard/new" icon={PlusCircle} label="নতুন পোস্ট" />
             <QuickAction href="/dashboard/posts" icon={FileText} label="আমার পোস্ট" />
             <QuickAction href="/dashboard/profiles" icon={UserRound} label="সেবা প্রোফাইল" />
             <QuickAction href="/profile/requests" icon={ClipboardList} label="আমার রিকোয়েস্ট" />
+            <QuickAction href="/profile/saved" icon={Bookmark} label="সংরক্ষিত পোস্ট" />
+            <QuickAction href="/dashboard/messages" icon={MessageCircle} label="বার্তা ও অভিযোগ" />
           </div>
         </SectionCard>
       </div>
