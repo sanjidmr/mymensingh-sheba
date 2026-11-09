@@ -21,7 +21,7 @@ export default async function AdminVehicleRequestDetailPage({
   if (result.unavailable) {
     return (
       <>
-        <PageHeader title="যানবাহন বুকিং অনুরোধ" breadcrumb={{ href: '/admin/vehicle-requests', label: 'যানবাহন বুকিং অনুরোধ' }} />
+        <PageHeader title="গাড়ি ভাড়ার অনুরোধ" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি ভাড়ার অনুরোধ' }} />
         <AdminError title="রিকোয়েস্ট লোড করা যায়নি" message={result.error} />
       </>
     );
@@ -30,7 +30,7 @@ export default async function AdminVehicleRequestDetailPage({
   if (!result.row) {
     return (
       <>
-        <PageHeader title="যানবাহন বুকিং অনুরোধ" breadcrumb={{ href: '/admin/vehicle-requests', label: 'যানবাহন বুকিং অনুরোধ' }} />
+        <PageHeader title="গাড়ি ভাড়ার অনুরোধ" breadcrumb={{ href: '/admin/vehicle-requests', label: 'গাড়ি ভাড়ার অনুরোধ' }} />
         <AdminEmpty
           title="রিকোয়েস্টটি পাওয়া যায়নি"
           description="রেকর্ডটি নেই অথবা লিংকটি ভুল।"
@@ -56,7 +56,7 @@ export default async function AdminVehicleRequestDetailPage({
   return (
     <>
       <PageHeader
-        title="যানবাহন বুকিং অনুরোধ"
+        title="গাড়ি ভাড়ার অনুরোধ"
         description={`রেফারেন্স ${booking.reference_code || booking.id} · ${title} · জমা ${formatDateTime(booking.created_at)} · সর্বশেষ আপডেট ${formatDateTime(booking.updated_at)}`}
         breadcrumb={{ href: '/admin/vehicle-requests', label: 'যানবাহন বুকিং অনুরোধ' }}
         actions={<VehicleRequestActions request={booking} vehicles={assignableVehicles} />}

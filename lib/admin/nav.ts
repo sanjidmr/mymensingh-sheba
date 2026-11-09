@@ -26,7 +26,6 @@ import {
   Droplet,
   Siren,
   MousePointerClick,
-  MailCheck,
 } from 'lucide-react';
 
 /**
@@ -142,9 +141,21 @@ export const ADMIN_NAV: AdminNavGroup[] = [
       },
       {
         href: '/admin/directories/vehicle',
-        label: 'যানবাহন',
+        label: 'গাড়ির তালিকা',
         icon: Car,
-        description: 'যানবাহন তালিকা, প্রকাশনা, সুবিধা ও ভাড়া পরিচালনা',
+        description: 'গাড়ির ছবি, তথ্য, প্রকাশনা ও ভাড়া পরিচালনা',
+      },
+      {
+        href: '/admin/vehicle-bookings/auto',
+        label: 'অটো বুকিং অনুরোধ',
+        icon: ClipboardList,
+        description: 'অটো ভাড়ার অনুরোধ ও বুকিংয়ের অবস্থা পরিচালনা',
+      },
+      {
+        href: '/admin/vehicle-bookings/cng',
+        label: 'CNG বুকিং অনুরোধ',
+        icon: ClipboardList,
+        description: 'CNG ভাড়ার অনুরোধ ও বুকিংয়ের অবস্থা পরিচালনা',
       },
     ],
   },
@@ -242,12 +253,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: Bell,
         badgeKey: 'notifications',
         description: 'অ্যাডমিনের গুরুত্বপূর্ণ আপডেট',
-      },
-      {
-        href: '/admin/email-deliveries',
-        label: 'ইমেইল ডেলিভারি',
-        icon: MailCheck,
-        description: 'Brevo ইমেইল queue, ব্যর্থতা ও delivery status',
       },
     ],
   },

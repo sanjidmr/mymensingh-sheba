@@ -36,7 +36,7 @@ import {
   mockAdminUpdateTutorRequest,
 } from './home-tutor-mock';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
-import { requestAdminEmailAlert } from './admin-email-alerts';
+import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { TUTOR_STATUS_META } from './home-tutor-types';
 import { DEMO_TUTOR_PROFILES, getDemoTutor as getDemoTutorProfile } from './home-tutor-demo-data';
 
@@ -355,7 +355,7 @@ export async function createTutorReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: `রিপোর্ট জমা ব্যর্থ: ${error.message}` };
-  void requestAdminEmailAlert('tutor_reports', reportId);
+  void requestAdminTelegramAlert('tutor_reports', reportId);
   return { success: true };
 }
 

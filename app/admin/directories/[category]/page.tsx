@@ -10,13 +10,13 @@ import { StatCard, StatusPill } from '@/components/admin/StatCard';
 import { TablePager } from '@/components/admin/TablePager';
 import ServiceListingActions from '@/components/admin/ServiceListingActions';
 import { fetchServiceListings, parseListParams, type AdminServiceListingRow } from '@/lib/admin/queries';
-import { COACHING_CATEGORIES, COACHING_CLASSES, COACHING_SUBJECTS, VEHICLE_KINDS } from '@/lib/catalog-types';
+import { COACHING_CATEGORIES, COACHING_CLASSES, COACHING_SUBJECTS } from '@/lib/catalog-types';
 import { getAllMCCAreas } from '@/lib/locations';
 
 export const dynamic = 'force-dynamic';
 
 const LABELS = {
-  vehicle: 'যানবাহন',
+  vehicle: 'গাড়ির তালিকা',
   bus: 'বাস টিকিট তথ্য',
   wifi: 'WiFi প্রদানকারী',
   coaching: 'কোচিং সেন্টার',
@@ -150,7 +150,7 @@ export default async function AdminServiceListingsByCategoryPage({
           { id: 'sitting', labelBn: 'সিটিং' },
         ]
       : category === 'vehicle'
-        ? VEHICLE_KINDS.map((id) => ({ id, labelBn: id }))
+        ? [{ id: 'গাড়ি', labelBn: 'গাড়ি' }]
         : [];
   const areaOptions = getAllMCCAreas({ activeOnly: true }).map(({ id, nameBn }) => ({ value: id, label: nameBn }));
 
@@ -160,12 +160,14 @@ export default async function AdminServiceListingsByCategoryPage({
         title={LABELS[category]}
         description={category === 'bus'
           ? 'এটি অপারেটরের তথ্য ডিরেক্টরি—টিকিট বুকিং, আসন, পেমেন্ট বা রিজার্ভেশন এই মডিউল পরিচালনা করে না।'
-          : 'প্রকৃত সরবরাহকৃত তথ্য পরিচালনা করুন। সক্রিয় অবস্থা প্রকাশনা বোঝায়; আলাদা যাচাইকরণ ক্ষেত্র এই স্কিমায় নেই।'}
+          : category === 'vehicle'
+            ? 'গাড়ির ছবি, ভাড়া ও তথ্য পরিচালনা করুন। অটো ও CNG-এর জন্য এখানে কোনো যানতালিকা নেই।'
+            : 'প্রকৃত সরবরাহকৃত তথ্য পরিচালনা করুন। সক্রিয় অবস্থা প্রকাশনা বোঝায়; আলাদা যাচাইকরণ ক্ষেত্র এই স্কিমায় নেই।'}
         breadcrumb={{ href: '/admin', label: 'অ্যাডমিন' }}
         count={`ফিল্টার করা ${result.total} টি তালিকা`}
         actions={
           <>
-            {category === 'vehicle' && <Link href="/admin/vehicle-requests" className="inline-flex min-h-11 items-center rounded-md border border-admin-border px-3 text-sm font-semibold">যানবাহন রিকোয়েস্ট</Link>}
+            {category === 'vehicle' && <Link href="/admin/vehicle-requests" className="inline-flex min-h-11 items-center rounded-md border border-admin-border px-3 text-sm font-semibold">গাড়ির অনুরোধ</Link>}
             <Link href={`/admin/directories/${category}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white">
               <Plus className="h-4 w-4" aria-hidden="true" />নতুন তালিকা
             </Link>
@@ -188,7 +190,7 @@ export default async function AdminServiceListingsByCategoryPage({
           { value: 'inactive', label: 'অপ্রকাশিত' },
         ]} param="status" searchParams={resolvedSearchParams} />
         <FilterNav id={`${category}-area`} label="এলাকা" value={typeof params.area === 'string' ? params.area : ''} placeholder="সব এলাকা" options={areaOptions} param="area" searchParams={resolvedSearchParams} />
-        {taxonomies.length > 0 && <FilterNav id={`${category}-type`} label={category === 'bus' ? 'বাসের ধরন' : 'ক্লাস/বিষয়'} value={typeof params.kind === 'string' ? params.kind : ''} placeholder="সব ধরন" options={taxonomies.map(({ id, labelBn }) => ({ value: id, label: labelBn }))} param="kind" searchParams={resolvedSearchParams} />}
+        {taxonomies.length > 0 && category !== 'vehicle' && <FilterNav id={`${category}-type`} label={category === 'bus' ? 'বাসের ধরন' : 'ক্লাস/বিষয়'} value={typeof params.kind === 'string' ? params.kind : ''} placeholder="সব ধরন" options={taxonomies.map(({ id, labelBn }) => ({ value: id, label: labelBn }))} param="kind" searchParams={resolvedSearchParams} />}
         <div className="sm:col-span-2 lg:col-span-4"><ClearFilters searchParams={resolvedSearchParams} /></div>
       </div>
       <AdminTable

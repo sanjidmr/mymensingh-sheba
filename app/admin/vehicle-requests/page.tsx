@@ -153,15 +153,15 @@ export default async function AdminVehicleRequestsPage({
   return (
     <>
       <PageHeader
-        title="যানবাহন বুকিং অনুরোধ"
-        description="গাড়ি, অটো ও সিএনজি ভাড়ার অনুরোধ পর্যালোচনা করুন। স্ট্যাটাস পরিবর্তন করলেই বুকিং, পেমেন্ট বা চালক নিশ্চিত হয় না।"
+        title="গাড়ি ভাড়ার অনুরোধ"
+        description="গাড়ি ভাড়ার অনুরোধ পর্যালোচনা করুন। অটো ও CNG-এর অনুরোধ আলাদা বুকিং তালিকায় পরিচালিত হয়।"
         count={`মোট ${result.total} টি রিকোয়েস্ট`}
         actions={
           <Link
             href="/admin/directories/vehicle"
             className="inline-flex min-h-11 items-center rounded-md border border-admin-border bg-white px-3 text-sm font-semibold"
           >
-            যানবাহন ভাড়ার তালিকা
+            গাড়ির তালিকা
           </Link>
         }
       />
@@ -198,13 +198,11 @@ export default async function AdminVehicleRequestsPage({
         <div className="min-w-0 xl:col-span-2">
           <FilterNav
             id="vehicle-request-kind"
-            label="যানবাহন"
+            label="যানের ধরন"
             value={String(params.kind ?? '')}
             placeholder="সব ধরন"
             options={[
               { value: 'গাড়ি', label: 'গাড়ি' },
-              { value: 'অটো', label: 'অটো' },
-              { value: 'CNG', label: 'CNG' },
             ]}
             param="kind"
             searchParams={resolvedSearchParams}

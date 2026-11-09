@@ -1,15 +1,15 @@
 import {
-  sendAdminEmailAlert,
-  sendAdminTestEmail,
-} from '@/lib/admin-email-alerts.server';
-import type { AdminEmailAlertType } from '@/lib/admin-email-alerts';
+  sendAdminTelegramAlert,
+  sendAdminTestTelegram,
+} from '@/lib/admin-telegram-alerts.server';
+import type { AdminTelegramAlertType } from '@/lib/admin-telegram-alerts';
 import { getAdminDataClient } from '@/lib/admin/queries';
 import { readBoundedRequestBody } from '@/lib/bounded-request-body';
 
 export const runtime = 'nodejs';
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-const ALLOWED_TYPES = new Set<AdminEmailAlertType>([
+const ALLOWED_TYPES = new Set<string>([
   'service_request',
   'tolet_listing',
   'blood_donor_reports',
@@ -20,6 +20,7 @@ const ALLOWED_TYPES = new Set<AdminEmailAlertType>([
   'contact_message',
   'blood_request',
   'vehicle_request',
+  'vehicle_booking',
   'community_post',
   'service_listing',
   'tolet_profile',
@@ -65,30 +66,30 @@ export async function POST(request: Request) {
     try {
       admin = await getAdminDataClient();
     } catch {
-      console.error('Admin email test authorization could not be checked.');
-      return Response.json({ error: 'Email test could not be authorized.' }, { status: 503 });
+      console.error('Admin Telegram test authorization could not be checked.');
+      return Response.json({ error: 'Telegram test could not be authorized.' }, { status: 503 });
     }
     if (!admin) {
       return Response.json({ error: 'Admin authorization required.' }, { status: 403 });
     }
     try {
-      const result = await sendAdminTestEmail(admin.userId);
+      const result = await sendAdminTestTelegram(admin.userId);
       if (result.status === 'unconfigured') {
-        return Response.json({ error: 'Email alert queue is not configured.' }, { status: 503 });
+        return Response.json({ error: 'Telegram alert queue is not configured.' }, { status: 503 });
       }
       if (result.status === 'failed') {
-        return Response.json({ error: 'Email alert could not be queued.' }, { status: 503 });
+        return Response.json({ error: 'Telegram alert could not be queued.' }, { status: 503 });
       }
       return Response.json({ status: result.status }, { status: 202 });
     } catch {
-      console.error('Admin email test could not be processed.');
-      return Response.json({ error: 'Email test could not be processed.' }, { status: 503 });
+      console.error('Admin Telegram test could not be processed.');
+      return Response.json({ error: 'Telegram test could not be processed.' }, { status: 503 });
     }
   }
 
   if (
     typeof type !== 'string' ||
-    !ALLOWED_TYPES.has(type as AdminEmailAlertType) ||
+    !ALLOWED_TYPES.has(type) ||
     typeof eventId !== 'string' ||
     !UUID_PATTERN.test(eventId)
   ) {
@@ -96,25 +97,25 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await sendAdminEmailAlert(type as AdminEmailAlertType, eventId);
+    const result = await sendAdminTelegramAlert(type as AdminTelegramAlertType, eventId);
     if (result.status === 'unconfigured') {
-      return Response.json({ error: 'Email alert queue is not configured.' }, { status: 503 });
+      return Response.json({ error: 'Telegram alert queue is not configured.' }, { status: 503 });
     }
     if (result.status === 'failed') {
-      return Response.json({ error: 'Email alert queue could not be checked.' }, { status: 503 });
+      return Response.json({ error: 'Telegram alert queue could not be checked.' }, { status: 503 });
     }
     return Response.json(
       {
         status: result.status,
         message:
           result.status === 'queued'
-            ? 'The durable email job is stored; provider acceptance and delivery are tracked separately.'
-            : 'No durable email job exists for this event.',
+            ? 'The durable Telegram job is stored and delivery will be tracked.'
+            : 'No durable Telegram job exists for this event.',
       },
       { status: result.status === 'queued' ? 202 : 200 }
     );
   } catch {
-    console.error('Admin email alert processing failed.', { type });
-    return Response.json({ error: 'Email alert could not be processed.' }, { status: 503 });
+    console.error('Admin Telegram alert processing failed.', { type });
+    return Response.json({ error: 'Telegram alert could not be processed.' }, { status: 503 });
   }
 }

@@ -11,7 +11,7 @@ import {
   NotificationItem,
 } from './supabase/types';
 import { createClient, isSupabaseConfigured } from './supabase/client';
-import { requestAdminEmailAlert } from './admin-email-alerts';
+import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { normalizeJsonArray } from './request-data';
 import { LAUNCH_SERVICES } from './services-data';
 import { MCC_AREAS } from './locations';
@@ -1093,7 +1093,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       requestId = data.id;
       referenceCode = data.reference_code ?? undefined;
-      if (requestId) void requestAdminEmailAlert('service_request', requestId);
+      if (requestId) void requestAdminTelegramAlert('service_request', requestId);
     }
 
     const newReq: ServiceRequestItem = {

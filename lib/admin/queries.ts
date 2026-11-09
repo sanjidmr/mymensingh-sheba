@@ -1983,7 +1983,8 @@ export async function fetchVehicleRequests(params: ListParams): Promise<Paged<Ad
       { count: 'exact' }
     )
     .order('created_at', { ascending: false })
-    .range(from, to);
+    .range(from, to)
+    .eq('vehicle_kind', 'গাড়ি');
 
   const term = searchFilter(params.search, ['reference_code', 'contact_name', 'contact_phone', 'vehicle_name', 'notes']);
   if (term) {
@@ -2039,10 +2040,11 @@ export async function fetchVehicleRequestCounts(): Promise<{
 
   const statuses = ['new', 'reviewing', 'approved', 'rejected', 'contacted', 'closed'] as const;
   const results = await Promise.all([
-    admin.client.from('vehicle_requests').select('id', { count: 'exact', head: true }),
+    admin.client.from('vehicle_requests').select('id', { count: 'exact', head: true }).eq('vehicle_kind', 'গাড়ি'),
     ...statuses.map((status) => admin.client
       .from('vehicle_requests')
       .select('id', { count: 'exact', head: true })
+      .eq('vehicle_kind', 'গাড়ি')
       .eq('status', status)),
   ]);
   const failed = results.find((result) => result.error);
@@ -2075,6 +2077,7 @@ export async function fetchVehicleRequestById(id: string): Promise<{
       'id, reference_code, vehicle_listing_id, vehicle_kind, vehicle_name, customer_id, contact_name, contact_phone, pickup_area_id, destination_area_id, travel_date, travel_time, passenger_count, trip_duration, budget, notes, estimated_distance_km, distance_source, rate_per_km, minimum_fare, estimated_fare, additional_fee, additional_fee_note_bn, assigned_vehicle_listing_id, assigned_driver_name, assigned_driver_phone, admin_notes, status, created_at, updated_at'
     )
     .eq('id', id)
+    .eq('vehicle_kind', 'গাড়ি')
     .maybeSingle();
 
   if (error) return { row: null, unavailable: true, error: error.message };
@@ -2105,6 +2108,7 @@ export async function fetchAssignableVehicles(): Promise<Array<{ id: string; tit
     .from('service_listings')
     .select('id, title_bn')
     .eq('category', 'vehicle')
+    .contains('tags', ['গাড়ি'])
     .eq('is_active', true)
     .order('title_bn', { ascending: true });
   if (error) throw new Error(`উপলভ্য যানবাহন লোড ব্যর্থ হয়েছে: ${error.message}`);
@@ -2132,7 +2136,8 @@ async function attachVehicleRequestListingData(
     .from('service_listings')
     .select('id, slug, title_bn, image_url, photos, tags, is_active')
     .in('id', ids)
-    .eq('category', 'vehicle');
+    .eq('category', 'vehicle')
+    .contains('tags', ['গাড়ি']);
   if (error) throw new Error(`যানবাহনের রেকর্ড লোড ব্যর্থ হয়েছে: ${error.message}`);
   const listings = new Map((data ?? []).map((listing) => [listing.id, listing]));
   return rows.map((row) => {
@@ -2525,6 +2530,7 @@ export async function fetchServiceListings(params: ListParams, category?: string
       .from('service_listings')
       .select('id', { head: true, count: 'exact' })
       .eq('category', rpcCategory);
+    if (rpcCategory === 'vehicle') query = query.contains('tags', ['গাড়ি']);
     if (kind === 'published') query = query.eq('is_active', true).eq('status', 'approved');
     if (kind === 'unpublished') query = query.or('is_active.eq.false,status.neq.approved');
     return query;
@@ -2542,6 +2548,7 @@ export async function fetchServiceListings(params: ListParams, category?: string
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false })
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
+  if (rpcCategory === 'vehicle') query = query.contains('tags', ['গাড়ি']);
 
   const term = searchFilter(params.search, [
     'public_id', 'title_bn', 'slug', 'subtitle_bn', 'summary_bn', 'description_bn',
@@ -2582,6 +2589,53 @@ export async function fetchServiceListings(params: ListParams, category?: string
       active: counts[1].count ?? 0,
       inactive: counts[2].count ?? 0,
     },
+  };
+}
+
+export interface AdminVehicleBookingRow {
+  id: string;
+  service_type: 'auto' | 'cng';
+  passenger_name: string;
+  mobile_number: string;
+  current_address: string;
+  pickup_location: string;
+  destination: string;
+  requested_at: string;
+  additional_info: string | null;
+  status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
+  created_at: string;
+}
+
+export async function fetchVehicleBookings(
+  serviceType: 'auto' | 'cng',
+  params: ListParams
+): Promise<Paged<AdminVehicleBookingRow>> {
+  const admin = await getAdminDataClient();
+  if (!admin) return failedPage(params, 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।');
+
+  let query = admin.client
+    .from('vehicle_bookings')
+    .select('id, service_type, passenger_name, mobile_number, current_address, pickup_location, destination, requested_at, additional_info, status, created_at', { count: 'exact' })
+    .eq('service_type', serviceType)
+    .order('created_at', { ascending: false })
+    .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
+  const term = searchFilter(params.search, [
+    'passenger_name', 'mobile_number', 'current_address',
+    'pickup_location', 'destination', 'additional_info',
+  ]);
+  if (term) query = query.or(term);
+  if (['pending', 'confirmed', 'completed', 'cancelled'].includes(params.status ?? '')) {
+    query = query.eq('status', params.status);
+  }
+
+  const { data, count, error } = await query;
+  if (error || !data) return failedPage(params, error?.message ?? 'বুকিং অনুরোধ লোড করা যায়নি।');
+  return {
+    rows: data as unknown as AdminVehicleBookingRow[],
+    total: count ?? 0,
+    page: params.page,
+    pageSize: params.pageSize,
+    unavailable: false,
   };
 }
 

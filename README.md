@@ -26,12 +26,9 @@
    NEXT_PUBLIC_SUPABASE_URL=""
    NEXT_PUBLIC_SUPABASE_ANON_KEY=""
    SUPABASE_SERVICE_ROLE_KEY=""
-   BREVO_API_KEY=""
-   ADMIN_NOTIFICATION_EMAIL=""
-   EMAIL_FROM=""
-   APP_BASE_URL="https://mymensinghsheba.com"
-   ADMIN_EMAIL_WORKER_SECRET=""
-   BREVO_WEBHOOK_SECRET=""
+   TELEGRAM_BOT_TOKEN=""
+   TELEGRAM_CHAT_ID=""
+   ADMIN_TELEGRAM_WORKER_SECRET=""
    ```
 
    `/admin` uses a signed-in Supabase admin account by default. The
@@ -48,18 +45,12 @@
    Without this project-level setting, Supabase intentionally returns no
    session and the app cannot safely sign the user in automatically.
 
-   Important admin events are written to a durable Supabase outbox and sent
-   asynchronously through Brevo. Set
-   `BREVO_API_KEY`, `ADMIN_NOTIFICATION_EMAIL` (the administrator's Gmail),
-   `EMAIL_FROM` (a sender address verified in Brevo), `APP_BASE_URL`,
-   `ADMIN_EMAIL_WORKER_SECRET`, and `BREVO_WEBHOOK_SECRET` in the server
-   environment. `BREVO_MIN_INTERVAL_MS` defaults to `12000` (five sends per
-   minute) and can be set to the account's documented transactional limit,
-   but is clamped to 1–60 seconds between messages. The API key must have access to Brevo Transactional Email
-   (`transactional.email`) and the sender must be verified. Keep these
-   server-only and never use `NEXT_PUBLIC_` names. A queue write is part of the
-   source database transaction; later email provider failures do not change an
-   already committed business operation or the in-app notification.
+   Booking requests are saved to Supabase before an awaited Telegram send is
+   attempted. Other admin events are written to a durable Telegram outbox and
+   delivered by the worker. Keep the bot token, chat ID, worker secret, and
+   Supabase service-role key server-only; never use `NEXT_PUBLIC_` names.
+   `.env.local` is ignored by Git. Supabase Auth email/verification settings
+   remain separate from these admin notifications.
 
 3. Run the dev server:
 
@@ -88,28 +79,26 @@ to restrict customer service-request updates to cancellation of new/submitted
 requests only.
 Apply `supabase/migrations/20261009230000_customer_post_drafts.sql` to enable
 private, per-category Supabase drafts for signed-in customers.
-Apply `supabase/migrations/20261019200000_admin_email_delivery_tracking.sql`
-if it has not already been applied, then apply
-`supabase/migrations/20261022190000_admin_email_outbox.sql`. The outbox
-migration is additive: it preserves the existing in-app `notifications`
-system and existing delivery history. Apply the later migrations in timestamp
-order: `20261023213001_service_listing_moderation_notifications.sql`,
-`20261023214000_admin_email_notification_coverage.sql`, and
-`20261023214100_admin_email_provider_http_status.sql`.
+Apply the existing incremental migrations in timestamp order, including the
+historical `20261022190000_admin_email_outbox.sql`,
+`20261023214000_admin_email_notification_coverage.sql`,
+`20261023214100_admin_email_provider_http_status.sql`,
+`20261108000000_vehicle_bookings.sql`, and
+`20261109000000_vehicle_booking_admin_email.sql` migrations if they have not
+already been applied. These are retained migration history; the later
+`20261110120000_telegram_notifications.sql` migration renames the outbox and
+worker objects, removes provider-specific schema, and disables the old booking
+outbox trigger. Apply it after the vehicle-bookings table and all earlier
+migrations. Do not edit or delete migrations that have already been applied.
 
-Database triggers enqueue email jobs transactionally for service requests,
-pending To-Let listings, reports, safety/payment complaints, WiFi/coaching and
-other customer-submitted service listings, community posts, vehicle and blood
-requests, and pending To-Let-owner, tutor, and donor profiles. Provider profile
-submissions also create an in-app admin notification. Events with existing
-source-table email triggers are excluded from the notification outbox trigger
-to avoid duplicate email jobs. Routine contact messages, ordinary account
-registration, and customer-facing status notifications do not send email.
-Each job has a unique idempotency key; provider HTTP status, message ID,
-provider acceptance, webhook delivery status, retry state, and failure reason
-are tracked independently from the in-app notification.
+Database triggers enqueue admin Telegram alerts transactionally for service
+requests, pending To-Let listings, reports, safety/payment complaints,
+customer-submitted service listings, community posts, vehicle and blood
+requests, and pending To-Let-owner, tutor, and donor profiles. Booking API
+requests send their detailed Telegram notification directly after the
+database insert. Queue delivery failures do not undo a saved database record.
 
-### cPanel worker and Brevo webhook
+### Telegram worker
 
 Build the application with Node.js 22 from the project root. The project
 `.npmrc` includes development dependencies even when npm runs with
@@ -126,73 +115,39 @@ Keep the cPanel application root and startup command aligned with the existing
 deployment configuration; the project startup script is
 `node .next/standalone/server.js`.
 
-1. Add the server-only environment variables in the cPanel Node.js application
-   configuration (or the private environment file used by the deployed Next.js
-   process): `ADMIN_EMAIL_WORKER_SECRET` and `BREVO_WEBHOOK_SECRET`, each a
-   different random secret. Do not add either to a `NEXT_PUBLIC_` variable.
-   Restart the application after changing environment variables. The worker
-   and webhook routes bypass cookie-based session middleware and authenticate
-   with these bearer secrets in their route handlers.
+1. Add `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and a separate random
+   `ADMIN_TELEGRAM_WORKER_SECRET` to the server environment. Restart the
+   application after changing environment variables. Never expose these values
+   with `NEXT_PUBLIC_` names. For Vercel Cron, set `CRON_SECRET` to the same
+   value as `ADMIN_TELEGRAM_WORKER_SECRET`; the worker accepts authenticated
+   GET requests as well as POST.
 2. In cPanel → **Cron Jobs**, run this once every minute:
 
    ```cron
-   * * * * * /usr/bin/curl -fsS -X POST "https://mymensinghsheba.com/api/admin-email-alerts/worker" -H "Authorization: Bearer REPLACE_WITH_ADMIN_EMAIL_WORKER_SECRET" -o /dev/null
+   * * * * * /usr/bin/curl -fsS -X POST "https://mymensinghsheba.com/api/admin-telegram-alerts/worker" -H "Authorization: Bearer YOUR_WORKER_SECRET" -o /dev/null
    ```
 
-   Replace the domain and secret with production values. This HTTP cron
-   command is independent of the cron shell's working directory; the worker
-   runs inside the deployed Next.js application. It handles up to 3 jobs per
-   tick, serially, with a 45-second processing budget and a 120-second worker
-   lease to avoid a long-running batch monopolizing cPanel requests. Each
-   claimed job has its own lease and can be reclaimed after a crash. Brevo
-   `Retry-After` and transient HTTP/network failures are scheduled with bounded
-   exponential backoff and jitter; permanent 4xx responses become `failed`.
-3. In the Brevo Transactional → **Settings → Webhooks** screen, add
-   `https://mymensinghsheba.com/api/admin-email-alerts/webhook`. Configure its
-   Authorization header as `Bearer REPLACE_WITH_BREVO_WEBHOOK_SECRET` and
-   subscribe to `delivered`, `deferred`, `blocked`, `softBounce`, `hardBounce`,
-   and `error`. The endpoint checks the shared secret in constant time and
-   deduplicates provider event IDs before changing a job. If the Brevo account
-   does not offer custom webhook headers, do not expose the endpoint without
-   authentication; configure an authenticated webhook proxy instead.
-4. Sign in as an admin and open `/admin/email-deliveries` to inspect recent
-   event IDs, attempts, next retry, sanitized error, Brevo message ID, provider
-   acceptance, and delivery confirmation. `accepted_by_provider` is not
-   equivalent to Gmail delivery. A `delivered` webhook is the provider's
-   delivery event; it still cannot guarantee inbox placement rather than spam.
-5. To enqueue a test message, sign in as an admin and POST
-   `{"type":"test"}` to `/api/admin-email-alerts` with
-   `Content-Type: application/json`. HTTP `202` means the durable test job was
-   queued—not that Brevo accepted it or Gmail delivered it. Wait for the cron
-   and inspect the event on `/admin/email-deliveries`, then check the Gmail
-   inbox and spam folder.
+      Replace the domain and secret with production values. The worker handles up
+      to 3 queued notifications per run and retries transient failures with bounded
+      exponential backoff. On Vercel, add a Cron Job for
+      `/api/admin-telegram-alerts/worker`; Vercel calls it with GET.
+3. To queue a Telegram test, sign in as an admin and POST
+   `{"type":"test"}` to `/api/admin-telegram-alerts` with
+   `Content-Type: application/json`, then run the worker or wait for the cron.
 
-For a concurrency verification in a staging database, create 20–50 distinct
-valid source events (not duplicate copies of a single event), collect their
-`event_id` values from `admin_email_outbox`, then run two worker HTTP requests
-at the same time. The worker lock serializes invocations and `SKIP LOCKED`
-claims jobs atomically. Verify that each event ID reaches
-`accepted_by_provider`, `delivered`, or a visible terminal `failed` state and
-that there are no duplicate `idempotency_key` values:
+In staging, inspect recent jobs in `admin_telegram_outbox`. The worker lock
+serializes invocations and `SKIP LOCKED` claims jobs atomically:
 
 ```sql
-SELECT event_id, related_type, status, attempt_count, provider_message_id,
-       last_error, created_at, sent_at, delivered_at
-FROM public.admin_email_outbox
+SELECT event_id, related_type, status, attempt_count, last_error, created_at, sent_at
+FROM public.admin_telegram_outbox
 WHERE created_at >= NOW() - INTERVAL '1 hour'
 ORDER BY created_at, event_id;
-
-SELECT idempotency_key, COUNT(*)
-FROM public.admin_email_outbox
-GROUP BY idempotency_key
-HAVING COUNT(*) > 1;
 ```
 
-Do not load-test by sending 50 real emails to the production Gmail inbox.
-Verify retries using a staging Brevo key or controlled transient provider
-response; verify the delivered/blocked/bounce paths with Brevo's webhook test
-facility. No production credentials or message payloads are written to logs.
-
+Do not load-test with a large number of real Telegram notifications in the
+production chat. No production credentials or full message payloads are written
+to logs.
 Signed-in community post drafts are stored in Supabase, scoped by customer and
 post category; anonymous drafts are local to the browser. Images must be
 reselected when a draft is restored.

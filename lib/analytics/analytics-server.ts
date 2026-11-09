@@ -43,10 +43,11 @@ export async function getAnalyticsRequestContext(
     return { error: 'Analytics storage is not configured.', status: 503 };
   }
 
-  const { data: { user }, error: authError } = await sessionClient.auth.getUser();
-  if (authError) {
-    return { error: 'The analytics session could not be verified.', status: 401 };
+  const { data: authData, error: authError } = await sessionClient.auth.getUser();
+  if (authError && authError.status !== 401) {
+    return { error: 'The analytics session could not be verified.', status: 503 };
   }
+  const user = authError ? null : authData.user;
 
   let userId: string | null = null;
   let role: string | null = null;

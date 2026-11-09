@@ -116,7 +116,7 @@ export default async function HomePage() {
             kicker="স্থানীয় যাতায়াত"
             hideKickerOnMobile
             title="গাড়ি, অটো ও CNG ভাড়া"
-            href="/services?q=%E0%A6%97%E0%A6%BE%E0%A6%A1%E0%A6%BC%E0%A6%BF"
+            href="/gari-auto-cng"
             source="vehicle"
             tone="mist"
             withImage

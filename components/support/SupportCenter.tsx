@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { Mail, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { requestAdminEmailAlert } from '@/lib/admin-email-alerts';
+import { requestAdminTelegramAlert } from '@/lib/admin-telegram-alerts';
 
 export type SupportMode = 'messages' | 'complaints';
 
@@ -246,7 +246,7 @@ export default function SupportCenter({ mode }: { mode: SupportMode }) {
         throw new Error(`অভিযোগ জমা দেওয়া যায়নি: ${insertError.message}.${cleanupNote}`);
       }
       if (['safety', 'payment'].includes(complaintCategory)) {
-        void requestAdminEmailAlert('contact_message', messageId);
+        void requestAdminTelegramAlert('contact_message', messageId);
       }
 
       setComplaintSubject('');

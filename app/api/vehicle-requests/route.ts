@@ -26,7 +26,7 @@ interface VehicleRequestPayload {
 }
 
 function isVehicleKind(value: unknown): value is VehicleKind {
-  return value === 'গাড়ি' || value === 'অটো' || value === 'CNG';
+  return value === 'গাড়ি';
 }
 
 function validDate(value: unknown): value is string {
@@ -105,6 +105,20 @@ export async function POST(request: Request) {
   const client = await createServerSideClient();
   if (!client) {
     return NextResponse.json({ error: 'ডেটাবেস সংযোগ নেই।' }, { status: 503 });
+  }
+  const { data: vehicleListing, error: listingError } = await client
+    .from('service_listings')
+    .select('tags')
+    .eq('id', listingId)
+    .eq('category', 'vehicle')
+    .eq('is_active', true)
+    .eq('status', 'approved')
+    .maybeSingle();
+  if (listingError) {
+    return NextResponse.json({ error: 'গাড়ির তালিকা যাচাই করা যায়নি। আবার চেষ্টা করুন।' }, { status: 503 });
+  }
+  if (!vehicleListing?.tags.includes('গাড়ি')) {
+    return NextResponse.json({ error: 'এই গাড়ির তালিকা বুকিংয়ের জন্য উপলভ্য নয়।' }, { status: 404 });
   }
   const { data: sessionData, error: sessionError } = await client.auth.getSession();
   if (sessionError) {

@@ -24,6 +24,16 @@ export async function setServiceListingActive(
   isActive: boolean
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
+    const { data: listing, error: lookupError } = await client
+      .from('service_listings')
+      .select('category, tags')
+      .eq('id', listingId)
+      .maybeSingle();
+    if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
+    if (!listing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (listing.category === 'vehicle' && !listing.tags.includes('গাড়ি')) {
+      return { ok: false, error: 'শুধু গাড়ির প্রকাশনা পরিচালনা করা যাবে।' };
+    }
     const { error } = await client
       .from('service_listings')
       .update({ is_active: isActive })
@@ -45,6 +55,16 @@ export async function setServiceListingFeatured(
   isFeatured: boolean
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
+    const { data: listing, error: lookupError } = await client
+      .from('service_listings')
+      .select('category, tags')
+      .eq('id', listingId)
+      .maybeSingle();
+    if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
+    if (!listing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (listing.category === 'vehicle' && !listing.tags.includes('গাড়ি')) {
+      return { ok: false, error: 'শুধু গাড়ির তালিকা ফিচার করা যাবে।' };
+    }
     const { error } = await client
       .from('service_listings')
       .update({ is_featured: isFeatured })
@@ -64,11 +84,14 @@ export async function deleteServiceListing(listingId: string): Promise<ActionRes
     }
     const { data: listing, error: lookupError } = await client
       .from('service_listings')
-      .select('id, category')
+      .select('id, category, tags')
       .eq('id', listingId)
       .maybeSingle();
     if (lookupError) return { ok: false, error: lookupError.message };
     if (!listing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (listing.category === 'vehicle' && !listing.tags.includes('গাড়ি')) {
+      return { ok: false, error: 'শুধু গাড়ির তালিকা পরিচালনা করা যাবে।' };
+    }
     if (listing.category === 'vehicle') {
       const { count, error: requestError } = await client
         .from('vehicle_requests')

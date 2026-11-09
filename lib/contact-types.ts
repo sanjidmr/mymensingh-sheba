@@ -157,6 +157,7 @@ export const NAME_MIN = 3;
 /** Strips the international prefix and separators so typing AND pasting both validate. */
 export function normalizeBdPhone(raw: string): string {
   return raw
+    .replace(/[০-৯]/g, (digit) => String('০১২৩৪৫৬৭৮৯'.indexOf(digit)))
     .replace(/[^\d+]/g, '')
     .replace(/^\+?88/, '')
     .replace(/^0088/, '');

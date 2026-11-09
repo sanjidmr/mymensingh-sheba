@@ -63,7 +63,7 @@ export default function VehicleDetail({ slug }: { slug: string }) {
     (async () => {
       try {
         const data = await fetchServiceListingForContact('vehicle', slug);
-        if (active) setListing(data);
+        if (active) setListing(data?.tags.includes('গাড়ি') ? data : null);
       } catch (cause) {
         if (active) {
           setListing(null);
@@ -83,7 +83,7 @@ export default function VehicleDetail({ slug }: { slug: string }) {
     (async () => {
       try {
         const rows = await fetchServiceListings('vehicle');
-        if (active) setSuggestions(rows.filter((row) => row.slug !== slug).slice(0, 3));
+        if (active) setSuggestions(rows.filter((row) => row.tags.includes('গাড়ি') && row.slug !== slug).slice(0, 3));
       } catch (cause) {
         if (active) {
           setSuggestionError(cause instanceof Error ? cause.message : 'অন্যান্য গাড়ির তালিকা লোড করা যায়নি।');

@@ -217,6 +217,7 @@ export async function setVehicleRequestStatus(
       .from('vehicle_requests')
       .update({ status })
       .eq('id', requestId)
+      .eq('vehicle_kind', 'গাড়ি')
       .select('id')
       .maybeSingle();
 
@@ -227,6 +228,34 @@ export async function setVehicleRequestStatus(
     revalidatePath(`/admin/vehicle-requests/${requestId}`);
     revalidatePath('/profile/requests');
     return { ok: true, message: status === 'closed' ? 'রিকোয়েস্টটি বন্ধ হয়েছে; বুকিং বা পেমেন্ট নিশ্চিত করা হয়নি।' : 'রিকোয়েস্টের অবস্থা আপডেট হয়েছে।' };
+  });
+}
+
+export async function updateVehicleBookingStatus(
+  bookingId: string,
+  serviceType: 'auto' | 'cng',
+  status: string
+): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId)) {
+      return { ok: false, error: 'বুকিং আইডি সঠিক নয়।' };
+    }
+    if (!['auto', 'cng'].includes(serviceType) ||
+        !['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
+      return { ok: false, error: 'বুকিংয়ের ধরন বা অবস্থা সঠিক নয়।' };
+    }
+    const { data, error } = await client
+      .from('vehicle_bookings')
+      .update({ status })
+      .eq('id', bookingId)
+      .eq('service_type', serviceType)
+      .select('id')
+      .maybeSingle();
+    if (error) return { ok: false, error: `বুকিংয়ের অবস্থা সংরক্ষণ ব্যর্থ হয়েছে: ${error.message}` };
+    if (!data) return { ok: false, error: 'বুকিংটি পাওয়া যায়নি।' };
+
+    revalidatePath(`/admin/vehicle-bookings/${serviceType}`);
+    return { ok: true, message: 'বুকিংয়ের অবস্থা আপডেট হয়েছে।' };
   });
 }
 
@@ -256,16 +285,18 @@ export async function updateVehicleRequestManagement(input: {
     if (input.assignedVehicleListingId) {
       const { data: currentRequest, error: currentError } = await client
         .from('vehicle_requests')
-        .select('assigned_vehicle_listing_id')
+        .select('assigned_vehicle_listing_id, vehicle_kind')
         .eq('id', input.requestId)
         .maybeSingle();
       if (currentError) return { ok: false, error: `রিকোয়েস্ট যাচাই ব্যর্থ হয়েছে: ${currentError.message}` };
       if (!currentRequest) return { ok: false, error: 'রিকোয়েস্টটি পাওয়া যায়নি।' };
+      if (currentRequest.vehicle_kind !== 'গাড়ি') return { ok: false, error: 'এখানে শুধু গাড়ির অনুরোধ পরিচালনা করা যাবে।' };
       let vehicleQuery = client
         .from('service_listings')
         .select('id')
         .eq('id', input.assignedVehicleListingId)
-        .eq('category', 'vehicle');
+        .eq('category', 'vehicle')
+        .contains('tags', ['গাড়ি']);
       if (currentRequest.assigned_vehicle_listing_id !== input.assignedVehicleListingId) {
         vehicleQuery = vehicleQuery.eq('is_active', true);
       }
@@ -284,6 +315,7 @@ export async function updateVehicleRequestManagement(input: {
         admin_notes: input.adminNotes.trim() || null,
       })
       .eq('id', input.requestId)
+      .eq('vehicle_kind', 'গাড়ি')
       .select('id')
       .maybeSingle();
     if (error) return { ok: false, error: `যানবাহন রিকোয়েস্ট সংরক্ষণ ব্যর্থ হয়েছে: ${error.message}` };

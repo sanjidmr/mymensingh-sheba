@@ -28,7 +28,8 @@ export default async function EditServiceListingPage({
       </>
     );
   }
-  if (!listing || listing.category !== category) notFound();
+  if (!listing || listing.category !== category ||
+      (category === 'vehicle' && !listing.tags.includes('গাড়ি'))) notFound();
   return (
     <div className="space-y-6">
       <ServiceListingForm category={category as ServiceCategory} listing={listing} />

@@ -3,7 +3,7 @@
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
 import { uploadRequestAttachment } from '@/lib/staff-service';
 import { getAreaById } from '@/lib/locations';
-import { requestAdminEmailAlert } from '@/lib/admin-email-alerts';
+import { requestAdminTelegramAlert } from '@/lib/admin-telegram-alerts';
 import {
   formatAnswersBn,
   type ServiceRequestPageConfig,
@@ -246,7 +246,7 @@ export async function submitServiceRequest(
   }
 
   const requestId = data?.id;
-  if (requestId) void requestAdminEmailAlert('service_request', requestId);
+  if (requestId) void requestAdminTelegramAlert('service_request', requestId);
   return {
     ok: true,
     attachmentUrl,

@@ -81,7 +81,7 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     logoUrl: row?.logo_url ?? '',
     coachingCategory: row?.coaching_category ?? undefined,
     areaIds: row?.area_ids ?? [],
-    tags: row?.tags ?? [],
+    tags: row?.tags ?? (category === 'vehicle' ? ['গাড়ি'] : []),
     monthlyFeeMin: row?.monthly_fee_min ?? undefined,
     monthlyFeeMax: row?.monthly_fee_max ?? undefined,
     admissionFee: row?.admission_fee ?? undefined,
@@ -438,7 +438,7 @@ export default function ServiceListingForm({
                 <div className="min-w-0 sm:col-span-2">
                   <span className="mb-1 block text-xs font-semibold text-admin-text">যানের ধরন *</span>
                   <div role="radiogroup" aria-label="যানের ধরন" className="flex flex-wrap gap-2">
-                    {VEHICLE_KINDS.map((kind) => {
+                    {(['গাড়ি'] as const).map((kind) => {
                       const selected = values.tags.includes(kind);
                       return (
                         <button
@@ -459,7 +459,7 @@ export default function ServiceListingForm({
                       );
                     })}
                   </div>
-                  <span className="mt-1 block text-xs leading-relaxed text-admin-muted">গাড়ি, অটো ও CNG-এর মধ্যে ঠিক একটি বাছুন — এটি তালিকাকে সঠিক ধরনে দেখায় ও ফিল্টারে কাজ করে।</span>
+                  <span className="mt-1 block text-xs leading-relaxed text-admin-muted">এই তালিকায় শুধু গাড়ির তথ্য যোগ করা যাবে। অটো ও CNG বুকিং আলাদা অনুরোধ হিসেবে জমা হবে।</span>
                 </div>
                 {field(
                   'মডেল',

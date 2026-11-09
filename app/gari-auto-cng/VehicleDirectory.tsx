@@ -15,6 +15,8 @@
  */
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
+import Image from 'next/image';
 import CatalogDirectory, { providerGroup } from '@/components/catalog/CatalogDirectory';
 import { TileCard } from '@/components/catalog/CatalogCards';
 import AdminListingLink from '@/components/catalog/AdminListingLink';
@@ -27,7 +29,6 @@ import {
   CATEGORY_UI,
   tagLabels,
   toBn,
-  VEHICLE_KINDS,
   type ServiceListing,
 } from '@/lib/catalog-types';
 
@@ -76,7 +77,7 @@ export default function VehicleDirectory() {
     (async () => {
       try {
         const data = await fetchServiceListings('vehicle');
-        if (active) setListings(data);
+        if (active) setListings(data.filter((listing) => listing.tags.includes('গাড়ি')));
       } finally {
         if (active) setLoading(false);
       }
@@ -89,12 +90,6 @@ export default function VehicleDirectory() {
   const filterGroups = useMemo<FilterGroup[]>(
     () => [
       areaFilterGroupMulti(),
-      {
-        id: 'kind',
-        labelBn: 'যানের ধরন',
-        type: 'multi',
-        options: VEHICLE_KINDS.map((k) => ({ id: k, labelBn: k })),
-      },
       providerGroup(listings),
     ],
     [listings]
@@ -113,6 +108,7 @@ export default function VehicleDirectory() {
         priceSuffix={price?.suffix}
         areaLabel={areaNames(listing.areaIds)}
         mobileMinimal
+        actionLabel="বিস্তারিত ও ভাড়ার অনুরোধ"
         chips={[
           listing.seatCount ? `${toBn(listing.seatCount)} সিট` : undefined,
           ...tagLabels(listing.tags),
@@ -131,14 +127,55 @@ export default function VehicleDirectory() {
 
   return (
     <CatalogDirectory
-      ui={ui}
+      ui={{ ...ui, subtitle: '', highlights: [] }}
       listings={listings}
       loading={loading}
       filterGroups={filterGroups}
       sortOptions={SORT_OPTIONS}
       sorters={SORTERS}
       renderCard={renderCard}
-      action={<AdminListingLink category="vehicle" label="যান যোগ করুন" />}
+      action={<AdminListingLink category="vehicle" label="গাড়ি যোগ করুন" />}
+      banner={<VehicleBookingCards />}
+      resultsHeading="গাড়ি ভাড়া করুন"
     />
+  );
+}
+
+function VehicleBookingCards() {
+  return (
+    <section aria-label="অটো ও CNG ভাড়া" className="grid grid-cols-2 gap-2 sm:gap-3">
+      <Link
+        href="/gari-auto-cng/book/auto"
+        aria-label="অটো ভাড়া করুন"
+        className="group flex min-h-0 min-w-0 flex-col items-center rounded-xl border border-orange-200 bg-[#fffaf3] p-2 text-center shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700 sm:p-3"
+      >
+        <span className="relative block aspect-[2/1] w-full overflow-hidden rounded-lg bg-white">
+          <Image
+            src="/auto.jpg"
+            alt="অটো ভাড়া"
+            fill
+            sizes="(max-width: 640px) 45vw, 220px"
+            className="object-cover object-left"
+          />
+        </span>
+        <span className="mt-1.5 text-xs font-extrabold leading-tight text-ink-950 sm:mt-2 sm:text-sm">অটো ভাড়া করুন</span>
+      </Link>
+      <Link
+        href="/gari-auto-cng/book/cng"
+        aria-label="CNG ভাড়া করুন"
+        className="group flex min-h-0 min-w-0 flex-col items-center rounded-xl border border-emerald-200 bg-[#f5faf6] p-2 text-center shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800 sm:p-3"
+      >
+        <span className="relative block aspect-[2/1] w-full overflow-hidden rounded-lg bg-white">
+          <Image
+            src="/cng.jpg"
+            alt="CNG ভাড়া"
+            fill
+            sizes="(max-width: 640px) 45vw, 220px"
+            className="object-cover object-right"
+          />
+        </span>
+        <span className="mt-1.5 text-xs font-extrabold leading-tight text-ink-950 sm:mt-2 sm:text-sm">CNG ভাড়া করুন</span>
+      </Link>
+    </section>
   );
 }

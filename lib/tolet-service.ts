@@ -30,7 +30,7 @@ import {
   mockGetReportsForListing,
 } from './tolet-service-mock';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
-import { requestAdminEmailAlert } from './admin-email-alerts';
+import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { mockTrackListingMeta } from './tolet-tracking';
 import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
 import { searchToletAreas } from './tolet-areas';
@@ -347,7 +347,7 @@ export async function createListing(
     .single();
   if (error) return { success: false, error: error.message };
   if (targetStatus === 'pending_review' && data?.id) {
-    void requestAdminEmailAlert('tolet_listing', data.id);
+    void requestAdminTelegramAlert('tolet_listing', data.id);
   }
   return { success: true, listing: mapListingRow(data as RawListingRow) };
 }
@@ -394,7 +394,7 @@ export async function updateListingOwned(
   if (error) return { success: false, error: error.message };
   if (!data) return { success: false, error: 'বিজ্ঞাপনটি পাওয়া যায়নি' };
   if (shouldAlertOnSubmit && data.status === 'pending_review') {
-    void requestAdminEmailAlert('tolet_listing', data.id);
+    void requestAdminTelegramAlert('tolet_listing', data.id);
   }
   return { success: true, listing: mapListingRow(data as RawListingRow) };
 }
@@ -807,7 +807,7 @@ export async function createListingReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: error.message };
-  void requestAdminEmailAlert('listing_reports', reportId);
+  void requestAdminTelegramAlert('listing_reports', reportId);
   return { success: true };
 }
 

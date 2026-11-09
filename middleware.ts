@@ -22,6 +22,9 @@ const PUBLIC_API_PATHS = new Set([
   '/api/site-content',
   '/api/vehicle-route',
   '/api/tolet/events',
+  '/api/analytics/events',
+  '/api/analytics/active-visitors',
+  '/api/admin-telegram-alerts',
 ]);
 
 const AUTH_REQUIRED_PAGE_PATHS = [
@@ -34,8 +37,7 @@ const AUTH_REQUIRED_PAGE_PATHS = [
 ];
 
 const ROUTE_AUTHENTICATED_API_PATHS = new Set([
-  '/api/admin-email-alerts/worker',
-  '/api/admin-email-alerts/webhook',
+  '/api/admin-telegram-alerts/worker',
 ]);
 
 function isPublicPage(pathname: string): boolean {

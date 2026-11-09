@@ -26,7 +26,7 @@
  * could mislead a customer into submitting a real booking request.
  */
 import { createClient, isSupabaseConfigured } from './supabase/client';
-import { requestAdminEmailAlert } from './admin-email-alerts';
+import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
 import {
@@ -600,7 +600,7 @@ export async function fetchServiceListings(
     if (strict) throw new Error(NOT_CONFIGURED);
     return [];
   }
-  const { data, error } = await client
+  let query = client
     .from('service_listings')
     .select(PUBLIC_LISTING_COLUMNS)
     .eq('category', category)
@@ -610,6 +610,8 @@ export async function fetchServiceListings(
     .eq('status', 'approved')
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false });
+  if (category === 'vehicle') query = query.contains('tags', ['গাড়ি']);
+  const { data, error } = await query;
   // With Supabase configured the page shows real curated listings only; a
   // query error or an empty category is an honest empty state, not a sample.
   if (error || !data) {
@@ -629,14 +631,17 @@ export async function fetchServiceListingBySlug(
   }
   const client = createClient();
   if (!client) return null;
-  const { data, error } = await client
+  const query = client
     .from('service_listings')
     .select(PUBLIC_LISTING_COLUMNS)
     .eq('category', category)
     .eq('slug', slug)
     .eq('is_active', true)
-    .eq('status', 'approved')
-    .maybeSingle();
+    .eq('status', 'approved');
+  const filteredQuery = category === 'vehicle'
+    ? query.contains('tags', ['গাড়ি'])
+    : query;
+  const { data, error } = await filteredQuery.maybeSingle();
   if (error || !data) return null;
   return mapListing(data as Record<string, unknown>, false);
 }
@@ -690,7 +695,9 @@ export async function fetchServiceListingForContact(
     .rpc('fn_admin_service_listing', { p_category: category, p_slug: slug })
     .maybeSingle();
   if (error || !data) return null;
-  return mapListing(data as Record<string, unknown>, true);
+  const listing = mapListing(data as Record<string, unknown>, true);
+  if (category === 'vehicle' && !listing.tags.includes('গাড়ি')) return null;
+  return listing;
 }
 
 /** Every listing in a category, including inactive — admin only. */
@@ -703,13 +710,19 @@ export async function adminFetchServiceListings(
   if (!client) return [];
   const { data, error } = await client.rpc('fn_admin_service_listings', { p_category: category });
   if (error || !data) return [];
-  return (data as Record<string, unknown>[]).map((row) => mapListing(row, true));
+  const listings = (data as Record<string, unknown>[]).map((row) => mapListing(row, true));
+  return category === 'vehicle'
+    ? listings.filter((listing) => listing.tags.includes('গাড়ি'))
+    : listings;
 }
 
 export async function adminCreateServiceListing(
   input: ServiceListingInput
 ): Promise<WriteResult<ServiceListing | undefined>> {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
+  if (input.category === 'vehicle' && !input.tags.includes('গাড়ি')) {
+    return { success: false, error: 'এখানে শুধু গাড়ির তালিকা যোগ করা যাবে।' };
+  }
   if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
@@ -749,6 +762,22 @@ export async function adminUpdateServiceListing(
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
 
+  const { data: existing, error: lookupError } = await client
+    .from('service_listings')
+    .select('category, tags')
+    .eq('id', id)
+    .maybeSingle();
+  if (lookupError) return { success: false, error: `তালিকা যাচাই করা যায়নি: ${lookupError.message}` };
+  if (!existing) return { success: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+  if (existing.category === 'vehicle' && !existing.tags.includes('গাড়ি')) {
+    return { success: false, error: 'শুধু গাড়ির তালিকা সম্পাদনা করা যাবে।' };
+  }
+  const nextCategory = patch.category ?? existing.category;
+  const nextTags = patch.tags ?? existing.tags;
+  if (nextCategory === 'vehicle' && !nextTags.includes('গাড়ি')) {
+    return { success: false, error: 'এখানে শুধু গাড়ির তালিকা সংরক্ষণ করা যাবে।' };
+  }
+
   const payload = toSnakeObject(patch as Record<string, unknown>);
   delete payload.createdAt;
   delete payload.updatedAt;
@@ -780,6 +809,16 @@ export async function adminDeleteServiceListing(
   if (!(await currentUserIsAdmin())) return { success: false, error: NOT_ALLOWED };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
+  const { data: listing, error: lookupError } = await client
+    .from('service_listings')
+    .select('category, tags')
+    .eq('id', id)
+    .maybeSingle();
+  if (lookupError) return { success: false, error: `তালিকা যাচাই করা যায়নি: ${lookupError.message}` };
+  if (!listing) return { success: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+  if (listing.category === 'vehicle' && !listing.tags.includes('গাড়ি')) {
+    return { success: false, error: 'শুধু গাড়ির তালিকা মুছে ফেলা যাবে।' };
+  }
   const { error } = await client.from('service_listings').delete().eq('id', id);
   if (error) return { success: false, error: error.message };
   return { success: true, data: undefined };
@@ -2430,7 +2469,7 @@ export async function createCommunityPostReport(input: {
     details: input.details?.trim() || null,
   });
   if (error) return { success: false, error: error.message };
-  void requestAdminEmailAlert('community_post_reports', reportId);
+  void requestAdminTelegramAlert('community_post_reports', reportId);
   return { success: true };
 }
 

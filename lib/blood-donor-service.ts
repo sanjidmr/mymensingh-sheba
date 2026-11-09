@@ -17,7 +17,7 @@
 import { isSupabaseConfigured, createClient } from './supabase/client';
 import { toCamelObject } from './supabase/transform';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
-import { requestAdminEmailAlert } from './admin-email-alerts';
+import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import type {
   BloodDonorProfile,
   BloodDonorReport,
@@ -209,7 +209,7 @@ export async function createBloodDonorReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: `রিপোর্ট জমা ব্যর্থ: ${error.message}` };
-  void requestAdminEmailAlert('blood_donor_reports', reportId);
+  void requestAdminTelegramAlert('blood_donor_reports', reportId);
   return { success: true };
 }
 

@@ -48,7 +48,9 @@ function validate(category: ServiceCategory, input: ServiceListingInput): string
   if (input.category === 'bus' && [...(input.stops ?? []), ...(input.availableFacilities ?? [])].some((item) => !item.trim() || item.length > 120)) return 'স্টপ ও সুবিধার প্রতিটি তথ্য ১ থেকে ১২০ অক্ষরের মধ্যে হতে হবে।';
   if (input.category === 'bus' && (input.journeyDurationBn?.length ?? 0) > 120) return 'যাত্রার সময়কাল সর্বোচ্চ ১২০ অক্ষরের মধ্যে লিখুন।';
   if (input.category === 'vehicle' && input.seatCount == null) return 'যানবাহনের আসন সংখ্যা দিতে হবে।';
-  if (input.category === 'vehicle' && input.tags.filter((tag) => VEHICLE_KINDS.includes(tag as VehicleKind)).length !== 1) return 'যানের ধরন থেকে ঠিক একটি সঠিক ধরন বাছুন।';
+  if (input.category === 'vehicle' &&
+      (input.tags.filter((tag) => VEHICLE_KINDS.includes(tag as VehicleKind)).length !== 1 ||
+       !input.tags.includes('গাড়ি'))) return 'এখানে শুধু গাড়ির তালিকা যোগ বা সম্পাদনা করা যাবে।';
   if (input.category === 'vehicle' && input.ratePerKm != null && (!Number.isFinite(input.ratePerKm) || input.ratePerKm <= 0 || input.ratePerKm > 1_000_000 || Math.round(input.ratePerKm * 100) !== input.ratePerKm * 100)) return 'প্রতি কিলোমিটারের ভাড়া ০-এর বেশি, সর্বোচ্চ ১০,০০,০০০ এবং সর্বোচ্চ ২ দশমিক ঘর পর্যন্ত হতে হবে।';
   if (input.category === 'vehicle' && input.minimumFare != null && (!isOptionalAmount(input.minimumFare) || input.ratePerKm == null)) return 'সর্বনিম্ন ভাড়া পূর্ণসংখ্যা হতে হবে এবং প্রতি-কিলোমিটার ভাড়া সেট থাকতে হবে।';
   if (input.category === 'vehicle' && input.additionalFee != null && (!Number.isFinite(input.additionalFee) || input.additionalFee < 0 || input.additionalFee > 100_000_000 || Math.round(input.additionalFee * 100) !== input.additionalFee * 100)) return 'অতিরিক্ত চার্জ ০ থেকে ১০ কোটি এবং সর্বোচ্চ ২ দশমিক ঘর পর্যন্ত হতে হবে।';
@@ -137,11 +139,14 @@ export async function saveServiceListing(
     if (id) {
       const { data: existing, error: lookupError } = await client
         .from('service_listings')
-        .select('id, category, slug')
+        .select('id, category, slug, tags')
         .eq('id', id)
         .maybeSingle();
       if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
       if (!existing || existing.category !== category) return { ok: false, error: 'এই ক্যাটাগরির তালিকাটি পাওয়া যায়নি।' };
+      if (category === 'vehicle' && !existing.tags.includes('গাড়ি')) {
+        return { ok: false, error: 'শুধু গাড়ির তালিকা সম্পাদনা করা যাবে।' };
+      }
     }
     const { data: duplicate, error: duplicateError } = await client
       .from('service_listings')
@@ -182,11 +187,14 @@ export async function deleteAdminServiceListing(id: string): Promise<ActionResul
     if (!isUuid(id)) return { ok: false, error: 'তালিকার আইডি সঠিক নয়।' };
     const { data: listing, error: lookupError } = await client
       .from('service_listings')
-      .select('id, category, slug')
+      .select('id, category, slug, tags')
       .eq('id', id)
       .maybeSingle();
     if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
     if (!listing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (listing.category === 'vehicle' && !listing.tags.includes('গাড়ি')) {
+      return { ok: false, error: 'শুধু গাড়ির তালিকা পরিচালনা করা যাবে।' };
+    }
     if (listing.category === 'vehicle') {
       const { data: requests, error: requestError } = await client
         .from('vehicle_requests')
@@ -208,6 +216,16 @@ export async function deleteAdminServiceListing(id: string): Promise<ActionResul
 export async function setAdminServiceListingActive(id: string, active: boolean): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     if (!isUuid(id)) return { ok: false, error: 'তালিকার আইডি সঠিক নয়।' };
+    const { data: existing, error: lookupError } = await client
+      .from('service_listings')
+      .select('id, category, slug, tags')
+      .eq('id', id)
+      .maybeSingle();
+    if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
+    if (!existing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (existing.category === 'vehicle' && !existing.tags.includes('গাড়ি')) {
+      return { ok: false, error: 'শুধু গাড়ির প্রকাশনা পরিচালনা করা যাবে।' };
+    }
     const { data, error } = await client
       .from('service_listings')
       .update({ is_active: active })
@@ -234,11 +252,14 @@ export async function moderateAdminServiceListing(
     }
     const { data: existing, error: lookupError } = await client
       .from('service_listings')
-      .select('id, category, slug, owner_id')
+      .select('id, category, slug, owner_id, tags')
       .eq('id', id)
       .maybeSingle();
     if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
     if (!existing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
+    if (existing.category === 'vehicle' && !existing.tags.includes('গাড়ি')) {
+      return { ok: false, error: 'শুধু গাড়ির তালিকা মডারেশন করা যাবে।' };
+    }
     if (!existing.owner_id) return { ok: false, error: 'অ্যাডমিন-তৈরি তালিকার জন্য মডারেশন অবস্থা প্রযোজ্য নয়।' };
     const { data, error } = await client
       .from('service_listings')

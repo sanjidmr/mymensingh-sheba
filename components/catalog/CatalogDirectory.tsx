@@ -65,6 +65,8 @@ export interface CatalogDirectoryProps {
    * would land above the navbar, not above the results.
    */
   banner?: React.ReactNode;
+  /** Optional heading immediately above the result cards. */
+  resultsHeading?: string;
 }
 
 export default function CatalogDirectory({
@@ -80,6 +82,7 @@ export default function CatalogDirectory({
   inlineAction,
   renderTools,
   banner,
+  resultsHeading,
 }: CatalogDirectoryProps) {
   const searchable = useCallback(
     (item: ServiceListing): SearchableFields => ({
@@ -191,6 +194,12 @@ export default function CatalogDirectory({
       />
 
       {renderTools ? <div className="mt-2.5">{renderTools(controller)}</div> : null}
+
+      {resultsHeading && (
+        <h2 className="mb-2 mt-4 text-lg font-extrabold leading-tight text-ink-900 sm:mt-5 sm:text-xl">
+          {resultsHeading}
+        </h2>
+      )}
 
       {loadError ? (
         <p role="alert" className="mt-3 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">

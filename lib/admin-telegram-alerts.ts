@@ -1,4 +1,4 @@
-export type AdminEmailAlertType =
+export type AdminTelegramAlertType =
   | 'service_request'
   | 'tolet_listing'
   | 'blood_donor_reports'
@@ -9,6 +9,7 @@ export type AdminEmailAlertType =
   | 'contact_message'
   | 'blood_request'
   | 'vehicle_request'
+  | 'vehicle_booking'
   | 'community_post'
   | 'service_listing'
   | 'tolet_profile'
@@ -17,26 +18,26 @@ export type AdminEmailAlertType =
 
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-export async function requestAdminEmailAlert(
-  type: AdminEmailAlertType,
+export async function requestAdminTelegramAlert(
+  type: AdminTelegramAlertType,
   eventId: string
 ): Promise<void> {
   if (!UUID_PATTERN.test(eventId)) return;
 
   try {
-    const response = await fetch('/api/admin-email-alerts', {
+    const response = await fetch('/api/admin-telegram-alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, eventId }),
       keepalive: true,
     });
     if (!response.ok) {
-      console.warn('Admin email alert request was not accepted.', {
+      console.warn('Admin Telegram alert request was not accepted.', {
         type,
         status: response.status,
       });
     }
   } catch {
-    console.warn('Admin email alert service could not be reached.', { type });
+    console.warn('Admin Telegram alert service could not be reached.', { type });
   }
 }
