@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import {
   Truck,
@@ -15,14 +15,15 @@ import {
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import MovingRequestWizard from '@/components/home-moving/MovingRequestWizard';
+import SubmissionSuccess from '@/components/service-request/SubmissionSuccess';
 
 export default function HomeMovingPage() {
+  const [submitted, setSubmitted] = useState(false);
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
-      {/* Hero CTA */}
-      <section className="w-full border-b border-brand-100 bg-white text-slate-900">
+      {!submitted && <section className="w-full border-b border-brand-100 bg-white text-slate-900">
         <div className="max-w-5xl mx-auto px-4 py-12 sm:py-16 text-center">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-brand-100 bg-brand-50 px-3 py-1 text-xs font-semibold text-brand-800">
             <Sparkles className="h-3.5 w-3.5 text-brand-600" />
@@ -73,8 +74,13 @@ export default function HomeMovingPage() {
             })}
           </div>
         </div>
-      </section>
+      </section>}
 
+      {submitted ? (
+        <main className="flex-1">
+          <SubmissionSuccess />
+        </main>
+      ) : (
       <main className="flex-1 max-w-5xl mx-auto w-full px-4 pb-16">
         {/* Moving Request wizard */}
         <section id="moving-request" className="scroll-mt-24 py-10 sm:py-14">
@@ -90,7 +96,7 @@ export default function HomeMovingPage() {
             এক পাতার ফর্মে কোথা থেকে কোথায়, কবে এবং কী কী মালামাল—সব তথ্য দিন। আমাদের অ্যাডমিন টিম
             শিফটিং খরচের আনুমানিক হিসাব জানিয়ে সময় চূড়ান্ত করবে।
           </p>
-          <MovingRequestWizard />
+          <MovingRequestWizard onSubmitted={() => setSubmitted(true)} />
         </section>
 
         {/* How it works */}
@@ -135,6 +141,7 @@ export default function HomeMovingPage() {
           </div>
         </section>
       </main>
+      )}
 
       <Footer />
     </div>

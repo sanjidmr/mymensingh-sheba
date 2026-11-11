@@ -6,7 +6,6 @@ import {
   Images,
   Wrench,
   FileText,
-  BusFront,
   Router,
   ClipboardList,
   ClipboardCheck,
@@ -120,12 +119,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         label: 'জরুরি সেবা ডিরেক্টরি',
         icon: Siren,
         description: 'চিকিৎসক, পুলিশ, অ্যাম্বুলেন্স ও ফায়ার সার্ভিস',
-      },
-      {
-        href: '/admin/directories/bus',
-        label: 'বাস টিকিট তথ্য',
-        icon: BusFront,
-        description: 'বাসের রুট, সময়সূচি, ভাড়া ও প্রকাশনা',
       },
       {
         href: '/admin/directories/wifi',

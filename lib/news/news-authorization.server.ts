@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createServerSideClient } from '@/lib/supabase/server';
+import { getSiteUrl } from '@/lib/site-url';
 
 export type NewsAdminActor = {
   client: NonNullable<Awaited<ReturnType<typeof createServerSideClient>>>;
@@ -93,6 +94,8 @@ export function createRecoveryMailClient(): SupabaseClient | null {
 }
 
 export function newsEditorRedirectUrl(nextPath = '/news/editor'): string {
-  const origin = process.env.NEXT_PUBLIC_SITE_URL || 'https://mymensinghsheba.com';
-  return new URL(`/auth/callback?next=${encodeURIComponent(nextPath)}`, origin).toString();
+  return new URL(
+    `/auth/callback?next=${encodeURIComponent(nextPath)}`,
+    getSiteUrl()
+  ).toString();
 }

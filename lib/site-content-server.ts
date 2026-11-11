@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { cache } from 'react';
-import type { SiteContentOverrides } from './site-content';
+import { LAUNCH_SERVICES } from './services-data';
+import type { ServiceOverride, SiteContentOverrides } from './site-content';
 import { createServerSideClient } from './supabase/server';
 import {
   SITE_CONTACT_EMAIL,
@@ -14,6 +15,7 @@ const OVERRIDE_KEYS = new Set([
   'site_contact',
   'announcement',
   'about_content',
+  'founder_content',
   'faq_content',
   'footer_content',
   'seo',
@@ -61,8 +63,30 @@ export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverri
         break;
       }
       case 'launch_services': {
+        const knownSlugs = new Set(LAUNCH_SERVICES.map((service) => service.slug));
         overrides.launch_services = Array.isArray(value)
-          ? (value as SiteContentOverrides['launch_services'])
+          ? value.flatMap((item): ServiceOverride[] => {
+              if (!item || typeof item !== 'object' || Array.isArray(item)) return [];
+              const row = item as Record<string, unknown>;
+              if (typeof row.slug !== 'string' || !knownSlugs.has(row.slug)) return [];
+              const coverImage = typeof row.coverImage === 'string' &&
+                ((row.coverImage.startsWith('/') &&
+                  !row.coverImage.startsWith('//') &&
+                  !row.coverImage.includes('\\')) ||
+                  /^https:\/\/\S+$/i.test(row.coverImage))
+                ? row.coverImage
+                : undefined;
+              return [{
+                slug: row.slug,
+                ...(typeof row.hidden === 'boolean' ? { hidden: row.hidden } : {}),
+                ...(typeof row.nameBn === 'string' ? { nameBn: row.nameBn } : {}),
+                ...(typeof row.shortDesc === 'string' ? { shortDesc: row.shortDesc } : {}),
+                ...(coverImage !== undefined ? { coverImage } : {}),
+                ...(typeof row.sort_order === 'number' && Number.isInteger(row.sort_order)
+                  ? { sort_order: row.sort_order }
+                  : {}),
+              }];
+            })
           : [];
         break;
       }
@@ -108,6 +132,26 @@ export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverri
         overrides.about_content = {
           heading: typeof obj.heading === 'string' ? obj.heading : '',
           intro: typeof obj.intro === 'string' ? obj.intro : '',
+        };
+        break;
+      }
+      case 'founder_content': {
+        const obj = value as Record<string, unknown>;
+        const story = Array.isArray(obj.story)
+          ? obj.story.filter((item): item is string => typeof item === 'string').slice(0, 3)
+          : [];
+        const imageUrl = typeof obj.imageUrl === 'string' &&
+          ((obj.imageUrl.startsWith('/') && !obj.imageUrl.startsWith('//')) ||
+            /^https:\/\/\S+$/i.test(obj.imageUrl))
+          ? obj.imageUrl
+          : null;
+        overrides.founder_content = {
+          name: typeof obj.name === 'string' ? obj.name : '',
+          designation: typeof obj.designation === 'string' ? obj.designation : '',
+          imageUrl,
+          sectionHeading: typeof obj.sectionHeading === 'string' ? obj.sectionHeading : '',
+          story: [story[0] ?? '', story[1] ?? '', story[2] ?? ''],
+          quote: typeof obj.quote === 'string' ? obj.quote : '',
         };
         break;
       }

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import ServiceListingForm from '@/components/admin/ServiceListingForm';
 import type { ServiceCategory } from '@/lib/catalog-types';
 
-const CATEGORIES: ServiceCategory[] = ['vehicle', 'bus', 'wifi', 'coaching'];
+const CATEGORIES: ServiceCategory[] = ['vehicle', 'wifi', 'coaching'];
 
 export default async function NewServiceListingPage({
   params,

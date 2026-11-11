@@ -14,6 +14,9 @@ import { isSafeInternalPath, resolveAuthRedirect, roleHome } from '@/lib/auth-ro
 import { isOnboardingComplete } from '@/lib/onboarding';
 import SplashScreen from '@/components/site/SplashScreen';
 
+const AUTH_CALLBACK_ERROR =
+  'লগইন যাচাই করা যায়নি। লিংকটি মেয়াদোত্তীর্ণ হতে পারে—আবার চেষ্টা করুন।';
+
 function LoginForm() {
   const searchParams = useSearchParams();
   // Accept either `next=` (used by the server admin guard and other guards) or
@@ -25,7 +28,9 @@ function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ email?: string; password?: string }>({});
-  const [formError, setFormError] = useState('');
+  const [formError, setFormError] = useState(() =>
+    searchParams.get('error') === 'auth' ? AUTH_CALLBACK_ERROR : ''
+  );
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 

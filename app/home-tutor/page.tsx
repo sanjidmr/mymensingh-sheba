@@ -18,6 +18,7 @@ import {
   type SortOption,
 } from '@/lib/filter-definitions';
 import { getAreaById } from '@/lib/locations';
+import { areaNameKey } from '@/lib/area-names';
 import {
   tutorClassMatches,
   isStandardTutorSubject,
@@ -84,7 +85,10 @@ function HomeTutorContent() {
 
   const filteredTutors = useMemo(() => {
     let result = tutors.filter((t) => {
-      if (filterValues.areaId && !t.preferredAreas.includes(String(filterValues.areaId))) {
+      if (
+        filterValues.areaId &&
+        !t.preferredAreas.some((area) => areaNameKey(area) === areaNameKey(String(filterValues.areaId)))
+      ) {
         return false;
       }
       if (filterValues.classLevel && filterValues.classLevel !== 'all') {

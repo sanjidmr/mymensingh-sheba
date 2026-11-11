@@ -2,36 +2,17 @@
 
 import { useRef, useState } from 'react';
 import { AlertCircle, ImagePlus, Loader2, Trash2 } from 'lucide-react';
-import { uploadMedia } from '@/app/admin/actions/media';
+import { uploadSiteImage } from '@/lib/admin/upload-site-image';
 import { cn } from '@/lib/utils';
 
 /**
  * Admin image upload controls.
  *
- * Every image the admin panel needs is a storage object, not a hand-typed
- * address. These fields upload through the same `uploadMedia` action the media
- * library and the hero manager already use, so there is one writer, one bucket
- * (`site`) and one size/type rule. The resulting public URL is handed back
- * through `onChange` exactly where the old text input used to be.
+ * Files go directly to the admin-only Supabase Storage bucket over resumable
+ * uploads. Only the resulting stable public URL enters the CMS form.
  */
 
 const ACCEPT = 'image/jpeg,image/png,image/webp,image/avif';
-
-interface UploadResult {
-  ok: boolean;
-  url?: string;
-  error?: string;
-}
-
-async function uploadImageFile(file: File, folder: string): Promise<string> {
-  const formData = new FormData();
-  formData.set('file', file);
-  formData.set('folder', folder);
-  const result = (await uploadMedia(formData)) as UploadResult;
-  if (!result.ok) throw new Error(result.error ?? 'ছবি আপলোড ব্যর্থ হয়েছে।');
-  if (!result.url) throw new Error('আপলোড সম্পন্ন হয়েছে, তবে ছবির URL পাওয়া যায়নি।');
-  return result.url;
-}
 
 interface BaseProps {
   label?: string;
@@ -61,16 +42,18 @@ export function ImageUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState(0);
 
   const pick = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
     setBusy(true);
+    setProgress(0);
     setError('');
     onBusyChange?.(true);
     try {
-      const url = await uploadImageFile(file, folder);
+      const { url } = await uploadSiteImage(file, folder, setProgress);
       onChange(url);
     } catch (uploadError) {
       setError(uploadError instanceof Error ? uploadError.message : 'ছবি আপলোড ব্যর্থ হয়েছে।');
@@ -122,7 +105,7 @@ export function ImageUpload({
               ) : (
                 <ImagePlus className="h-3.5 w-3.5" />
               )}
-              {busy ? 'আপলোড হচ্ছে…' : value ? 'ছবি বদলান' : 'ছবি আপলোড করুন'}
+              {busy ? `আপলোড হচ্ছে ${progress}%` : value ? 'ছবি বদলান' : 'ছবি আপলোড করুন'}
             </button>
             {value && (
               <button
@@ -138,6 +121,9 @@ export function ImageUpload({
               </button>
             )}
           </div>
+          {busy && (
+            <progress className="h-1.5 w-full" max={100} value={progress} aria-label="ছবি আপলোডের অগ্রগতি" />
+          )}
           {helperText && <p className="text-xs leading-relaxed text-slate-500">{helperText}</p>}
           {error && (
             <p className="flex items-center gap-1 text-xs font-medium text-rose-700">
@@ -171,6 +157,7 @@ export function ImageGalleryUpload({
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [progress, setProgress] = useState(0);
 
   const pick = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(event.target.files ?? []);
@@ -184,12 +171,17 @@ export function ImageGalleryUpload({
     }
 
     setBusy(true);
+    setProgress(0);
     setError('');
     onBusyChange?.(true);
     try {
       const uploaded: string[] = [];
-      for (const file of files.slice(0, room)) {
-        uploaded.push(await uploadImageFile(file, folder));
+      const selected = files.slice(0, room);
+      for (const [index, file] of selected.entries()) {
+        const { url } = await uploadSiteImage(file, folder, (current) => {
+          setProgress(Math.round(((index + current / 100) / selected.length) * 100));
+        });
+        uploaded.push(url);
       }
       onChange([...values, ...uploaded]);
       if (files.length > room) {
@@ -231,6 +223,9 @@ export function ImageGalleryUpload({
             </div>
           ))}
         </div>
+      )}
+      {busy && (
+        <progress className="h-1.5 w-full" max={100} value={progress} aria-label="ছবি আপলোডের অগ্রগতি" />
       )}
       <input
         ref={inputRef}

@@ -130,7 +130,6 @@ const DIRECTORY_ROOTS = new Set([
   'blood-donor',
   'coaching',
   'wifi',
-  'bus-ticket',
   'gari-auto-cng',
   'services',
   'home-tutor',

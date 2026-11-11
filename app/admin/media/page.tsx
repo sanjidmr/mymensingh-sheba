@@ -2,23 +2,14 @@ import { fetchMediaItems, parseListParams } from '@/lib/admin/queries';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { TablePager } from '@/components/admin/TablePager';
-import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
-import { FilterNav } from '@/components/admin/FilterNav';
+import { AdminSearch } from '@/components/admin/AdminSearch';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
 import { formatDateTime } from '@/lib/admin/format';
 import type { AdminMediaItem } from '@/lib/admin/queries';
 import MediaActions from '@/components/admin/MediaActions';
+import MediaLibraryUpload from '@/components/admin/MediaLibraryUpload';
 
 export const dynamic = 'force-dynamic';
-
-const BUCKETS = [
-  { value: 'site', label: 'সাইট মিডিয়া' },
-  { value: 'listings', label: 'বাসা ভাড়া ছবি' },
-  { value: 'staff', label: 'কর্মী ছবি' },
-  { value: 'avatars', label: 'প্রোফাইল ছবি' },
-  { value: 'documents', label: 'ডকুমেন্ট (ব্যক্তিগত)' },
-  { value: 'support-attachments', label: 'সাপোর্ট সংযুক্তি (ব্যক্তিগত)' },
-];
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -49,11 +40,9 @@ const columns: AdminColumn<AdminMediaItem>[] = [
           </span>
         )}
         <span className="min-w-0">
-          <span className="block truncate text-xs font-semibold text-ink-800">
-            {row.name.split('/').pop()}
-          </span>
+          <span className="block truncate text-xs font-semibold text-ink-800">{row.display_name}</span>
           <span className="block text-[11px] text-ink-400">
-            {row.bucket_id} · {formatSize(row.size)}
+            ওয়েবসাইট মিডিয়া · {formatSize(row.size)}
           </span>
         </span>
       </span>
@@ -71,7 +60,7 @@ const columns: AdminColumn<AdminMediaItem>[] = [
     key: 'type',
     header: 'ধরন',
     hideOnMobile: true,
-    render: (row) => <span className="text-xs text-ink-500">{row.mime_type ?? '—'}</span>,
+    render: (row) =>     <span className="text-xs text-ink-500">{row.mime_type}</span>,
   },
   {
     key: 'date',
@@ -101,7 +90,7 @@ export default async function AdminMediaPage({
   if (result.unavailable) {
     return (
       <>
-        <PageHeader title="মিডিয়া" description="আপলোড করা ছবি ও ফাইলের লাইব্রেরি।" />
+        <PageHeader title="মিডিয়া" description="ওয়েবসাইটে আপলোড করা ছবির লাইব্রেরি।" />
         <AdminError
           title={result.error ? 'মিডিয়া লাইব্রেরি লোড করা যায়নি' : 'ডেটাবেজ সংযুক্ত নেই'}
           message={result.error}
@@ -114,24 +103,14 @@ export default async function AdminMediaPage({
     <>
       <PageHeader
         title="মিডিয়া"
-        description="স্টোরেজে আপলোড করা সব ফাইল। শুধুমাত্র অ্যাডমিন আপলোড করা ফাইল মুছে ফেলা যাবে।"
+        description="শুধুমাত্র ওয়েবসাইটের নিজস্ব Supabase Storage ছবিগুলো এখানে দেখানো হয়।"
         count={`মোট ${result.total} টি ফাইল`}
       />
 
-      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+      <MediaLibraryUpload />
+
+      <div className="mb-4">
         <AdminSearch placeholder="ফাইলের নাম খুঁজুন…" />
-        <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
-          <FilterNav
-            id="media-bucket"
-            label="বাকেট"
-            value={String(params.category ?? '')}
-            placeholder="সব বাকেট"
-            options={BUCKETS}
-            param="category"
-            searchParams={resolvedSearchParams}
-          />
-          <ClearFilters searchParams={resolvedSearchParams} />
-        </div>
       </div>
 
       <AdminTable
@@ -142,7 +121,7 @@ export default async function AdminMediaPage({
         empty={
           <AdminEmpty
             title="কোনো ফাইল পাওয়া যায়নি"
-            description="হিরো বা ওয়েবসাইট মিডিয়া থেকে আপলোড করলে এখানে দেখা যাবে।"
+            description="এই লাইব্রেরির আপলোড সুবিধা ব্যবহার করে ছবি যোগ করুন।"
           />
         }
       />

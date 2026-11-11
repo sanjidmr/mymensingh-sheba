@@ -37,6 +37,7 @@ import {
   type ServiceRequestLocationInput,
 } from '@/lib/service-request-service';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 import { trackFormSubmit } from '@/lib/site-analytics';
 
 /* -------------------------------------------------------------------------- */
@@ -109,6 +110,7 @@ const CUSTOM_OPTION = '__custom__';
 
 export interface ServiceRequestFormCardProps {
   config: ServiceRequestPageConfig;
+  onSubmitted?: (submission: ServiceRequestSuccessData) => void;
 }
 
 /**
@@ -133,7 +135,7 @@ export interface ServiceRequestFormCardProps {
  * Addresses remain plain area and text inputs; no location is collected from
  * the browser or displayed on a map.
  */
-export default function ServiceRequestFormCard({ config }: ServiceRequestFormCardProps) {
+export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceRequestFormCardProps) {
   const { user, isLoading: authLoading } = useAuth();
   const pathname = usePathname();
   const areas = useMemo(() => getAllMCCAreas(), []);
@@ -315,6 +317,7 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (status === 'submitting') return;
     setFormError(null);
 
     const nextErrors = validate();
@@ -339,39 +342,46 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
 
     setStatus('submitting');
 
-    const result = await submitServiceRequest(
-      {
-        serviceSlug: config.slug,
-        pageConfig: config,
-        contactName: form.name,
-        contactPhone: form.phone,
-        altPhone: form.altPhone,
-        areaId: form.locations.work.areaId,
-        addressLine: formatLocationBn(form.locations.work),
-        locations: {
-          work: form.locations.work,
-          ...(config.locations.some((block) => block.key === 'destination')
-            ? { destination: form.locations.destination }
-            : {}),
+    let result: Awaited<ReturnType<typeof submitServiceRequest>>;
+    try {
+      result = await submitServiceRequest(
+        {
+          serviceSlug: config.slug,
+          pageConfig: config,
+          contactName: form.name,
+          contactPhone: form.phone,
+          altPhone: form.altPhone,
+          areaId: form.locations.work.areaId,
+          addressLine: formatLocationBn(form.locations.work),
+          locations: {
+            work: form.locations.work,
+            ...(config.locations.some((block) => block.key === 'destination')
+              ? { destination: form.locations.destination }
+              : {}),
+          },
+          serviceType: config.minimalForm
+            ? undefined
+            : form.serviceType === CUSTOM_OPTION
+              ? String(form.answers.serviceTypeCustom ?? '').trim()
+              : form.serviceType,
+          answers: config.minimalForm
+            ? form.answers
+            : { ...form.answers, serviceType: form.serviceType },
+          details: form.details,
+          preferredDate: form.preferredDate,
+          preferredTime:
+            form.preferredTime === CUSTOM_OPTION
+              ? form.preferredTimeCustom.trim()
+              : form.preferredTime,
+          file,
         },
-        serviceType: config.minimalForm
-          ? undefined
-          : form.serviceType === CUSTOM_OPTION
-            ? String(form.answers.serviceTypeCustom ?? '').trim()
-            : form.serviceType,
-        answers: config.minimalForm
-          ? form.answers
-          : { ...form.answers, serviceType: form.serviceType },
-        details: form.details,
-        preferredDate: form.preferredDate,
-        preferredTime:
-          form.preferredTime === CUSTOM_OPTION
-            ? form.preferredTimeCustom.trim()
-            : form.preferredTime,
-        file,
-      },
-      user.id
-    );
+        user.id
+      );
+    } catch (cause) {
+      setStatus('error');
+      setFormError(cause instanceof Error ? cause.message : 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      return;
+    }
 
     if (!result.ok) {
       setStatus('error');
@@ -389,6 +399,18 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
       routeKind: 'service',
     });
     setStatus('success');
+    const successAnswers = { ...form.answers, serviceType: form.serviceType };
+    onSubmitted?.({
+      reference: result.reference ?? result.requestId ?? null,
+      summary: formatAnswersBn(config, successAnswers),
+      areaName: getAreaById(form.locations.work.areaId)?.nameBn,
+      preferredDate: form.preferredDate,
+      preferredTime:
+        form.preferredTime === CUSTOM_OPTION
+          ? form.preferredTimeCustom.trim()
+          : form.preferredTime,
+      details: form.details.trim(),
+    });
   };
 
   const reset = () => {
@@ -691,7 +713,6 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                     setAnswer('serviceTypeCustom', event.target.value);
                     clearError('serviceType');
                   }}
-                  maxLength={160}
                   placeholder="যেমন: আপনার প্রয়োজনের কাজ"
                   ref={(element) => {
                     fieldRefs.current.serviceTypeCustom = element;
@@ -785,7 +806,6 @@ export default function ServiceRequestFormCard({ config }: ServiceRequestFormCar
                     onChange={(event) => {
                       setTop('preferredTimeCustom', event.target.value, 'preferredTime');
                     }}
-                    maxLength={80}
                     placeholder="আপনার সুবিধাজনক সময় লিখুন"
                     className={`${controlClass(errors.preferredTime)} mt-2`}
                   />
@@ -1173,7 +1193,6 @@ function DynamicField({
           id={`field-${field.name}-custom`}
           value={customValue}
           onChange={(event) => onCustomChange(event.target.value)}
-          maxLength={160}
           placeholder="আপনার উত্তর লিখুন"
           aria-invalid={Boolean(error && !customValue.trim())}
           className={controlClass(error && !customValue.trim() ? error : undefined)}

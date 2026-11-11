@@ -17,6 +17,9 @@ import { cache } from 'react';
 export interface PublicHeroSlide {
   image: string;
   caption: string;
+  title?: string;
+  subtitle?: string;
+  description?: string;
 }
 
 export const fetchPublicHeroSlides = cache(async (): Promise<PublicHeroSlide[] | null> => {
@@ -33,7 +36,7 @@ export const fetchPublicHeroSlides = cache(async (): Promise<PublicHeroSlide[] |
 
   const { data, error } = await client
     .from('hero_slides')
-    .select('image_url, caption_bn')
+    .select('image_url, caption_bn, title_bn, subtitle_bn, description_bn')
     .eq('is_enabled', true)
     .order('sort_order', { ascending: true })
     .limit(20);
@@ -46,6 +49,9 @@ export const fetchPublicHeroSlides = cache(async (): Promise<PublicHeroSlide[] |
 
   return data.map((row) => ({
     image: row.image_url,
-    caption: row.caption_bn,
+    caption: row.title_bn ?? row.caption_bn ?? '',
+    title: row.title_bn ?? row.caption_bn ?? '',
+    subtitle: row.subtitle_bn ?? '',
+    description: row.description_bn ?? '',
   }));
 });

@@ -4,7 +4,6 @@ import React, { useEffect, useState } from 'react';
 import {
   SlidersHorizontal,
   X,
-  MapPin,
   ArrowUpDown,
   RotateCcw,
   ChevronDown,
@@ -22,9 +21,9 @@ import {
   TUTOR_FEE_PRESETS,
   TUTOR_AVAILABILITY_OPTIONS,
 } from '@/lib/filter-definitions';
-import { getAllMCCAreas, getAreaById } from '@/lib/locations';
 import ServiceFilterDrawer from './ServiceFilterDrawer';
-import LocationPickerModal from '@/components/LocationPickerModal';
+import LocationSelectInput from '@/components/LocationSelectInput';
+import { getAreaById } from '@/lib/locations';
 
 interface ServiceFilterBarProps {
   serviceType: ServiceType;
@@ -52,7 +51,6 @@ export default function ServiceFilterBar({
   inlineAction,
 }: ServiceFilterBarProps) {
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isLocationModalOpen, setIsLocationModalOpen] = useState(false);
   const [isBloodGroupOpen, setIsBloodGroupOpen] = useState(false);
 
   // The blood-group picker is a bottom sheet on a phone, so it owns the
@@ -79,22 +77,20 @@ export default function ServiceFilterBar({
   // 1. Area chip
   if (typeof filterValues.areaId === 'string' && filterValues.areaId) {
     const area = getAreaById(filterValues.areaId);
-    if (area) {
-      activeChips.push({
-        key: 'areaId',
-        label: `${area.nameBn}`,
-      });
-    }
+    activeChips.push({
+      key: 'areaId',
+      label: area?.nameBn ?? filterValues.areaId,
+    });
   }
 
   // 2. Pickup & Destination (Home Moving)
   if (typeof filterValues.pickupAreaId === 'string' && filterValues.pickupAreaId) {
     const p = getAreaById(filterValues.pickupAreaId);
-    if (p) activeChips.push({ key: 'pickupAreaId', label: `পিকআপ: ${p.nameBn}` });
+    activeChips.push({ key: 'pickupAreaId', label: `পিকআপ: ${p?.nameBn ?? filterValues.pickupAreaId}` });
   }
   if (typeof filterValues.destinationAreaId === 'string' && filterValues.destinationAreaId) {
     const d = getAreaById(filterValues.destinationAreaId);
-    if (d) activeChips.push({ key: 'destinationAreaId', label: `গন্তব্য: ${d.nameBn}` });
+    activeChips.push({ key: 'destinationAreaId', label: `গন্তব্য: ${d?.nameBn ?? filterValues.destinationAreaId}` });
   }
 
   // 3. Property Type
@@ -451,15 +447,7 @@ export default function ServiceFilterBar({
     );
   }
 
-  const selectedArea = getAreaById(
-    typeof filterValues.areaId === 'string' ? filterValues.areaId : undefined
-  );
-
   if (serviceType === 'home-tutor') {
-    const areas = getAllMCCAreas({ activeOnly: true }).map((area) => ({
-      id: area.id,
-      labelBn: area.nameBn,
-    }));
     const updateTutorFilter = (key: string, value: string) => {
       const next = { ...filterValues };
       if (!value || value === 'all') delete next[key];
@@ -522,11 +510,13 @@ export default function ServiceFilterBar({
 
         {isDrawerOpen && (
           <div className="mt-3 grid grid-cols-2 gap-2.5 border-t border-mist-100 pt-3 sm:grid-cols-3 lg:grid-cols-4">
-            <TutorSelect
+            <LocationSelectInput
+              value={typeof filterValues.areaId === 'string' ? filterValues.areaId : null}
+              onChange={(areaName) => updateTutorFilter('areaId', areaName ?? '')}
               label="এলাকা"
-              value={String(filterValues.areaId ?? 'all')}
-              options={[{ id: 'all', labelBn: 'সব এলাকা' }, ...areas]}
-              onChange={(value) => updateTutorFilter('areaId', value)}
+              placeholder="সব এলাকা"
+              className="col-span-2"
+              size="sm"
             />
             <TutorSelect
               label="শ্রেণি"
@@ -603,26 +593,17 @@ export default function ServiceFilterBar({
             )}
           </button>
 
-          {/* Location Quick Button (if service uses single areaId) */}
+          {/* Quick text area filter (if service uses a single areaId) */}
           {serviceType !== 'home-moving' && (
-            <button
-              type="button"
-              onClick={() => setIsLocationModalOpen(true)}
-              className={`min-h-[44px] px-3.5 py-2 rounded-xl border text-xs sm:text-sm font-semibold flex items-center gap-1.5 transition-all ${
-                selectedArea
-                  ? 'border-emerald-700 bg-emerald-50/70 text-emerald-950 font-bold'
-                  : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
-              }`}
-            >
-              <MapPin
-                className={`w-3.5 h-3.5 ${
-                  selectedArea ? 'text-emerald-700' : 'text-slate-400'
-                }`}
-              />
-              <span className="truncate max-w-[140px] sm:max-w-[200px]">
-                {selectedArea ? selectedArea.nameBn : 'এলাকা নির্বাচন'}
-              </span>
-            </button>
+            <LocationSelectInput
+              value={typeof filterValues.areaId === 'string' ? filterValues.areaId : null}
+              onChange={(areaName) =>
+                onFilterChange({ ...filterValues, areaId: areaName || undefined })
+              }
+              placeholder="এলাকা লিখুন"
+              className="min-w-[180px] flex-1 sm:flex-none"
+              size="sm"
+            />
           )}
 
           {/* Quick Clear if any active filters */}
@@ -710,19 +691,6 @@ export default function ServiceFilterBar({
         subjectOptions={subjectOptions}
       />
 
-      {/* Quick Location Picker Modal */}
-      <LocationPickerModal
-        isOpen={isLocationModalOpen}
-        onClose={() => setIsLocationModalOpen(false)}
-        selectedAreaId={typeof filterValues.areaId === 'string' ? filterValues.areaId : null}
-        onSelectArea={(area) => {
-          onFilterChange({
-            ...filterValues,
-            areaId: area ? area.id : undefined,
-          });
-        }}
-        title="সেবার এলাকা বেছে নিন"
-      />
     </div>
   );
 }

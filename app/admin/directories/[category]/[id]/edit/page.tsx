@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/admin/PageHeader';
 import { fetchAdminServiceListing } from '@/lib/admin/queries';
 import type { ServiceCategory } from '@/lib/catalog-types';
 
-const CATEGORIES: ServiceCategory[] = ['vehicle', 'bus', 'wifi', 'coaching'];
+const CATEGORIES: ServiceCategory[] = ['vehicle', 'wifi', 'coaching'];
 
 export const dynamic = 'force-dynamic';
 

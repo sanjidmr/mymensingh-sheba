@@ -17,14 +17,12 @@ export const dynamic = 'force-dynamic';
 
 const LABELS = {
   vehicle: 'গাড়ির তালিকা',
-  bus: 'বাস টিকিট তথ্য',
   wifi: 'WiFi প্রদানকারী',
   coaching: 'কোচিং সেন্টার',
 } as const;
 
 const PUBLIC_PATH = {
   vehicle: '/gari-auto-cng',
-  bus: '/bus-ticket',
   wifi: '/wifi',
   coaching: '/coaching',
 } as const;
@@ -63,13 +61,6 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
         : row.price_min != null
         ? `৳${row.price_min}${row.price_max != null ? `–${row.price_max}` : '+'}${row.price_note_bn ? ` · ${row.price_note_bn}` : ''}`
         : 'উল্লেখ নেই',
-    });
-  } else if (category === 'bus') {
-    columns.push({ key: 'route', header: 'রুট', render: (row) => `${row.origin_bn || '—'} → ${row.destination_bn || '—'}` });
-    columns.push({
-      key: 'fare',
-      header: 'ভাড়া (তথ্যসূত্র)',
-      render: (row) => row.fare_min != null ? `৳${row.fare_min}${row.fare_max != null ? `–${row.fare_max}` : '+'}` : 'উল্লেখ নেই',
     });
   } else if (category === 'wifi') {
     columns.push({ key: 'speed', header: 'স্পিড', render: (row) => row.speed_mbps != null ? `${row.speed_mbps} Mbps` : 'উল্লেখ নেই' });
@@ -142,27 +133,18 @@ export default async function AdminServiceListingsByCategoryPage({
   }
   const taxonomies = category === 'coaching'
     ? [...COACHING_CLASSES, ...COACHING_SUBJECTS, ...COACHING_CATEGORIES]
-    : category === 'bus'
-      ? [
-          { id: 'ac', labelBn: 'এসি' },
-          { id: 'non-ac', labelBn: 'নন-এসি' },
-          { id: 'sleeper', labelBn: 'স্লিপার' },
-          { id: 'sitting', labelBn: 'সিটিং' },
-        ]
-      : category === 'vehicle'
-        ? [{ id: 'গাড়ি', labelBn: 'গাড়ি' }]
-        : [];
+    : category === 'vehicle'
+      ? [{ id: 'গাড়ি', labelBn: 'গাড়ি' }]
+      : [];
   const areaOptions = getAllMCCAreas({ activeOnly: true }).map(({ id, nameBn }) => ({ value: id, label: nameBn }));
 
   return (
     <>
       <PageHeader
         title={LABELS[category]}
-        description={category === 'bus'
-          ? 'এটি অপারেটরের তথ্য ডিরেক্টরি—টিকিট বুকিং, আসন, পেমেন্ট বা রিজার্ভেশন এই মডিউল পরিচালনা করে না।'
-          : category === 'vehicle'
-            ? 'গাড়ির ছবি, ভাড়া ও তথ্য পরিচালনা করুন। অটো ও CNG-এর জন্য এখানে কোনো যানতালিকা নেই।'
-            : 'প্রকৃত সরবরাহকৃত তথ্য পরিচালনা করুন। সক্রিয় অবস্থা প্রকাশনা বোঝায়; আলাদা যাচাইকরণ ক্ষেত্র এই স্কিমায় নেই।'}
+        description={category === 'vehicle'
+          ? 'গাড়ির ছবি, ভাড়া ও তথ্য পরিচালনা করুন। অটো ও CNG-এর জন্য এখানে কোনো যানতালিকা নেই।'
+          : 'প্রকৃত সরবরাহকৃত তথ্য পরিচালনা করুন। সক্রিয় অবস্থা প্রকাশনা বোঝায়; আলাদা যাচাইকরণ ক্ষেত্র এই স্কিমায় নেই।'}
         breadcrumb={{ href: '/admin', label: 'অ্যাডমিন' }}
         count={`ফিল্টার করা ${result.total} টি তালিকা`}
         actions={
@@ -190,7 +172,7 @@ export default async function AdminServiceListingsByCategoryPage({
           { value: 'inactive', label: 'অপ্রকাশিত' },
         ]} param="status" searchParams={resolvedSearchParams} />
         <FilterNav id={`${category}-area`} label="এলাকা" value={typeof params.area === 'string' ? params.area : ''} placeholder="সব এলাকা" options={areaOptions} param="area" searchParams={resolvedSearchParams} />
-        {taxonomies.length > 0 && category !== 'vehicle' && <FilterNav id={`${category}-type`} label={category === 'bus' ? 'বাসের ধরন' : 'ক্লাস/বিষয়'} value={typeof params.kind === 'string' ? params.kind : ''} placeholder="সব ধরন" options={taxonomies.map(({ id, labelBn }) => ({ value: id, label: labelBn }))} param="kind" searchParams={resolvedSearchParams} />}
+        {taxonomies.length > 0 && category !== 'vehicle' && <FilterNav id={`${category}-type`} label="ক্লাস/বিষয়" value={typeof params.kind === 'string' ? params.kind : ''} placeholder="সব ধরন" options={taxonomies.map(({ id, labelBn }) => ({ value: id, label: labelBn }))} param="kind" searchParams={resolvedSearchParams} />}
         <div className="sm:col-span-2 lg:col-span-4"><ClearFilters searchParams={resolvedSearchParams} /></div>
       </div>
       <AdminTable

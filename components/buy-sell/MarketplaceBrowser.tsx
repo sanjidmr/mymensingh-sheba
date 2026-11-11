@@ -159,12 +159,16 @@ export default function MarketplaceBrowser() {
 
   const filterGroups = useMemo<FilterGroup[]>(
     () => [
-      areaFilterGroupMulti(),
+      areaFilterGroupMulti(
+        posts
+          .filter((post) => post.status === 'approved')
+          .flatMap((post) => (post.areaId ? [post.areaId] : []))
+      ),
       tagFacet('category', 'ক্যাটাগরি', MARKET_CATEGORIES),
       tagFacet('condition', 'অবস্থা', MARKET_CONDITIONS),
       rangeGroup('price', 'দাম', MARKET_PRICE_BANDS),
     ],
-    []
+    [posts]
   );
 
   const searchable = useCallback(

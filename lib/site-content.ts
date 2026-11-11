@@ -1,4 +1,4 @@
-import type { HomepageCategory } from './homepage-catalog';
+import type { HomepageCategory, HomepageService } from './homepage-catalog';
 import { DAILY_CATEGORY, EMERGENCY_CATEGORY, SHOP_TRAVEL_CATEGORY } from './homepage-catalog';
 import type { ServiceCategory } from './services-data';
 import { LAUNCH_SERVICES } from './services-data';
@@ -24,6 +24,14 @@ export interface SiteContentOverrides {
     linkLabel: string | null;
   };
   about_content?: { heading: string; intro: string };
+  founder_content?: {
+    name: string;
+    designation: string;
+    imageUrl: string | null;
+    sectionHeading: string;
+    story: [string, string, string];
+    quote: string;
+  };
   faq_content?: Array<{ question: string; answer: string }>;
   footer_content?: {
     description: string;
@@ -37,6 +45,19 @@ export const DEFAULT_ABOUT_CONTENT = {
   heading: 'ময়মনসিংহের মানুষের জন্য, ময়মনসিংহেই তৈরি',
   intro:
     'বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, গৃহশিক্ষক কিংবা জরুরি রক্তদাতা — দৈনন্দিন জীবনের প্রয়োজনীয় প্রতিটি কাজের জন্য আলাদা আলাদা জায়গায় ছুঁতে হয়। Mymensingh Sheba তৈরি হয়েছে ঠিক এই সমস্যাটি সমাধান করার জন্য।',
+};
+
+export const DEFAULT_FOUNDER_CONTENT: NonNullable<SiteContentOverrides['founder_content']> = {
+  name: 'Mushfiqur Rahman Sanjid',
+  designation: 'Founder & Creator, Mymensingh Sheba',
+  imageUrl: '/founder.jpg',
+  sectionHeading: 'Mymensingh-এর একজন মানুষ হিসেবে শুরু',
+  story: [
+    'আমি ময়মনসিংহেই বড় হয়েছি। তাই চরপাড়ার একটা সমস্যা, বাসার একটা ঝামেলা কিংবা একজন প্রয়োজনীয় মানুষ খুঁজে না পাওয়ার কষ্ট — এগুলো আমার কাছে শুনুম নয়, নিজে উপস্থিত থাকে।',
+    'একদিন ভাবলাম, এত ছোট ছোট প্রয়োজনের জন্য যদি একটি নির্ভরযোগ্য জায়গা থাকত, তাহলে মানুষের অনেক সময় ও ঝামেলা কমে যেত। তখনই Mymensingh Sheba-এর কাজ শুরু হয়।',
+    'এটি কোনো বড় কোম্পানির প্রজন্দের পরিকল্পনা নয় — এটি একজন স্থানীয় মানুষের প্রয়োজন থেকে, নিজের শহরের জন্য বানানো একটি ছোট প্রচেষ্টা।',
+  ],
+  quote: 'প্রযুক্তি তখনই সবচেয়ে মূল্যবান, যখন সেটি মানুষের বাস্তব জীবনের কোনো একটি সমস্যাকে সহজ করে দেয়।',
 };
 
 export const DEFAULT_FAQ_CONTENT = [
@@ -161,7 +182,7 @@ export function mergeLaunchServices(
         ...service,
         nameBn: override.nameBn ?? service.nameBn,
         shortDesc: override.shortDesc ?? service.shortDesc,
-        coverImage: override.coverImage ?? service.coverImage,
+        coverImage: override.coverImage || service.coverImage,
         sortOrder:
           typeof override.sort_order === 'number' ? override.sort_order : service.sortOrder,
       };
@@ -179,10 +200,58 @@ export function mergeHomepageCategories(overrides?: SiteContentOverrides): {
   shopTravel: HomepageCategory;
   emergency: HomepageCategory;
 } {
+  const serviceOverrides = overrides?.launch_services ?? [];
+  const overrideMap = new Map<string, ServiceOverride>();
+  for (const service of serviceOverrides) {
+    const aliases = new Set<string>([
+      service.slug,
+      service.slug.replace(/-/g, ''),
+      service.slug.replace(/-/g, '_'),
+    ]);
+    if (service.slug.startsWith('home-')) {
+      aliases.add(service.slug.slice('home-'.length));
+      aliases.add(service.slug.slice('home-'.length).replace(/-/g, ''));
+    }
+    if (service.slug === 'buy-sell') {
+      aliases.add('buy-sell');
+      aliases.add('buysell');
+    }
+    for (const alias of aliases) {
+      if (alias) overrideMap.set(alias, service);
+    }
+  }
+
+  const resolveOverride = (item: HomepageService): ServiceOverride | undefined => {
+    const candidates = new Set<string>([
+      item.id,
+      item.href?.replace(/^\//, '') ?? '',
+      item.href?.replace(/^\//, '').replace(/-/g, '') ?? '',
+      item.id.replace(/-/g, ''),
+    ]);
+    for (const candidate of candidates) {
+      if (candidate && overrideMap.has(candidate)) return overrideMap.get(candidate);
+    }
+    return undefined;
+  };
+
+  const applyServiceOverrides = (category: HomepageCategory): HomepageCategory => ({
+    ...category,
+    items: category.items.map((item) => {
+      const override = resolveOverride(item);
+      if (!override) return item;
+      return {
+        ...item,
+        name: override.nameBn || item.name,
+        text: override.shortDesc || item.text,
+        image: override.coverImage || item.image,
+      };
+    }),
+  });
+
   return {
-    daily: DAILY_CATEGORY,
-    shopTravel: SHOP_TRAVEL_CATEGORY,
-    emergency: EMERGENCY_CATEGORY,
+    daily: applyServiceOverrides(DAILY_CATEGORY),
+    shopTravel: applyServiceOverrides(SHOP_TRAVEL_CATEGORY),
+    emergency: applyServiceOverrides(EMERGENCY_CATEGORY),
   };
 }
 

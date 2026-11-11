@@ -89,7 +89,7 @@ export default function VehicleDirectory() {
 
   const filterGroups = useMemo<FilterGroup[]>(
     () => [
-      areaFilterGroupMulti(),
+      areaFilterGroupMulti(listings.flatMap((listing) => listing.areaIds)),
       providerGroup(listings),
     ],
     [listings]
@@ -143,38 +143,38 @@ export default function VehicleDirectory() {
 
 function VehicleBookingCards() {
   return (
-    <section aria-label="অটো ও CNG ভাড়া" className="grid grid-cols-2 gap-2 sm:gap-3">
+    <section aria-label="অটো ও CNG ভাড়া" className="grid grid-cols-2 items-stretch gap-3 sm:gap-4">
       <Link
         href="/gari-auto-cng/book/auto"
         aria-label="অটো ভাড়া করুন"
-        className="group flex min-w-0 flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-orange-700"
+        className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-brand-100 bg-white text-center shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
       >
-        <span className="relative block aspect-square w-full">
+        <span className="relative block aspect-[4/3] w-full overflow-hidden bg-mist-100">
           <Image
             src="/auto.jpg"
             alt="অটো ভাড়া"
             fill
-            sizes="(max-width: 640px) 45vw, 220px"
-            className="object-contain"
+            sizes="(max-width: 640px) 46vw, 280px"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         </span>
-        <span className="mt-1 text-xs font-extrabold leading-tight text-ink-950 sm:text-sm">অটো ভাড়া করুন</span>
+        <span className="flex min-h-12 flex-1 items-center justify-center px-3 py-2 text-sm font-bold text-ink-900 sm:text-base">অটো ভাড়া করুন</span>
       </Link>
       <Link
         href="/gari-auto-cng/book/cng"
         aria-label="CNG ভাড়া করুন"
-        className="group flex min-w-0 flex-col items-center text-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-800"
+        className="group flex h-full min-w-0 flex-col overflow-hidden rounded-xl border border-brand-100 bg-white text-center shadow-sm transition-shadow hover:shadow-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
       >
-        <span className="relative block aspect-square w-full">
+        <span className="relative block aspect-[4/3] w-full overflow-hidden bg-mist-100">
           <Image
             src="/cng.jpg"
             alt="CNG ভাড়া"
             fill
-            sizes="(max-width: 640px) 45vw, 220px"
-            className="object-contain"
+            sizes="(max-width: 640px) 46vw, 280px"
+            className="object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         </span>
-        <span className="mt-1 text-xs font-extrabold leading-tight text-ink-950 sm:text-sm">CNG ভাড়া করুন</span>
+        <span className="flex min-h-12 flex-1 items-center justify-center px-3 py-2 text-sm font-bold text-ink-900 sm:text-base">CNG ভাড়া করুন</span>
       </Link>
     </section>
   );

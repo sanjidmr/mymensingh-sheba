@@ -1,4 +1,5 @@
 import type { ToletListing, ToletFilters } from './tolet-types';
+import { areaNameKey } from './area-names';
 
 const MESS_LIKE: string[] = ['mess', 'hostel', 'seat'];
 const FAMILY_LIKE: string[] = ['family', 'flat', 'bachelor', 'room'];
@@ -23,7 +24,7 @@ export function filterToletListings(
       if (!haystack.includes(searchTerm)) return false;
     }
 
-    if (filters.areaId && item.areaId !== filters.areaId) return false;
+    if (filters.areaId && areaNameKey(item.areaId) !== areaNameKey(filters.areaId)) return false;
 
     if (filters.propertyType && filters.propertyType !== 'all') {
       if (!matchPropertyType(item.propertyType, filters.propertyType)) return false;

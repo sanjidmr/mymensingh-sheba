@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronDown, ImagePlus, Loader2, Save, X } from 'lucide-react';
 import { saveServiceListing } from '@/app/admin/actions/service-listings';
-import { uploadMedia } from '@/app/admin/actions/media';
+import { uploadSiteImage } from '@/lib/admin/upload-site-image';
 import { COACHING_CATEGORIES, COACHING_CLASSES, COACHING_SUBJECTS, VEHICLE_KINDS, toBn, type CoachingCategory, type ServiceCategory, type ServiceListingInput, type VehicleKind } from '@/lib/catalog-types';
 import type { AdminServiceListingRow } from '@/lib/admin/queries';
 import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
@@ -239,6 +239,7 @@ export default function ServiceListingForm({
   const [yearText, setYearText] = useState(() => String(values.modelYear ?? ''));
   const [busy, setBusy] = useState(false);
   const [uploadCount, setUploadCount] = useState(0);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
   const areas = useMemo(() => getAllMCCAreas({ activeOnly: true }), []);
   const taxonomy = category === 'coaching'
@@ -267,19 +268,21 @@ export default function ServiceListingForm({
       return;
     }
     trackUpload(true);
+    setUploadProgress(0);
     try {
       const uploaded: string[] = [];
       let failure = '';
-      for (const file of files.slice(0, room)) {
-        const formData = new FormData();
-        formData.set('file', file);
-        formData.set('folder', `service/${category}`);
-        const result = await uploadMedia(formData);
-        if (!result.ok) {
-          failure = result.error;
+      const selected = files.slice(0, room);
+      for (const [index, file] of selected.entries()) {
+        try {
+          const result = await uploadSiteImage(file, `service/${category}`, (current) => {
+            setUploadProgress(Math.round(((index + current / 100) / selected.length) * 100));
+          });
+          uploaded.push(result.url);
+        } catch (uploadError) {
+          failure = uploadError instanceof Error ? uploadError.message : 'ছবি আপলোড ব্যর্থ হয়েছে।';
           break;
         }
-        if (result.url) uploaded.push(result.url);
       }
       if (uploaded.length > 0) {
         setVehicleImages((current) => [...current, ...uploaded].slice(0, MAX_VEHICLE_IMAGES));
@@ -521,7 +524,7 @@ export default function ServiceListingForm({
                 {vehicleImages.length < MAX_VEHICLE_IMAGES && (
                   <label className="flex aspect-[4/3] cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-admin-border bg-admin-page text-center text-admin-muted transition-colors hover:border-admin-navy hover:text-admin-navy">
                     {uploading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ImagePlus className="h-5 w-5" aria-hidden="true" />}
-                    <span className="px-2 text-[11px] font-semibold">{uploading ? 'আপলোড হচ্ছে…' : vehicleImages.length === 0 ? 'ছবি যোগ করুন' : 'আরও ছবি'}</span>
+                    <span className="px-2 text-[11px] font-semibold">{uploading ? `আপলোড হচ্ছে ${uploadProgress}%` : vehicleImages.length === 0 ? 'ছবি যোগ করুন' : 'আরও ছবি'}</span>
                     <input
                       type="file"
                       accept="image/jpeg,image/png,image/webp,image/avif"
@@ -759,7 +762,7 @@ export default function ServiceListingForm({
                       <button type="button" onClick={() => { const next = vehicleImages.filter((_, i) => i !== index); setVehicleImages(next); if (index === 0) set('imageUrl', next[0] ?? ''); }} className="absolute right-1 top-1 rounded bg-white px-1 text-sm font-bold text-rose-700" aria-label={`ছবি ${toBn(index + 1)} সরান`}>×</button>
                     </div>
                   ))}
-                  {vehicleImages.length < MAX_VEHICLE_IMAGES && <label className="flex h-24 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-admin-border text-xs font-bold text-admin-muted">{uploading ? 'আপলোড হচ্ছে…' : 'ছবি যোগ করুন'}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple disabled={uploading} onChange={(event) => void uploadVehicleImages(event)} className="sr-only" /></label>}
+                  {vehicleImages.length < MAX_VEHICLE_IMAGES && <label className="flex h-24 w-32 cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-admin-border text-xs font-bold text-admin-muted">{uploading ? `আপলোড হচ্ছে ${uploadProgress}%` : 'ছবি যোগ করুন'}<input type="file" accept="image/jpeg,image/png,image/webp,image/avif" multiple disabled={uploading} onChange={(event) => void uploadVehicleImages(event)} className="sr-only" /></label>}
                 </div>
               </Panel>
             )}

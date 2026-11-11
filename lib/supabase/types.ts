@@ -76,7 +76,7 @@ export interface UserProfile {
   phone: string;
   email?: string;
   avatarUrl?: string;
-  primaryAreaId: string;
+  primaryAreaId: string | null;
   onboardingCompletedAt?: string;
   role: UserRole;
   status: UserAccountStatus;
@@ -122,7 +122,7 @@ export interface HomeTutorProfile {
   department: string;
   qualification: string;
   experienceYears: number;
-  preferredAreas: string[]; // MCC Area IDs
+  preferredAreas: string[];
   preferredClasses: string[];
   preferredSubjects: string[];
   expectedSalary: number;

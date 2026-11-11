@@ -34,6 +34,18 @@ export default async function AdminWebsitePage() {
     );
   }
 
+  const savedServices = new Map(
+    (overrides.launch_services ?? []).map((service) => [service.slug, service])
+  );
+  const serviceDrafts = LAUNCH_SERVICES.map((service) => ({
+    slug: service.slug,
+    nameBn: service.nameBn,
+    shortDesc: service.shortDesc,
+    coverImage: service.coverImage,
+    sort_order: service.sortOrder,
+    ...savedServices.get(service.slug),
+  }));
+
   return (
     <>
       <PageHeader
@@ -57,13 +69,7 @@ export default async function AdminWebsitePage() {
           description="সেবা ডিরেক্টরি ও ফুটারে দেখানো সেবাগুলোর নাম, বিবরণ, ছবি ও ক্রম পরিবর্তন করুন।"
         >
           <WebsiteServices
-            overrides={overrides.launch_services ?? LAUNCH_SERVICES.map((service) => ({
-              slug: service.slug,
-              nameBn: service.nameBn,
-              shortDesc: service.shortDesc,
-              coverImage: service.coverImage,
-              sort_order: service.sortOrder,
-            }))}
+            overrides={serviceDrafts}
           />
         </Panel>
 

@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { LayoutGrid, Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
+import CategoryTile from '@/components/home/CategoryTile';
 import CommunityBandSection from '@/components/services/CommunityBandSection';
 import type { ServiceCategory } from '@/lib/services-data';
 
@@ -87,42 +87,20 @@ export default function ServicesContent({ services }: { services: ServiceCategor
             `/${service.slug}`;
           const href = route;
 
-          const cardClass =
-            'group flex h-full min-w-0 flex-col overflow-hidden rounded-lg border border-brand-100/90 bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600 sm:rounded-xl';
-
-          const media = (
-            <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-mist-100 sm:aspect-square">
-              {service.coverImage ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={service.coverImage}
-                  alt={service.nameBn}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
-                />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-brand-50 to-mist-50">
-                  <span className="select-none text-3xl font-black leading-none text-brand-100/90 transition-transform duration-500 group-hover:scale-110 sm:text-5xl">
-                    {service.nameBn.charAt(0)}
-                  </span>
-                </div>
-              )}
-
-            </div>
-          );
-
           return (
-            <Link key={service.id} href={href} className={cardClass}>
-              {media}
-              <div className="flex flex-1 flex-col p-2.5 sm:p-3">
-                <h3 className="line-clamp-2 break-words text-[12px] font-bold leading-snug text-ink-900 sm:line-clamp-1 sm:text-[13px]">
-                  {service.nameBn}
-                </h3>
-                <p className="mt-1 line-clamp-2 break-words text-[10.5px] leading-snug text-ink-500 sm:text-[11px]">
-                  {service.shortDesc}
-                </p>
-              </div>
-            </Link>
+            <CategoryTile
+              key={service.id}
+              compact
+              item={{
+                id: service.id,
+                name: service.nameBn,
+                text: service.shortDesc,
+                href,
+                image: service.coverImage,
+                cta: 'দেখুন',
+                icon: LayoutGrid,
+              }}
+            />
           );
         })}
       </div>

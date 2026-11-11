@@ -8,8 +8,9 @@
  *
  * `id` is the key used in filter state and in the URL query string.
  */
-import { getAllMCCAreas } from './locations';
-import { getToletAreas } from './tolet-areas';
+import { getAreaById } from './locations';
+import { getToletAreaById } from './tolet-areas';
+import { uniqueAreaNames } from './area-names';
 
 export interface FilterOption {
   id: string;
@@ -52,9 +53,8 @@ export interface FilterGroup {
   pickerLabelBn?: string;
 }
 
-/** MCC area list, reshaped as a single-select facet. */
-export function areaFilterGroup(): FilterGroup {
-  const areas = getAllMCCAreas({ activeOnly: true });
+/** Publicly saved area values, reshaped as a single-select facet. */
+export function areaFilterGroup(areaValues: string[] = []): FilterGroup {
   return {
     id: 'area',
     labelBn: 'এলাকা',
@@ -62,29 +62,31 @@ export function areaFilterGroup(): FilterGroup {
     pickerLabelBn: 'এলাকা নির্বাচন করুন',
     options: [
       { id: 'all', labelBn: 'সব এলাকা' },
-      ...areas.map((a) => ({ id: a.id, labelBn: a.nameBn, searchTerms: areaSearchTerms(a) })),
+      ...uniqueAreaNames(areaValues).map((value) => ({
+        id: value,
+        labelBn: getAreaById(value)?.nameBn ?? value,
+      })),
     ],
   };
 }
 
-export function areaFilterGroupMulti(): FilterGroup {
-  const areas = getAllMCCAreas({ activeOnly: true });
+export function areaFilterGroupMulti(areaValues: string[] = []): FilterGroup {
   return {
     id: 'areas',
     labelBn: 'এলাকা',
     type: 'multi',
     pickerLabelBn: 'এলাকা নির্বাচন করুন',
-    options: areas.map((a) => ({ id: a.id, labelBn: a.nameBn, searchTerms: areaSearchTerms(a) })),
+    options: uniqueAreaNames(areaValues).map((value) => ({
+      id: value,
+      labelBn: getAreaById(value)?.nameBn ?? value,
+    })),
   };
 }
 
 /**
- * To-Let area facet: the site-wide MCC list PLUS the To-Let-only additions.
- * Kept separate from `areaFilterGroup` so those additions never surface in the
- * filters of other directories.
+ * To-Let area facet, built only from areas saved on public To-Let listings.
  */
-export function toletAreaFilterGroup(): FilterGroup {
-  const areas = getToletAreas();
+export function toletAreaFilterGroup(areaValues: string[] = []): FilterGroup {
   return {
     id: 'area',
     labelBn: 'এলাকা',
@@ -92,19 +94,12 @@ export function toletAreaFilterGroup(): FilterGroup {
     pickerLabelBn: 'এলাকা নির্বাচন করুন',
     options: [
       { id: 'all', labelBn: 'সব এলাকা' },
-      ...areas.map((a) => ({ id: a.id, labelBn: a.nameBn, searchTerms: areaSearchTerms(a) })),
+      ...uniqueAreaNames(areaValues).map((value) => ({
+        id: value,
+        labelBn: getToletAreaById(value)?.nameBn ?? value,
+      })),
     ],
   };
-}
-
-/**
- * Everything the picker should match when a reader searches an area: the
- * English name plus the recorded transliterations and spelling variants, so
- * "charpara", "Char Para" and "চরপাড়া" all land on the same option. The
- * Bengali label itself is matched by the picker already.
- */
-function areaSearchTerms(area: { nameEn: string; aliases: string[] }): string[] {
-  return [area.nameEn, ...area.aliases];
 }
 
 export interface FilterState {

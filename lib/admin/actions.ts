@@ -107,32 +107,3 @@ export function toActionError(error: unknown): string {
 
   return 'কাজটি সম্পন্ন হয়নি। অনুগ্রহ করে আবার চেষ্টা করুন।';
 }
-
-/** Clamp a file to the limits the storage bucket also enforces. */
-export const ADMIN_IMAGE_MAX_BYTES = 5 * 1024 * 1024;
-export const ADMIN_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/avif'];
-
-export function validateImageFile(file: File): string | null {
-  if (!ADMIN_IMAGE_TYPES.includes(file.type)) {
-    return 'শুধুমাত্র JPG, PNG, WebP বা AVIF ছবি আপলোড করা যাবে।';
-  }
-  if (file.size > ADMIN_IMAGE_MAX_BYTES) {
-    return 'ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।';
-  }
-  if (file.size === 0) {
-    return 'ফাইলটি খালি, অনুগ্রহ করে আরেকটি ছবি বেছে নিন।';
-  }
-  return null;
-}
-
-/** A collision-resistant object path inside the `site` bucket. */
-export function siteMediaPath(folder: string, fileName: string): string {
-  const safe = fileName
-    .normalize('NFKD')
-    .replace(/[^\w.\-]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(-80);
-  const stamp = Date.now().toString(36);
-  const rand = Math.random().toString(36).slice(2, 8);
-  return `${folder}/${stamp}-${rand}-${safe || 'file'}`;
-}

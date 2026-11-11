@@ -18,6 +18,7 @@ import { isSupabaseConfigured, createClient } from './supabase/client';
 import { toCamelObject } from './supabase/transform';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
 import { requestAdminTelegramAlert } from './admin-telegram-alerts';
+import { areaNameKey } from './area-names';
 import type {
   BloodDonorProfile,
   BloodDonorReport,
@@ -151,7 +152,7 @@ function filterDemoDonors(filters?: PublicDonorFilters): BloodDonorProfile[] {
     if (filters?.bloodGroup && filters.bloodGroup !== 'all') {
       if (donor.bloodGroup !== filters.bloodGroup) return false;
     }
-    if (filters?.areaId && donor.areaId !== filters.areaId) return false;
+    if (filters?.areaId && areaNameKey(donor.areaId) !== areaNameKey(filters.areaId)) return false;
     if (filters?.isAvailableNow && !donor.isAvailable) return false;
     return true;
   });

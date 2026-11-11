@@ -303,6 +303,7 @@ export default function HeroCarousel({
                   }}
                   className="h-full w-full object-cover"
                 />
+                {/* Hero text overlay intentionally disabled. The admin can manage optional text in the DB, but the public homepage keeps a clean image-first banner without any caption on top of the image. */}
               </div>
             ))}
           </div>

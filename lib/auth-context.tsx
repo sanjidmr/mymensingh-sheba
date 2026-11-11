@@ -13,9 +13,9 @@ import {
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { normalizeJsonArray } from './request-data';
 import { LAUNCH_SERVICES } from './services-data';
-import { MCC_AREAS } from './locations';
 import { isSafeInternalPath, type AppRole } from './auth-routes';
 import { normalizeBangladeshPhone } from './onboarding';
+import { normalizeAreaName } from './area-names';
 
 const NOT_CONFIGURED_MESSAGE =
   'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।';
@@ -632,17 +632,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (updates.bio !== undefined && updates.bio.length > 300) {
       return { success: false, error: 'পরিচিতি ৩০০ অক্ষরের মধ্যে লিখুন।' };
     }
-    if (updates.primaryAreaId !== undefined && !updates.primaryAreaId.trim()) {
-      return { success: false, error: 'আপনার এলাকা নির্বাচন করুন।' };
-    }
-    if (updates.primaryAreaId !== undefined && !MCC_AREAS.some((area) => area.id === updates.primaryAreaId)) {
-      return { success: false, error: 'ময়মনসিংহ সিটি কর্পোরেশনের একটি এলাকা নির্বাচন করুন।' };
+    const primaryAreaId = updates.primaryAreaId === undefined
+      ? user.primaryAreaId
+      : normalizeAreaName(updates.primaryAreaId || '');
+    if (updates.primaryAreaId !== undefined && (!primaryAreaId || primaryAreaId.length > 100)) {
+      return { success: false, error: 'আপনার এলাকার নাম লিখুন (সর্বোচ্চ ১০০ অক্ষর)।' };
     }
 
     const normalizedPhone = updates.phone === undefined
       ? user.phone
       : normalizeBangladeshPhone(updates.phone)?.local ?? '';
-    const updated = { ...user, ...updates, phone: normalizedPhone, updatedAt: new Date().toISOString() };
+    const updated = {
+      ...user,
+      ...updates,
+      primaryAreaId,
+      phone: normalizedPhone,
+      updatedAt: new Date().toISOString(),
+    };
     const notificationPreferences = updates.notificationPreferences
       ? {
           post_updates: updates.notificationPreferences.postUpdates,

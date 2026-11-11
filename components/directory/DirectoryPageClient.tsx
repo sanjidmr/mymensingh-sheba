@@ -94,7 +94,7 @@ export default function DirectoryPageClient({
   const workTypesKey = JSON.stringify(workTypes);
   const timeSlotsKey = JSON.stringify(timeSlots ?? null);
   const filterGroups = useMemo<FilterGroup[]>(() => [
-    areaFilterGroup(),
+    areaFilterGroup(profiles.flatMap((profile) => profile.areaIds)),
     {
       id: 'workType',
       labelBn: serviceUi.workTypeLabel,
@@ -112,7 +112,7 @@ export default function DirectoryPageClient({
         ]
       : []),
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [workTypesKey, timeSlotsKey, serviceUi.workTypeLabel]);
+  ], [workTypesKey, timeSlotsKey, serviceUi.workTypeLabel, profiles]);
 
   const searchable = useCallback(
     (p: StaffProfile): SearchableFields => ({

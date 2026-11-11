@@ -2852,7 +2852,10 @@ export async function fetchEmergencyContacts(params: ListParams): Promise<Paged<
 
 export interface AdminHeroSlide {
   id: string;
-  caption_bn: string;
+  caption_bn: string | null;
+  title_bn: string | null;
+  subtitle_bn: string | null;
+  description_bn: string | null;
   image_url: string;
   storage_path: string | null;
   alt_text_bn: string | null;
@@ -2873,7 +2876,7 @@ export async function fetchHeroSlides(): Promise<{
 
   const { data, error } = await admin.client
     .from('hero_slides')
-    .select('id, caption_bn, image_url, storage_path, alt_text_bn, href, is_enabled, sort_order, created_at, updated_at')
+    .select('id, caption_bn, title_bn, subtitle_bn, description_bn, image_url, storage_path, alt_text_bn, href, is_enabled, sort_order, created_at, updated_at')
     .order('sort_order', { ascending: true });
 
   if (error || !data) return { rows: [], unavailable: true, error: error?.message ?? 'হিরো স্লাইড লোড করা যায়নি।' };
@@ -2887,20 +2890,17 @@ export async function fetchHeroSlides(): Promise<{
 export interface AdminMediaItem {
   id: string;
   name: string;
-  bucket_id: string;
+  display_name: string;
   size: number;
   mime_type: string | null;
   created_at: string;
-  /** Public URL for public buckets; null for private ones. */
-  public_url: string | null;
+  public_url: string;
 }
 
 /**
- * The media library.
- *
- * Reads a bounded page through the admin-only RPC because Supabase's internal
- * `storage` schema is not exposed through PostgREST. Private buckets are listed
- * without a public URL.
+ * The website media library reads only records for objects uploaded to the
+ * public `site` bucket; customer images and private document buckets are not
+ * part of this collection.
  */
 export async function fetchMediaItems(params: ListParams): Promise<Paged<AdminMediaItem>> {
   const admin = await getAdminDataClient();
@@ -2908,65 +2908,36 @@ export async function fetchMediaItems(params: ListParams): Promise<Paged<AdminMe
   const { client } = admin;
 
   const from = (params.page - 1) * params.pageSize;
-  const allowedBuckets = [
-    'site',
-    'listings',
-    'staff',
-    'avatars',
-    'documents',
-    'posts',
-    'support-attachments',
-  ];
-  if (params.category && !allowedBuckets.includes(params.category)) {
-    return failedPage(params, 'স্টোরেজ বাকেটের মান সঠিক নয়।');
+  if (params.category && params.category !== 'site') {
+    return failedPage(params, 'শুধুমাত্র ওয়েবসাইটের নিজস্ব মিডিয়া দেখানো হয়।');
   }
 
-  const { data, error } = await client.rpc('fn_admin_media_page', {
-    p_bucket: params.category ?? null,
-    p_search: params.search?.trim() || null,
-    p_limit: params.pageSize,
-    p_offset: from,
-  });
+  let query = client
+    .from('site_media')
+    .select('object_path, display_name, mime_type, size_bytes, created_at', { count: 'exact' });
+  const search = searchFilter(params.search, ['display_name', 'object_path']);
+  if (search) query = query.or(search);
+
+  const { data, error, count } = await query
+    .order('created_at', { ascending: false })
+    .range(from, from + params.pageSize - 1);
   if (error || !data) {
     return failedPage(params, error?.message ?? 'মিডিয়া লাইব্রেরি লোড করা যায়নি।');
   }
 
-  const result = data as unknown;
-  if (!isRecord(result) || !Array.isArray(result.items) ||
-      typeof result.total !== 'number' || !Number.isFinite(result.total)) {
-    return failedPage(params, 'মিডিয়া লাইব্রেরি থেকে অপ্রত্যাশিত ডেটা পাওয়া গেছে।');
-  }
-
-  const validRows = result.items.filter((row): row is Record<string, unknown> =>
-    isRecord(row) &&
-    typeof row.id === 'string' &&
-    typeof row.name === 'string' &&
-    typeof row.bucket_id === 'string' &&
-    typeof row.created_at === 'string'
-  );
-  if (validRows.length !== result.items.length) {
-    return failedPage(params, 'মিডিয়া লাইব্রেরির কোনো রেকর্ডের ফরম্যাট সঠিক নয়।');
-  }
-
-  const rows: AdminMediaItem[] = validRows.map((row) => {
-    const metadata = isRecord(row.metadata) ? row.metadata : null;
-    const isPublic = row.bucket_id !== 'documents' && row.bucket_id !== 'support-attachments';
-    return {
-      id: row.id as string,
-      name: row.name as string,
-      bucket_id: row.bucket_id as string,
-      size: typeof metadata?.size === 'number' ? metadata.size : 0,
-      mime_type: typeof metadata?.mimetype === 'string' ? metadata.mimetype : null,
-      created_at: row.created_at as string,
-      public_url: isPublic
-        ? client.storage.from(row.bucket_id as string).getPublicUrl(row.name as string).data.publicUrl
-        : null,
-    };
-  });
+  const rows: AdminMediaItem[] = data.map((row) => ({
+    id: row.object_path,
+    name: row.object_path,
+    display_name: row.display_name,
+    size: Number(row.size_bytes),
+    mime_type: row.mime_type,
+    created_at: row.created_at,
+    public_url: client.storage.from('site').getPublicUrl(row.object_path).data.publicUrl,
+  }));
 
   return {
     rows,
-    total: result.total,
+    total: count ?? 0,
     page: params.page,
     pageSize: params.pageSize,
     unavailable: false,

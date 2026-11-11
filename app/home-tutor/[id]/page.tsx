@@ -37,6 +37,7 @@ import {
 } from '@/components/home-tutor/detail/TutorSections';
 import { TutorCtaBullets, TutorSalaryCard } from '@/components/home-tutor/detail/TutorSalaryCard';
 import { TutorCtaBar, TutorCtaBarSpacer } from '@/components/home-tutor/detail/TutorCtaBar';
+import SubmissionSuccess from '@/components/service-request/SubmissionSuccess';
 import { fetchPublishedTutorById } from '@/lib/home-tutor-service';
 import { useAuth } from '@/lib/auth-context';
 import type { HomeTutorProfile } from '@/lib/supabase/types';
@@ -46,6 +47,7 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
   const [tutor, setTutor] = useState<HomeTutorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -100,6 +102,8 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
       <Navbar />
 
       <main className="mx-auto max-w-5xl px-4 py-5 sm:py-8">
+        {submitted ? <SubmissionSuccess /> : (
+        <>
         <TutorProfileHeader tutor={tutor} />
 
         {tutor.isDemo && (
@@ -141,7 +145,7 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
               <TutorSalaryCard tutor={tutor} />
 
               <div id="tutor-request" className="scroll-mt-4">
-                <TutorRequestForm tutor={tutor} />
+                <TutorRequestForm tutor={tutor} onSubmitted={() => setSubmitted(true)} />
               </div>
 
               <section className="rounded-2xl border border-mist-200 bg-white p-4">
@@ -156,16 +160,20 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
         </div>
 
         <TutorCtaBarSpacer />
+        </>
+        )}
       </main>
 
-      <TutorCtaBar tutor={tutor} />
+      {!submitted && <TutorCtaBar tutor={tutor} />}
 
-      <TutorReportSheet
-        open={reportOpen}
-        onClose={() => setReportOpen(false)}
-        tutorId={tutor.id}
-        user={user}
-      />
+      {!submitted && (
+        <TutorReportSheet
+          open={reportOpen}
+          onClose={() => setReportOpen(false)}
+          tutorId={tutor.id}
+          user={user}
+        />
+      )}
     </div>
   );
 }

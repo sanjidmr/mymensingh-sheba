@@ -3,7 +3,7 @@ import React, { useRef, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Camera, Home, GraduationCap, Heart, Lock, LogOut, CheckCircle2, ShieldCheck, Bookmark, Bell, MessageCircle, CircleAlert, FileText } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getAreaById, isInsideMCC } from '@/lib/locations';
+import { getAreaById } from '@/lib/locations';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
@@ -138,7 +138,7 @@ function InfoForm() {
   const [email, setEmail] = useState(user!.email || '');
   const [bio, setBio] = useState(user!.bio || '');
   const [areaId, setAreaId] = useState(
-    isInsideMCC(user!.primaryAreaId) ? user!.primaryAreaId : ''
+    user!.primaryAreaId || ''
   );
   const [emg, setEmg] = useState(user!.emergencyContact || '');
   const [busy, setBusy] = useState(false);

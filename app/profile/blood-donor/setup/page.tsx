@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BloodGroup } from '@/lib/supabase/types';
-import { isInsideMCC } from '@/lib/locations';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
@@ -27,8 +26,7 @@ export default function BloodDonorSetupPage() {
   const [fullName, setFullName] = useState(bloodDonorProfile?.fullName || user?.fullName || '');
   const [bloodGroup, setBloodGroup] = useState<BloodGroup>(bloodDonorProfile?.bloodGroup || 'O+');
   const [areaId, setAreaId] = useState(() => {
-    const preferred = bloodDonorProfile?.areaId || user?.primaryAreaId || '';
-    return isInsideMCC(preferred) ? preferred : 'charpara';
+    return bloodDonorProfile?.areaId || user?.primaryAreaId || '';
   });
   const [gender, setGender] = useState<'male' | 'female'>(bloodDonorProfile?.gender || 'male');
   const [birthYear, setBirthYear] = useState(bloodDonorProfile?.birthYear?.toString() || '');

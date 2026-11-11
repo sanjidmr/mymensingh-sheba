@@ -19,7 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getAreaById, isInsideMCC } from '@/lib/locations';
+import { getAreaById } from '@/lib/locations';
 import { uploadTutorProfilePhoto } from '@/lib/home-tutor-service';
 import { TUTOR_TEACHING_MODE_LABELS } from '@/lib/home-tutor-types';
 import type { TutorTeachingMode } from '@/lib/supabase/types';
@@ -68,8 +68,7 @@ export default function HomeTutorSetupPage() {
   );
   const [experienceYears, setExperienceYears] = useState(homeTutorProfile?.experienceYears || 2);
   const [selectedAreas, setSelectedAreas] = useState<string[]>(() => {
-    const preferred = (homeTutorProfile?.preferredAreas || []).filter(isInsideMCC);
-    return preferred.length > 0 ? preferred : ['charpara'];
+    return homeTutorProfile?.preferredAreas || [];
   });
   const [selectedClasses, setSelectedClasses] = useState<string[]>(
     homeTutorProfile?.preferredClasses || []

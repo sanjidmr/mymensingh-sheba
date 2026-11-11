@@ -75,7 +75,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     avatar_url TEXT,
     -- Short self-description, editable from the customer dashboard.
     bio TEXT,
-    primary_area_id TEXT NOT NULL DEFAULT 'charpara', -- Centralized MCC area id (e.g., 'charpara', 'ganginarpar'); DEFAULT guards legacy signup-trigger inserts
+    primary_area_id TEXT,
     role TEXT NOT NULL DEFAULT 'customer' CHECK (role IN ('customer', 'admin')),
     status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'suspended', 'blocked')),
     is_verified BOOLEAN DEFAULT FALSE,
@@ -91,7 +91,6 @@ ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS bio TEXT;
 -- inserts a profile row omitting the column would abort auth signup with a
 -- NOT NULL violation ("Database error saving new user"). See
 -- supabase/migrations/20261007000000_fix_user_registration_profiles.sql.
-ALTER TABLE public.profiles ALTER COLUMN primary_area_id SET DEFAULT 'charpara';
 DO $$
 BEGIN
     IF NOT EXISTS (

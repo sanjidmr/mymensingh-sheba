@@ -37,20 +37,37 @@ export default function WebsiteServices({ overrides }: { overrides: ServiceOverr
     }));
   };
 
-  const save = async () => {
+  const persist = async (list: ServiceOverride[], successMessage: string) => {
     setSaving(true);
     try {
-      const list = slugs.map((slug) => draft[slug]);
       const result = await saveSiteContent('launch_services', list);
       if (result.ok) {
-        notify('success', 'সেবা তালিকা সংরক্ষিত হয়েছে');
+        notify('success', successMessage);
         router.refresh();
       } else {
         notify('error', 'ব্যর্থ হয়েছে', result.error);
       }
+    } catch (error) {
+      notify(
+        'error',
+        'ব্যর্থ হয়েছে',
+        error instanceof Error ? error.message : 'সেবা তালিকা সংরক্ষণ করা যায়নি।'
+      );
     } finally {
       setSaving(false);
     }
+  };
+
+  const save = () =>
+    persist(slugs.map((slug) => draft[slug]), 'সেবা তালিকা সংরক্ষিত হয়েছে');
+
+  const saveImage = (slug: string, url: string) => {
+    const updated = { ...draft, [slug]: { ...draft[slug], coverImage: url } };
+    setDraft(updated);
+    void persist(
+      slugs.map((itemSlug) => updated[itemSlug]),
+      'সেবা কার্ডের ছবি ও বর্তমান তথ্য সংরক্ষিত হয়েছে'
+    );
   };
 
   const reset = async (slug: string) => {
@@ -154,9 +171,9 @@ export default function WebsiteServices({ overrides }: { overrides: ServiceOverr
               <ImageUpload
                 label="সেবার ছবি"
                 value={item.coverImage ?? ''}
-                onChange={(url) => update(slug, { coverImage: url })}
+                onChange={(url) => saveImage(slug, url)}
                 folder="website/services"
-                helperText="সেবার কার্ডে দেখানো ছবি আপলোড করুন (JPG, PNG, WebP বা AVIF, সর্বোচ্চ ৫MB)।"
+                helperText="ছবি আপলোডের পর এই কার্ডের বর্তমান তথ্য স্বয়ংক্রিয়ভাবে সংরক্ষিত হবে।"
               />
               <Input
                 label="ক্রম"

@@ -110,7 +110,7 @@ export default function CoachingDirectory() {
       const years = Array.from(new Set(listings.flatMap((listing) => listing.coachingBatchYears ?? [])))
         .sort((a, b) => a - b);
       return [
-        areaFilterGroupMulti(),
+        areaFilterGroupMulti(listings.flatMap((listing) => listing.areaIds)),
         tagFacet('class', 'ক্লাস', COACHING_CLASSES),
         tagFacet('subject', 'বিষয়', subjectOptions),
         ...(years.length > 0 ? [{

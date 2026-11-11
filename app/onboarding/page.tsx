@@ -6,7 +6,7 @@ import { ArrowRight, MapPin, Phone, UserRound } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import SplashScreen from '@/components/site/SplashScreen';
 import { useAuth } from '@/lib/auth-context';
-import { MCC_AREAS } from '@/lib/locations';
+import { normalizeAreaName } from '@/lib/area-names';
 import { isOnboardingComplete, normalizeBangladeshPhone } from '@/lib/onboarding';
 import type { UserProfile } from '@/lib/supabase/types';
 import { completeOnboarding } from './actions';
@@ -45,9 +45,9 @@ function OnboardingForm({ user }: { user: UserProfile }) {
   const [fullName, setFullName] = useState(user.fullName || '');
   const [phone, setPhone] = useState(user.phone || '');
   const [primaryAreaId, setPrimaryAreaId] = useState(
-    MCC_AREAS.some((area) => area.isActive && area.id === user.primaryAreaId)
-      ? user.primaryAreaId
-      : ''
+    user.primaryAreaId === 'charpara' && !user.onboardingCompletedAt
+      ? ''
+      : user.primaryAreaId || ''
   );
   const [fieldError, setFieldError] = useState('');
   const [formError, setFormError] = useState('');
@@ -58,9 +58,6 @@ function OnboardingForm({ user }: { user: UserProfile }) {
     user.fullName.trim().toLocaleLowerCase() !==
       user.email?.split('@')[0]?.trim().toLocaleLowerCase();
   const phoneWasProvided = Boolean(normalizeBangladeshPhone(user.phone || ''));
-  const areaWasProvided = MCC_AREAS.some(
-    (area) => area.isActive && area.id === user.primaryAreaId
-  );
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -74,14 +71,15 @@ function OnboardingForm({ user }: { user: UserProfile }) {
       setFieldError('সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।');
       return;
     }
-    if (!primaryAreaId) {
-      setFieldError('তালিকা থেকে আপনার এলাকাটি নির্বাচন করুন।');
+    const areaName = normalizeAreaName(primaryAreaId);
+    if (!areaName || areaName.length > 100) {
+      setFieldError('আপনার এলাকার নাম লিখুন (সর্বোচ্চ ১০০ অক্ষর)।');
       return;
     }
     setFieldError('');
     setSaving(true);
     try {
-      const result = await completeOnboarding({ fullName, phone, primaryAreaId });
+      const result = await completeOnboarding({ fullName, phone, primaryAreaId: areaName });
       if (!result.success) {
         setFormError(result.error || 'তথ্য সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
         return;
@@ -175,21 +173,18 @@ function OnboardingForm({ user }: { user: UserProfile }) {
                 </label>
                 <div className="relative">
                   <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
-                  <select
+                  <input
                     id="onboarding-area"
+                    type="text"
                     value={primaryAreaId}
                     onChange={(event) => setPrimaryAreaId(event.target.value)}
-                    disabled={areaWasProvided}
-                    className="min-h-12 w-full appearance-none border border-brand-200 bg-white py-3 pl-11 pr-3 text-[15px] text-ink-900 outline-none transition-colors focus:border-brand-600 disabled:bg-mist-50"
-                  >
-                    <option value="" disabled>এলাকা নির্বাচন করুন</option>
-                    {MCC_AREAS.filter((area) => area.isActive)
-                      .sort((a, b) => a.sortOrder - b.sortOrder)
-                      .map((area) => (
-                        <option key={area.id} value={area.id}>{area.nameBn}</option>
-                      ))}
-                  </select>
+                    maxLength={100}
+                    autoComplete="address-level3"
+                    placeholder="আপনার এলাকার নাম লিখুন"
+                    className="min-h-12 w-full appearance-none border border-brand-200 bg-white py-3 pl-11 pr-3 text-[15px] text-ink-900 outline-none transition-colors focus:border-brand-600"
+                  />
                 </div>
+                <p className="mt-1.5 text-xs text-ink-500">নিজের এলাকার নাম লিখুন; তালিকা থেকে বেছে নেওয়া বাধ্যতামূলক নয়।</p>
               </div>
 
               {(fieldError || formError) && (

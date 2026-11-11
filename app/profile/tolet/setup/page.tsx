@@ -15,7 +15,7 @@ import {
   Upload,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { getToletAreas, isValidToletArea } from '@/lib/tolet-areas';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
@@ -27,8 +27,7 @@ export default function ToletSetupPage() {
   const [phone, setPhone] = useState(toletProfile?.phone || user?.phone || '');
   const [emergencyPhone, setEmergencyPhone] = useState(toletProfile?.emergencyPhone || '');
   const [primaryAreaId, setPrimaryAreaId] = useState(() => {
-    const preferred = toletProfile?.primaryAreaId || user?.primaryAreaId || '';
-    return isValidToletArea(preferred) ? preferred : 'charpara';
+    return toletProfile?.primaryAreaId || user?.primaryAreaId || '';
   });
   const [addressLine, setAddressLine] = useState(toletProfile?.addressLine || '');
   const [holdingNumber, setHoldingNumber] = useState(toletProfile?.holdingNumber || '');
@@ -155,21 +154,13 @@ export default function ToletSetupPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-ink-800 mb-1.5">
-                  এলাকা (ময়মনসিংহ সিটি কর্পোরেশন)
-                </label>
-                <select
+                <LocationSelectInput
+                  label="এলাকা (ময়মনসিংহ সিটি কর্পোরেশন)"
                   value={primaryAreaId}
-                  onChange={(e) => setPrimaryAreaId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  required
-                >
-                  {getToletAreas().map((area) => (
-                    <option key={area.id} value={area.id}>
-                      {area.nameBn}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(areaName) => setPrimaryAreaId(areaName || '')}
+                  placeholder="নিজের এলাকার নাম লিখুন"
+                  allowClear={false}
+                />
               </div>
             </div>
 

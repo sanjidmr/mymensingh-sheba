@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isOnboardingComplete } from '@/lib/onboarding';
+import { getSiteOrigin } from '@/lib/site-url';
+import { supabaseCookieOptions } from '@/lib/supabase/cookie-options';
 
 const AUTH_PUBLIC_PATHS = new Set([
   '/login',
@@ -19,6 +21,7 @@ const EMERGENCY_PUBLIC_PATHS = new Set([
 ]);
 
 const PUBLIC_API_PATHS = new Set([
+  '/api/area-options',
   '/api/site-content',
   '/api/vehicle-route',
   '/api/tolet/events',
@@ -67,13 +70,8 @@ function loginRequiredResponse(
   const response = isApiRequest
     ? NextResponse.json({ error: 'Authentication required' }, { status: 401 })
     : (() => {
-        const loginUrl = request.nextUrl.clone();
-        loginUrl.pathname = '/login';
-        loginUrl.search = '';
-        loginUrl.searchParams.set(
-          'next',
-          `${request.nextUrl.pathname}${request.nextUrl.search}`
-        );
+        const loginUrl = new URL('/login', getSiteOrigin(request));
+        loginUrl.searchParams.set('next', `${request.nextUrl.pathname}${request.nextUrl.search}`);
         return NextResponse.redirect(loginUrl);
       })();
 
@@ -96,6 +94,32 @@ function loginRequiredResponse(
  * verifies that a user is signed in before allowing private pages to render.
  */
 export async function middleware(request: NextRequest) {
+  const requestHosts = [
+    request.headers.get('x-forwarded-host')?.split(',')[0]?.trim(),
+    request.headers.get('host')?.split(',')[0]?.trim(),
+  ];
+  if (requestHosts.some(Boolean)) {
+    try {
+      const isWwwHost = requestHosts.some((host) => {
+        if (!host) return false;
+        try {
+          return new URL(`https://${host}`).hostname.toLowerCase() === 'www.mymensinghsheba.com';
+        } catch {
+          return false;
+        }
+      });
+      if (isWwwHost) {
+        const canonicalUrl = new URL(
+          `${request.nextUrl.pathname}${request.nextUrl.search}`,
+          getSiteOrigin(request)
+        );
+        return NextResponse.redirect(canonicalUrl, 308);
+      }
+    } catch {
+      // Ignore malformed forwarded host values; the site origin helper uses a safe fallback.
+    }
+  }
+
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const pathname = request.nextUrl.pathname.replace(/\/+$/, '') || '/';
@@ -134,6 +158,7 @@ export async function middleware(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, anonKey, {
+    cookieOptions: supabaseCookieOptions,
     cookies: {
       getAll() {
         return request.cookies.getAll();
@@ -186,6 +211,15 @@ export async function middleware(request: NextRequest) {
           });
       return copyAuthCookies(errorResponse, response.cookies.getAll());
     }
+    if ((profile.status ?? 'active') !== 'active') {
+      const blockedResponse = isApiRequest
+        ? NextResponse.json({ error: 'Account access has been suspended' }, { status: 403 })
+        : new NextResponse('আপনার অ্যাকাউন্টের প্রবেশাধিকার বন্ধ। সহায়তার জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।', {
+            status: 403,
+            headers: { 'Cache-Control': 'private, no-store, max-age=0' },
+          });
+      return copyAuthCookies(blockedResponse, response.cookies.getAll());
+    }
 
     const isOnboardingPath = pathname === '/onboarding';
     const isWelcomePath = pathname === '/welcome';
@@ -205,16 +239,12 @@ export async function middleware(request: NextRequest) {
     });
 
     if (isAdmin && (isOnboardingPath || isWelcomePath)) {
-      const adminUrl = request.nextUrl.clone();
-      adminUrl.pathname = '/admin';
-      adminUrl.search = '';
+      const adminUrl = new URL('/admin', getSiteOrigin(request));
       return copyAuthCookies(NextResponse.redirect(adminUrl), response.cookies.getAll());
     }
 
     if (isNewsEditor) {
-      const editorUrl = request.nextUrl.clone();
-      editorUrl.pathname = '/news/editor';
-      editorUrl.search = '';
+      const editorUrl = new URL('/news/editor', getSiteOrigin(request));
 
       if (profile.status !== 'active') {
         const revokedResponse = isApiRequest
@@ -238,23 +268,17 @@ export async function middleware(request: NextRequest) {
           response.cookies.getAll()
         );
       }
-      const onboardingUrl = request.nextUrl.clone();
-      onboardingUrl.pathname = '/onboarding';
-      onboardingUrl.search = '';
+      const onboardingUrl = new URL('/onboarding', getSiteOrigin(request));
       return copyAuthCookies(NextResponse.redirect(onboardingUrl), response.cookies.getAll());
     }
 
     if (!isAdmin && !isNewsEditor && onboardingComplete && isOnboardingPath) {
-      const welcomeUrl = request.nextUrl.clone();
-      welcomeUrl.pathname = '/welcome';
-      welcomeUrl.search = '';
+      const welcomeUrl = new URL('/welcome', getSiteOrigin(request));
       return copyAuthCookies(NextResponse.redirect(welcomeUrl), response.cookies.getAll());
     }
 
     if (!isAdmin && !isNewsEditor && !onboardingComplete && isWelcomePath) {
-      const onboardingUrl = request.nextUrl.clone();
-      onboardingUrl.pathname = '/onboarding';
-      onboardingUrl.search = '';
+      const onboardingUrl = new URL('/onboarding', getSiteOrigin(request));
       return copyAuthCookies(NextResponse.redirect(onboardingUrl), response.cookies.getAll());
     }
   }

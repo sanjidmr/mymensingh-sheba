@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
+import { LAUNCH_SERVICES } from '@/lib/services-data';
 
 /**
  * Platform settings.
@@ -121,6 +122,35 @@ export async function saveSiteContent(key: string, value: unknown): Promise<Acti
     ) {
       return { ok: false, error: 'কনটেন্টের বিন্যাস সঠিক নয়।' };
     }
+    if (key === 'launch_services') {
+      const knownSlugs = new Set(LAUNCH_SERVICES.map((service) => service.slug));
+      if (!Array.isArray(value) || value.length > LAUNCH_SERVICES.length) {
+        return { ok: false, error: 'সেবা তালিকার বিন্যাস সঠিক নয়।' };
+      }
+      const seen = new Set<string>();
+      for (const entry of value) {
+        if (!entry || typeof entry !== 'object' || Array.isArray(entry)) {
+          return { ok: false, error: 'সেবা তালিকার একটি আইটেম সঠিক নয়।' };
+        }
+        const item = entry as Record<string, unknown>;
+        if (
+          typeof item.slug !== 'string' ||
+          !knownSlugs.has(item.slug) ||
+          seen.has(item.slug) ||
+          (item.hidden !== undefined && typeof item.hidden !== 'boolean') ||
+          (item.nameBn !== undefined && (typeof item.nameBn !== 'string' || item.nameBn.trim().length > 100)) ||
+          (item.shortDesc !== undefined && (typeof item.shortDesc !== 'string' || item.shortDesc.trim().length > 500)) ||
+          (item.coverImage !== undefined &&
+            (typeof item.coverImage !== 'string' ||
+              (item.coverImage !== '' && !publicPath(item.coverImage) && !/^https:\/\/\S+$/i.test(item.coverImage)))) ||
+          (item.sort_order !== undefined &&
+            (typeof item.sort_order !== 'number' || !Number.isInteger(item.sort_order) || item.sort_order < 0))
+        ) {
+          return { ok: false, error: 'সেবার নাম, ছবি বা ক্রমের তথ্য সঠিক নয়।' };
+        }
+        seen.add(item.slug);
+      }
+    }
     if (key === 'site_contact') {
       if (!value || typeof value !== 'object') {
         return { ok: false, error: 'যোগাযোগের তথ্যের বিন্যাস সঠিক নয়।' };
@@ -188,6 +218,31 @@ export async function saveSiteContent(key: string, value: unknown): Promise<Acti
       }
       if (text(item.heading).length < 3 || text(item.intro).length < 20) {
         return { ok: false, error: 'About Us শিরোনাম ও কমপক্ষে ২০ অক্ষরের পরিচিতি দিন।' };
+      }
+    }
+    if (key === 'founder_content') {
+      const item = value as {
+        name?: unknown;
+        designation?: unknown;
+        imageUrl?: unknown;
+        sectionHeading?: unknown;
+        story?: unknown;
+        quote?: unknown;
+      };
+      const imageUrl = text(item.imageUrl);
+      const validImageUrl = !imageUrl ||
+        (imageUrl.startsWith('/') && !imageUrl.startsWith('//') && !imageUrl.includes('\\')) ||
+        /^https:\/\/\S+$/i.test(imageUrl);
+      if (
+        text(item.name).length < 2 || text(item.name).length > 100 ||
+        text(item.designation).length < 2 || text(item.designation).length > 120 ||
+        text(item.sectionHeading).length < 3 || text(item.sectionHeading).length > 160 ||
+        !Array.isArray(item.story) || item.story.length !== 3 ||
+        item.story.some((paragraph) => text(paragraph).length < 20 || text(paragraph).length > 1000) ||
+        text(item.quote).length < 10 || text(item.quote).length > 300 ||
+        !validImageUrl
+      ) {
+        return { ok: false, error: 'প্রতিষ্ঠাতার নাম, পরিচিতি, ছবি বা About Us কনটেন্ট সঠিক নয়।' };
       }
     }
     if (key === 'faq_content') {

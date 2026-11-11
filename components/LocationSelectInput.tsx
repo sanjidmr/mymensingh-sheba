@@ -1,29 +1,51 @@
 'use client';
 
-import React, { useState } from 'react';
-import { MapPin, X, ChevronDown } from 'lucide-react';
-import { MCC_AREA_SOURCE, type AreaSource, type MCCArea } from '@/lib/locations';
-import LocationPickerModal from './LocationPickerModal';
+import React, { useEffect, useId, useState } from 'react';
+import { MapPin } from 'lucide-react';
+import { getAreaById, MCC_AREA_SOURCE, type AreaSource, type MCCArea } from '@/lib/locations';
+import { normalizeAreaName } from '@/lib/area-names';
 
 interface LocationSelectInputProps {
   id?: string;
-  value?: string | null; // areaId
-  onChange: (areaId: string | null, area?: MCCArea | null) => void;
+  value?: string | null;
+  onChange: (areaName: string | null, area?: MCCArea | null) => void;
   placeholder?: string;
   label?: string;
   error?: string;
   allowClear?: boolean;
   className?: string;
   size?: 'sm' | 'md' | 'lg';
-  /** Area list to search; defaults to the site-wide MCC list. */
   source?: AreaSource;
+}
+
+let areaOptionsRequest: Promise<string[]> | null = null;
+
+async function fetchAreaOptions(): Promise<string[]> {
+  if (!areaOptionsRequest) {
+    areaOptionsRequest = fetch('/api/area-options')
+      .then(async (response) => {
+        const result = await response.json();
+        if (!response.ok) {
+          throw new Error(typeof result.error === 'string' ? result.error : 'এলাকার তালিকা লোড করা যায়নি।');
+        }
+        if (!Array.isArray(result.areas) || !result.areas.every((area: unknown) => typeof area === 'string')) {
+          throw new Error('এলাকার তালিকার উত্তর সঠিক নয়।');
+        }
+        return result.areas as string[];
+      })
+      .catch((error: unknown) => {
+        areaOptionsRequest = null;
+        throw error;
+      });
+  }
+  return areaOptionsRequest;
 }
 
 export default function LocationSelectInput({
   id,
   value,
   onChange,
-  placeholder = 'আপনার এলাকা নির্বাচন করুন',
+  placeholder = 'আপনার এলাকার নাম লিখুন',
   label,
   error,
   allowClear = true,
@@ -31,112 +53,94 @@ export default function LocationSelectInput({
   size = 'md',
   source = MCC_AREA_SOURCE,
 }: LocationSelectInputProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const selectedArea = source.byId(value);
+  const generatedId = useId();
+  const inputId = id || generatedId;
+  const listId = `${inputId}-area-options`;
+  const [areas, setAreas] = useState<string[]>([]);
+  const [optionsError, setOptionsError] = useState('');
+  const selectedArea = value ? source.byId(value) ?? getAreaById(value) : undefined;
+  const displayValue = selectedArea?.nameBn ?? value ?? '';
 
-  const handleSelectArea = (area: MCCArea | null) => {
-    if (area) {
-      onChange(area.id, area);
-    } else {
-      onChange(null, null);
-    }
-  };
+  useEffect(() => {
+    let active = true;
+    fetchAreaOptions()
+      .then((options) => {
+        if (active) setAreas(options);
+      })
+      .catch((fetchError: unknown) => {
+        if (active) {
+          setOptionsError(
+            fetchError instanceof Error ? fetchError.message : 'এলাকার তালিকা লোড করা যায়নি।'
+          );
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  const handleClear = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onChange(null, null);
-  };
-
-  // Size specific styling
   const sizeClasses = {
-    sm: 'py-2 px-3 text-xs',
-    md: 'py-2.5 px-3.5 text-sm',
-    lg: 'py-3.5 px-4 text-base',
+    sm: 'min-h-10 px-3 py-2 text-xs',
+    md: 'min-h-11 px-3.5 py-2.5 text-sm',
+    lg: 'min-h-12 px-4 py-3 text-base',
   };
+  const inputClasses = `${sizeClasses[size]} w-full border bg-white pl-10 text-slate-900 outline-none transition-colors focus:border-emerald-700 focus:ring-2 focus:ring-emerald-700/20 ${
+    error ? 'border-rose-400 bg-rose-50/20' : 'border-slate-200 hover:border-slate-300'
+  }`;
 
   return (
     <div className={`w-full ${className}`}>
       {label && (
-        <label className="block text-xs sm:text-sm font-semibold text-slate-800 mb-1.5">
+        <label htmlFor={inputId} className="mb-1.5 block text-xs font-semibold text-slate-800 sm:text-sm">
           {label}
         </label>
       )}
-
-      <div
-        id={id}
-        role="button"
-        tabIndex={0}
-        onClick={() => setIsModalOpen(true)}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            setIsModalOpen(true);
-          }
-        }}
-        className={`w-full bg-white border rounded-xl flex items-center justify-between cursor-pointer transition-all focus:outline-none focus:ring-2 focus:ring-emerald-700 ${
-          sizeClasses[size]
-        } ${
-          error
-            ? 'border-rose-400 bg-rose-50/20'
-            : selectedArea
-            ? 'border-emerald-700/60 bg-emerald-50/20 hover:border-emerald-700'
-            : 'border-slate-200 hover:border-slate-300'
-        }`}
-      >
-        <div className="flex items-center gap-2 min-w-0 flex-1">
-          <MapPin
-            className={`shrink-0 ${
-              selectedArea ? 'text-emerald-700' : 'text-slate-400'
-            } ${size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4'}`}
-          />
-
-          {selectedArea ? (
-            <div className="flex items-center gap-2 truncate">
-              <span className="font-bold text-slate-900 truncate">
-                {selectedArea.nameBn}
-              </span>
-            </div>
-          ) : (
-            <span className="text-slate-400 truncate">{placeholder}</span>
-          )}
-        </div>
-
-        <div className="flex items-center gap-1.5 shrink-0 ml-2">
-          {selectedArea ? (
-            <>
-              {allowClear && (
-                <button
-                  type="button"
-                  onClick={handleClear}
-                  className="p-1 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-                  aria-label="এলাকা মুছুন"
-                  title="এলাকা মুছুন"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-              <span className="text-[11px] font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-md hover:bg-emerald-100 transition-colors">
-                পরিবর্তন
-              </span>
-            </>
-          ) : (
-            <ChevronDown className="w-4 h-4 text-slate-400" />
-          )}
-        </div>
+      <div className="relative">
+        <MapPin className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+        <input
+          id={inputId}
+          type="text"
+          value={displayValue}
+          onChange={(event) => {
+            const areaName = event.target.value;
+            onChange(areaName || null, source.byId(areaName) ?? getAreaById(areaName) ?? null);
+          }}
+          onBlur={(event) => {
+            const normalized = normalizeAreaName(event.target.value);
+            if (normalized !== event.target.value) {
+              onChange(normalized || null, source.byId(normalized) ?? getAreaById(normalized) ?? null);
+            }
+          }}
+          placeholder={placeholder}
+          list={listId}
+          autoComplete="off"
+          maxLength={100}
+          className={inputClasses}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? `${inputId}-error` : optionsError ? `${inputId}-options-error` : undefined}
+        />
+        {allowClear && value && (
+          <button
+            type="button"
+            onClick={() => onChange(null, null)}
+            className="absolute right-2 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-semibold text-slate-500 hover:text-slate-800"
+            aria-label="এলাকা মুছুন"
+          >
+            মুছুন
+          </button>
+        )}
+        <datalist id={listId}>
+          {areas.map((area) => (
+            <option key={area} value={area} label={source.byId(area)?.nameBn ?? getAreaById(area)?.nameBn ?? area} />
+          ))}
+        </datalist>
       </div>
-
-      {error && <p className="mt-1 text-xs text-rose-600">{error}</p>}
-
-      {/* Location Modal */}
-      <LocationPickerModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        selectedAreaId={value}
-        onSelectArea={handleSelectArea}
-        title={label || 'আপনার এলাকা নির্বাচন করুন'}
-        allowClear={allowClear}
-        source={source}
-      />
+      {error && <p id={`${inputId}-error`} className="mt-1 text-xs text-rose-600">{error}</p>}
+      {optionsError && (
+        <p id={`${inputId}-options-error`} className="mt-1 text-xs text-amber-700">
+          সংরক্ষিত এলাকার পরামর্শ লোড হয়নি; এলাকার নাম নিজে লিখতে পারবেন।
+        </p>
+      )}
     </div>
   );
 }

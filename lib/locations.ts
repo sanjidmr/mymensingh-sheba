@@ -1033,18 +1033,31 @@ export function getPopularMCCAreas(): MCCArea[] {
 }
 
 /**
- * Look up an area by id, including legacy ids so historical records keep
- * rendering a name. Use `isInsideMCC` to check whether it is still selectable.
+ * Resolve a stored area value: known current/legacy ids get their catalog
+ * label, while user-entered names remain displayable without becoming selectable
+ * catalog entries.
  */
 export function getAreaById(id: string | null | undefined): MCCArea | undefined {
-  if (!id) return undefined;
-  return AREA_BY_ID.get(id);
+  if (!id?.trim()) return undefined;
+  const knownArea = AREA_BY_ID.get(id.trim().toLocaleLowerCase());
+  if (knownArea) return knownArea;
+  return {
+    id,
+    nameBn: id.trim(),
+    nameEn: id.trim(),
+    aliases: [],
+    prominentLandmarks: [],
+    popularFor: '',
+    isActive: false,
+    sortOrder: Number.MAX_SAFE_INTEGER,
+    sourceNote: '',
+  };
 }
 
 /** Whether an area id is an active, currently selectable MCC area. */
 export function isInsideMCC(areaId: string | null | undefined): boolean {
   if (!areaId) return false;
-  const area = AREA_BY_ID.get(areaId);
+  const area = AREA_BY_ID.get(areaId.trim().toLocaleLowerCase());
   return Boolean(area && area.isActive);
 }
 
@@ -1060,29 +1073,30 @@ export function validateAreaId(areaId: string): { valid: boolean; area?: MCCArea
   return { valid: true, area };
 }
 
-/** Strict validator for Home Moving (বাসা পাল্টানো) which needs TWO areas. */
+/** Validate that Home Moving (বাসা পাল্টানো) has both user-entered areas. */
 export function validateMovingRoute(
   pickupAreaId: string,
   destinationAreaId: string
 ): { valid: boolean; pickup?: MCCArea; destination?: MCCArea; error?: string } {
-  const pickup = getAreaById(pickupAreaId);
-  const destination = getAreaById(destinationAreaId);
-
-  if (!pickup || !pickup.isActive) {
+  const pickupName = pickupAreaId.trim();
+  const destinationName = destinationAreaId.trim();
+  if (!pickupName) {
     return {
       valid: false,
-      error: 'বর্তমান এলাকা (কোথা থেকে) ময়মনসিংহ সিটি কর্পোরেশনের সক্রিয় এলাকা হতে হবে।',
+      error: 'বর্তমান এলাকার নাম লিখুন।',
     };
   }
-
-  if (!destination || !destination.isActive) {
+  if (!destinationName) {
     return {
       valid: false,
-      error: 'নতুন এলাকা (কোথায়) ময়মনসিংহ সিটি কর্পোরেশনের সক্রিয় এলাকা হতে হবে।',
+      error: 'গন্তব্য এলাকার নাম লিখুন।',
     };
   }
-
-  return { valid: true, pickup, destination };
+  return {
+    valid: true,
+    pickup: getAreaById(pickupName),
+    destination: getAreaById(destinationName),
+  };
 }
 
 /** Formats a public locality string, e.g. "চরপাড়া, ময়মনসিংহ". */

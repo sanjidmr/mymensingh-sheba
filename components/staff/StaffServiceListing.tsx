@@ -16,6 +16,7 @@ import EmptyFilterResults from '@/components/filters/EmptyFilterResults';
 import { StaffProfileCard } from '@/components/staff/StaffProfileCard';
 import Navbar from '@/components/Navbar';
 import { getAllMCCAreas } from '@/lib/locations';
+import { areaNameKey } from '@/lib/area-names';
 
 const AREAS = getAllMCCAreas({ activeOnly: true });
 
@@ -44,7 +45,8 @@ export default function StaffServiceListing({ serviceSlug }: { serviceSlug: Staf
   const filtered = useMemo(() => {
     let result = profiles;
     if (typeof filters.areaId === 'string' && filters.areaId) {
-      result = result.filter((p) => p.areaIds.includes(filters.areaId as string));
+      const selectedAreaKey = areaNameKey(filters.areaId);
+      result = result.filter((p) => p.areaIds.some((area) => areaNameKey(area) === selectedAreaKey));
     }
     const workKey = serviceSlug === 'kajer-bua' ? 'workType' : 'serviceType';
     if (typeof filters[workKey] === 'string' && filters[workKey] && filters[workKey] !== 'all') {
@@ -107,7 +109,7 @@ export default function StaffServiceListing({ serviceSlug }: { serviceSlug: Staf
 
   const areaName =
     typeof filters.areaId === 'string' && filters.areaId
-      ? AREAS.find((a) => a.id === filters.areaId)?.nameBn
+      ? AREAS.find((a) => a.id === filters.areaId)?.nameBn ?? filters.areaId
       : undefined;
 
   return (

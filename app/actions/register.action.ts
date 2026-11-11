@@ -3,11 +3,12 @@
 import { revalidatePath } from 'next/cache'
 import { createClient as createServerClient } from '@supabase/supabase-js'
 import { createServerSideClient } from '@/lib/supabase/server'
+import { getSiteUrl } from '@/lib/site-url'
 
 export async function registerUser(data: {
   fullName: string
   phone: string
-  primaryAreaId: string
+  primaryAreaId?: string
   password: string
   email?: string
 }) {
@@ -20,6 +21,10 @@ export async function registerUser(data: {
   }
 
   const email = (data.email?.trim() || '').toLowerCase() || `${data.phone}@mymensinghsheba.internal`
+  const emailRedirectTo = new URL(
+    '/auth/callback?next=/onboarding',
+    getSiteUrl()
+  ).toString()
 
   const supabase = await createServerSideClient()
   if (!supabase) {
@@ -33,9 +38,10 @@ export async function registerUser(data: {
       data: {
         phone: data.phone,
         full_name: data.fullName,
-        primary_area_id: data.primaryAreaId,
+        ...(data.primaryAreaId?.trim() ? { primary_area_id: data.primaryAreaId.trim() } : {}),
         email,
       },
+      emailRedirectTo,
     },
   })
 

@@ -24,7 +24,7 @@ BEGIN
         'নতুন ব্যবহারকারী'
     );
     _phone := NULLIF(BTRIM(meta->>'phone'), '');
-    _area_id := COALESCE(NULLIF(BTRIM(meta->>'primary_area_id'), ''), '');
+    _area_id := NULLIF(BTRIM(meta->>'primary_area_id'), '');
 
     INSERT INTO public.profiles
         (id, full_name, phone, email, primary_area_id, role, status, is_verified)

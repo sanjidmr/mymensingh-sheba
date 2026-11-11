@@ -37,6 +37,9 @@ export interface ServiceRequestFormProps {
   timeOptions?: string[];
   /** Replaces the default "এলাকা" area question. */
   areaPrompt?: string;
+  initialServiceType?: string;
+  selectedServiceType?: string;
+  onServiceTypeChange?: (serviceType: string) => void;
   onSubmitted?: () => void;
 }
 
@@ -69,6 +72,9 @@ export default function ServiceRequestForm({
     'সন্ধ্যা (৬টা – ৮টা)',
   ],
   areaPrompt = 'যে এলাকায় কাজ দরকার',
+  initialServiceType,
+  selectedServiceType,
+  onServiceTypeChange,
   onSubmitted,
 }: ServiceRequestFormProps) {
   const { user, isLoading: authLoading } = useAuth();
@@ -81,7 +87,7 @@ export default function ServiceRequestForm({
     contactPhone: '',
     areaId: '',
     addressLine: '',
-    serviceType: serviceTypes[0]?.id ?? '',
+    serviceType: initialServiceType ?? serviceTypes[0]?.id ?? '',
     details: '',
     preferredDate: '',
     preferredTime: timeOptions[0] ?? '',
@@ -137,7 +143,7 @@ export default function ServiceRequestForm({
       addressLine: form.addressLine,
       contactName: form.contactName,
       contactPhone: form.contactPhone,
-      serviceType: form.serviceType,
+      serviceType: selectedServiceType ?? form.serviceType,
       details: form.details,
       preferredDate: form.preferredDate || undefined,
       preferredTime: form.preferredTime || undefined,
@@ -146,15 +152,22 @@ export default function ServiceRequestForm({
 
     // Validate before touching the network so the user is not told "sending…"
     // for a form that was never going to submit.
-    const result = await submitServiceRequest(draft, user.id);
-    if (!result.ok) {
-      if (result.fieldErrors) setFieldErrors(result.fieldErrors);
-      setFormError(result.error);
-      return;
-    }
+    setSubmitting(true);
+    try {
+      const result = await submitServiceRequest(draft, user.id);
+      if (!result.ok) {
+        if (result.fieldErrors) setFieldErrors(result.fieldErrors);
+        setFormError(result.error);
+        return;
+      }
 
-    setDone(true);
-    onSubmitted?.();
+      setDone(true);
+      onSubmitted?.();
+    } catch (cause) {
+      setFormError(cause instanceof Error ? cause.message : 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   if (done) {
@@ -256,8 +269,11 @@ export default function ServiceRequestForm({
           >
             <select
               id={`${serviceSlug}-type`}
-              value={form.serviceType}
-              onChange={(e) => set('serviceType')(e.target.value)}
+              value={selectedServiceType ?? form.serviceType}
+              onChange={(e) => {
+                set('serviceType')(e.target.value);
+                onServiceTypeChange?.(e.target.value);
+              }}
               className={inputClass(fieldErrors.serviceType)}
             >
               {serviceTypes.map((type) => (

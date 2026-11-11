@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
 import { VEHICLE_KINDS, type ServiceCategory, type ServiceListingInput, type VehicleKind } from '@/lib/catalog-types';
 
-const CATEGORIES: ServiceCategory[] = ['vehicle', 'bus', 'wifi', 'coaching'];
+const CATEGORIES: ServiceCategory[] = ['vehicle', 'wifi', 'coaching'];
 
 function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);

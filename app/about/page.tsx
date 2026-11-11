@@ -51,7 +51,7 @@ export default async function AboutPage() {
           intro={overrides.about_content?.intro}
         />
         <AboutStory />
-        <FounderSection />
+        <FounderSection content={overrides.founder_content} />
         <WhyUsSection />
         <MissionVisionSection />
         <AboutHowItWorks />

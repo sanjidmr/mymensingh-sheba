@@ -2,18 +2,10 @@ import Image from 'next/image';
 import { Quote } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
 import { AboutSection, SectionLabel } from './AboutSectionBits';
-
-const FOUNDER = {
-  name: 'Mushfiqur Rahman Sanjid',
-  role: 'Founder & Creator, Mymensingh Sheba',
-  /**
-   * Portrait. Drop a real photo at `public/founder.jpg` (or change this
-   * value to any path inside /public) and it renders automatically — until
-   * then a typographic monogram keeps the composition intact.
-   */
-  image: '/founder.jpg' as string | null,
-  alt: 'Mymensingh Sheba-এর প্রতিষ্ঠাকারী মুশফিকুর রহমান সানজিদ',
-};
+import {
+  DEFAULT_FOUNDER_CONTENT,
+  type SiteContentOverrides,
+} from '@/lib/site-content';
 
 /**
  * FounderSection — sits directly after the story, by design.
@@ -27,7 +19,12 @@ const FOUNDER = {
  * `lg:row-start` placements, so re-ordering the four grid children on small
  * screens leaves the large-screen composition untouched.
  */
-export default function FounderSection() {
+export default function FounderSection({
+  content = DEFAULT_FOUNDER_CONTENT,
+}: {
+  content?: SiteContentOverrides['founder_content'];
+}) {
+  const founder = { ...DEFAULT_FOUNDER_CONTENT, ...content };
   return (
     <AboutSection labelledBy="about-founder-heading" className="bg-white">
       <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-x-14 lg:gap-y-0">
@@ -38,7 +35,7 @@ export default function FounderSection() {
             id="about-founder-heading"
             className="mt-3 text-2xl font-extrabold leading-snug tracking-tight text-ink-900 sm:text-3xl"
           >
-            Mymensingh-এর একজন মানুষ হিসেবে শুরু
+            {founder.sectionHeading}
           </h2>
         </Reveal>
 
@@ -49,32 +46,32 @@ export default function FounderSection() {
         >
           <div>
             <p className="text-lg font-extrabold text-brand-800 sm:text-xl">
-              {FOUNDER.name}
+              {founder.name}
             </p>
-            <p className="mt-0.5 text-sm font-medium text-ink-500">{FOUNDER.role}</p>
+            <p className="mt-0.5 text-sm font-medium text-ink-500">{founder.designation}</p>
           </div>
         </Reveal>
 
         {/* 3 — portrait (third on phones, left column on desktop) */}
         <Reveal className="order-3 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-3">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-brand-900 sm:aspect-[4/5]">
-            {FOUNDER.image ? (
+          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-mist-100 sm:aspect-[4/5]">
+            {founder.imageUrl ? (
               <Image
-                src={FOUNDER.image}
-                alt={FOUNDER.alt}
+                src={founder.imageUrl}
+                alt={`${founder.name} — Mymensingh Sheba-এর প্রতিষ্ঠাতা`}
                 fill
                 sizes="(max-width: 1023px) 92vw, 38vw"
-                className="object-cover"
+                className="object-contain"
               />
             ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-brand-900 px-6 text-center">
+              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-mist-100 px-6 text-center">
                 <span
                   aria-hidden="true"
-                  className="text-5xl font-extrabold leading-none text-brand-600 sm:text-6xl"
+                  className="text-5xl font-extrabold leading-none text-ink-500 sm:text-6xl"
                 >
                   MS
                 </span>
-                <span className="text-xs font-semibold text-brand-400">
+                <span className="text-xs font-semibold text-ink-500">
                   Founder, Mymensingh Sheba
                 </span>
               </div>
@@ -88,20 +85,7 @@ export default function FounderSection() {
           className="order-4 lg:order-none lg:col-start-2 lg:row-start-3 lg:mt-4"
         >
           <div className="space-y-3.5 text-[15px] leading-relaxed text-ink-600">
-            <p>
-              আমি ময়মনসিংহেই বড় হয়েছি। তাই চরপাড়ার একটা সমস্যা, বাসার একটা ঝামেলা
-              কিংবা একজন প্রয়োজনীয় মানুষ খুঁজে না পাওয়ার কষ্ট — এগুলো আমার কাছে
-              শুনুম নয়, নিজে উপস্থিত থাকে।
-            </p>
-            <p>
-              একদিন ভাবলাম, এত ছোট ছোট প্রয়োজনের জন্য যদি একটি নির্ভরযোগ্য জায়গা
-              থাকত, তাহলে মানুষের অনেক সময় ও ঝামেলা কমে যেত। তখনই Mymensingh
-              Sheba-এর কাজ শুরু হয়।
-            </p>
-            <p>
-              এটি কোনো বড় কোম্পানির প্রজন্দের পরিকল্পনা নয় — এটি একজন স্থানীয়
-              মানুষের প্রয়োজন থেকে, নিজের শহরের জন্য বানানো একটি ছোট প্রচেষ্টা।
-            </p>
+            {founder.story.map((paragraph, index) => <p key={index}>{paragraph}</p>)}
           </div>
         </Reveal>
 
@@ -113,8 +97,7 @@ export default function FounderSection() {
           <blockquote className="rounded-2xl bg-mist-100 p-5">
             <Quote className="h-5 w-5 text-accent-500" aria-hidden="true" />
             <p className="mt-2 text-[15px] font-bold leading-relaxed text-ink-900">
-              প্রযুক্তি তখনই সবচেয়ে মূল্যবান, যখন সেটি মানুষের বাস্তব জীবনের কোনো
-              একটি সমস্যাকে সহজ করে দেয়।
+              {founder.quote}
             </p>
           </blockquote>
         </Reveal>

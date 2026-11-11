@@ -27,7 +27,7 @@ const SORT_OPTIONS = [
 ];
 
 const FILTER_GROUPS: FilterGroup[] = [
-  toletAreaFilterGroup(),
+  toletAreaFilterGroup([]),
   {
     id: 'propertyType',
     labelBn: 'বাসার ধরন',
@@ -86,6 +86,12 @@ function ToletDirectory() {
   const [listings, setListings] = useState<ToletListing[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
+  const filterGroups = useMemo<FilterGroup[]>(
+    () => FILTER_GROUPS.map((group, index) =>
+      index === 0 ? toletAreaFilterGroup(listings.map((listing) => listing.areaId)) : group
+    ),
+    [listings]
+  );
 
   useEffect(() => {
     let active = true;
@@ -110,7 +116,7 @@ function ToletDirectory() {
       return {
         title: l.title,
         subtitle: TOLET_PROPERTY_TYPE_INFO[l.propertyType]?.labelBn,
-        area: area?.nameBn,
+        area: area?.nameBn ?? l.areaId,
         address: l.specificAddress,
         priceText: `${l.rentPrice}`,
         // The area's English name + transliterations are indexed as tags so a
@@ -149,7 +155,7 @@ function ToletDirectory() {
     items: listings,
     searchable,
     matchable,
-    filterGroups: FILTER_GROUPS,
+    filterGroups,
     paramMap: { area: 'areaId', rent: 'rent', bedrooms: 'beds' },
   });
 
@@ -167,7 +173,7 @@ function ToletDirectory() {
           imageUrl: listing.photos?.[0],
           priceLabel: `৳${toBengaliDigits(listing.rentPrice)}`,
           priceSuffix: '/মাস',
-          areaLabel: getToletAreaById(listing.areaId)?.nameBn,
+          areaLabel: getToletAreaById(listing.areaId)?.nameBn ?? listing.areaId,
           chips: [
             listing.bedrooms > 0 ? `${toBengaliDigits(listing.bedrooms)} রুম` : '',
             listing.bathrooms > 0 ? `${toBengaliDigits(listing.bathrooms)} বাথ` : '',
@@ -195,7 +201,7 @@ function ToletDirectory() {
         value={controller.query}
         onChange={controller.setQuery}
         placeholder={PLACEHOLDER}
-        filterGroups={FILTER_GROUPS}
+        filterGroups={filterGroups}
         filterState={controller.filterState}
         onFilterStateChange={controller.setFilterState}
         resultCount={cards.length}

@@ -13,6 +13,7 @@ import {
   DEFAULT_ABOUT_CONTENT,
   DEFAULT_FAQ_CONTENT,
   DEFAULT_FOOTER_CONTENT,
+  DEFAULT_FOUNDER_CONTENT,
   type SiteContentOverrides,
 } from '@/lib/site-content';
 
@@ -35,6 +36,9 @@ export default function WebsiteEditorial({
     linkLabel: null,
   });
   const [about, setAbout] = useState(overrides.about_content ?? DEFAULT_ABOUT_CONTENT);
+  const [founder, setFounder] = useState(
+    overrides.founder_content ?? DEFAULT_FOUNDER_CONTENT
+  );
   const [faqs, setFaqs] = useState<FaqRow[]>(overrides.faq_content ?? DEFAULT_FAQ_CONTENT);
   const [footer, setFooter] = useState(overrides.footer_content ?? DEFAULT_FOOTER_CONTENT);
   const [seo, setSeo] = useState(overrides.seo ?? { title: '', description: '', ogImage: null });
@@ -111,6 +115,41 @@ export default function WebsiteEditorial({
           <p className="text-sm font-bold text-admin-text">{about.heading}</p>
           <p className="mt-1 text-sm leading-relaxed text-admin-muted">{about.intro}</p>
         </div>
+      </section>
+
+      <section className="space-y-3 rounded-lg border border-admin-border p-4">
+        <div>
+          <h3 className="text-sm font-bold text-admin-text">প্রতিষ্ঠাতার তথ্য</h3>
+          <p className="mt-1 text-xs text-admin-muted">/about পেজে প্রকাশিত প্রতিষ্ঠাতার নাম, পদবি, ছবি ও পরিচিতি।</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Input label="নাম" maxLength={100} value={founder.name} onChange={(event) => setFounder((item) => ({ ...item, name: event.target.value }))} />
+          <Input label="পদবি" maxLength={120} value={founder.designation} onChange={(event) => setFounder((item) => ({ ...item, designation: event.target.value }))} />
+        </div>
+        <ImageUpload
+          label="প্রতিষ্ঠাতার ছবি"
+          value={founder.imageUrl ?? ''}
+          onChange={(imageUrl) => setFounder((item) => ({ ...item, imageUrl: imageUrl || null }))}
+          folder="website/founder"
+          helperText="ছবিটি সম্পূর্ণ দেখানো হবে। আপলোডের ধরন ও সাইজ সার্ভারে যাচাই করা হয়।"
+        />
+        <Input label="ছবির নিচের শিরোনাম" maxLength={160} value={founder.sectionHeading} onChange={(event) => setFounder((item) => ({ ...item, sectionHeading: event.target.value }))} />
+        {founder.story.map((paragraph, index) => (
+          <Textarea
+            key={index}
+            label={`পরিচিতি ${index + 1}`}
+            maxLength={1000}
+            rows={3}
+            value={paragraph}
+            onChange={(event) => setFounder((item) => {
+              const story: [string, string, string] = [...item.story];
+              story[index] = event.target.value;
+              return { ...item, story };
+            })}
+          />
+        ))}
+        <Textarea label="উক্তি" maxLength={300} rows={2} value={founder.quote} onChange={(event) => setFounder((item) => ({ ...item, quote: event.target.value }))} />
+        <Button onClick={() => void save('founder_content', founder)} isLoading={saving} leftIcon={<Save className="h-4 w-4" />}>প্রতিষ্ঠাতার তথ্য সংরক্ষণ</Button>
       </section>
 
       <section className="space-y-3 rounded-lg border border-admin-border p-4">

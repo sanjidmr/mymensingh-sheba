@@ -57,7 +57,14 @@ export default function EmergencyDirectory({ service }: { service: EmergencyServ
     };
   }, [service]);
 
-  const filterGroups = useMemo(() => [areaFilterGroupMulti()], []);
+  const filterGroups = useMemo(
+    () => [
+      areaFilterGroupMulti(
+        contacts.map((contact) => contact.areaId).filter((area): area is string => Boolean(area))
+      ),
+    ],
+    [contacts]
+  );
 
   const searchable = useCallback(
     (c: EmergencyContact): SearchableFields => ({

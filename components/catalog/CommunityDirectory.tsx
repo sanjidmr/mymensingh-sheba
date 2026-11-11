@@ -8,7 +8,7 @@
  * That is the only place on the site where an empty community list is treated as
  * an invitation rather than a gap.
  */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import DirectoryShell from '@/components/directory/DirectoryShell';
 import DirectorySearchBar from '@/components/directory/DirectorySearchBar';
@@ -16,7 +16,7 @@ import DirectoryResults from '@/components/directory/DirectoryResults';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useDirectoryController } from '@/lib/use-directory-controller';
 import { useAuth } from '@/lib/auth-context';
-import type { FilterGroup, MatchableRecord } from '@/lib/directory-filters';
+import { areaFilterGroup, areaFilterGroupMulti, type FilterGroup, type MatchableRecord } from '@/lib/directory-filters';
 import type { SearchableFields } from '@/lib/directory-search';
 import { getAreaById } from '@/lib/locations';
 import { fetchApprovedPosts, fetchMyPosts } from '@/lib/catalog-service';
@@ -68,12 +68,32 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
   const { user } = useAuth();
 
   const posts = usePosts(kind);
+  const dynamicFilterGroups = useMemo(
+    () => filterGroups.map((group) => {
+      if (group.id === 'area') {
+        return areaFilterGroup(
+          posts.items
+            .filter((post) => post.status === 'approved')
+            .flatMap((post) => post.areaId ? [post.areaId] : [])
+        );
+      }
+      if (group.id === 'areas') {
+        return areaFilterGroupMulti(
+          posts.items
+            .filter((post) => post.status === 'approved')
+            .flatMap((post) => post.areaId ? [post.areaId] : [])
+        );
+      }
+      return group;
+    }),
+    [filterGroups, posts.items]
+  );
 
   const searchable = useCallback(
     (post: CommunityPost): SearchableFields => ({
       title: post.titleBn,
       subtitle: post.summaryBn,
-      area: post.areaId ? (getAreaById(post.areaId)?.nameBn ?? '') : '',
+      area: post.areaId ? (getAreaById(post.areaId)?.nameBn ?? post.areaId) : '',
       tags: post.tags,
       description: post.bodyBn ?? '',
       numbers: [post.price, post.salaryMin, post.salaryMax].filter(
@@ -106,7 +126,7 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
     items: posts.items,
     searchable,
     matchable,
-    filterGroups,
+    filterGroups: dynamicFilterGroups,
     sorters,
   });
 
@@ -140,7 +160,7 @@ export default function CommunityDirectory(props: CommunityDirectoryProps) {
         value={controller.query}
         onChange={controller.setQuery}
         placeholder={placeholder}
-        filterGroups={filterGroups}
+        filterGroups={dynamicFilterGroups}
         filterState={controller.filterState}
         onFilterStateChange={controller.setFilterState}
         resultCount={controller.results.length}

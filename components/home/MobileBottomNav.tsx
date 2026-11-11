@@ -91,12 +91,21 @@ export default function MobileBottomNav() {
   const router = useRouter();
   const { user, isLoading: authLoading, logout } = useAuth();
   const [sheet, setSheet] = useState<{ type: 'menu' | 'post' | 'profile'; path: string } | null>(null);
+  const [serviceRequestSuccess, setServiceRequestSuccess] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
   const postTriggerRef = useRef<HTMLButtonElement>(null);
   const profileTriggerRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const profileCloseButtonRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    const handleServiceRequestSuccess = (event: Event) => {
+      setServiceRequestSuccess((event as CustomEvent<boolean>).detail);
+    };
+    window.addEventListener('mms:service-request-success', handleServiceRequestSuccess);
+    return () => window.removeEventListener('mms:service-request-success', handleServiceRequestSuccess);
+  }, []);
 
   /*
     The open sheet remembers the route it was opened on. A navigation changes
@@ -201,7 +210,7 @@ export default function MobileBottomNav() {
     }
   };
 
-  if (isBareRoute(pathname)) return null;
+  if (isBareRoute(pathname) || serviceRequestSuccess) return null;
 
   return (
     <>

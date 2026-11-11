@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { searchDirectory, type SearchableFields } from '@/lib/directory-search';
 import { applyFilters, type FilterGroup, type FilterState, type MatchableRecord } from '@/lib/directory-filters';
+import { areaNameKey } from '@/lib/area-names';
 
 export interface UseDirectoryControllerArgs<T> {
   items: T[];
@@ -75,13 +76,13 @@ export function useDirectoryController<T>({
       if (group.type === 'multi') {
         const raw = searchParams.getAll(param);
         if (raw.length) {
-          initial[group.id] = raw.filter((v) =>
-            group.options.some((o) => o.id === v)
-          );
+          initial[group.id] = group.id === 'areas'
+            ? raw
+            : raw.filter((v) => group.options.some((o) => o.id === v));
         }
       } else {
         const raw = searchParams.get(param);
-        if (raw && group.options.some((o) => o.id === raw)) {
+        if (raw && (group.id === 'area' || group.options.some((o) => o.id === raw))) {
           initial[group.id] = raw;
         }
       }
@@ -176,12 +177,13 @@ export function useDirectoryController<T>({
       (pair) => pair.record,
       (pair, record, selectedAreas) => {
         if (record.areaIds && record.areaIds.length > 0) {
-          return selectedAreas.some((a) => record.areaIds!.includes(a));
+          const recordAreaKeys = new Set(record.areaIds.map(areaNameKey));
+          return selectedAreas.some((area) => recordAreaKeys.has(areaNameKey(area)));
         }
         // Records that only carry a free-text locality: match on its name.
         const local = record.values?.area;
         if (typeof local === 'string') {
-          return selectedAreas.some((a) => a === local);
+          return selectedAreas.some((area) => areaNameKey(area) === areaNameKey(local));
         }
         return false;
       }

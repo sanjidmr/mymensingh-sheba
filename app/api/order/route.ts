@@ -8,10 +8,9 @@ export const runtime = 'nodejs';
 
 type OrderPayload = Record<string, unknown>;
 
-function optionalText(value: unknown, maxLength: number): string | null | undefined {
-  if (value === undefined) return undefined;
-  if (value === null || value === '') return null;
-  if (typeof value !== 'string' || value.length > maxLength) return undefined;
+function optionalText(value: unknown): string | null | undefined {
+  if (value === undefined || value === null || value === '') return null;
+  if (typeof value !== 'string') return undefined;
   return value.trim() || null;
 }
 
@@ -28,7 +27,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export async function POST(request: Request) {
   let payload: OrderPayload;
   try {
-    const body = await readBoundedRequestBody(request, 64_000);
+    const body = await readBoundedRequestBody(request, 1_000_000);
     if (body.tooLarge) return NextResponse.json({ error: 'অনুরোধের তথ্য অনেক বড়।' }, { status: 413 });
     payload = JSON.parse(body.text) as OrderPayload;
   } catch {
@@ -40,15 +39,15 @@ export async function POST(request: Request) {
 
   const serviceType = typeof payload.service_type === 'string' ? payload.service_type.trim() : '';
   const slug = typeof payload.service_slug === 'string' ? payload.service_slug.trim() : serviceType;
-  const areaId = optionalText(payload.area_id, 120);
-  const address = optionalText(payload.address_line, 500);
-  const name = optionalText(payload.contact_name, 120);
+  const areaId = optionalText(payload.area_id);
+  const address = optionalText(payload.address_line);
+  const name = optionalText(payload.contact_name);
   const phoneInput = typeof payload.contact_phone === 'string' ? payload.contact_phone : '';
   const phone = normalizeBdPhone(phoneInput);
   if (
     !/^[a-z0-9_-]{1,80}$/i.test(serviceType) ||
     !/^[a-z0-9_-]{1,80}$/i.test(slug) ||
-    !areaId || !address || !name || name.length < 3 ||
+    !areaId || areaId.length > 120 || !address || !name || name.length < 3 ||
     !/^01[3-9]\d{8}$/.test(phone) ||
     (payload.preferred_date !== undefined && payload.preferred_date !== null && !isValidDate(payload.preferred_date))
   ) {
@@ -56,22 +55,22 @@ export async function POST(request: Request) {
   }
 
   const optionalFields = {
-    preferred_time: optionalText(payload.preferred_time, 100),
-    details: optionalText(payload.details, 8_000),
-    service_label: optionalText(payload.service_label, 160),
-    profile_id: optionalText(payload.profile_id, 160),
-    profile_title: optionalText(payload.profile_title, 240),
-    attachment_url: optionalText(payload.attachment_url, 2_000),
-    pickup_address: optionalText(payload.pickup_address, 500),
-    destination_address: optionalText(payload.destination_address, 500),
-    pickup_floor: optionalText(payload.pickup_floor, 80),
-    destination_floor: optionalText(payload.destination_floor, 80),
-    parking_info: optionalText(payload.parking_info, 500),
-    pickup_area_id: optionalText(payload.pickup_area_id, 120),
-    destination_area_id: optionalText(payload.destination_area_id, 120),
+    preferred_time: optionalText(payload.preferred_time),
+    details: optionalText(payload.details),
+    service_label: optionalText(payload.service_label),
+    profile_id: optionalText(payload.profile_id),
+    profile_title: optionalText(payload.profile_title),
+    attachment_url: optionalText(payload.attachment_url),
+    pickup_address: optionalText(payload.pickup_address),
+    destination_address: optionalText(payload.destination_address),
+    pickup_floor: optionalText(payload.pickup_floor),
+    destination_floor: optionalText(payload.destination_floor),
+    parking_info: optionalText(payload.parking_info),
+    pickup_area_id: optionalText(payload.pickup_area_id),
+    destination_area_id: optionalText(payload.destination_area_id),
   };
   if (Object.values(optionalFields).some((value) => value === undefined)) {
-    return NextResponse.json({ error: 'ঐচ্ছিক তথ্যের কোনোটি অনুমোদিত সীমা ছাড়িয়েছে।' }, { status: 400 });
+    return NextResponse.json({ error: 'ফর্মের ঐচ্ছিক তথ্য সঠিক নয়।' }, { status: 400 });
   }
   if (
     (payload.has_lift !== undefined && payload.has_lift !== null && typeof payload.has_lift !== 'boolean') ||
@@ -105,8 +104,7 @@ export async function POST(request: Request) {
   const photoUrls = payload.photo_urls ?? [];
   if (
     !Array.isArray(movingItems) || movingItems.length > 100 ||
-    !Array.isArray(photoUrls) || photoUrls.length > 20 ||
-    (payload.service_meta !== undefined && JSON.stringify(payload.service_meta).length > 20_000)
+    !Array.isArray(photoUrls) || photoUrls.length > 20
   ) {
     return NextResponse.json({ error: 'ফর্মের অতিরিক্ত তথ্য অনুমোদিত সীমা ছাড়িয়েছে।' }, { status: 400 });
   }

@@ -1,22 +1,31 @@
 import ServiceRequestFormCard from '@/components/service-request/ServiceRequestFormCard';
 import { REQUEST_FORM_ANCHOR } from '@/components/service-request/ServiceRequestHero';
 import type { ServiceRequestPageConfig } from '@/lib/service-request-pages';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
+import { ArrowRight } from 'lucide-react';
 
 export interface ServiceRequestFormSectionProps {
   config: ServiceRequestPageConfig;
+  open: boolean;
+  onOpen: () => void;
+  onSubmitted: (submission: ServiceRequestSuccessData) => void;
 }
 
 /**
  * ServiceRequestFormSection — the "সেবা নিন" block.
  *
- * A thin server component: the heading and instruction live here so they are
- * static HTML, and only the form itself ships to the client.
+ * The action stays visible until the user chooses to open the form.
  *
  * The `scroll-mt` on the anchor matters because the sticky-ish page has no
  * sticky header of its own, but the hero's CTA has to land the user on the
  * heading rather than in the middle of the first field group.
  */
-export default function ServiceRequestFormSection({ config }: ServiceRequestFormSectionProps) {
+export default function ServiceRequestFormSection({
+  config,
+  open,
+  onOpen,
+  onSubmitted,
+}: ServiceRequestFormSectionProps) {
   return (
     <section
       id={REQUEST_FORM_ANCHOR}
@@ -39,7 +48,18 @@ export default function ServiceRequestFormSection({ config }: ServiceRequestForm
         </div>
 
         <div className="mt-7">
-          <ServiceRequestFormCard config={config} />
+          {open ? (
+            <ServiceRequestFormCard config={config} onSubmitted={onSubmitted} />
+          ) : (
+            <button
+              type="button"
+              onClick={onOpen}
+              className="inline-flex min-h-12 items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-800"
+            >
+              অনুরোধ জমা দিন
+              <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </button>
+          )}
         </div>
       </div>
     </section>

@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 import { isSupabaseConfigured } from './client';
+import { supabaseCookieOptions } from './cookie-options';
 
 /**
  * Creates a Supabase server client.
@@ -19,6 +20,7 @@ export async function createServerSideClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      cookieOptions: supabaseCookieOptions,
       cookies: {
         getAll() {
           return cookieStore.getAll();

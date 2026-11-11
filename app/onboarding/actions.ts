@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { MCC_AREAS } from '@/lib/locations';
+import { normalizeAreaName } from '@/lib/area-names';
 import { isOnboardingComplete, normalizeBangladeshPhone } from '@/lib/onboarding';
 
 export async function completeOnboarding(input: {
@@ -27,10 +27,8 @@ export async function completeOnboarding(input: {
   const phone = normalizeBangladeshPhone(
     typeof input?.phone === 'string' ? input.phone.trim() : ''
   );
-  const primaryAreaId =
-    typeof input?.primaryAreaId === 'string' ? input.primaryAreaId : '';
-  const area = MCC_AREAS.find(
-    (item) => item.isActive && item.id === primaryAreaId
+  const primaryAreaId = normalizeAreaName(
+    typeof input?.primaryAreaId === 'string' ? input.primaryAreaId : ''
   );
 
   if (fullName.length < 2) {
@@ -39,8 +37,8 @@ export async function completeOnboarding(input: {
   if (!phone) {
     return { success: false, error: 'সঠিক বাংলাদেশি মোবাইল নম্বর লিখুন।' };
   }
-  if (!area) {
-    return { success: false, error: 'তালিকা থেকে আপনার এলাকাটি নির্বাচন করুন।' };
+  if (!primaryAreaId || primaryAreaId.length > 100) {
+    return { success: false, error: 'আপনার এলাকার নাম লিখুন (সর্বোচ্চ ১০০ অক্ষর)।' };
   }
 
   const { data: profile, error: profileError } = await client
@@ -75,7 +73,7 @@ export async function completeOnboarding(input: {
     .update({
       full_name: fullName,
       phone: phone.local,
-      primary_area_id: area.id,
+      primary_area_id: primaryAreaId,
       onboarding_completed_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     })

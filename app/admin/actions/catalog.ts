@@ -44,7 +44,6 @@ export async function setServiceListingActive(
     revalidatePath('/admin/directories/[category]', 'page');
     revalidatePath('/coaching');
     revalidatePath('/wifi');
-    revalidatePath('/bus-ticket');
     revalidatePath('/gari-auto-cng');
     return { ok: true, message: isActive ? 'তালিকাটি চালু হয়েছে।' : 'তালিকাটি বন্ধ হয়েছে।' };
   });

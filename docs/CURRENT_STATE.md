@@ -14,7 +14,7 @@ Home Moving, Home Tutor, and Blood Donor services under one city-scoped
 marketplace. This repository currently contains the application foundation:
 
 - Product-branded Next.js app (no AI-Studio boilerplate remains)
-- Centralized MCC locations dataset (`lib/locations.ts`)
+- Legacy MCC locations catalog (`lib/locations.ts`) plus user-entered area names
 - Auth model + Supabase schema/RLS (deployable)
 - UI component library + design-system showcase (dev-only)
 - Public directory/listing pages wired to sample data
@@ -193,10 +193,11 @@ Package manager: **npm** (Node >= 20). `bun.lock` was removed.
   pricing anywhere. Item catalog (`HOME_MOVING_ITEMS`: বেড/খাট, সোফা, ফ্রিজ,
   টিভি, আলমারি, টেবিল, চেয়ার, ওয়াশিং মেশিন, অন্যান্য) with quantity steppers,
   floor options, time slots, and status info map.
-- **Location rule:** pickup + destination MUST be centralized MCC location IDs
-  (`lib/locations.ts`). The wizard uses `LocationSelectInput`/`getAllMCCAreas`
-  and validates the route with `validateMovingRoute()` — both areas must be
-  inside Mymensingh City Corporation.
+- **Location rule:** pickup and destination are independently entered area
+  names. Existing MCC IDs remain readable for historical rows, while new names
+  are stored as text; route validation requires both names but does not restrict
+  them to a predefined MCC list. Shared area suggestions come only from saved,
+  publicly visible records and are whitespace/case normalized and deduplicated.
 - **Data layer** (`lib/home-moving-service.ts` + `lib/home-moving-mock.ts`):
   requests reuse the single `service_requests` table with new home-moving
   columns (`pickup_area_id`, `destination_area_id`, `pickup_address`,
@@ -229,6 +230,8 @@ Package manager: **npm** (Node >= 20). `bun.lock` was removed.
   see only their own rows, admins full access — phone and detailed addresses
   stay private). No new location system: `area_id`/`address_line` remain the
   generic columns while home-moving also stores explicit pickup/destination.
+  `profiles.primary_area_id` has no default and is nullable so signup leaves it
+  empty until onboarding receives a user-entered area.
 
 ## 9. Home Tutor (গৃহশিক্ষক)
 

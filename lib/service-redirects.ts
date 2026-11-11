@@ -21,7 +21,6 @@ export const SERVICE_REDIRECTS: ServiceRedirectMap[] = [
   { slug: 'home-moving', target: '/home-moving' },
   { slug: 'gari-auto-cng', target: '/services?q=%E0%A6%97%E0%A6%BE%E0%A6%A1%E0%A6%BC%E0%A6%BF' },
   { slug: 'ac-fridge', target: '/ac-fridge' },
-  { slug: 'bus-ticket', target: '/services?q=bus' },
   { slug: 'buysell', target: '/buy-sell' },
   { slug: 'jobs', target: '/jobs' },
   { slug: 'news', target: '/news' },

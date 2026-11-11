@@ -29,6 +29,7 @@ export default function ServiceHeroCta({
   const focusClass = clean ? LIGHT_FOCUS : DARK_FOCUS;
   const onClick = () => {
     trackCtaClick({ ctaType: 'get_service', category, routeKind: 'service' });
+    window.dispatchEvent(new CustomEvent('mms:open-service-request-form'));
   };
 
   return (

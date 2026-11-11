@@ -2,6 +2,7 @@ import 'server-only';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { createServerSideClient } from '@/lib/supabase/server';
+import { getSiteOrigin } from '@/lib/site-url';
 import {
   classifyAnalyticsTraffic,
   type AnalyticsTrafficClass,
@@ -87,7 +88,7 @@ export async function getAnalyticsRequestContext(
 }
 
 export function visitorCookieHeader(request: Request, visitorId: string): string {
-  const secure = new URL(request.url).protocol === 'https:' ? '; Secure' : '';
+  const secure = new URL(getSiteOrigin(request)).protocol === 'https:' ? '; Secure' : '';
   return `mms_vid=${encodeURIComponent(visitorId)}; Path=/; Max-Age=31536000; HttpOnly; SameSite=Lax${secure}`;
 }
 
@@ -95,7 +96,7 @@ export function isSameOriginRequest(request: Request): boolean {
   const origin = request.headers.get('origin');
   if (!origin) return true;
   try {
-    return new URL(origin).origin === new URL(request.url).origin;
+    return new URL(origin).origin === getSiteOrigin(request);
   } catch {
     return false;
   }

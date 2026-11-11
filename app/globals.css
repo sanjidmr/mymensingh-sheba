@@ -162,6 +162,45 @@
   --shadow-admin-popover: 0 12px 32px rgb(15 23 42 / 0.16);
 }
 
+@layer utilities {
+  /* Keep the green brand surfaces while rendering green utility text neutrally. */
+  :where(
+    [class*="text-brand-50"], [class*="text-brand-100"],
+    [class*="text-brand-200"], [class*="text-brand-300"], [class*="text-brand-400"],
+    [class*="text-emerald-50"], [class*="text-emerald-100"],
+    [class*="text-emerald-200"], [class*="text-emerald-300"], [class*="text-emerald-400"],
+    [class*="text-green-50"], [class*="text-green-100"],
+    [class*="text-green-200"], [class*="text-green-300"], [class*="text-green-400"],
+    [class*="text-teal-50"], [class*="text-teal-100"],
+    [class*="text-teal-200"], [class*="text-teal-300"], [class*="text-teal-400"]
+  ) {
+    color: #f8fafc !important;
+  }
+
+  :where(
+    [class*="text-brand-500"], [class*="text-brand-600"],
+    [class*="text-emerald-500"], [class*="text-emerald-600"],
+    [class*="text-green-500"], [class*="text-green-600"],
+    [class*="text-teal-500"], [class*="text-teal-600"], [class*="text-teal-700"],
+    [class*="text-teal-800"], [class*="text-teal-900"], [class*="text-teal-950"],
+    [class*="text-status-success"], [class*="text-status-approved"],
+    [class*="text-[#0c3b2e]"], [class*="text-[#0a3227]"]
+  ) {
+    color: #475569 !important;
+  }
+
+  :where(
+    [class*="text-brand-700"], [class*="text-brand-800"],
+    [class*="text-brand-900"], [class*="text-brand-950"],
+    [class*="text-emerald-700"], [class*="text-emerald-800"],
+    [class*="text-emerald-900"], [class*="text-emerald-950"],
+    [class*="text-green-700"], [class*="text-green-800"],
+    [class*="text-green-900"], [class*="text-green-950"]
+  ) {
+    color: #1f2937 !important;
+  }
+}
+
 @layer base {
   /* Height of the fixed mobile bottom navigation. Kept as a token so the bar
      and the space reserved for it can never drift apart. */

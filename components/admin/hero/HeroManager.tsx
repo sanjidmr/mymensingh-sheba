@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ArrowDown,
   ArrowUp,
@@ -11,6 +11,8 @@ import {
   RefreshCw,
   Trash2,
 } from 'lucide-react';
+import { uploadSiteImage } from '@/lib/admin/upload-site-image';
+import { validateSiteImage } from '@/lib/admin/site-media';
 import type { AdminHeroSlide } from '@/lib/admin/queries';
 import {
   uploadHeroSlide,
@@ -43,17 +45,22 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
 
   // Upload form
   const [caption, setCaption] = useState('');
+  const [subtitle, setSubtitle] = useState('');
+  const [description, setDescription] = useState('');
   const [altText, setAltText] = useState('');
   const [href, setHref] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [filePreview, setFilePreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadError, setUploadError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Inline edit
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editCaption, setEditCaption] = useState('');
+  const [editSubtitle, setEditSubtitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [editAlt, setEditAlt] = useState('');
   const [editHref, setEditHref] = useState('');
 
@@ -62,7 +69,15 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
   const [replaceFile, setReplaceFile] = useState<File | null>(null);
   const [replacePreview, setReplacePreview] = useState<string | null>(null);
   const [replacing, setReplacing] = useState(false);
+  const [replaceProgress, setReplaceProgress] = useState(0);
   const replaceInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    return () => {
+      if (filePreview) URL.revokeObjectURL(filePreview);
+      if (replacePreview) URL.revokeObjectURL(replacePreview);
+    };
+  }, [filePreview, replacePreview]);
 
   // Delete confirmation
   const [deleting, setDeleting] = useState<AdminHeroSlide | null>(null);
@@ -96,17 +111,19 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
       setFilePreview(null);
       return;
     }
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(picked.type)) {
-      setUploadError('শুধুমাত্র JPG, PNG, WebP বা AVIF ছবি আপলোড করা যাবে।');
-      return;
-    }
-    if (picked.size > 5 * 1024 * 1024) {
-      setUploadError('ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।');
+    const invalid = validateSiteImage(picked);
+    if (invalid) {
+      setFile(null);
+      setFilePreview(null);
+      setUploadError(invalid);
       return;
     }
     setFile(picked);
     // A local object URL gives an immediate preview without a round trip.
-    setFilePreview(URL.createObjectURL(picked));
+    setFilePreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return URL.createObjectURL(picked);
+    });
   };
 
   const handleUpload = async () => {
@@ -114,29 +131,26 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
       setUploadError('আগে একটি ছবি বেছে নিন।');
       return;
     }
-    if (!caption.trim()) {
-      setUploadError('স্লাইডের টেক্সট লিখুন।');
-      return;
-    }
-
     setUploading(true);
+    setUploadProgress(0);
     setUploadError('');
     try {
-      const formData = new FormData();
-      formData.set('image', file);
-      formData.set('caption', caption.trim());
-      formData.set('altText', altText.trim());
-      formData.set('href', href.trim());
-
-      const ok = await run(() => uploadHeroSlide(formData));
+      const { path } = await uploadSiteImage(file, 'hero', setUploadProgress);
+      const ok = await run(() =>
+        uploadHeroSlide(path, caption, subtitle, description, altText, href)
+      );
       if (ok) {
         setCaption('');
+        setSubtitle('');
+        setDescription('');
         setAltText('');
         setHref('');
         setFile(null);
         setFilePreview(null);
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
+    } catch (error) {
+      setUploadError(error instanceof Error ? error.message : 'ব্যানার আপলোড ব্যর্থ হয়েছে।');
     } finally {
       setUploading(false);
     }
@@ -157,7 +171,9 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
 
   const startEdit = (slide: AdminHeroSlide) => {
     setEditingId(slide.id);
-    setEditCaption(slide.caption_bn);
+    setEditCaption(slide.title_bn ?? slide.caption_bn ?? '');
+    setEditSubtitle(slide.subtitle_bn ?? '');
+    setEditDescription(slide.description_bn ?? '');
     setEditAlt(slide.alt_text_bn ?? '');
     setEditHref(slide.href ?? '');
   };
@@ -165,7 +181,9 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
   const saveEdit = async (slide: AdminHeroSlide) => {
     const ok = await run(() =>
       updateHeroSlide(slide.id, {
-        caption_bn: editCaption,
+        title_bn: editCaption,
+        subtitle_bn: editSubtitle,
+        description_bn: editDescription,
         alt_text_bn: editAlt,
         href: editHref,
       })
@@ -181,31 +199,48 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
       setReplacePreview(null);
       return;
     }
-    if (!['image/jpeg', 'image/png', 'image/webp', 'image/avif'].includes(picked.type)) {
-      notify('error', 'অবৈধ ফাইল', 'শুধুমাত্র JPG, PNG, WebP বা AVIF ছবি আপলোড করা যাবে।');
-      return;
-    }
-    if (picked.size > 5 * 1024 * 1024) {
-      notify('error', 'ফাইল বড়', 'ছবির সাইজ ৫MB-এর মধ্যে হতে হবে।');
+    const invalid = validateSiteImage(picked);
+    if (invalid) {
+      setReplaceFile(null);
+      setReplacePreview(null);
+      notify('error', 'অবৈধ ছবি', invalid);
       return;
     }
     setReplaceFile(picked);
-    setReplacePreview(URL.createObjectURL(picked));
+    setReplacePreview((current) => {
+      if (current) URL.revokeObjectURL(current);
+      return URL.createObjectURL(picked);
+    });
   };
 
   const confirmReplace = async () => {
     if (!replacingId || !replaceFile) return;
     setReplacing(true);
+    setReplaceProgress(0);
     try {
-      const formData = new FormData();
-      formData.set('image', replaceFile);
-      const ok = await run(() => replaceHeroImage(replacingId, formData));
+      const slide = slides.find((item) => item.id === replacingId);
+      const existingPath = slide?.storage_path?.startsWith('hero/')
+        ? slide.storage_path
+        : undefined;
+      const { path } = await uploadSiteImage(
+        replaceFile,
+        'hero',
+        setReplaceProgress,
+        existingPath
+      );
+      const ok = await run(() => replaceHeroImage(replacingId, path));
       if (ok) {
         setReplacingId(null);
         setReplaceFile(null);
         setReplacePreview(null);
         if (replaceInputRef.current) replaceInputRef.current.value = '';
       }
+    } catch (error) {
+      notify(
+        'error',
+        'ছবি বদলানো যায়নি',
+        error instanceof Error ? error.message : 'অজানা ত্রুটি হয়েছে।'
+      );
     } finally {
       setReplacing(false);
     }
@@ -251,20 +286,39 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
               ref={fileInputRef}
               type="file"
               accept="image/jpeg,image/png,image/webp,image/avif"
-              onChange={(e) => handleFilePick(e.target.files?.[0] ?? null)}
+              onChange={(e) => {
+                handleFilePick(e.target.files?.[0] ?? null);
+                e.currentTarget.value = '';
+              }}
               className="mt-2 w-full text-xs text-ink-600 file:mr-2 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-800 hover:file:bg-brand-100"
               aria-label="ছবি বেছে নিন"
             />
-            <p className="mt-1 text-[11px] text-ink-400">JPG, PNG, WebP বা AVIF — সর্বোচ্চ ৫MB</p>
+            <p className="mt-1 text-[11px] text-ink-400">JPG, PNG, WebP বা AVIF · Supabase Storage-এর সীমা প্রযোজ্য</p>
           </div>
 
           {/* Fields */}
           <div className="space-y-3">
             <Textarea
-              label="স্লাইডের টেক্সট"
+              label="শিরোনাম (ঐচ্ছিক)"
+              maxLength={200}
               value={caption}
               onChange={(e) => setCaption(e.target.value)}
-              placeholder="যেমন: প্রতিদিনের সেবা, এক জায়গায়"
+              placeholder="ব্যানারের শিরোনাম"
+              rows={2}
+            />
+            <Input
+              label="উপশিরোনাম (ঐচ্ছিক)"
+              maxLength={300}
+              value={subtitle}
+              onChange={(e) => setSubtitle(e.target.value)}
+              placeholder="ব্যানারের উপশিরোনাম"
+            />
+            <Textarea
+              label="বিবরণ (ঐচ্ছিক)"
+              maxLength={1500}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="ব্যানারের সংক্ষিপ্ত বিবরণ"
               rows={2}
             />
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -285,6 +339,9 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
               <p role="alert" className="text-xs font-medium text-rose-600">
                 {uploadError}
               </p>
+            )}
+            {uploading && (
+              <progress className="h-2 w-full" max={100} value={uploadProgress} aria-label="ব্যানার আপলোডের অগ্রগতি" />
             )}
             <div className="flex justify-end">
               <Button onClick={handleUpload} isLoading={uploading}>
@@ -330,7 +387,7 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={slide.image_url}
-                      alt={slide.caption_bn}
+                      alt={slide.title_bn || slide.caption_bn || ''}
                       className="h-full w-full object-cover"
                     />
                     <span className="absolute left-1.5 top-1.5 rounded bg-ink-900/70 px-1.5 py-0.5 text-[10px] font-bold text-white">
@@ -343,9 +400,20 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
                     {editingId === slide.id ? (
                       <div className="space-y-2">
                         <Textarea
-                          label="টেক্সট"
+                          label="শিরোনাম (ঐচ্ছিক)"
                           value={editCaption}
                           onChange={(e) => setEditCaption(e.target.value)}
+                          rows={2}
+                        />
+                        <Input
+                          label="উপশিরোনাম (ঐচ্ছিক)"
+                          value={editSubtitle}
+                          onChange={(e) => setEditSubtitle(e.target.value)}
+                        />
+                        <Textarea
+                          label="বিবরণ (ঐচ্ছিক)"
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
                           rows={2}
                         />
                         <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
@@ -371,7 +439,13 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
                       </div>
                     ) : (
                       <>
-                        <p className="text-sm font-semibold text-ink-900">{slide.caption_bn}</p>
+                        {(slide.title_bn || slide.caption_bn) && (
+                          <p className="text-sm font-semibold text-ink-900">
+                            {slide.title_bn || slide.caption_bn}
+                          </p>
+                        )}
+                        {slide.subtitle_bn && <p className="mt-0.5 text-xs text-ink-600">{slide.subtitle_bn}</p>}
+                        {slide.description_bn && <p className="mt-0.5 text-xs text-ink-500">{slide.description_bn}</p>}
                         <p className="mt-0.5 truncate text-xs text-ink-500">
                           {slide.alt_text_bn || 'বিকল্প টেক্সট নেই'}
                           {slide.href ? ` · লিংক: ${slide.href}` : ''}
@@ -479,7 +553,7 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
           <div className="relative w-full max-w-md rounded-2xl border border-mist-200 bg-white p-5 shadow-2xl">
             <h3 className="text-base font-bold text-ink-900">ছবি বদলান</h3>
             <p className="mt-1 text-xs text-ink-500">
-              পুরনো ছবিটি স্টোরেজ থেকে মুছে যাবে। টেক্সট ও লিংক অপরিবর্তিত থাকবে।
+              বিদ্যমান Storage path সম্ভব হলে অপরিবর্তিত থাকবে, তাই Public URL-ও একই থাকবে।
             </p>
 
             <div className="mt-4">
@@ -497,12 +571,18 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
                 ref={replaceInputRef}
                 type="file"
                 accept="image/jpeg,image/png,image/webp,image/avif"
-                onChange={(e) => handleReplacePick(e.target.files?.[0] ?? null)}
+                onChange={(e) => {
+                  handleReplacePick(e.target.files?.[0] ?? null);
+                  e.currentTarget.value = '';
+                }}
                 className="mt-2 w-full text-xs text-ink-600 file:mr-2 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-brand-800"
                 aria-label="নতুন ছবি বেছে নিন"
               />
             </div>
 
+            {replacing && (
+              <progress className="mt-3 h-2 w-full" max={100} value={replaceProgress} aria-label="ছবি বদলের অগ্রগতি" />
+            )}
             <div className="mt-4 flex justify-end gap-2">
               <Button variant="ghost" onClick={() => setReplacingId(null)} disabled={replacing}>
                 বাতিল
@@ -521,8 +601,8 @@ export default function HeroManager({ initialSlides }: { initialSlides: AdminHer
         title="স্লাইডটি মুছে ফেলবেন?"
         description={
           <>
-            <span className="font-semibold">“{deleting?.caption_bn}”</span> স্লাইডটি স্থায়ীভাবে
-            মুছে যাবে। স্টোরেজের ছবিটিও মুছে ফেলা হবে।
+            <span className="font-semibold">“{deleting?.title_bn || deleting?.caption_bn}”</span> স্লাইডটি স্থায়ীভাবে
+            মুছে যাবে। ছবিটি Media Library-তে থাকবে, যাতে অন্য কোনো জায়গায় ব্যবহৃত URL নষ্ট না হয়।
           </>
         }
         confirmLabel="হ্যাঁ, মুছে ফেলুন"

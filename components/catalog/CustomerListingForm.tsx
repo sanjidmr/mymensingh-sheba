@@ -14,13 +14,13 @@
  * as independent child rows after the parent exists. Saved schedules and WiFi
  * packages are managed on the listing's page.
  *
- * Mobile-first: every control is full width, tap targets are >= 44px, and the
- * area picker reuses the searchable MCC selector rather than a native multi-select.
+ * Mobile-first: every control is full width, tap targets are >= 44px, and
+ * area names stay user-entered with public saved values offered as suggestions.
  */
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { CheckCircle2, ChevronDown, ImagePlus, Loader2, MapPin, Plus, Search, Trash2, X } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { MCC_AREA_SOURCE } from '@/lib/locations';
+import LocationSelectInput from '@/components/LocationSelectInput';
 import {
   createOwnCoachingBatch,
   createCustomerServiceListing,
@@ -203,28 +203,6 @@ export default function CustomerListingForm({
   const [wifiPackagesReady, setWifiPackagesReady] = useState(category !== 'wifi' || !initialListing);
   const [wifiPackagesError, setWifiPackagesError] = useState('');
   const submittingRef = useRef(false);
-
-  const [areaSearch, setAreaSearch] = useState('');
-  const [areaOpen, setAreaOpen] = useState(false);
-  const areaWrapperRef = useRef<HTMLDivElement>(null);
-  const areaOptions = useMemo(() => {
-    if (category !== 'coaching') return [];
-    const q = areaSearch.trim().toLowerCase();
-    if (!q) return MCC_AREA_SOURCE.all().slice(0, 12);
-    return MCC_AREA_SOURCE.search(areaSearch).slice(0, 15);
-  }, [areaSearch, category]);
-  const selectedArea = useMemo(() => (selectedAreaId ? MCC_AREA_SOURCE.byId(selectedAreaId) : null), [selectedAreaId]);
-
-  useEffect(() => {
-    if (category !== 'coaching') return;
-    const handleClick = (e: MouseEvent) => {
-      if (areaWrapperRef.current && !areaWrapperRef.current.contains(e.target as Node)) {
-        setAreaOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, [category]);
 
   const isEditing = Boolean(currentListing);
   const busy = submitting || uploading || wifiPackagesLoading;
@@ -759,19 +737,10 @@ export default function CustomerListingForm({
         <h2 className="text-[14px] font-extrabold text-ink-900">ঠিকানা ও যোগাযোগ</h2>
         {category === 'coaching' && (
           <Field label="এলাকা নির্বাচন করুন" required>
-            <input
-              value={areaSearch || selectedArea?.nameBn || ''}
-              onChange={(e) => {
-                const val = e.target.value;
-                setAreaSearch(val);
-                const match = MCC_AREA_SOURCE.all().find(
-                  (area) => area.nameBn.toLowerCase() === val.trim().toLowerCase()
-                );
-                setSelectedAreaId(match ? match.id : '');
-              }}
-              className={inputClass}
+            <LocationSelectInput
+              value={selectedAreaId}
+              onChange={(areaName) => setSelectedAreaId(areaName || '')}
               placeholder="এলাকার নাম লিখুন"
-              autoComplete="off"
             />
           </Field>
         )}

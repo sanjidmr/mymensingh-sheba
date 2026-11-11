@@ -26,6 +26,7 @@ import {
   formatSalaryBn,
 } from '@/lib/staff-types';
 import { getAreaById } from '@/lib/locations';
+import SubmissionSuccess from '@/components/service-request/SubmissionSuccess';
 
 export interface RequestServicePageProps {
   serviceSlug: StaffServiceKey | string;
@@ -82,6 +83,8 @@ export default function RequestServicePage({
   const [profiles, setProfiles] = useState<StaffProfile[]>([]);
   const [loadingProfiles, setLoadingProfiles] = useState(wantsProfiles);
   const [selectedType, setSelectedType] = useState(serviceTypes[0]?.id ?? '');
+  const [formOpen, setFormOpen] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const formAnchor = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -104,9 +107,11 @@ export default function RequestServicePage({
 
   const filterGroups = useMemo<FilterGroup[]>(() => {
     const groups: FilterGroup[] = [];
-    if (wantsProfiles) groups.push(areaFilterGroup());
+    if (wantsProfiles) {
+      groups.push(areaFilterGroup(profiles.flatMap((profile) => profile.areaIds)));
+    }
     return groups;
-  }, [wantsProfiles]);
+  }, [wantsProfiles, profiles]);
 
   const searchable = useCallback(
     (p: StaffProfile): SearchableFields => ({
@@ -159,8 +164,17 @@ export default function RequestServicePage({
 
   const pickType = (id: string) => {
     setSelectedType(id);
+    setFormOpen(true);
     formAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
+
+  if (submitted) {
+    return (
+      <DirectoryShell title="" breadcrumbs={[]} hideHeading>
+        <SubmissionSuccess />
+      </DirectoryShell>
+    );
+  }
 
   return (
     <DirectoryShell
@@ -168,6 +182,18 @@ export default function RequestServicePage({
       subtitle={subtitle}
       breadcrumbs={breadcrumbs}
       highlights={highlights}
+      action={
+        <button
+          type="button"
+          onClick={() => {
+            setFormOpen(true);
+            formAnchor.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }}
+          className={`inline-flex min-h-11 items-center justify-center rounded-lg bg-brand-700 px-4 text-sm font-bold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+        >
+          অনুরোধ জমা দিন
+        </button>
+      }
     >
       {/* Problem tiles: the browse shortcut into the form. */}
       <section aria-labelledby="pick-problem" className="mt-3.5">
@@ -175,7 +201,7 @@ export default function RequestServicePage({
           <h2 id="pick-problem" className="text-[15px] font-extrabold text-ink-900 sm:text-base">
             {serviceTypesLabel} বেছে নিন
           </h2>
-          <span className="shrink-0 text-[11px] text-ink-400">ট্যাপ করে নিচের ফর্মে যান</span>
+          <span className="shrink-0 text-[11px] text-ink-400">বেছে নিলে অনুরোধের ঘর খুলবে</span>
         </div>
 
         <ul className="mt-2.5 grid grid-cols-3 gap-2 sm:grid-cols-4 lg:grid-cols-6">
@@ -207,17 +233,23 @@ export default function RequestServicePage({
         </ul>
       </section>
 
-      {/* The request funnel, the page's primary job. */}
+      {/* The request funnel appears only after the visitor chooses to open it. */}
       <div ref={formAnchor} className="mt-4 scroll-mt-24">
-        <ServiceRequestForm
-          serviceSlug={String(serviceSlug)}
-          serviceLabelBn={title}
-          serviceTypes={serviceTypes}
-          serviceTypesLabel={serviceTypesLabel}
-          showSchedule={showSchedule}
-          showPhoto={showPhoto}
-          placeholderDetails={placeholderDetails}
-        />
+        {formOpen ? (
+          <ServiceRequestForm
+            serviceSlug={String(serviceSlug)}
+            serviceLabelBn={title}
+            serviceTypes={serviceTypes}
+            serviceTypesLabel={serviceTypesLabel}
+            showSchedule={showSchedule}
+            showPhoto={showPhoto}
+            placeholderDetails={placeholderDetails}
+            initialServiceType={selectedType}
+            selectedServiceType={selectedType}
+            onServiceTypeChange={setSelectedType}
+            onSubmitted={() => setSubmitted(true)}
+          />
+        ) : null}
       </div>
 
       {points.length > 0 && (

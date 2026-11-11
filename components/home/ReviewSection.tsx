@@ -22,7 +22,6 @@ const REVIEWABLE_SLUGS = [
   'home-tutor',
   'gari-auto-cng',
   'buysell',
-  'bus-ticket',
   'coaching',
   'wifi',
 ];

@@ -17,7 +17,7 @@ const FIELD_CLASS =
   'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[15px] text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:text-sm';
 const LABEL_CLASS = 'mb-1.5 block text-[13px] font-bold text-slate-700';
 
-export default function MovingRequestWizard() {
+export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () => void }) {
   const { user, createServiceRequest } = useAuth();
   const [pickupAreaId, setPickupAreaId] = useState<string | null>(null);
   const [pickupAddress, setPickupAddress] = useState('');
@@ -40,6 +40,7 @@ export default function MovingRequestWizard() {
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [requestSent, setRequestSent] = useState(false);
   const [requestReference, setRequestReference] = useState('');
+  const [formOpen, setFormOpen] = useState(false);
 
   const clearFieldError = (name: string) => {
     setFieldErrors((previous) => {
@@ -157,6 +158,7 @@ export default function MovingRequestWizard() {
       setRequestReference(result.referenceCode || '');
       trackFormSubmit({ ctaType: 'home_moving_request', category: 'home-moving' });
       setRequestSent(true);
+      onSubmitted?.();
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
     } finally {
@@ -181,6 +183,18 @@ export default function MovingRequestWizard() {
           আমার অনুরোধ দেখুন
         </Link>
       </section>
+    );
+  }
+
+  if (!formOpen) {
+    return (
+      <button
+        type="button"
+        onClick={() => setFormOpen(true)}
+        className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-800"
+      >
+        অনুরোধ জমা দিন
+      </button>
     );
   }
 

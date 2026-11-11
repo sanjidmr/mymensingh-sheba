@@ -1,12 +1,9 @@
 'use server';
 
 import { revalidatePath } from 'next/cache';
-import {
-  runAdminAction,
-  validateImageFile,
-  siteMediaPath,
-  type ActionResult,
-} from '@/lib/admin/actions';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
+import { SITE_IMAGE_TYPES } from '@/lib/admin/site-media';
 
 /**
  * Hero carousel management.
@@ -23,59 +20,78 @@ import {
  * a broken image.
  */
 
+function validHeroPath(path: string): boolean {
+  return /^hero\/[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\.(jpg|png|webp|avif)$/i.test(path);
+}
+
+async function getUploadedHeroImage(client: SupabaseClient, path: string) {
+  if (!validHeroPath(path)) return { error: 'হিরো ছবির পাথ সঠিক নয়।' };
+  const { data: media, error } = await client
+    .from('site_media')
+    .select('object_path, mime_type')
+    .eq('object_path', path)
+    .maybeSingle();
+  if (error) return { error: `মিডিয়া রেকর্ড যাচাই করা যায়নি: ${error.message}` };
+  if (!media || !SITE_IMAGE_TYPES.includes(media.mime_type as (typeof SITE_IMAGE_TYPES)[number])) {
+    return { error: 'ছবিটি ওয়েবসাইটের মিডিয়া লাইব্রেরিতে পাওয়া যায়নি।' };
+  }
+  const { data: files, error: storageError } = await client.storage
+    .from('site')
+    .list('hero', { search: path.slice('hero/'.length) });
+  if (storageError) return { error: `Storage যাচাই করা যায়নি: ${storageError.message}` };
+  if (!files?.some((file) => `hero/${file.name}` === path)) {
+    return { error: 'Storage-এ ছবিটি পাওয়া যায়নি।' };
+  }
+  return { publicUrl: client.storage.from('site').getPublicUrl(path).data.publicUrl };
+}
+
 export async function uploadHeroSlide(
-  formData: FormData
+  path: string,
+  title: string,
+  subtitle: string,
+  description: string,
+  altText: string,
+  href: string
 ): Promise<ActionResult & { slideId?: string }> {
   return runAdminAction(async (client) => {
-    const file = formData.get('image');
-    const caption = String(formData.get('caption') ?? '').trim();
-    const altText = String(formData.get('altText') ?? '').trim();
-    const href = String(formData.get('href') ?? '').trim();
-
-    if (!caption) {
-      return { ok: false, error: 'স্লাইডের টেক্সট লিখুন — ছবির নিচে যা দেখাবে।' };
+    const heading = title.trim();
+    const subheading = subtitle.trim();
+    const details = description.trim();
+    const alt = altText.trim();
+    const link = href.trim();
+    if (heading.length > 200 || subheading.length > 300 || details.length > 1500 || alt.length > 500) {
+      return { ok: false, error: 'ব্যানারের লেখা নির্ধারিত দৈর্ঘ্যের চেয়ে বড়।' };
     }
-    if (!(file instanceof File)) {
-      return { ok: false, error: 'একটি ছবি বেছে নিন।' };
+    if (link && (!link.startsWith('/') || link.startsWith('//') || link.includes('\\'))) {
+      return { ok: false, error: 'ব্যানারের লিংকটি সাইটের অভ্যন্তরীণ পাথ হতে হবে।' };
     }
-
-    const invalid = validateImageFile(file);
-    if (invalid) return { ok: false, error: invalid };
+    const uploaded = await getUploadedHeroImage(client, path);
+    if (uploaded.error || !uploaded.publicUrl) {
+      return { ok: false, error: uploaded.error ?? 'ব্যানারের ছবির URL তৈরি করা যায়নি।' };
+    }
 
     // New slides go to the end of the carousel, not the front: an admin
     // uploading a replacement does not expect it to become the first thing a
     // visitor sees before they have looked at it.
-    const { data: last } = await client
+    const { data: last, error: orderError } = await client
       .from('hero_slides')
       .select('sort_order')
       .order('sort_order', { ascending: false })
       .limit(1)
       .maybeSingle();
-
-    const path = siteMediaPath('hero', file.name);
-    const { error: uploadError } = await client.storage
-      .from('site')
-      .upload(path, file, { contentType: file.type, upsert: false });
-
-    if (uploadError) {
-      return {
-        ok: false,
-        error: `ছবি আপলোড ব্যর্থ হয়েছে: ${uploadError.message}`,
-      };
-    }
-
-    const {
-      data: { publicUrl },
-    } = client.storage.from('site').getPublicUrl(path);
+    if (orderError) return { ok: false, error: `স্লাইডের ক্রম পড়া যায়নি: ${orderError.message}` };
 
     const { data: slide, error: insertError } = await client
       .from('hero_slides')
       .insert({
-        caption_bn: caption,
-        image_url: publicUrl,
+        caption_bn: heading,
+        title_bn: heading || null,
+        subtitle_bn: subheading || null,
+        description_bn: details || null,
+        image_url: uploaded.publicUrl,
         storage_path: path,
-        alt_text_bn: altText || null,
-        href: href || null,
+        alt_text_bn: alt || null,
+        href: link || null,
         is_enabled: true,
         sort_order: (last?.sort_order ?? 0) + 1,
       })
@@ -83,9 +99,10 @@ export async function uploadHeroSlide(
       .single();
 
     if (insertError) {
-      // Do not leave an orphaned object behind if the row failed to insert.
-      await client.storage.from('site').remove([path]);
-      return { ok: false, error: insertError.message };
+      return {
+        ok: false,
+        error: `ব্যানার সংরক্ষণ হয়নি: ${insertError.message} ছবিটি Media Library-তে আছে, প্রয়োজনে আবার ব্যবহার করুন।`,
+      };
     }
 
     revalidatePath('/admin/hero');
@@ -96,14 +113,31 @@ export async function uploadHeroSlide(
 
 export async function updateHeroSlide(
   slideId: string,
-  patch: { caption_bn?: string; alt_text_bn?: string | null; href?: string | null }
+  patch: {
+    title_bn?: string;
+    subtitle_bn?: string | null;
+    description_bn?: string | null;
+    alt_text_bn?: string | null;
+    href?: string | null;
+  }
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     const update: Record<string, string | null> = {};
-    if (patch.caption_bn !== undefined) {
-      const caption = patch.caption_bn.trim();
-      if (!caption) return { ok: false, error: 'স্লাইডের টেক্সট খালি রাখা যাবে না।' };
-      update.caption_bn = caption;
+    if (patch.title_bn !== undefined) {
+      const title = patch.title_bn.trim();
+      if (title.length > 200) return { ok: false, error: 'ব্যানারের শিরোনাম ২০০ অক্ষরের মধ্যে হতে হবে।' };
+      update.title_bn = title || null;
+      update.caption_bn = title;
+    }
+    if (patch.subtitle_bn !== undefined) {
+      const subtitle = patch.subtitle_bn?.trim() ?? '';
+      if (subtitle.length > 300) return { ok: false, error: 'ব্যানারের উপশিরোনাম ৩০০ অক্ষরের মধ্যে হতে হবে।' };
+      update.subtitle_bn = subtitle || null;
+    }
+    if (patch.description_bn !== undefined) {
+      const description = patch.description_bn?.trim() ?? '';
+      if (description.length > 1500) return { ok: false, error: 'ব্যানারের বিবরণ ১৫০০ অক্ষরের মধ্যে হতে হবে।' };
+      update.description_bn = description || null;
     }
     if (patch.alt_text_bn !== undefined) update.alt_text_bn = patch.alt_text_bn?.trim() || null;
     if (patch.href !== undefined) update.href = patch.href?.trim() || null;
@@ -123,15 +157,13 @@ export async function updateHeroSlide(
 
 export async function replaceHeroImage(
   slideId: string,
-  formData: FormData
+  path: string
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
-    const file = formData.get('image');
-    if (!(file instanceof File)) {
-      return { ok: false, error: 'একটি ছবি বেছে নিন।' };
+    const uploaded = await getUploadedHeroImage(client, path);
+    if (uploaded.error || !uploaded.publicUrl) {
+      return { ok: false, error: uploaded.error ?? 'ছবির URL তৈরি করা যায়নি।' };
     }
-    const invalid = validateImageFile(file);
-    if (invalid) return { ok: false, error: invalid };
 
     const { data: slide, error: readError } = await client
       .from('hero_slides')
@@ -143,34 +175,16 @@ export async function replaceHeroImage(
       return { ok: false, error: 'স্লাইডটি পাওয়া যায়নি।' };
     }
 
-    const path = siteMediaPath('hero', file.name);
-    const { error: uploadError } = await client.storage
-      .from('site')
-      .upload(path, file, { contentType: file.type, upsert: false });
-
-    if (uploadError) {
-      return { ok: false, error: `ছবি আপলোড ব্যর্থ হয়েছে: ${uploadError.message}` };
-    }
-
-    const {
-      data: { publicUrl },
-    } = client.storage.from('site').getPublicUrl(path);
-
     const { error: updateError } = await client
       .from('hero_slides')
-      .update({ image_url: publicUrl, storage_path: path })
+      .update({ image_url: uploaded.publicUrl, storage_path: path })
       .eq('id', slideId);
 
     if (updateError) {
-      await client.storage.from('site').remove([path]);
       return { ok: false, error: updateError.message };
     }
 
-    // The old object is only removed after the row points at the new one, so a
-    // failure in between leaves the slide showing a working image.
-    if (slide.storage_path && slide.storage_path !== path) {
-      await client.storage.from('site').remove([slide.storage_path]);
-    }
+    // Keep the previous image in the media library; another page may reuse it.
 
     revalidatePath('/admin/hero');
     revalidatePath('/');
@@ -258,7 +272,7 @@ export async function deleteHeroSlide(slideId: string): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     const { data: slide, error: readError } = await client
       .from('hero_slides')
-      .select('id, storage_path, is_enabled')
+      .select('id, is_enabled')
       .eq('id', slideId)
       .maybeSingle();
 
@@ -282,12 +296,6 @@ export async function deleteHeroSlide(slideId: string): Promise<ActionResult> {
 
     const { error } = await client.from('hero_slides').delete().eq('id', slideId);
     if (error) return { ok: false, error: error.message };
-
-    // Best effort: the row is already gone, so a storage failure here must not
-    // report the whole delete as failed.
-    if (slide.storage_path) {
-      await client.storage.from('site').remove([slide.storage_path]);
-    }
 
     revalidatePath('/admin/hero');
     revalidatePath('/');

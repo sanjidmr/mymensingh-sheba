@@ -1,10 +1,16 @@
+'use client';
+
+import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import ServiceRequestHero from '@/components/service-request/ServiceRequestHero';
 import ServiceRequestTrust from '@/components/service-request/ServiceRequestTrust';
 import ServiceRequestFormSection from '@/components/service-request/ServiceRequestFormSection';
 import ServiceRequestFormCard from '@/components/service-request/ServiceRequestFormCard';
+import SubmissionSuccess from '@/components/service-request/SubmissionSuccess';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 import type { ServiceRequestPageConfig } from '@/lib/service-request-pages';
+import { REQUEST_FORM_ANCHOR } from '@/components/service-request/ServiceRequestHero';
 
 export interface ServiceRequestPageProps {
   config: ServiceRequestPageConfig;
@@ -34,13 +40,34 @@ export interface ServiceRequestPageProps {
  * container and does not break `position: sticky` on the navbar.
  */
 export default function ServiceRequestPage({ config }: ServiceRequestPageProps) {
+  const [formOpen, setFormOpen] = useState(false);
+  const [submission, setSubmission] = useState<ServiceRequestSuccessData | null>(null);
+  useEffect(() => {
+    const openForm = () => setFormOpen(true);
+    window.addEventListener('mms:open-service-request-form', openForm);
+    return () => window.removeEventListener('mms:open-service-request-form', openForm);
+  }, []);
+
+  if (submission) {
+    return (
+      <main className="min-h-screen bg-mist-50">
+        <SubmissionSuccess config={config} submission={submission} />
+      </main>
+    );
+  }
+
   if (config.compactHero) {
     return (
       <div className={`flex min-h-screen flex-col overflow-x-clip ${config.slug === 'kajer-bua' ? 'bg-white' : 'bg-mist-50'}`}>
         <Navbar />
         <main className="flex-1">
           <ServiceRequestHero config={config} />
-          <ServiceRequestFormSection config={config} />
+          <ServiceRequestFormSection
+            config={config}
+            open={formOpen}
+            onOpen={() => setFormOpen(true)}
+            onSubmitted={setSubmission}
+          />
         </main>
         <Footer />
       </div>
@@ -57,7 +84,19 @@ export default function ServiceRequestPage({ config }: ServiceRequestPageProps) 
               {config.title}
             </h1>
           </header>
-          <ServiceRequestFormCard config={config} />
+          <div id={REQUEST_FORM_ANCHOR} className="scroll-mt-6">
+            {formOpen ? (
+              <ServiceRequestFormCard config={config} onSubmitted={setSubmission} />
+            ) : (
+              <button
+                type="button"
+                onClick={() => setFormOpen(true)}
+                className="inline-flex min-h-12 items-center justify-center rounded-lg bg-brand-700 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-800"
+              >
+                অনুরোধ জমা দিন
+              </button>
+            )}
+          </div>
         </main>
         <Footer />
       </div>
@@ -71,7 +110,12 @@ export default function ServiceRequestPage({ config }: ServiceRequestPageProps) 
       <main className="flex-1">
         <ServiceRequestHero config={config} />
         <ServiceRequestTrust config={config} />
-        <ServiceRequestFormSection config={config} />
+        <ServiceRequestFormSection
+          config={config}
+          open={formOpen}
+          onOpen={() => setFormOpen(true)}
+          onSubmitted={setSubmission}
+        />
       </main>
 
       <Footer />

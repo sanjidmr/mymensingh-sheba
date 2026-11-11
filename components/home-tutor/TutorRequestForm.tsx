@@ -50,11 +50,13 @@ const LABEL_CLASS = 'mb-1.5 block text-[13px] font-bold text-ink-800 sm:text-[12
 
 interface TutorRequestFormProps {
   tutor: HomeTutorProfile;
+  onSubmitted?: () => void;
 }
 
-export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
+export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFormProps) {
   const { user, createServiceRequest } = useAuth();
 
+  const [formOpen, setFormOpen] = useState(false);
   const [areaId, setAreaId] = useState('');
   const [classLevel, setClassLevel] = useState('middle');
   const [subject, setSubject] = useState('math');
@@ -66,6 +68,20 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
+
+  if (!formOpen) {
+    return (
+      <section className="rounded-2xl border border-mist-200 bg-white p-4">
+        <button
+          type="button"
+          onClick={() => setFormOpen(true)}
+          className={`inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-700 px-5 text-[13px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
+        >
+          শিক্ষকের অনুরোধ পাঠান
+        </button>
+      </section>
+    );
+  }
 
   if (!user) {
     return (
@@ -125,25 +141,32 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
     const classLabel = TUTOR_CLASSES.find((c) => c.id === classLevel)?.labelBn || classLevel;
     const subjectLabel = TUTOR_SUBJECTS.find((s) => s.id === subject)?.labelBn || subject;
     const modeLabel = TUTOR_TEACHING_MODES.find((m) => m.id === mode)?.labelBn || mode;
-    const result = await createServiceRequest({
-      serviceSlug: 'home-tutor',
-      areaId,
-      addressLine: '',
-      contactName: contactName.trim(),
-      contactPhone: normalizedPhone,
-      preferredTime,
-      serviceType: subject,
-      profileId: tutor.id,
-      profileTitleBn: tutor.fullName,
-      details: [
-        `শ্রেণি: ${classLabel}`,
-        `বিষয়: ${subjectLabel}`,
-        `মাধ্যম: ${modeLabel}`,
-        note ? `অতিরিক্ত নোট: ${note}` : null,
-      ]
-        .filter(Boolean)
-        .join('\n'),
-    });
+    let result: Awaited<ReturnType<typeof createServiceRequest>>;
+    try {
+      result = await createServiceRequest({
+        serviceSlug: 'home-tutor',
+        areaId,
+        addressLine: '',
+        contactName: contactName.trim(),
+        contactPhone: normalizedPhone,
+        preferredTime,
+        serviceType: subject,
+        profileId: tutor.id,
+        profileTitleBn: tutor.fullName,
+        details: [
+          `শ্রেণি: ${classLabel}`,
+          `বিষয়: ${subjectLabel}`,
+          `মাধ্যম: ${modeLabel}`,
+          note ? `অতিরিক্ত নোট: ${note}` : null,
+        ]
+          .filter(Boolean)
+          .join('\n'),
+      });
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      setLoading(false);
+      return;
+    }
     setLoading(false);
     if (!result.success) {
       setError(result.error ?? 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
@@ -158,6 +181,7 @@ export default function TutorRequestForm({ tutor }: TutorRequestFormProps) {
       routeKind: 'directory',
     });
     setSuccess(true);
+    onSubmitted?.();
   };
 
   return (

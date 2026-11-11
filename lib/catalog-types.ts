@@ -21,6 +21,7 @@
  * this file is seeded into the UI as content.
  */
 import { getAllMCCAreas, getAreaById } from './locations';
+import { uniqueAreaNames } from './area-names';
 
 // ---------------------------------------------------------------------------
 // Admin-curated listings
@@ -1104,9 +1105,9 @@ export function bnRelativeTime(value?: string | null, now: number = Date.now()):
 export function areaNames(areaIds: string[]): string {
   if (!areaIds || areaIds.length === 0) return '';
   const byId = new Map(getAllMCCAreas().map((a) => [a.id, a.nameBn]));
-  const names = areaIds
-    .map((id) => byId.get(id) ?? getAreaById(id)?.nameBn)
-    .filter((n): n is string => Boolean(n));
+  const names = uniqueAreaNames(areaIds
+    .map((id) => byId.get(id) ?? getAreaById(id)?.nameBn ?? id.trim())
+    .filter(Boolean));
   if (names.length === 0) return '';
   if (names.length <= 2) return names.join(', ');
   return `${names[0]}, ${names[1]} +${toBn(names.length - 2)}টি`;
