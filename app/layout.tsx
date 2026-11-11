@@ -1,22 +1,25 @@
 import type { Metadata, Viewport } from 'next';
-import { Noto_Sans_Bengali, Noto_Serif_Bengali } from 'next/font/google';
+import { Hind_Siliguri, Noto_Serif_Bengali } from 'next/font/google';
 import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
 import PageViewTracker from '@/components/analytics/PageViewTracker';
-import MobileBottomNav from '@/components/home/MobileBottomNav';
+import { AppShell } from '@/components/layout/AppShell';
 import SitePreloader from '@/components/site/SitePreloader';
+import { ThemeProvider } from '@/components/layout/ThemeProvider';
+import { ToastProvider } from '@/components/ui/ToastProvider';
 import { getSiteContentOverrides } from '@/lib/site-content-server';
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
   themeColor: '#faf8f2',
 };
 
-const notoBengali = Noto_Sans_Bengali({
+const hindSiliguri = Hind_Siliguri({
   subsets: ['bengali', 'latin'],
-  weight: ['300', '400', '500', '600', '700', '800'],
-  variable: '--font-sans',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-hind-siliguri',
   display: 'swap',
 });
 
@@ -80,15 +83,18 @@ export default function RootLayout({
     <html
       lang="bn"
       translate="no"
-      className={`${notoBengali.variable} ${notoSerifBengali.variable} scroll-smooth`}
+      className={`${hindSiliguri.variable} ${notoSerifBengali.variable} scroll-smooth`}
     >
       <body className="min-h-screen bg-mist-50 text-ink-900 antialiased font-sans selection:bg-accent-200 selection:text-brand-800">
-        <SitePreloader />
-        <PageViewTracker />
-        <ClientProviders>
-          {children}
-          <MobileBottomNav />
-        </ClientProviders>
+        <ThemeProvider>
+          <SitePreloader />
+          <PageViewTracker />
+          <ClientProviders>
+            <ToastProvider>
+              <AppShell>{children}</AppShell>
+            </ToastProvider>
+          </ClientProviders>
+        </ThemeProvider>
       </body>
     </html>
   );

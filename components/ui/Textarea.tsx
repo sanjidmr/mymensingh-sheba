@@ -58,7 +58,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
                 : undefined
             }
             className={cn(
-              'w-full p-3.5 rounded-xl bg-white border text-sm text-slate-900 placeholder:text-slate-400 transition-colors duration-150 resize-y min-h-[100px]',
+              'ui-control w-full p-3.5 rounded-xl border text-base transition-colors duration-150 resize-y min-h-[100px]',
               'focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-emerald-700',
               'disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed',
               hasError

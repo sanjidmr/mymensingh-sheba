@@ -13,6 +13,7 @@ import { fetchTutorProfiles, parseListParams, type AdminTutorListRow } from '@/l
 import { formatDateTime } from '@/lib/admin/format';
 import { getAreaById } from '@/lib/locations';
 import type { TutorProfileStatus } from '@/lib/supabase/types';
+import TutorProfileDeleteAction from '@/components/admin/TutorProfileDeleteAction';
 
 export const dynamic = 'force-dynamic';
 
@@ -63,6 +64,11 @@ const columns: AdminColumn<AdminTutorListRow>[] = [
       : '—',
   },
   { key: 'status', header: 'অবস্থা', render: (row) => <Status value={row.status} /> },
+  {
+    key: 'actions',
+    header: 'অ্যাকশন',
+    render: (row) => <TutorProfileDeleteAction id={row.id} />,
+  },
   {
     key: 'created',
     header: 'জমার সময়',

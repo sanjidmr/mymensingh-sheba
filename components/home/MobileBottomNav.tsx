@@ -5,11 +5,11 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useRef, useState } from 'react';
 import {
   Briefcase,
+  ClipboardList,
   ChevronRight,
   Home,
   LayoutGrid,
   LogOut,
-  Menu,
   MessageCircle,
   Newspaper,
   ShoppingBag,
@@ -66,7 +66,19 @@ const PROFILE_LINKS = [
  * Routes that own the whole screen and should not carry site navigation —
  * the admin console and the auth screens. Everything else keeps the bar.
  */
-const BARE_ROUTES = ['/admin', '/login', '/register', '/forgot-password', '/onboarding', '/welcome', '/design-system'];
+const BARE_ROUTES = [
+  '/admin',
+  '/login',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/onboarding',
+  '/welcome',
+  '/design-system',
+  '/design-preview',
+  '/gari-auto-cng/book',
+  '/checkout',
+];
 
 function isBareRoute(pathname: string): boolean {
   return BARE_ROUTES.some((route) => pathname === route || pathname.startsWith(`${route}/`));
@@ -75,7 +87,7 @@ function isBareRoute(pathname: string): boolean {
 /**
  * Fixed mobile bottom navigation.
  *
- * Five slots: হোম, সেবা, the centre navigation drawer, পোস্ট, প্রোফাইল.
+ * Four direct destinations; the top app bar opens the existing menu sheets.
  *
  * The পোস্ট slot is deliberately a button, not a link. It opens a compact
  * bottom sheet with exactly the three destinations the community publishes to
@@ -106,6 +118,35 @@ export default function MobileBottomNav() {
     window.addEventListener('mms:service-request-success', handleServiceRequestSuccess);
     return () => window.removeEventListener('mms:service-request-success', handleServiceRequestSuccess);
   }, []);
+
+  useEffect(() => {
+    const openMenuFromShell = (event: Event) => {
+      setSheet({ type: 'menu', path: pathname });
+      if (event instanceof CustomEvent && event.detail instanceof HTMLButtonElement) {
+        postTriggerRef.current = event.detail;
+      }
+    };
+    const openPostFromShell = (event: Event) => {
+      setSheet({ type: 'post', path: pathname });
+      if (event instanceof CustomEvent && event.detail instanceof HTMLButtonElement) {
+        postTriggerRef.current = event.detail;
+      }
+    };
+    const openProfileFromShell = (event: Event) => {
+      setSheet({ type: 'profile', path: pathname });
+      if (event instanceof CustomEvent && event.detail instanceof HTMLButtonElement) {
+        profileTriggerRef.current = event.detail;
+      }
+    };
+    window.addEventListener('mms:open-mobile-menu', openMenuFromShell);
+    window.addEventListener('mms:open-post-menu', openPostFromShell);
+    window.addEventListener('mms:open-profile-menu', openProfileFromShell);
+    return () => {
+      window.removeEventListener('mms:open-mobile-menu', openMenuFromShell);
+      window.removeEventListener('mms:open-post-menu', openPostFromShell);
+      window.removeEventListener('mms:open-profile-menu', openProfileFromShell);
+    };
+  }, [pathname]);
 
   /*
     The open sheet remembers the route it was opened on. A navigation changes
@@ -167,32 +208,6 @@ export default function MobileBottomNav() {
       return pathname.startsWith('/profile') || pathname.startsWith('/dashboard');
     }
     return pathname.startsWith(href);
-  };
-
-  const postSectionActive =
-    pathname.startsWith('/news') ||
-    pathname.startsWith('/jobs') ||
-    pathname.startsWith('/buy-sell') ||
-    pathname.startsWith('/posts');
-
-  const openMenu = () => {
-    setSheet({ type: 'menu', path: pathname });
-  };
-
-  const openPostSheet = () => {
-    setSheet((current) =>
-      current?.type === 'post' && current.path === pathname
-        ? null
-        : { type: 'post', path: pathname }
-    );
-  };
-
-  const openProfileSheet = () => {
-    setSheet((current) =>
-      current?.type === 'profile' && current.path === pathname
-        ? null
-        : { type: 'profile', path: pathname }
-    );
   };
 
   const handleLogout = async () => {
@@ -463,11 +478,15 @@ export default function MobileBottomNav() {
       </div>
 
       <nav
-        className="fixed inset-x-0 bottom-0 z-50 border-t border-brand-100 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md lg:hidden"
+        className="ui-app-mobile-nav fixed inset-x-0 bottom-0 z-50 border-t md:hidden"
         aria-label="মোবাইল মেনু"
       >
-        <div className="grid grid-cols-5">
-          {PRIMARY_ITEMS.map((item) => {
+        <div className="mx-auto grid min-h-16 max-w-lg grid-cols-4">
+          {[
+            ...PRIMARY_ITEMS,
+            { name: 'অর্ডার', href: '/profile/requests', icon: ClipboardList },
+            { name: 'প্রোফাইল', href: '/profile', icon: UserRound },
+          ].map((item) => {
             const active = isActive(item.href);
             const Icon = item.icon;
             return (
@@ -475,63 +494,15 @@ export default function MobileBottomNav() {
                 key={item.href}
                 href={item.href}
                 aria-current={active ? 'page' : undefined}
-                className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
-                  active ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-400 hover:text-ink-700'
+                className={`ui-app-tab ui-pressable flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold ${
+                  active ? 'font-bold' : ''
                 }`}
               >
-                <Icon className={`h-5 w-5 ${active ? 'text-brand-700' : ''}`} />
-                <span className="text-[10px] font-semibold">{item.name}</span>
+                <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
+                <span>{item.name}</span>
               </Link>
             );
           })}
-
-          <button
-            type="button"
-            onClick={() => (menuOpen ? setSheet(null) : openMenu())}
-            aria-label={menuOpen ? 'মেনু বন্ধ করুন' : 'মেনু খুলুন'}
-            aria-expanded={menuOpen}
-            aria-controls="mobile-menu"
-            className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 ${
-              menuOpen ? 'border-brand-700 text-brand-700' : 'border-transparent text-ink-500'
-            }`}
-          >
-            {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            <span className="text-[10px] font-semibold">মেনু</span>
-          </button>
-
-          <button
-            ref={postTriggerRef}
-            type="button"
-            onClick={openPostSheet}
-            aria-label={postOpen ? 'পোস্ট মেনু বন্ধ করুন' : 'পোস্ট মেনু খুলুন'}
-            aria-expanded={postOpen}
-            aria-controls="mobile-post-menu"
-            className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
-              postOpen || postSectionActive
-                ? 'border-brand-700 text-brand-700'
-                : 'border-transparent text-ink-400 hover:text-ink-700'
-            }`}
-          >
-            <Newspaper className={`h-5 w-5 ${postOpen || postSectionActive ? 'text-brand-700' : ''}`} />
-            <span className="text-[10px] font-semibold">পোস্ট</span>
-          </button>
-
-          <button
-            ref={profileTriggerRef}
-            type="button"
-            onClick={openProfileSheet}
-            aria-label={profileOpen ? 'প্রোফাইল মেনু বন্ধ করুন' : 'প্রোফাইল মেনু খুলুন'}
-            aria-expanded={profileOpen}
-            aria-controls="mobile-profile-menu"
-            className={`flex min-h-14 flex-col items-center justify-center gap-1 border-b-2 px-1 py-1.5 transition-colors ${
-              isActive('/profile') || profileOpen
-                ? 'border-brand-700 text-brand-700'
-                : 'border-transparent text-ink-400 hover:text-ink-700'
-            }`}
-          >
-            <UserRound className={`h-5 w-5 ${isActive('/profile') || profileOpen ? 'text-brand-700' : ''}`} />
-            <span className="text-[10px] font-semibold">প্রোফাইল</span>
-          </button>
         </div>
       </nav>
     </>

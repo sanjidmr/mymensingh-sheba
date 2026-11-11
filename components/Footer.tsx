@@ -14,6 +14,7 @@ import {
 } from '@/lib/site-content';
 import { useAuth } from '@/lib/auth-context';
 import { apiFetch } from '@/lib/api-fetch';
+import { useIsAppShellContent } from '@/components/layout/AppShellContext';
 
 /**
  * The public footer.
@@ -26,6 +27,7 @@ import { apiFetch } from '@/lib/api-fetch';
  */
 export default function Footer() {
   const { user, isLoading } = useAuth();
+  const isAppShellContent = useIsAppShellContent();
   const currentYear = 2026;
   const [overrides, setOverrides] = useState<SiteContentOverrides>();
 
@@ -72,6 +74,8 @@ export default function Footer() {
   const footerContent = overrides?.footer_content ?? DEFAULT_FOOTER_CONTENT;
   const companyLinks = footerContent.companyLinks;
   const supportLinks = footerContent.supportLinks;
+
+  if (isAppShellContent) return null;
 
   return (
     <footer className="border-t border-brand-900 bg-brand-950 text-brand-100/80">

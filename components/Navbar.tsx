@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Plus, UserRound, X, FilePlus2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import { useIsAppShellContent } from '@/components/layout/AppShellContext';
 import MymensinghLiveBar from '@/components/MymensinghLiveBar';
 import NotificationBell from '@/components/account/NotificationBell';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
@@ -89,6 +90,7 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
   const lastScrollY = useRef(0);
   const pathname = usePathname();
   const router = useRouter();
+  const isAppShellContent = useIsAppShellContent();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
     useAuth();
 
@@ -143,6 +145,8 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
     setSearchOpen(false);
     router.push(query ? `/services?q=${encodeURIComponent(query)}` : '/services');
   };
+
+  if (isAppShellContent) return null;
 
   return (
     <>

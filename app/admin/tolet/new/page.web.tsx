@@ -6,7 +6,8 @@ import { useRef, useState } from 'react';
 import { ArrowLeft, AlertTriangle, Loader2 } from 'lucide-react';
 import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 import { useAuth } from '@/lib/auth-context';
-import { createListing, uploadListingPhotos } from '@/lib/tolet-service';
+import { createAdminToletListing } from '@/app/admin/actions/tolet';
+import { uploadListingPhotos } from '@/lib/tolet-service';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import type { ToletListingInput } from '@/lib/tolet-types';
 
@@ -33,10 +34,10 @@ export default function AdminCreateToletListingPage() {
   const handleSubmit = async (input: ToletListingInput, draft: boolean) => {
     setError('');
     if (!isSupabaseConfigured) return { success: false, error: 'Supabase সংযুক্ত নেই; নমুনা ডেটায় অ্যাডমিন বিজ্ঞাপন তৈরি করা হবে না।' };
-    const result = await createListing(user.id, user.fullName || 'অ্যাডমিন', false, input, draft ? 'draft' : 'submit');
-    if (result.success && result.listing) createdId.current = result.listing.id;
-    else setError(result.error || 'বিজ্ঞাপন তৈরি করা যায়নি।');
-    return { success: result.success, error: result.error };
+    const result = await createAdminToletListing(input, draft ? 'draft' : 'submit');
+    if (result.ok && result.listingId) createdId.current = result.listingId;
+    else setError(result.ok ? 'বিজ্ঞাপন তৈরি হয়েছে কিন্তু আইডি পাওয়া যায়নি।' : result.error);
+    return { success: result.ok, error: result.ok ? undefined : result.error };
   };
 
   return (

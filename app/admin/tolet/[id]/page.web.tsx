@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { moderateToletListing } from '@/app/admin/actions/tolet';
+import ToletListingDeleteButton from '@/components/admin/ToletListingDeleteButton';
 import {
   adminFetchListingById,
   adminUpdateListing,
@@ -337,6 +338,7 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
               <Pencil className="w-3.5 h-3.5" />
               <span>সম্পাদনা</span>
             </Link>
+            <ToletListingDeleteButton listingId={listing.id} redirectAfterDelete />
             {listing.status === 'approved' && (
               <Link
                 href={`/tolet/${listing.id}`}

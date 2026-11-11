@@ -1196,6 +1196,13 @@ ON public.tolet_listing_events FOR SELECT
 TO authenticated
 USING (public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can delete To-Let listing events"
+ON public.tolet_listing_events;
+CREATE POLICY "Admins can delete To-Let listing events"
+ON public.tolet_listing_events FOR DELETE
+TO authenticated
+USING (public.is_admin());
+
 DROP POLICY IF EXISTS "Owners read events for their own listings" ON public.tolet_listing_events;
 CREATE POLICY "Owners read events for their own listings"
 ON public.tolet_listing_events FOR SELECT

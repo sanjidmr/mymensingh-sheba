@@ -3,11 +3,11 @@
 import Image from 'next/image';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { CheckCircle2, Loader2, Pencil, Save, ShieldCheck, XCircle } from 'lucide-react';
+import { CheckCircle2, Loader2, Pencil, Save, ShieldCheck, Trash2, XCircle } from 'lucide-react';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { DetailField, PageHeader, Panel } from '@/components/admin/PageHeader';
 import { AdminNotice } from '@/components/admin/States';
-import { editTutorProfile, moderateTutorProfile, type TutorProfileEdit } from '@/app/admin/actions/tutors';
+import { deleteTutorProfile, editTutorProfile, moderateTutorProfile, type TutorProfileEdit } from '@/app/admin/actions/tutors';
 import { formatDateTime } from '@/lib/admin/format';
 import { getAreaById } from '@/lib/locations';
 import type { TutorProfileStatus } from '@/lib/supabase/types';
@@ -63,6 +63,7 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
   const [reason, setReason] = useState('');
   const [nextStatus, setNextStatus] = useState<TutorProfileStatus | null>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [form, setForm] = useState<TutorProfileEdit>(() => ({
     fullName: text(row.full_name),
     institution: text(row.institution),
@@ -130,6 +131,19 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
     router.refresh();
   };
 
+  const removeProfile = async () => {
+    setBusy(true);
+    setError('');
+    const result = await deleteTutorProfile(id);
+    setBusy(false);
+    if (!result.ok) {
+      setError(result.error);
+      return;
+    }
+    router.push('/admin/verifications');
+    router.refresh();
+  };
+
   const update = <K extends keyof TutorProfileEdit>(key: K, value: TutorProfileEdit[K]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
@@ -171,6 +185,16 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
               পুনরায় পর্যালোচনায় পাঠান
             </button>
           )}
+        </div>
+        <div className="mt-4 border-t border-admin-border pt-4">
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setDeleteConfirmOpen(true)}
+            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+          >
+            <Trash2 className="h-4 w-4" aria-hidden="true" /> প্রোফাইল স্থায়ীভাবে মুছুন
+          </button>
         </div>
       </Panel>
 
@@ -277,6 +301,16 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
         isLoading={busy}
         onConfirm={confirmStatus}
         onCancel={() => setConfirmOpen(false)}
+      />
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="টিউটর প্রোফাইল স্থায়ীভাবে মুছবেন?"
+        description="প্রোফাইলের সঙ্গে যুক্ত রিভিউ ও রিপোর্ট মুছে যাবে। অনুরোধ যুক্ত থাকলে ইতিহাস রক্ষায় মুছে ফেলা বন্ধ হবে। এই কাজ ফেরানো যাবে না।"
+        confirmLabel="প্রোফাইল মুছুন"
+        tone="danger"
+        isLoading={busy}
+        onConfirm={removeProfile}
+        onCancel={() => setDeleteConfirmOpen(false)}
       />
     </div>
   );

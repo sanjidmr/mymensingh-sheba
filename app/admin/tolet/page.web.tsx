@@ -18,6 +18,7 @@ import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletAnalyticsTable } from '@/components/tolet/admin/ToletAnalytics';
 import { getToletAreaById, TOLET_AREA_SOURCE } from '@/lib/tolet-areas';
 import LocationSelectInput from '@/components/LocationSelectInput';
+import ToletListingDeleteButton from '@/components/admin/ToletListingDeleteButton';
 
 const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color: string; active: string }> = [
   { key: 'all', label: 'সব', color: 'bg-slate-200 text-slate-700', active: 'bg-slate-800 text-white' },
@@ -442,6 +443,7 @@ export default function AdminToletPage() {
                               পাবলিক ভিউ
                             </Link>
                           )}
+                          <ToletListingDeleteButton listingId={item.id} />
                         </div>
                       </div>
                     </div>
