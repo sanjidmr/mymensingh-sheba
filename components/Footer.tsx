@@ -13,6 +13,7 @@ import {
   type SiteContentOverrides,
 } from '@/lib/site-content';
 import { useAuth } from '@/lib/auth-context';
+import { apiFetch } from '@/lib/api-fetch';
 
 /**
  * The public footer.
@@ -30,7 +31,7 @@ export default function Footer() {
 
   useEffect(() => {
     let active = true;
-    fetch('/api/site-content', { cache: 'no-store' })
+    apiFetch('/api/site-content', { cache: 'no-store' })
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
         if (active && payload?.overrides) setOverrides(payload.overrides);

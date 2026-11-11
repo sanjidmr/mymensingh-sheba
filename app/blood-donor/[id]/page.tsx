@@ -17,6 +17,10 @@ import { redirect } from 'next/navigation';
  * there; it never opens the dialer on its own, because a phone call is a thing
  * the visitor should choose to start with their own tap.
  */
+export function generateStaticParams() {
+  return [{ "id": '__app_dynamic__' }];
+}
+
 export default async function DonorDetailRedirect({
   params,
 }: {

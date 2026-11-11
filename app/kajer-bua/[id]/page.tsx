@@ -5,6 +5,10 @@ import { redirect } from 'next/navigation';
  * and details live only in the admin worker directory. Any old bookmarked
  * profile URL lands on the কাজের বুয়া service-request form instead.
  */
+export function generateStaticParams() {
+  return [{ "id": '__app_dynamic__' }];
+}
+
 export default async function KajerBuaDetailRedirectPage({
   params,
 }: {

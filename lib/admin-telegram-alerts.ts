@@ -1,3 +1,5 @@
+import { apiFetch } from './api-fetch';
+
 export type AdminTelegramAlertType =
   | 'service_request'
   | 'tolet_listing'
@@ -25,7 +27,7 @@ export async function requestAdminTelegramAlert(
   if (!UUID_PATTERN.test(eventId)) return;
 
   try {
-    const response = await fetch('/api/admin-telegram-alerts', {
+    const response = await apiFetch('/api/admin-telegram-alerts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ type, eventId }),

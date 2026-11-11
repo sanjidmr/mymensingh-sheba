@@ -16,6 +16,7 @@ import { LAUNCH_SERVICES } from './services-data';
 import { isSafeInternalPath, type AppRole } from './auth-routes';
 import { normalizeBangladeshPhone } from './onboarding';
 import { normalizeAreaName } from './area-names';
+import { apiFetch } from './api-fetch';
 
 const NOT_CONFIGURED_MESSAGE =
   'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।';
@@ -1063,7 +1064,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       let response: Response;
       try {
-        response = await fetch('/api/order', {
+        response = await apiFetch('/api/order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

@@ -1,21 +1,17 @@
 import type { Metadata } from 'next';
-import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import SupportCenter from '@/components/support/SupportCenter';
+import DashboardMessagesContent from './DashboardMessagesContent';
 
 export const metadata: Metadata = {
   title: 'বার্তা — ময়মনসিংহ শেবা',
   robots: { index: false, follow: false },
 };
 
-export default async function Page({
-  searchParams,
-}: {
-  searchParams: Promise<{ subject?: string }>;
-}) {
-  // Older links and bookmarks pointed complaints at the shared messages page.
-  // Complaints now have their own home, so send those visitors to the right place.
-  const { subject } = await searchParams;
-  if (subject === 'complaint') redirect('/dashboard/complaints');
-
-  return <SupportCenter mode="messages" />;
+export default function Page() {
+  return (
+    <Suspense fallback={<SupportCenter mode="messages" />}>
+      <DashboardMessagesContent />
+    </Suspense>
+  );
 }

@@ -1,5 +1,8 @@
 node_modules/
 .next/
+out/
+android/app/build/
+android/.gradle/
 coverage/
 .DS_Store
 *.log

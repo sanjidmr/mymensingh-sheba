@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 };
 
+export function generateStaticParams() {
+  return [ { "service": 'auto' }, { "service": 'cng' } ];
+}
+
 export default async function VehicleBookingPage({
   params,
 }: {

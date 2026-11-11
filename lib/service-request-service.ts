@@ -1,6 +1,7 @@
 'use client';
 
 import { isSupabaseConfigured } from '@/lib/supabase/client';
+import { apiFetch } from '@/lib/api-fetch';
 import { uploadRequestAttachment } from '@/lib/staff-service';
 import { getAreaById } from '@/lib/locations';
 import {
@@ -215,7 +216,7 @@ export async function submitServiceRequest(
 
   let response: Response;
   try {
-    response = await fetch('/api/order', {
+    response = await apiFetch('/api/order', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -151,13 +151,18 @@ export async function middleware(request: NextRequest) {
   const hasSupabaseSessionCookie = request.cookies
     .getAll()
     .some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name));
-  if (!hasSupabaseSessionCookie) {
+  const authorization = request.headers.get('authorization');
+  const hasBearerSession = Boolean(authorization && /^Bearer\s+\S+$/i.test(authorization));
+  if (!hasSupabaseSessionCookie && !hasBearerSession) {
     return isPublic
       ? response
       : loginRequiredResponse(request, isApiRequest);
   }
 
   const supabase = createServerClient(url, anonKey, {
+    ...(hasBearerSession && authorization
+      ? { global: { headers: { Authorization: authorization } } }
+      : {}),
     cookieOptions: supabaseCookieOptions,
     cookies: {
       getAll() {
@@ -178,9 +183,12 @@ export async function middleware(request: NextRequest) {
     },
   });
 
+  const bearerToken = hasBearerSession
+    ? authorization?.match(/^Bearer\s+(\S+)$/i)?.[1]
+    : undefined;
   const {
     data: { user },
-  } = await supabase.auth.getUser();
+  } = await supabase.auth.getUser(bearerToken);
 
   if (!isPublic && !user) {
     return loginRequiredResponse(request, isApiRequest, response.cookies.getAll());

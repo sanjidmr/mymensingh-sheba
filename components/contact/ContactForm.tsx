@@ -54,15 +54,12 @@ function FieldError({ id, message }: { id: string; message?: string }) {
  * ContactForm — the focal point of the /contact page.
  *
  * Client-side validation gives immediate feedback (per field on blur, all
- * fields on submit) and the server action re-validates everything, so a failed
- * round-trip still highlights the exact inputs that need attention and moves
- * focus to the first one.
+ * fields on submit) and the submission handler re-validates the payload before
+ * storing it, so a failed round-trip still highlights the exact inputs that
+ * need attention and moves focus to the first one.
  */
 export default function ContactForm({ initialSubject = '' }: { initialSubject?: ContactSubject | '' }) {
   const { user, isLoading } = useAuth();
-  const returnTo = initialSubject
-    ? `/contact?subject=${encodeURIComponent(initialSubject)}#contact-form`
-    : '/contact#contact-form';
   const [values, setValues] = useState<ContactFormValues>(() => ({
     ...EMPTY_CONTACT_FORM,
     subject: initialSubject,
@@ -75,6 +72,10 @@ export default function ContactForm({ initialSubject = '' }: { initialSubject?: 
 
   const fieldRefs = useRef<Partial<Record<ContactField, HTMLElement | null>>>({});
   const formRef = useRef<HTMLFormElement | null>(null);
+
+  const returnTo = values.subject
+    ? `/contact?subject=${encodeURIComponent(values.subject)}#contact-form`
+    : '/contact#contact-form';
 
   if (isLoading || !user) {
     return (

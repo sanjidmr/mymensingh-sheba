@@ -1,5 +1,7 @@
 import type {NextConfig} from 'next';
 
+const isApp = process.env.BUILD_TARGET === 'app';
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   eslint: {
@@ -35,6 +37,16 @@ const nextConfig: NextConfig = {
   },
   output: 'standalone',
   transpilePackages: ['motion'],
+  pageExtensions: isApp
+    ? ['app.tsx', 'tsx', 'jsx']
+    : ['tsx', 'ts', 'jsx', 'js', 'web.ts', 'web.tsx'],
+  ...(isApp
+    ? {
+        output: 'export' as const,
+        images: { unoptimized: true },
+        trailingSlash: true,
+      }
+    : {}),
 };
 
 export default nextConfig;

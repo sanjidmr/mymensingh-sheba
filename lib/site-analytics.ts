@@ -40,6 +40,7 @@
 'use client';
 
 import { getVisitorId, hasPersistentVisitorId } from './tolet-tracking';
+import { apiFetch } from './api-fetch';
 
 // Reuse the same visitor key the To-Let tracker writes, so the two systems
 // agree on who is a repeat visitor. `getVisitorId()` reads it.
@@ -246,7 +247,7 @@ async function writeEvent(payload: EventPayload): Promise<void> {
 
   try {
     const classified = classifyPath(payload.path);
-    const response = await fetch('/api/analytics/events', {
+    const response = await apiFetch('/api/analytics/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
@@ -321,7 +322,7 @@ export function trackActiveVisitor(path: string): void {
   if (now - lastActiveVisitorAt < 20_000) return;
   lastActiveVisitorAt = now;
 
-  void fetch('/api/analytics/active-visitors', {
+  void apiFetch('/api/analytics/active-visitors', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     keepalive: true,

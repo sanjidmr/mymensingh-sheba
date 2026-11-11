@@ -34,6 +34,7 @@ import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { mockTrackListingMeta } from './tolet-tracking';
 import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
 import { searchToletAreas } from './tolet-areas';
+import { apiFetch } from './api-fetch';
 
 export const toletStorageConfigured = isSupabaseConfigured;
 const LISTING_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -311,7 +312,7 @@ export async function createListing(
     return { success: true, listing };
   }
   try {
-    const response = await fetch('/api/tolet/listings', {
+    const response = await apiFetch('/api/tolet/listings', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ owner_id: ownerId, mode, input }),
@@ -347,7 +348,7 @@ export async function updateListingOwned(
     return { success: true, listing };
   }
   try {
-    const response = await fetch('/api/tolet/listings', {
+    const response = await apiFetch('/api/tolet/listings', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ listing_id: listingId, owner_id: ownerId, mode, input }),

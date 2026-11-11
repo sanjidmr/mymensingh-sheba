@@ -4,6 +4,7 @@ import React, { useEffect, useId, useState } from 'react';
 import { MapPin } from 'lucide-react';
 import { getAreaById, MCC_AREA_SOURCE, type AreaSource, type MCCArea } from '@/lib/locations';
 import { normalizeAreaName } from '@/lib/area-names';
+import { apiFetch } from '@/lib/api-fetch';
 
 interface LocationSelectInputProps {
   id?: string;
@@ -22,7 +23,7 @@ let areaOptionsRequest: Promise<string[]> | null = null;
 
 async function fetchAreaOptions(): Promise<string[]> {
   if (!areaOptionsRequest) {
-    areaOptionsRequest = fetch('/api/area-options')
+    areaOptionsRequest = apiFetch('/api/area-options')
       .then(async (response) => {
         const result = await response.json();
         if (!response.ok) {

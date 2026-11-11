@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -9,9 +10,7 @@ import ContactPostCta from '@/components/contact/ContactPostCta';
 import ContactFaq from '@/components/contact/ContactFaq';
 import ContactLocation from '@/components/contact/ContactLocation';
 import ContactClosing from '@/components/contact/ContactClosing';
-import { getSiteContentForViewer } from '@/lib/site-content-server';
 import { mergeSiteContact } from '@/lib/site-content';
-import type { ContactSubject } from '@/lib/contact-types';
 
 export const metadata: Metadata = {
   title: 'যোগাযোগ করুন — Mymensingh Sheba',
@@ -19,21 +18,12 @@ export const metadata: Metadata = {
     'Mymensingh Sheba-এর সাথে যোগাযোগ করুন — প্রশ্ন, পরামর্শ, সমস্যা বা সহযোগিতার জন্য। অনলাইনে বার্তা পাঠান, অথবা নিজের সেবা ময়মনসিংহের মানুষের কাছে পৌঁছে দিন।',
 };
 
-export default async function ContactPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ subject?: string | string[] }>;
-}) {
-  const params = await searchParams;
-  const requestedSubject = Array.isArray(params.subject) ? params.subject[0] : params.subject;
-  const initialSubject: ContactSubject | '' =
-    requestedSubject === 'news_submission' ? 'news_submission' : '';
-  const overrides = await getSiteContentForViewer();
-  const contact = mergeSiteContact(overrides);
+export default function ContactPage() {
+  const contact = mergeSiteContact();
+
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">
       <Navbar />
-
       <main className="flex-1">
         <nav
           aria-label="ব্রেডক্রাম্ব"
@@ -47,15 +37,15 @@ export default async function ContactPage({
             যোগাযোগ
           </span>
         </nav>
-
         <ContactHero contact={contact} />
-        <ContactComposer key={initialSubject} contact={contact} initialSubject={initialSubject} />
+        <Suspense fallback={null}>
+          <ContactComposer contact={contact} />
+        </Suspense>
         <ContactPostCta />
         <ContactFaq />
         <ContactLocation contact={contact} />
         <ContactClosing />
       </main>
-
       <Footer />
     </div>
   );

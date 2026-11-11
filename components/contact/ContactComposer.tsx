@@ -1,6 +1,6 @@
 import type { mergeSiteContact } from '@/lib/site-content';
 import ContactChannels from './ContactChannels';
-import ContactForm from './ContactForm';
+import ContactFormSubject from './ContactFormSubject';
 import Reveal from '@/components/home/Reveal';
 import type { ContactSubject } from '@/lib/contact-types';
 
@@ -32,7 +32,7 @@ export default function ContactComposer({
           </Reveal>
 
           <Reveal delay={90}>
-            <ContactForm initialSubject={initialSubject} />
+            <ContactFormSubject initialSubject={initialSubject} />
           </Reveal>
         </div>
       </div>

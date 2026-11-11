@@ -2,6 +2,7 @@ import { use } from 'react';
 import type { Metadata } from 'next';
 import WifiDetail from './WifiDetail';
 import { CATEGORY_UI } from '@/lib/catalog-types';
+import { getPublicServiceStaticParams } from '@/lib/static-route-params';
 
 const ui = CATEGORY_UI.wifi;
 
@@ -20,6 +21,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       type: 'website',
     },
   };
+}
+
+export function generateStaticParams() {
+  return getPublicServiceStaticParams('wifi');
 }
 
 export default function WifiDetailPage({ params }: Params) {

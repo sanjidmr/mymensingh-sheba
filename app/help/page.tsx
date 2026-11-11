@@ -3,8 +3,6 @@ import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import { getSiteContentOverrides } from '@/lib/site-content-server';
 import { DEFAULT_FAQ_CONTENT } from '@/lib/site-content';
 
-export const dynamic = 'force-dynamic';
-
 export default async function HelpPage() {
   const overrides = await getSiteContentOverrides();
   const faqs = overrides.faq_content ?? DEFAULT_FAQ_CONTENT;

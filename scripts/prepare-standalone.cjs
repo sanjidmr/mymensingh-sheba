@@ -2,6 +2,10 @@ const fs = require('node:fs');
 const path = require('node:path');
 
 const projectRoot = path.resolve(__dirname, '..');
+if (process.env.BUILD_TARGET === 'app') {
+  process.exit(0);
+}
+
 const standaloneRoot = path.join(projectRoot, '.next', 'standalone');
 const serverFile = path.join(standaloneRoot, 'server.js');
 

@@ -1,6 +1,7 @@
 import { use } from 'react';
 import type { Metadata } from 'next';
 import NewsDetail from './NewsDetail';
+import { getPublicPostStaticParams } from '@/lib/static-route-params';
 
 type Params = { params: Promise<{ slug: string }> };
 
@@ -17,6 +18,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       type: 'article',
     },
   };
+}
+
+export function generateStaticParams() {
+  return getPublicPostStaticParams('news');
 }
 
 export default function Page({ params }: Params) {

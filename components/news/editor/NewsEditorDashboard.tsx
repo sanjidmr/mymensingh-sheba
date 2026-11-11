@@ -8,7 +8,7 @@ import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { NEWS_CATEGORIES } from '@/lib/catalog-types';
 import { formatDateTime } from '@/lib/admin/format';
 import { deleteNewsEditorPost, setNewsEditorPostStatus } from '@/app/news/editor/actions';
-import type { NewsEditorArticle } from '@/app/news/editor/page';
+import type { NewsEditorArticle } from '@/app/news/editor/page.web';
 
 function statusLabel(status: NewsEditorArticle['status']) {
   if (status === 'approved') return 'প্রকাশিত';

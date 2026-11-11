@@ -2,6 +2,7 @@ import { use } from 'react';
 import type { Metadata } from 'next';
 import CoachingDetail from './CoachingDetail';
 import { CATEGORY_UI } from '@/lib/catalog-types';
+import { getPublicServiceStaticParams } from '@/lib/static-route-params';
 
 const ui = CATEGORY_UI.coaching;
 
@@ -21,6 +22,10 @@ export async function generateMetadata({ params }: Params): Promise<Metadata> {
       type: 'website',
     },
   };
+}
+
+export function generateStaticParams() {
+  return getPublicServiceStaticParams('coaching');
 }
 
 export default function CoachingDetailPage({ params }: Params) {

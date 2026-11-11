@@ -1,7 +1,4 @@
-'use server';
-
-import { revalidatePath } from 'next/cache';
-import { createServerSideClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
 import { normalizeAreaName } from '@/lib/area-names';
 import { isOnboardingComplete, normalizeBangladeshPhone } from '@/lib/onboarding';
 
@@ -10,7 +7,7 @@ export async function completeOnboarding(input: {
   phone: string;
   primaryAreaId: string;
 }): Promise<{ success: boolean; error?: string; fullName?: string }> {
-  const client = await createServerSideClient();
+  const client = createClient();
   if (!client) {
     return { success: false, error: 'ডেটাবেজ সংযোগ নেই। পরে আবার চেষ্টা করুন।' };
   }
@@ -95,7 +92,5 @@ export async function completeOnboarding(input: {
     return { success: false, error: 'প্রোফাইল সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' };
   }
 
-  revalidatePath('/');
-  revalidatePath('/profile');
   return { success: true, fullName: savedProfile.full_name };
 }

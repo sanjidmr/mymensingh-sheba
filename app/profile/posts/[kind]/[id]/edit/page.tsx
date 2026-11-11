@@ -6,6 +6,10 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
+export function generateStaticParams() {
+  return [{ "kind": '__app_dynamic__', "id": '__app_dynamic__' }];
+}
+
 export default async function Page({
   params,
 }: {

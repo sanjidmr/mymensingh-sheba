@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle2, Loader2, MapPin, ShieldCheck } from 'lucide-react';
 import { normalizeBdPhone } from '@/lib/contact-types';
+import { apiFetch } from '@/lib/api-fetch';
 
 type BookingService = 'auto' | 'cng';
 type BookingFields = {
@@ -61,7 +62,7 @@ export default function VehicleBookingForm({ service }: { service: BookingServic
 
     setSubmitting(true);
     try {
-      const response = await fetch(`/api/vehicle-bookings/${service}`, {
+      const response = await apiFetch(`/api/vehicle-bookings/${service}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...values, mobileNumber: phone, idempotencyKey }),

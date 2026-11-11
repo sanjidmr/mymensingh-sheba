@@ -1,5 +1,3 @@
-'use server';
-
 import {
   validateContactForm,
   hasContactErrors,
@@ -8,10 +6,10 @@ import {
   type ContactSubject,
 } from '@/lib/contact-types';
 import { submitContactMessage, type ContactSubmitResult } from '@/lib/contact-service';
-import { createServerSideClient } from '@/lib/supabase/server';
+import { createClient } from '@/lib/supabase/client';
 
 /**
- * Server action behind the /contact form.
+ * Submission handler behind the /contact form.
  *
  * The client already validates for fast feedback, but every value is re-checked
  * here — a server action is a public endpoint, so it cannot trust the payload
@@ -37,7 +35,7 @@ export const INITIAL_CONTACT_STATE: ContactActionState = {
 export async function sendContactMessage(
   values: ContactFormValues
 ): Promise<ContactActionState> {
-  const client = await createServerSideClient();
+  const client = createClient();
   if (!client) {
     return {
       status: 'error',

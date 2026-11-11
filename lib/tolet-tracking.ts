@@ -40,6 +40,8 @@
 'use client';
 
 import { isSupabaseConfigured, createClient } from './supabase/client';
+import { apiFetch } from './api-fetch';
+import { isNative } from './platform';
 import type {
   ToletAnalyticsReport,
   ToletAnalyticsListing,
@@ -130,12 +132,12 @@ export function trackToletEvent(
       source: event.source ?? 'detail_page',
       visitorId: getVisitorId(),
     });
-    const queued = typeof navigator.sendBeacon === 'function' && navigator.sendBeacon(
+    const queued = !isNative() && typeof navigator.sendBeacon === 'function' && navigator.sendBeacon(
       '/api/tolet/events',
       new Blob([payload], { type: 'application/json' })
     );
     if (!queued) {
-      void fetch('/api/tolet/events', {
+      void apiFetch('/api/tolet/events', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: payload,

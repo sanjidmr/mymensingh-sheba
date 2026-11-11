@@ -26,6 +26,7 @@
  * could mislead a customer into submitting a real booking request.
  */
 import { createClient, isSupabaseConfigured } from './supabase/client';
+import { apiFetch } from './api-fetch';
 import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
@@ -3027,7 +3028,7 @@ export async function createVehicleRequest(
 ): Promise<AckResult> {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
   try {
-    const response = await fetch('/api/vehicle-requests', {
+    const response = await apiFetch('/api/vehicle-requests', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(input),

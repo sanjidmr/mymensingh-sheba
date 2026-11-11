@@ -1,5 +1,5 @@
 import { createServerClient } from '@supabase/ssr';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 import { isSupabaseConfigured } from './client';
 import { supabaseCookieOptions } from './cookie-options';
 
@@ -15,11 +15,14 @@ export async function createServerSideClient() {
   }
 
   const cookieStore = await cookies();
+  const requestHeaders = await headers();
+  const authorization = requestHeaders.get('authorization');
 
-  return createServerClient(
+  const client = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      ...(authorization ? { global: { headers: { Authorization: authorization } } } : {}),
       cookieOptions: supabaseCookieOptions,
       cookies: {
         getAll() {
@@ -38,4 +41,12 @@ export async function createServerSideClient() {
       },
     }
   );
+
+  const bearerToken = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1];
+  if (bearerToken) {
+    const getUser = client.auth.getUser.bind(client.auth);
+    client.auth.getUser = (jwt?: string) => getUser(jwt ?? bearerToken);
+  }
+
+  return client;
 }
