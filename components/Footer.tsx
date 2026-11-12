@@ -13,7 +13,7 @@ import {
   type SiteContentOverrides,
 } from '@/lib/site-content';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch } from '@/lib/api-fetch';
+import { fetchSiteContentOverrides } from '@/lib/site-content-client';
 import { useIsAppShellContent } from '@/components/layout/AppShellContext';
 
 /**
@@ -33,10 +33,9 @@ export default function Footer() {
 
   useEffect(() => {
     let active = true;
-    apiFetch('/api/site-content', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
+    fetchSiteContentOverrides()
       .then((payload) => {
-        if (active && payload?.overrides) setOverrides(payload.overrides);
+        if (active && payload) setOverrides(payload);
       })
       .catch(() => undefined);
 

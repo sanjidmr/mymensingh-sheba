@@ -39,52 +39,67 @@ export async function getAnalyticsRequestContext(
 ): Promise<AnalyticsRequestContext> {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  const sessionClient = await createServerSideClient();
-  if (!sessionClient || !url || !serviceRoleKey) {
-    return { error: 'Analytics storage is not configured.', status: 503 };
-  }
 
-  const { data: authData, error: authError } = await sessionClient.auth.getUser();
-  if (authError && authError.status !== 401) {
-    return { error: 'The analytics session could not be verified.', status: 503 };
-  }
-  const user = authError ? null : authData.user;
-
-  let userId: string | null = null;
-  let role: string | null = null;
-  if (user) {
-    const { data: profile, error: profileError } = await sessionClient
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .maybeSingle();
-    if (profileError) {
-      return { error: 'The analytics account role could not be verified.', status: 503 };
+  try {
+    const sessionClient = await createServerSideClient();
+    if (!sessionClient || !url || !serviceRoleKey) {
+      return { error: 'Analytics storage is not configured.', status: 204 };
     }
-    if (profile) {
-      userId = user.id;
-      role = profile.role;
+
+    let authData;
+    let authError;
+    try {
+      ({ data: authData, error: authError } = await sessionClient.auth.getUser());
+    } catch {
+      return { error: 'Analytics auth check timed out.', status: 204 };
     }
+    if (authError && authError.status !== 401) {
+      return { error: 'The analytics session could not be verified.', status: 204 };
+    }
+    const user = authError ? null : authData.user;
+
+    let userId: string | null = null;
+    let role: string | null = null;
+    if (user) {
+      try {
+        const { data: profile, error: profileError } = await sessionClient
+          .from('profiles')
+          .select('role')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (profileError) {
+          return { error: 'The analytics account role could not be verified.', status: 204 };
+        }
+        if (profile) {
+          userId = user.id;
+          role = profile.role;
+        }
+      } catch {
+        return { error: 'Analytics profile lookup failed.', status: 204 };
+      }
+    }
+
+    const visitorCookie = readVisitorCookie(request);
+    const trafficClass = classifyAnalyticsTraffic({
+      role,
+      userId,
+      userAgent: request.headers.get('user-agent') ?? '',
+      stableVisitorId: Boolean(visitorCookie) || identityPersistent,
+    });
+
+    const client = createClient(url, serviceRoleKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
+    return {
+      client,
+      userId,
+      trafficClass,
+      visitorId: visitorCookie ?? claimedVisitorId,
+      setVisitorCookie: !visitorCookie && trafficClass !== 'bot' && trafficClass !== 'internal',
+    };
+  } catch {
+    return { error: 'Analytics storage is temporarily unavailable.', status: 204 };
   }
-
-  const visitorCookie = readVisitorCookie(request);
-  const trafficClass = classifyAnalyticsTraffic({
-    role,
-    userId,
-    userAgent: request.headers.get('user-agent') ?? '',
-    stableVisitorId: Boolean(visitorCookie) || identityPersistent,
-  });
-
-  const client = createClient(url, serviceRoleKey, {
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  return {
-    client,
-    userId,
-    trafficClass,
-    visitorId: visitorCookie ?? claimedVisitorId,
-    setVisitorCookie: !visitorCookie && trafficClass !== 'bot' && trafficClass !== 'internal',
-  };
 }
 
 export function visitorCookieHeader(request: Request, visitorId: string): string {

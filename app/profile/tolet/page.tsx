@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
@@ -37,7 +37,7 @@ import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { cn } from '@/lib/utils';
 
-export default function MyToletListingsPage() {
+function MyToletListingsContent() {
   const searchParams = useSearchParams();
   const { user } = useAuth();
 
@@ -286,5 +286,13 @@ export default function MyToletListingsPage() {
       </main>
       <Footer />
     </div>
+  );
+}
+
+export default function MyToletListingsPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen bg-mist-50" /> }>
+      <MyToletListingsContent />
+    </Suspense>
   );
 }

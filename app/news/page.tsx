@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
 import NewsPageClient from '@/components/news/NewsPageClient';
 
 export const metadata: Metadata = {
@@ -9,9 +8,5 @@ export const metadata: Metadata = {
 };
 
 export default function NewsPage() {
-  return (
-    <Suspense fallback={<div className="min-h-screen bg-white" />}>
-      <NewsPageClient />
-    </Suspense>
-  );
+  return <NewsPageClient />;
 }

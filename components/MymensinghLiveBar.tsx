@@ -33,7 +33,7 @@ import {
 } from '@/lib/mymensingh-live';
 import { SITE_CONTACT } from '@/lib/site-contact';
 import { useAuth } from '@/lib/auth-context';
-import { apiFetch } from '@/lib/api-fetch';
+import { fetchSiteContentOverrides } from '@/lib/site-content-client';
 
 interface PrayerState {
   status: 'loading' | 'ok' | 'error';
@@ -161,10 +161,9 @@ export default function MymensinghLiveBar() {
 
   useEffect(() => {
     let active = true;
-    apiFetch('/api/site-content', { cache: 'no-store' })
-      .then((response) => (response.ok ? response.json() : null))
+    fetchSiteContentOverrides()
       .then((payload) => {
-        const phone = payload?.overrides?.site_contact?.phone;
+        const phone = payload?.site_contact?.phone;
         if (active && typeof phone === 'string') setSitePhone(phone);
       })
       .catch(() => undefined);

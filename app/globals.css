@@ -58,6 +58,8 @@
 }
 
 @theme {
+  --font-hind-siliguri: 'Hind Siliguri', 'Noto Sans Bengali', 'Segoe UI', sans-serif;
+  --font-news-serif: 'Noto Serif Bengali', 'Hind Siliguri', Georgia, serif;
   --font-sans: var(--font-hind-siliguri), ui-sans-serif, system-ui, -apple-system,
     'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   --font-display: var(--font-hind-siliguri), ui-sans-serif, system-ui, sans-serif;

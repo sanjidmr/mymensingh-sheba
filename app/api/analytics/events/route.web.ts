@@ -82,30 +82,33 @@ export async function POST(request: Request) {
     body.identityPersistent
   );
   if ('error' in context) {
-    return Response.json({ error: context.error }, { status: context.status });
+    return new Response(null, { status: context.status === 204 ? 204 : 204 });
   }
 
-  const { error } = await context.client
-    .from('site_events')
-    .upsert({
-      event_id: body.eventId,
-      event_type: body.eventType,
-      path: body.path,
-      route_kind: body.routeKind ?? null,
-      content_id: body.contentId ?? null,
-      category: body.category ?? null,
-      cta_type: body.ctaType ?? null,
-      device_type: body.deviceType,
-      referrer_host: body.referrerHost ?? null,
-      visitor_id: context.visitorId,
-      session_id: body.sessionId,
-      user_id: context.userId,
-      traffic_class: context.trafficClass,
-    }, { onConflict: 'event_id', ignoreDuplicates: true });
+  try {
+    const { error } = await context.client
+      .from('site_events')
+      .upsert({
+        event_id: body.eventId,
+        event_type: body.eventType,
+        path: body.path,
+        route_kind: body.routeKind ?? null,
+        content_id: body.contentId ?? null,
+        category: body.category ?? null,
+        cta_type: body.ctaType ?? null,
+        device_type: body.deviceType,
+        referrer_host: body.referrerHost ?? null,
+        visitor_id: context.visitorId,
+        session_id: body.sessionId,
+        user_id: context.userId,
+        traffic_class: context.trafficClass,
+      }, { onConflict: 'event_id', ignoreDuplicates: true });
 
-  if (error) {
-    console.error('Website analytics event insert failed.', { code: error.code });
-    return Response.json({ error: 'Analytics event could not be recorded.' }, { status: 503 });
+    if (error) {
+      return new Response(null, { status: 204 });
+    }
+  } catch {
+    return new Response(null, { status: 204 });
   }
   const headers = new Headers();
   if (context.setVisitorCookie) headers.set('Set-Cookie', visitorCookieHeader(request, context.visitorId));

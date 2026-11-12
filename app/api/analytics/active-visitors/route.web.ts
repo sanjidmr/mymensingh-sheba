@@ -35,22 +35,25 @@ export async function POST(request: Request) {
     body.identityPersistent
   );
   if ('error' in context) {
-    return Response.json({ error: context.error }, { status: context.status });
+    return new Response(null, { status: 204 });
   }
   if (context.trafficClass === 'bot' || context.trafficClass === 'internal') {
     return new Response(null, { status: 204 });
   }
 
-  const { error } = await context.client
-    .from('site_active_visitors')
-    .upsert({
-      visitor_id: context.visitorId,
-      traffic_class: context.trafficClass,
-      last_seen_at: new Date().toISOString(),
-    }, { onConflict: 'visitor_id' });
-  if (error) {
-    console.error('Active visitor heartbeat insert failed.', { code: error.code });
-    return Response.json({ error: 'Active visitor heartbeat could not be recorded.' }, { status: 503 });
+  try {
+    const { error } = await context.client
+      .from('site_active_visitors')
+      .upsert({
+        visitor_id: context.visitorId,
+        traffic_class: context.trafficClass,
+        last_seen_at: new Date().toISOString(),
+      }, { onConflict: 'visitor_id' });
+    if (error) {
+      return new Response(null, { status: 204 });
+    }
+  } catch {
+    return new Response(null, { status: 204 });
   }
   const headers = new Headers();
   if (context.setVisitorCookie) headers.set('Set-Cookie', visitorCookieHeader(request, context.visitorId));
