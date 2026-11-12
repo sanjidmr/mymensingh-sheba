@@ -247,7 +247,7 @@ async function writeEvent(payload: EventPayload): Promise<void> {
 
   try {
     const classified = classifyPath(payload.path);
-    const response = await apiFetch('/api/analytics/events', {
+    await apiFetch('/api/analytics/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       keepalive: true,
@@ -266,14 +266,8 @@ async function writeEvent(payload: EventPayload): Promise<void> {
         sessionId: getSessionId(),
       }),
     });
-    if (!response.ok) {
-      console.error('Website analytics event could not be recorded.', {
-        eventType: payload.eventType,
-        status: response.status,
-      });
-    }
-  } catch (error) {
-    console.error('Website analytics event could not be recorded.', error);
+  } catch {
+    // Analytics are best-effort and must not interrupt the user experience.
   }
 }
 
@@ -330,14 +324,8 @@ export function trackActiveVisitor(path: string): void {
       visitorId: getVisitorId(),
       identityPersistent: hasPersistentVisitorId(),
     }),
-  }).then((response) => {
-    if (!response.ok) {
-      lastActiveVisitorAt = 0;
-      console.error('Active visitor heartbeat could not be recorded.', response.status);
-    }
-  }).catch((error: unknown) => {
-    lastActiveVisitorAt = 0;
-    console.error('Active visitor heartbeat could not be recorded.', error);
+  }).catch(() => {
+    // Keep the heartbeat throttle even when the endpoint is temporarily unavailable.
   });
 }
 

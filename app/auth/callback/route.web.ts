@@ -8,19 +8,12 @@ function authFailure(request: NextRequest): NextResponse {
   return NextResponse.redirect(new URL('/login?error=auth', getSiteOrigin(request)));
 }
 
-/**
- * OAuth / email-confirmation / password-recovery callback.
- *
- * Exchanges the PKCE code for a session, then resolves the caller's *verified*
- * role from the trusted `profiles` row (never from the email or metadata) and
- * sends them to the right place: admins to the console, customers to their
- * profile. An explicit `next` is honoured only when it is a safe internal path.
- */
 export async function GET(request: NextRequest) {
   const requestUrl = new URL(request.url);
   const code = requestUrl.searchParams.get('code');
-  const nextParam = requestUrl.searchParams.get('next');
-  const requested = isSafeInternalPath(nextParam) ? nextParam : null;
+  const requested = isSafeInternalPath(requestUrl.searchParams.get('next'))
+    ? requestUrl.searchParams.get('next')
+    : null;
 
   if (!code) return authFailure(request);
 
@@ -72,14 +65,12 @@ export async function GET(request: NextRequest) {
       primaryAreaId: profile.primary_area_id,
       onboardingCompletedAt: profile.onboarding_completed_at,
     });
-
-  // Password recovery must always land on the reset form, admin or not.
   const destination =
     requested === '/reset-password'
       ? '/reset-password'
       : needsOnboarding
         ? '/onboarding'
-      : resolveAuthRedirect(role, requested);
+        : resolveAuthRedirect(role, requested);
 
   return NextResponse.redirect(new URL(destination, getSiteOrigin(request)));
 }

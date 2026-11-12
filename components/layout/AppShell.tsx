@@ -3,7 +3,7 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { ArrowLeft, Ellipsis, Newspaper, Search, UserRound } from 'lucide-react';
+import { ArrowLeft, Search } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { AppShellContentContext } from '@/components/layout/AppShellContext';
 import Footer from '@/components/Footer';
@@ -84,30 +84,6 @@ function MobileTopBar({ pathname }: { pathname: string }) {
             >
               <Search className="h-5 w-5" aria-hidden="true" />
             </Link>
-            <button
-              type="button"
-              onClick={(event) => window.dispatchEvent(new CustomEvent('mms:open-post-menu', { detail: event.currentTarget }))}
-              className="ui-pressable flex h-10 w-10 items-center justify-center rounded-xl"
-              aria-label="পোস্ট নেভিগেশন"
-            >
-              <Newspaper className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => window.dispatchEvent(new CustomEvent('mms:open-mobile-menu', { detail: event.currentTarget }))}
-              className="ui-pressable flex h-10 w-10 items-center justify-center rounded-xl"
-              aria-label="আরও নেভিগেশন"
-            >
-              <Ellipsis className="h-5 w-5" aria-hidden="true" />
-            </button>
-            <button
-              type="button"
-              onClick={(event) => window.dispatchEvent(new CustomEvent('mms:open-profile-menu', { detail: event.currentTarget }))}
-              className="ui-pressable flex h-10 w-10 items-center justify-center rounded-xl"
-              aria-label="প্রোফাইল মেনু"
-            >
-              <UserRound className="h-5 w-5" aria-hidden="true" />
-            </button>
           </div>
         )}
       </div>

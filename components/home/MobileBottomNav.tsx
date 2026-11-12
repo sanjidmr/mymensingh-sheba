@@ -8,10 +8,11 @@ import {
   ClipboardList,
   ChevronRight,
   Home,
-  LayoutGrid,
   LogOut,
+  Menu,
   MessageCircle,
   Newspaper,
+  Plus,
   ShoppingBag,
   UserRound,
   X,
@@ -19,11 +20,6 @@ import {
 import { SITE_NAV_LINKS } from '@/lib/site-navigation';
 import { useAuth } from '@/lib/auth-context';
 import { ACCOUNT_LINKS } from '@/lib/account-navigation';
-
-const PRIMARY_ITEMS = [
-  { name: 'হোম', href: '/', icon: Home },
-  { name: 'সেবা', href: '/services', icon: LayoutGrid },
-];
 
 const POST_ROUTES = [
   {
@@ -54,6 +50,12 @@ const PROFILE_LINKS = [
       item.href !== '/dashboard/messages' &&
       item.href !== '/dashboard/complaints'
   ),
+  {
+    href: '/profile/requests',
+    label: 'আমার অর্ডার',
+    shortLabel: 'আমার অর্ডার',
+    icon: ClipboardList,
+  },
   {
     href: '/dashboard/messages',
     label: 'বার্তা ও অভিযোগ',
@@ -87,7 +89,8 @@ function isBareRoute(pathname: string): boolean {
 /**
  * Fixed mobile bottom navigation.
  *
- * Four direct destinations; the top app bar opens the existing menu sheets.
+ * The mobile bar keeps Home and opens the existing post, navigation, and
+ * profile sheets from the other three thumb-friendly actions.
  *
  * The পোস্ট slot is deliberately a button, not a link. It opens a compact
  * bottom sheet with exactly the three destinations the community publishes to
@@ -106,8 +109,10 @@ export default function MobileBottomNav() {
   const [serviceRequestSuccess, setServiceRequestSuccess] = useState(false);
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
+  const menuTriggerRef = useRef<HTMLButtonElement>(null);
   const postTriggerRef = useRef<HTMLButtonElement>(null);
   const profileTriggerRef = useRef<HTMLButtonElement>(null);
+  const menuCloseButtonRef = useRef<HTMLButtonElement>(null);
   const closeButtonRef = useRef<HTMLButtonElement>(null);
   const profileCloseButtonRef = useRef<HTMLButtonElement>(null);
 
@@ -123,7 +128,7 @@ export default function MobileBottomNav() {
     const openMenuFromShell = (event: Event) => {
       setSheet({ type: 'menu', path: pathname });
       if (event instanceof CustomEvent && event.detail instanceof HTMLButtonElement) {
-        postTriggerRef.current = event.detail;
+        menuTriggerRef.current = event.detail;
       }
     };
     const openPostFromShell = (event: Event) => {
@@ -159,11 +164,20 @@ export default function MobileBottomNav() {
 
   useEffect(() => {
     if (!menuOpen) return;
+    const trigger = menuTriggerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') setSheet(null);
     };
+    const focusTimer = window.setTimeout(() => menuCloseButtonRef.current?.focus(), 40);
     window.addEventListener('keydown', closeOnEscape);
-    return () => window.removeEventListener('keydown', closeOnEscape);
+    return () => {
+      window.clearTimeout(focusTimer);
+      window.removeEventListener('keydown', closeOnEscape);
+      document.body.style.overflow = previousOverflow;
+      trigger?.focus();
+    };
   }, [menuOpen]);
 
   useEffect(() => {
@@ -252,6 +266,7 @@ export default function MobileBottomNav() {
           <div className="mb-3 flex shrink-0 items-center justify-between border-b border-brand-100 pb-3">
             <h2 className="text-base font-extrabold text-brand-950">মেনু</h2>
             <button
+              ref={menuCloseButtonRef}
               type="button"
               onClick={() => setSheet(null)}
               aria-label="মেনু বন্ধ করুন"
@@ -482,27 +497,57 @@ export default function MobileBottomNav() {
         aria-label="মোবাইল মেনু"
       >
         <div className="mx-auto grid min-h-16 max-w-lg grid-cols-4">
-          {[
-            ...PRIMARY_ITEMS,
-            { name: 'অর্ডার', href: '/profile/requests', icon: ClipboardList },
-            { name: 'প্রোফাইল', href: '/profile', icon: UserRound },
-          ].map((item) => {
-            const active = isActive(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                className={`ui-app-tab ui-pressable flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold ${
-                  active ? 'font-bold' : ''
-                }`}
-              >
-                <Icon className="h-5 w-5" strokeWidth={active ? 2.5 : 2} />
-                <span>{item.name}</span>
-              </Link>
-            );
-          })}
+          <Link
+            href="/"
+            aria-current={pathname === '/' ? 'page' : undefined}
+            className={`ui-app-tab ui-pressable flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold ${
+              pathname === '/' ? 'font-bold' : ''
+            }`}
+          >
+            <Home className="h-5 w-5" strokeWidth={pathname === '/' ? 2.5 : 2} />
+            <span>হোম</span>
+          </Link>
+          <button
+            type="button"
+            onClick={(event) => window.dispatchEvent(new CustomEvent('mms:open-post-menu', { detail: event.currentTarget }))}
+            aria-current={POST_ROUTES.some((item) => isActive(item.href)) ? 'page' : undefined}
+            aria-haspopup="dialog"
+            aria-expanded={postOpen}
+            aria-controls="mobile-post-menu"
+            className={`ui-app-tab ui-pressable flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold ${
+              postOpen ? 'font-bold' : ''
+            }`}
+          >
+            <Plus className="h-5 w-5" strokeWidth={postOpen ? 2.5 : 2} />
+            <span>পোস্ট</span>
+          </button>
+          <button
+            type="button"
+            onClick={(event) => window.dispatchEvent(new CustomEvent('mms:open-mobile-menu', { detail: event.currentTarget }))}
+            aria-haspopup="dialog"
+            aria-expanded={menuOpen}
+            aria-controls="mobile-menu"
+            className={`ui-app-tab ui-pressable flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold ${
+              menuOpen ? 'font-bold' : ''
+            }`}
+          >
+            <Menu className="h-5 w-5" strokeWidth={menuOpen ? 2.5 : 2} />
+            <span>মেনু</span>
+          </button>
+          <button
+            type="button"
+            onClick={(event) => window.dispatchEvent(new CustomEvent('mms:open-profile-menu', { detail: event.currentTarget }))}
+            aria-current={isActive('/profile') ? 'page' : undefined}
+            aria-haspopup="dialog"
+            aria-expanded={profileOpen}
+            aria-controls="mobile-profile-menu"
+            className={`ui-app-tab ui-pressable flex min-h-16 flex-col items-center justify-center gap-0.5 px-1 text-[11px] font-semibold ${
+              profileOpen ? 'font-bold' : ''
+            }`}
+          >
+            <UserRound className="h-5 w-5" strokeWidth={profileOpen ? 2.5 : 2} />
+            <span>প্রোফাইল</span>
+          </button>
         </div>
       </nav>
     </>

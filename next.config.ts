@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
   transpilePackages: ['motion'],
   pageExtensions: isApp
     ? ['app.tsx', 'tsx', 'jsx']
-    : ['tsx', 'ts', 'jsx', 'js'],
+    : ['web.tsx', 'web.ts', 'tsx', 'ts', 'jsx', 'js'],
   ...(isApp
     ? {
         output: 'export' as const,
