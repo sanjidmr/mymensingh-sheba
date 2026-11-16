@@ -7,14 +7,15 @@ import type { ToletEventSource, ToletListing } from '@/lib/tolet-types';
 import { trackToletEvent } from '@/lib/tolet-tracking';
 import { getToletAreaById } from '@/lib/tolet-areas';
 import { cn } from '@/lib/utils';
+import { shareContent } from '@/lib/native-actions';
 
 /**
  * Contact actions for a listing: WhatsApp + direct call.
  *
  * Two contact modes
  * -----------------
- * `direct`  — the signed-in visitor may use the owner's published number for
- *             WhatsApp or a direct call.
+ * `direct`  — the signed-in visitor may use the owner's saved number for
+ *             WhatsApp or a direct call. The number itself is never rendered.
  * `unavailable` — no phone is published. Contact actions are omitted rather
  *                 than rendered as dead links or invented numbers.
  *
@@ -191,7 +192,8 @@ function ContactButton({
  * ContactActionsPanel — the sidebar contact block on the detail page.
  *
  * Guests receive only a login prompt. The number and both contact actions are
- * rendered only for a signed-in visitor.
+ * rendered only for a signed-in visitor. The saved number is never shown as
+ * page text.
  */
 export function ContactActionsPanel({
   listing,
@@ -223,9 +225,9 @@ export function ContactActionsPanel({
 
       <p className="mt-2 text-[11.5px] leading-relaxed text-ink-500">
         {!isLoggedIn
-          ? 'মালিকের সাথে কল বা হোয়াটসঅ্যাপে যোগাযোগ করতে লগইন করুন।'
+        ? 'মালিকের সাথে কল বা হোয়াটসঅ্যাপে যোগাযোগ করতে লগইন করুন।'
           : contact.mode === 'direct'
-            ? 'মালিকের নম্বরে কল করুন বা হোয়াটসঅ্যাপে যোগাযোগ করুন।'
+          ? 'মালিকের সাথে সরাসরি যোগাযোগ করুন।'
             : 'মালিকের ফোন নম্বর এখনো প্রকাশ করা হয়নি।'}
       </p>
 
@@ -233,11 +235,6 @@ export function ContactActionsPanel({
         <LoginGateNote listingId={listing.id} className="mt-3" />
       ) : contact.mode === 'direct' ? (
         <div className="mt-3 space-y-2">
-          {listing.ownerPhone && (
-            <p className="rounded-lg border border-brand-100 bg-mist-50 px-3 py-2 text-center text-[15px] font-extrabold tracking-wide text-brand-800">
-              {listing.ownerPhone}
-            </p>
-          )}
           <ContactButton
             tone="whatsapp"
             icon={MessageCircle}
@@ -259,12 +256,6 @@ export function ContactActionsPanel({
         </p>
       )}
 
-      {isLoggedIn && contact.mode === 'direct' && (
-        <p className="mt-2.5 flex items-start gap-1.5 px-0.5 text-[10.5px] leading-relaxed text-ink-400">
-          <Check className="mt-px h-3 w-3 shrink-0 text-brand-500" aria-hidden="true" />
-          <span>মালিকের ফোন নম্বর এখানে প্রকাশ করা হয়েছে — অপব্যবহার এড়িয়ে চলুন।</span>
-        </p>
-      )}
     </section>
   );
 }
@@ -356,24 +347,9 @@ export function ShareButton({
       url: shareUrl,
     };
 
-    // Rung 1 — the OS share sheet.
-    if (navigator.share) {
-      try {
-        await navigator.share(payload);
-        record();
-        return;
-      } catch {
-        // Dismissed share sheet — not a share. Fall through.
-      }
-    }
-
-    // Rung 2 — the async clipboard API.
-    try {
-      await navigator.clipboard.writeText(shareUrl);
+    if (await shareContent(payload)) {
       record();
       return;
-    } catch {
-      // Blocked (insecure context / permissions). Fall through.
     }
 
     // Rung 3 — the synchronous, pre-permission-API copy.

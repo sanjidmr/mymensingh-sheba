@@ -1,4 +1,3 @@
-import { createServerSideClient } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import { clampPage, clampPageSize } from './format';
 // ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
@@ -70,8 +69,10 @@ export interface Paged<T> {
   error?: string;
 }
 
+type ServerSideClient = Awaited<ReturnType<typeof import('@/lib/supabase/server').createServerSideClient>>;
+
 export interface AdminClient {
-  client: NonNullable<Awaited<ReturnType<typeof createServerSideClient>>>;
+  client: NonNullable<ServerSideClient>;
   userId: string;
 }
 
@@ -178,6 +179,7 @@ export async function getAdminDataClient(): Promise<AdminClient | null> {
     }
   }
 
+  const { createServerSideClient } = await import('@/lib/supabase/server');
   const client = await createServerSideClient();
   if (!client) return null;
 
@@ -295,7 +297,7 @@ export interface AdminBadgeCounts {
   posts: number;
   reports: number;
   requests: number;
-  verifications: number;
+  approvals: number;
   notifications: number;
   unavailable: boolean;
   error?: string;
@@ -316,7 +318,7 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
       posts: 0,
       reports: 0,
       requests: 0,
-      verifications: 0,
+      approvals: 0,
       notifications: 0,
       unavailable: true,
     };
@@ -333,6 +335,9 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     donorApprovals,
     ownerApprovals,
     serviceApprovals,
+    siteReviewApprovals,
+    tutorReviewApprovals,
+    directoryReviewApprovals,
     notifications,
   ] = await Promise.all([
     client.from('contact_messages').select('id', { count: 'exact', head: true }).eq('status', 'new'),
@@ -350,6 +355,9 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     client.from('blood_donor_profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
     client.from('tolet_profiles').select('id', { count: 'exact', head: true }).eq('status', 'pending_approval'),
     client.from('service_listings').select('id', { count: 'exact', head: true }).eq('status', 'pending').not('owner_id', 'is', null),
+    client.from('site_reviews').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
+    client.from('tutor_reviews').select('id', { count: 'exact', head: true }).eq('moderation_status', 'pending'),
+    client.from('directory_reviews').select('id', { count: 'exact', head: true }).eq('moderation_status', 'pending'),
     client
       .from('notifications')
       .select('id', { count: 'exact', head: true })
@@ -367,6 +375,9 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     donorApprovals,
     ownerApprovals,
     serviceApprovals,
+    siteReviewApprovals,
+    tutorReviewApprovals,
+    directoryReviewApprovals,
     notifications,
   ].find((result) => result.error);
   if (failedQuery?.error) {
@@ -375,7 +386,7 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
       posts: 0,
       reports: 0,
       requests: 0,
-      verifications: 0,
+      approvals: 0,
       notifications: 0,
       unavailable: true,
       error: failedQuery.error.message,
@@ -387,12 +398,16 @@ export async function fetchAdminBadgeCounts(): Promise<AdminBadgeCounts> {
     posts: posts.count ?? 0,
     reports: reports.count ?? 0,
     requests: requests.count ?? 0,
-    verifications:
-      (tutorApprovals.count ?? 0) +
+    approvals:
+      (posts.count ?? 0) +
       (toletApprovals.count ?? 0) +
+      (tutorApprovals.count ?? 0) +
       (donorApprovals.count ?? 0) +
       (ownerApprovals.count ?? 0) +
-      (serviceApprovals.count ?? 0),
+      (serviceApprovals.count ?? 0) +
+      (siteReviewApprovals.count ?? 0) +
+      (tutorReviewApprovals.count ?? 0) +
+      (directoryReviewApprovals.count ?? 0),
     notifications: notifications.count ?? 0,
     unavailable: false,
   };
@@ -580,6 +595,7 @@ async function getDashboardAdminClient(): Promise<
     return { admin: null, issue: dashboardDataIssue(null) };
   }
 
+  const { createServerSideClient } = await import('@/lib/supabase/server');
   const client = await createServerSideClient();
   if (!client) return { admin: null, issue: dashboardDataIssue(null) };
 
@@ -1289,6 +1305,7 @@ export async function fetchPostCounts(kind?: string): Promise<{
   export interface AdminTutorListRow {
     id: string;
     user_id: string;
+    private_phone: string | null;
     status: string;
     full_name: string;
     institution: string;
@@ -1298,12 +1315,13 @@ export async function fetchPostCounts(kind?: string): Promise<{
     preferred_classes: string[];
     preferred_subjects: string[];
     expected_salary: number;
+    profile_views?: number | null;
     created_at: string;
     updated_at: string;
   }
 
   const TUTOR_LIST_COLUMNS =
-    'id,user_id,status,full_name,institution,qualification,profile_photo_url,preferred_areas,preferred_classes,preferred_subjects,expected_salary,created_at,updated_at';
+    'id,user_id,private_phone,status,full_name,institution,qualification,profile_photo_url,preferred_areas,preferred_classes,preferred_subjects,expected_salary,created_at,updated_at';
 
   export async function fetchTutorProfiles(
     params: ListParams
@@ -1321,8 +1339,8 @@ export async function fetchPostCounts(kind?: string): Promise<{
     const to = from + params.pageSize - 1;
     const statuses = ['draft', 'pending_approval', 'approved', 'rejected', 'paused', 'suspended'];
     let query = client
-      .from('home_tutor_profiles')
-      .select(TUTOR_LIST_COLUMNS, { count: 'exact' })
+      .rpc('fn_admin_tutor_profiles', {}, { count: 'exact' })
+      .select(TUTOR_LIST_COLUMNS)
       .order('created_at', { ascending: params.sort === 'oldest' })
       .range(from, to);
     const exactId = params.search?.trim();
@@ -1584,12 +1602,112 @@ export interface AdminStaffListRow {
   availability: string;
   is_verified: boolean;
   is_active: boolean;
+  assigned_job_count?: number;
+  completed_job_count?: number;
   created_at: string;
   updated_at: string;
 }
 
 function validUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(value);
+}
+
+export type AdminEngagementScope =
+  | 'tolet'
+  | 'wifi'
+  | 'coaching'
+  | 'blood-donor'
+  | 'home-tutor'
+  | 'news'
+  | 'job'
+  | 'buy_sell'
+  | 'posts';
+
+export interface AdminEngagementProfile {
+  views: number;
+  callClicks: number;
+  whatsappClicks: number;
+  otherClicks: number;
+  formSubmits: number;
+}
+
+export interface AdminEngagementAnalytics {
+  directoryVisits: number;
+  profileViews: number;
+  callClicks: number;
+  whatsappClicks: number;
+  otherClicks: number;
+  formSubmits: number;
+  profiles: Record<string, AdminEngagementProfile>;
+  error?: string;
+}
+
+const EMPTY_ENGAGEMENT: Omit<AdminEngagementAnalytics, 'error'> = {
+  directoryVisits: 0,
+  profileViews: 0,
+  callClicks: 0,
+  whatsappClicks: 0,
+  otherClicks: 0,
+  formSubmits: 0,
+  profiles: {},
+};
+
+function readNonNegativeCount(value: unknown): number | null {
+  const count = typeof value === 'number' ? value : Number(value);
+  return Number.isSafeInteger(count) && count >= 0 ? count : null;
+}
+
+export async function fetchAdminEngagementAnalytics(
+  scope: AdminEngagementScope
+): Promise<AdminEngagementAnalytics> {
+  const admin = await getAdminDataClient();
+  if (!admin) return { ...EMPTY_ENGAGEMENT, error: 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
+
+  const { data, error } = await admin.client.rpc('fn_admin_engagement_analytics', {
+    p_scope: scope,
+  });
+  if (error) return { ...EMPTY_ENGAGEMENT, error: `পরিসংখ্যান লোড ব্যর্থ হয়েছে: ${error.message}` };
+  if (!isRecord(data) || !Array.isArray(data.profiles)) {
+    return { ...EMPTY_ENGAGEMENT, error: 'পরিসংখ্যানের উত্তর সঠিক নয়।' };
+  }
+
+  const totals = {
+    directoryVisits: readNonNegativeCount(data.directoryVisits),
+    profileViews: readNonNegativeCount(data.profileViews),
+    callClicks: readNonNegativeCount(data.callClicks),
+    whatsappClicks: readNonNegativeCount(data.whatsappClicks),
+    otherClicks: readNonNegativeCount(data.otherClicks),
+    formSubmits: readNonNegativeCount(data.formSubmits),
+  };
+  if (Object.values(totals).some((value) => value === null)) {
+    return { ...EMPTY_ENGAGEMENT, error: 'পরিসংখ্যানের সংখ্যা সঠিক নয়।' };
+  }
+
+  const profiles: Record<string, AdminEngagementProfile> = {};
+  for (const row of data.profiles) {
+    if (!isRecord(row) || typeof row.contentId !== 'string' || row.contentId.length === 0) {
+      return { ...EMPTY_ENGAGEMENT, error: 'প্রোফাইল পরিসংখ্যানের উত্তর সঠিক নয়।' };
+    }
+    const views = readNonNegativeCount(row.views);
+    const callClicks = readNonNegativeCount(row.callClicks);
+    const whatsappClicks = readNonNegativeCount(row.whatsappClicks);
+    const otherClicks = readNonNegativeCount(row.otherClicks);
+    const formSubmits = readNonNegativeCount(row.formSubmits);
+    if (views === null || callClicks === null || whatsappClicks === null || otherClicks === null || formSubmits === null) {
+      return { ...EMPTY_ENGAGEMENT, error: 'প্রোফাইল পরিসংখ্যানের সংখ্যা সঠিক নয়।' };
+    }
+    profiles[row.contentId] = { views, callClicks, whatsappClicks, otherClicks, formSubmits };
+  }
+
+  return {
+    directoryVisits: totals.directoryVisits!,
+    profileViews: totals.profileViews!,
+    callClicks: totals.callClicks!,
+    whatsappClicks: totals.whatsappClicks!,
+    otherClicks: totals.otherClicks!,
+    formSubmits: totals.formSubmits!,
+    profiles,
+  };
 }
 
 function validDateFilter(value: string | undefined): value is string {
@@ -1744,23 +1862,29 @@ export async function fetchServiceRequestAttachmentUrls(paths: string[]): Promis
 }> {
   const admin = await getAdminDataClient();
   if (!admin) return { urls: [], error: 'সংযুক্ত ফাইল দেখার অ্যাডমিন অনুমতি যাচাই করা যায়নি।' };
+  const nonEmptyPaths = paths.filter(Boolean);
+  const storagePaths = nonEmptyPaths.filter((path) => !/^https:\/\//i.test(path));
+  const signedResult = storagePaths.length > 0
+    ? await admin.client.storage.from('documents').createSignedUrls(storagePaths, 3600)
+    : { data: [], error: null };
   const urls: string[] = [];
-  for (const path of paths) {
-    if (!path) continue;
+  let storageIndex = 0;
+
+  for (const path of nonEmptyPaths) {
     if (/^https:\/\//i.test(path)) {
       urls.push(path);
       continue;
     }
-    const { data, error } = await admin.client.storage
-      .from('documents')
-      .createSignedUrl(path, 3600);
-    if (error || !data?.signedUrl) {
+
+    const signedUrl = signedResult.data?.[storageIndex]?.signedUrl;
+    storageIndex += 1;
+    if (signedResult.error || !signedUrl) {
       return {
         urls,
-        error: `একটি সংযুক্ত ফাইলের নিরাপদ লিংক তৈরি করা যায়নি${error?.message ? `: ${error.message}` : '.'}`,
+        error: `একটি সংযুক্ত ফাইলের নিরাপদ লিংক তৈরি করা যায়নি${signedResult.error?.message ? `: ${signedResult.error.message}` : '.'}`,
       };
     }
-    urls.push(data.signedUrl);
+    urls.push(signedUrl);
   }
   return { urls };
 }
@@ -1840,8 +1964,29 @@ export async function fetchAdminStaffPage(params: ListParams): Promise<AdminStaf
   if (params.area) query = query.contains('areas', [params.area]);
   const { data, count, error } = await query;
   if (error || !data) return failed(error?.message ?? 'কর্মী তালিকা লোড করা যায়নি।');
+  const staffRows = data as AdminStaffListRow[];
+  const staffIds = staffRows.map((row) => row.id).filter(validUuid);
+  const assignmentCounts = staffIds.length
+    ? await client.rpc('fn_admin_staff_job_counts', { p_staff_ids: staffIds })
+    : { data: [], error: null };
+  if (assignmentCounts.error) return failed(assignmentCounts.error.message);
+  const rawAssignmentCounts: unknown = assignmentCounts.data;
+  if (!Array.isArray(rawAssignmentCounts)) return failed('কর্মীর নির্ধারিত কাজের সংখ্যা সঠিক নয়।');
+  const assignedJobs = new Map<string, number>();
+  for (const item of rawAssignmentCounts) {
+    if (!isRecord(item) || typeof item.staff_id !== 'string') {
+      return failed('কর্মীর নির্ধারিত কাজের উত্তর সঠিক নয়।');
+    }
+    const jobCount = readNonNegativeCount(item.job_count);
+    if (jobCount === null) return failed('কর্মীর নির্ধারিত কাজের সংখ্যা সঠিক নয়।');
+    assignedJobs.set(item.staff_id, jobCount);
+  }
   return {
-    rows: data as unknown as AdminStaffListRow[],
+    rows: staffRows.map((row) => ({
+      ...row,
+      assigned_job_count: assignedJobs.get(row.id) ?? 0,
+      completed_job_count: Number(row.completed_job_count ?? 0),
+    })),
     total: count ?? 0,
     page: params.page,
     pageSize: params.pageSize,
@@ -2498,6 +2643,8 @@ export interface AdminServiceListingRow {
   available_facilities: string[];
   unavailable_facilities: string[];
   contact_phone_private: string | null;
+  views?: number | null;
+  call_clicks?: number | null;
   is_active: boolean;
   is_featured: boolean;
   created_at: string;
@@ -2515,22 +2662,21 @@ export async function fetchServiceListings(params: ListParams, category?: string
   const admin = await getAdminDataClient();
   const emptyCounts = { total: 0, active: 0, inactive: 0 };
   if (!admin) return { ...failedPage<AdminServiceListingRow>(params, 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।'), counts: emptyCounts };
-  const validCategories = ['coaching', 'wifi', 'bus', 'vehicle'];
+  const validCategories = ['coaching', 'wifi', 'bus'];
   if (category && !validCategories.includes(category)) {
     return { ...failedPage<AdminServiceListingRow>(params, 'ক্যাটাগরি সঠিক নয়।'), counts: emptyCounts };
   }
   const { client } = admin;
   const filterCategory = category ?? params.category;
-  if (filterCategory && !validCategories.includes(filterCategory)) {
+  if (!filterCategory || !validCategories.includes(filterCategory)) {
     return { ...failedPage<AdminServiceListingRow>(params, 'ক্যাটাগরি সঠিক নয়।'), counts: emptyCounts };
   }
-  const rpcCategory = filterCategory ?? 'vehicle';
+  const rpcCategory = filterCategory;
   const countQuery = (kind: 'all' | 'published' | 'unpublished') => {
     let query = client
       .from('service_listings')
       .select('id', { head: true, count: 'exact' })
       .eq('category', rpcCategory);
-    if (rpcCategory === 'vehicle') query = query.contains('tags', ['গাড়ি']);
     if (kind === 'published') query = query.eq('is_active', true).eq('status', 'approved');
     if (kind === 'unpublished') query = query.or('is_active.eq.false,status.neq.approved');
     return query;
@@ -2548,7 +2694,6 @@ export async function fetchServiceListings(params: ListParams, category?: string
     .order('is_featured', { ascending: false })
     .order('created_at', { ascending: false })
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
-  if (rpcCategory === 'vehicle') query = query.contains('tags', ['গাড়ি']);
 
   const term = searchFilter(params.search, [
     'public_id', 'title_bn', 'slug', 'subtitle_bn', 'summary_bn', 'description_bn',
@@ -2594,20 +2739,23 @@ export async function fetchServiceListings(params: ListParams, category?: string
 
 export interface AdminVehicleBookingRow {
   id: string;
-  service_type: 'auto' | 'cng';
+  reference_code: string;
+  service_type: 'car' | 'auto' | 'cng';
   passenger_name: string;
   mobile_number: string;
-  current_address: string;
+  current_address: string | null;
   pickup_location: string;
   destination: string;
+  passenger_count: number;
   requested_at: string;
+  vehicle_preference: string;
   additional_info: string | null;
   status: 'pending' | 'confirmed' | 'completed' | 'cancelled';
   created_at: string;
 }
 
 export async function fetchVehicleBookings(
-  serviceType: 'auto' | 'cng',
+  serviceType: 'car' | 'auto' | 'cng' | undefined,
   params: ListParams
 ): Promise<Paged<AdminVehicleBookingRow>> {
   const admin = await getAdminDataClient();
@@ -2615,10 +2763,10 @@ export async function fetchVehicleBookings(
 
   let query = admin.client
     .from('vehicle_bookings')
-    .select('id, service_type, passenger_name, mobile_number, current_address, pickup_location, destination, requested_at, additional_info, status, created_at', { count: 'exact' })
-    .eq('service_type', serviceType)
+    .select('id, reference_code, service_type, passenger_name, mobile_number, current_address, pickup_location, destination, passenger_count, requested_at, vehicle_preference, additional_info, status, created_at', { count: 'exact' })
     .order('created_at', { ascending: false })
     .range((params.page - 1) * params.pageSize, params.page * params.pageSize - 1);
+  if (serviceType) query = query.eq('service_type', serviceType);
   const term = searchFilter(params.search, [
     'passenger_name', 'mobile_number', 'current_address',
     'pickup_location', 'destination', 'additional_info',
@@ -2686,6 +2834,8 @@ export interface AdminBloodDonorRow {
   published_at: string | null;
   created_at: string;
   updated_at: string;
+  profile_views?: number | null;
+  call_clicks?: number | null;
 }
 
 export interface AdminBloodDonorCounts {
@@ -2956,6 +3106,7 @@ export interface PlatformSettings {
     tier3Above20k: number;
   };
   service_availability: Record<string, boolean>;
+  service_seo: Record<string, Record<string, unknown>>;
   notification_settings: {
     notifyOnRequestSubmitted: boolean;
     notifyOnStatusChange: boolean;
@@ -2972,6 +3123,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     return {
       tolet_fee_rules: { messSeatFee: 50, tier1Max10k: 100, tier2Max20k: 200, tier3Above20k: 400 },
       service_availability: {},
+      service_seo: {},
       notification_settings: {
         notifyOnRequestSubmitted: true,
         notifyOnStatusChange: true,
@@ -2995,7 +3147,10 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     | 'tutor_profile'
     | 'donor_profile'
     | 'service_listing'
-    | 'tolet_profile';
+    | 'tolet_profile'
+    | 'site_review'
+    | 'tutor_review'
+    | 'directory_review';
 
   export interface AdminApprovalRow {
     id: string;
@@ -3222,6 +3377,7 @@ async function fetchPlatformSettingsWithClient(admin: AdminClient): Promise<Plat
     return {
       tolet_fee_rules: { messSeatFee: 50, tier1Max10k: 100, tier2Max20k: 200, tier3Above20k: 400 },
       service_availability: {},
+      service_seo: {},
       notification_settings: {
         notifyOnRequestSubmitted: true,
         notifyOnStatusChange: true,
@@ -3247,6 +3403,7 @@ async function fetchPlatformSettingsWithClient(admin: AdminClient): Promise<Plat
       tier3Above20k: 400,
     }),
     service_availability: read('service_availability', {}),
+    service_seo: read('service_seo', {}),
     notification_settings: read('notification_settings', {
       notifyOnRequestSubmitted: true,
       notifyOnStatusChange: true,

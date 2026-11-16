@@ -39,7 +39,7 @@ export function FilterDrawer({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 overflow-hidden">
+    <div className="fixed inset-0 z-[60] overflow-hidden">
       {/* Backdrop */}
       <div
         className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity"
@@ -47,7 +47,7 @@ export function FilterDrawer({
       />
 
       {/* Sheet / Drawer Container */}
-      <div className="fixed inset-x-0 bottom-0 max-h-[90vh] sm:max-h-[85vh] md:inset-y-0 md:right-0 md:left-auto md:w-[420px] md:max-h-full bg-white shadow-2xl flex flex-col rounded-t-3xl md:rounded-l-3xl md:rounded-tr-none transition-transform duration-200">
+      <div className="fixed inset-x-0 bottom-0 flex max-h-[calc(100dvh-env(safe-area-inset-top)-env(safe-area-inset-bottom))] flex-col rounded-t-3xl bg-white pb-[env(safe-area-inset-bottom)] shadow-2xl transition-transform duration-200 sm:max-h-[85vh] md:inset-y-0 md:right-0 md:left-auto md:w-[420px] md:max-h-full md:rounded-l-3xl md:rounded-tr-none md:pb-0">
         {/* Mobile drag bar indicator */}
         <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mt-3 sm:hidden" />
 
@@ -66,7 +66,7 @@ export function FilterDrawer({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+            className="flex h-11 w-11 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
             aria-label="বন্ধ করুন"
           >
             <X className="w-5 h-5" />
@@ -74,7 +74,7 @@ export function FilterDrawer({
         </div>
 
         {/* Scrollable Filters Body */}
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-5">
           {children}
         </div>
 

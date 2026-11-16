@@ -12,7 +12,6 @@ import {
   ShieldCheck,
   CheckCircle2,
 } from 'lucide-react';
-import { calculateToletFee } from '@/lib/services-data';
 import { cn } from '@/lib/utils';
 
 export interface PropertyToletCardProps {
@@ -53,8 +52,6 @@ export function PropertyToletCard({
   className,
 }: PropertyToletCardProps) {
   const [isFavorite, setIsFavorite] = useState(isFavoriteInitial);
-  const platformFee = calculateToletFee(rentPrice, propertyType);
-  const totalRent = rentPrice + platformFee;
 
   const handleHeartClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -150,23 +147,18 @@ export function PropertyToletCard({
           </div>
         </div>
 
-        {/* Transparent Price & Fee Breakdown */}
+        {/* Monthly rent only */}
         <div className="mt-2 border-t border-slate-100 pt-2 sm:hidden">
           <span className="text-sm font-extrabold text-slate-900">
             ৳{rentPrice.toLocaleString('bn-BD')} <span className="text-[11px] font-medium text-slate-500">/মাস</span>
           </span>
         </div>
         <div className="mt-4 hidden border-t border-slate-100 bg-slate-50/70 p-3.5 sm:-mx-4 sm:-mb-4 sm:block sm:p-4">
-          <div className="flex items-center justify-between text-xs text-slate-500 mb-1">
-            <span>ভাড়া: ৳{rentPrice.toLocaleString('bn-BD')}</span>
-            <span>ফি: +৳{platformFee}</span>
-          </div>
-
           <div className="flex items-center justify-between">
             <div>
-              <span className="text-[11px] text-slate-500 block">মোট ভাড়া:</span>
+              <span className="text-[11px] text-slate-500 block">মাসিক ভাড়া:</span>
               <span className="text-base sm:text-lg font-black text-slate-900">
-                ৳{totalRent.toLocaleString('bn-BD')}
+                ৳{rentPrice.toLocaleString('bn-BD')}
               </span>
               <span className="text-[11px] text-slate-500"> /মাস</span>
             </div>

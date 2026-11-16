@@ -57,3 +57,80 @@ export async function moderateToletProfile(input: {
     };
   });
 }
+
+export async function moderateSiteReview(
+  id: string,
+  status: 'approved' | 'rejected'
+): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return { ok: false, error: 'রিভিউ আইডি সঠিক নয়।' };
+    }
+    const { data, error } = await client
+      .from('site_reviews')
+      .update({ status: status === 'approved' ? 'published' : 'hidden' })
+      .eq('id', id)
+      .eq('status', 'pending')
+      .select('id')
+      .maybeSingle();
+    if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'অপেক্ষমাণ সাইট রিভিউটি পাওয়া যায়নি বা অন্য কেউ পরিবর্তন করেছেন।' };
+    revalidatePath('/admin/approvals');
+    revalidatePath('/admin/site-reviews');
+    revalidatePath('/');
+    return { ok: true, message: status === 'approved' ? 'সাইট রিভিউ অনুমোদিত হয়েছে।' : 'সাইট রিভিউ প্রত্যাখ্যান করা হয়েছে।' };
+  });
+}
+
+export async function moderateTutorReview(
+  id: string,
+  status: 'approved' | 'rejected'
+): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return { ok: false, error: 'রিভিউ আইডি সঠিক নয়।' };
+    }
+    const { data, error } = await client
+      .from('tutor_reviews')
+      .update({
+        is_published: status === 'approved',
+        moderation_status: status,
+      })
+      .eq('id', id)
+      .eq('moderation_status', 'pending')
+      .select('id')
+      .maybeSingle();
+    if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'অপেক্ষমাণ টিউটর রিভিউটি পাওয়া যায়নি বা অন্য কেউ পরিবর্তন করেছেন।' };
+    revalidatePath('/admin/approvals');
+    revalidatePath('/admin/reviews');
+    revalidatePath('/home-tutor');
+    return { ok: true, message: status === 'approved' ? 'টিউটর রিভিউ অনুমোদিত হয়েছে।' : 'টিউটর রিভিউ প্রত্যাখ্যান করা হয়েছে।' };
+  });
+}
+
+export async function moderateDirectoryReview(
+  id: string,
+  status: 'approved' | 'rejected'
+): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id)) {
+      return { ok: false, error: 'রিভিউ আইডি সঠিক নয়।' };
+    }
+    const { data, error } = await client
+      .from('directory_reviews')
+      .update({
+        is_published: status === 'approved',
+        moderation_status: status,
+      })
+      .eq('id', id)
+      .eq('moderation_status', 'pending')
+      .select('id, category')
+      .maybeSingle();
+    if (error) return { ok: false, error: error.message };
+    if (!data) return { ok: false, error: 'অপেক্ষমাণ সার্ভিস রিভিউটি পাওয়া যায়নি বা অন্য কেউ পরিবর্তন করেছেন।' };
+    revalidatePath('/admin/approvals');
+    revalidatePath(`/admin/directories/${data.category}`);
+    return { ok: true, message: status === 'approved' ? 'সার্ভিস রিভিউ অনুমোদিত হয়েছে।' : 'সার্ভিস রিভিউ প্রত্যাখ্যান করা হয়েছে।' };
+  });
+}

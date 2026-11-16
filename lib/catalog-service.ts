@@ -27,8 +27,8 @@
  */
 import { createClient, isSupabaseConfigured } from './supabase/client';
 import { apiFetch } from './api-fetch';
-import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
+import { normalizeBangladeshMobile } from './bangladesh-phone';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
 import {
   COACHING_WEEKDAYS,
@@ -108,6 +108,14 @@ function communityPostWriteError(
     if (input.salaryMin != null && input.salaryMax != null && input.salaryMax < input.salaryMin) {
       return 'সর্বোচ্চ বেতন সর্বনিম্ন বেতনের চেয়ে কম হতে পারবে না।';
     }
+    if ((requireComplete || input.authorPhone !== undefined) &&
+      !normalizeBangladeshMobile(input.authorPhone)) {
+      return 'সঠিক যোগাযোগের মোবাইল নম্বর দিন।';
+    }
+    if (input.whatsappNumber?.trim() &&
+      !normalizeBangladeshMobile(input.whatsappNumber)) {
+      return 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন।';
+    }
   } else if (input.kind === 'buy_sell') {
     if ((requireComplete || input.category !== undefined) &&
       !MARKET_CATEGORIES.some((item) => item.id === category) &&
@@ -126,11 +134,11 @@ function communityPostWriteError(
       return 'পণ্যের অবস্থা বেছে নিন।';
     }
     if ((requireComplete || input.authorPhone !== undefined) &&
-      !/^01[3-9]\d{8}$/.test(normalizeBdPhone(input.authorPhone ?? '') ?? '')) {
+      !normalizeBangladeshMobile(input.authorPhone)) {
       return 'সঠিক বিক্রেতার মোবাইল নম্বর দিন।';
     }
-    if (input.whatsappNumber &&
-      !/^01[3-9]\d{8}$/.test(normalizeBdPhone(input.whatsappNumber) ?? '')) {
+    if (input.whatsappNumber?.trim() &&
+      !normalizeBangladeshMobile(input.whatsappNumber)) {
       return 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন।';
     }
   }
@@ -167,8 +175,8 @@ const PUBLIC_LISTING_COLUMNS =
 /**
  * `author_name` is public — a buyer has to know who is selling. `author_phone`
  * and `whatsapp_number` are NOT here even though they are readable on an
- * approved row, because `community_posts` also backs news and job posts where a
- * number must never surface, and omitting a column from a PostgREST `select` is
+ * approved row, because `community_posts` also backs news articles where an
+ * author's number must never surface, and omitting a column from a PostgREST `select` is
  * a convention rather than a boundary. `fetchMarketContact` is the boundary.
  */
 const PUBLIC_POST_COLUMNS =
@@ -275,7 +283,7 @@ function mapListing(row: Record<string, unknown>, admin: boolean): ServiceListin
   };
 }
 
-function mapPost(row: Record<string, unknown>): CommunityPost {
+function mapPost(row: Record<string, unknown>, includeAuthorContact = false): CommunityPost {
   const c = toCamelObject(row) as Record<string, unknown>;
   return {
     id: str(c.id),
@@ -286,13 +294,14 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     // column did not exist when this table was first written, which is why
     // `PostDetail` used to print "সদস্য" for everyone.
     authorName: optStr(c.authorName),
-    // Never mapped here even when the caller selected `*`. Reaching the number
-    // goes through `fetchMarketContact`, which checks the row is an approved
-    // marketplace item first. An admin edit path calls `mapPost` on a row that
-    // already carries the number; leaving it unmapped is deliberate — the admin
-    // UI reads it from the admin listing column list instead.
-    authorPhone: undefined,
-    whatsappNumber: undefined,
+    // Public reads only attach contact through the approved-post RPC. The
+    // owner's edit RPC is the only direct mapping path that may include these.
+    authorPhone: includeAuthorContact
+      ? normalizeBangladeshMobile(optStr(c.authorPhone)) ?? undefined
+      : undefined,
+    whatsappNumber: includeAuthorContact
+      ? normalizeBangladeshMobile(optStr(c.whatsappNumber)) ?? undefined
+      : undefined,
     titleBn: str(c.titleBn),
     summaryBn: optStr(c.summaryBn),
     bodyBn: optStr(c.bodyBn),
@@ -324,6 +333,38 @@ function mapPost(row: Record<string, unknown>): CommunityPost {
     createdAt: str(c.createdAt),
     updatedAt: str(c.updatedAt),
   };
+}
+
+async function attachPublicPostContacts(posts: CommunityPost[]): Promise<CommunityPost[]> {
+  const eligible = posts.filter(
+    (post) =>
+      post.status === 'approved' &&
+      (post.kind === 'job' ||
+        (post.kind === 'buy_sell' && post.marketplaceStatus === 'available'))
+  );
+  if (eligible.length === 0 || !isSupabaseConfigured) return posts;
+  const client = createClient();
+  if (!client) throw new Error(NOT_CONFIGURED);
+  const { data, error } = await client.rpc('fetch_public_community_post_contacts', {
+    p_slugs: eligible.map((post) => post.slug),
+  });
+  if (error) throw new Error(`পোস্টের যোগাযোগের তথ্য লোড করা যায়নি: ${error.message}`);
+  const contacts = new Map<string, { phone?: string; whatsapp?: string }>();
+  for (const row of Array.isArray(data) ? data : []) {
+    const contact = toCamelObject(row as Record<string, unknown>) as Record<string, unknown>;
+    const slug = optStr(contact.slug);
+    if (!slug) continue;
+    contacts.set(slug, {
+      phone: normalizeBangladeshMobile(optStr(contact.authorPhone)) ?? undefined,
+      whatsapp: normalizeBangladeshMobile(optStr(contact.whatsappNumber)) ?? undefined,
+    });
+  }
+  return posts.map((post) => {
+    const contact = contacts.get(post.slug);
+    return contact
+      ? { ...post, authorPhone: contact.phone, whatsappNumber: contact.whatsapp }
+      : post;
+  });
 }
 
 function mapContact(row: Record<string, unknown>): EmergencyContact {
@@ -876,7 +917,9 @@ function makeServiceSlug(category: CustomerServiceCategory, title: string): stri
  * and returns the local 11-digit form, or null when it is not a valid BD mobile.
  */
 export function normalizeBdPhone(input: string): string | null {
-  const digits = input.replace(/\D/g, '');
+  const digits = input
+    .replace(/[০-৯]/g, (digit) => String('০১২৩৪৫৬৭৮৯'.indexOf(digit)))
+    .replace(/\D/g, '');
   let local = digits;
   if (local.startsWith('880') && local.length === 13) local = `0${local.slice(3)}`;
   return /^01\d{9}$/.test(local) ? local : null;
@@ -2349,7 +2392,7 @@ export async function fetchApprovedPosts(kind: PostKind): Promise<CommunityPost[
     .order('created_at', { ascending: false });
   if (error) throw new Error(`অনুমোদিত পোস্ট লোড করা যায়নি: ${error.message}`);
   if (!data) return [];
-  return (data as Record<string, unknown>[]).map(mapPost);
+  return attachPublicPostContacts((data as Record<string, unknown>[]).map((row) => mapPost(row)));
 }
 
 /** Approved posts for every kind at once — used by the homepage rails. */
@@ -2368,7 +2411,7 @@ export async function fetchApprovedPostsByKind(
     .order('created_at', { ascending: false });
   if (error) throw new Error(`অনুমোদিত পোস্ট লোড করা যায়নি: ${error.message}`);
   if (!data) return [];
-  return (data as Record<string, unknown>[]).map(mapPost);
+  return attachPublicPostContacts((data as Record<string, unknown>[]).map((row) => mapPost(row)));
 }
 
 export async function fetchApprovedPostBySlug(
@@ -2391,29 +2434,30 @@ export async function fetchApprovedPostBySlug(
     .maybeSingle();
   if (error) throw new Error(`পোস্ট লোড করা যায়নি: ${error.message}`);
   if (!data) return null;
-  return mapPost(data as Record<string, unknown>);
+  const [post] = await attachPublicPostContacts([mapPost(data as Record<string, unknown>)]);
+  return post ?? null;
 }
 
 /**
- * Seller contact for an approved marketplace item — or `null` if there is none.
+ * Direct contact for an approved job or available marketplace post.
  *
  * Why an RPC instead of just reading `author_phone`:
  *
  * `community_posts` is one table serving three very different surfaces. A
- * marketplace buyer must be able to call the seller, but the same table stores
- * news articles and job ads, where the author's number must never appear. RLS
+ * marketplace buyer or job applicant must be able to contact the poster, but
+ * the same table stores news articles, where the author's number must never appear. RLS
  * operates on rows, not columns, and PostgREST will happily serve `select=*`, so
  * "the public column list does not include it" is a habit rather than a
  * boundary — one careless `select('*')` anywhere in the codebase would leak it.
  *
  * `fetch_market_contact` moves the check server-side. It is `SECURITY DEFINER`,
  * so it can read a column the anon role cannot, and it returns nothing unless
- * the row is `kind = 'buy_sell'` and `status = 'approved'`. The grants are
+ * the row is an approved job or an available approved marketplace item. The grants are
  * `REVOKE ALL … FROM PUBLIC` plus explicit `anon, authenticated`, so the function
  * is not reachable by any future role that has not been thought about.
  *
  * It returns `null` — never a fabricated number — when the row is absent, the
- * post is still in moderation, or the post is news or a job. Database/RPC
+ * post is still in moderation, an item is unavailable, or the post is news. Database/RPC
  * failures are thrown so a missing migration cannot masquerade as no contact.
  */
 export async function fetchMarketContact(
@@ -2423,12 +2467,12 @@ export async function fetchMarketContact(
   const client = createClient();
   if (!client) throw new Error(NOT_CONFIGURED);
   const { data, error } = await client.rpc('fetch_market_contact', { p_slug: slug });
-  if (error) throw new Error(`বিক্রেতার যোগাযোগের তথ্য লোড করা যায়নি: ${error.message}`);
+  if (error) throw new Error(`পোস্টের যোগাযোগের তথ্য লোড করা যায়নি: ${error.message}`);
   if (!Array.isArray(data) || data.length === 0) return null;
   const row = (data[0] as Record<string, unknown>) ?? {};
   const c = toCamelObject(row) as Record<string, unknown>;
-  const authorPhone = optStr(c.authorPhone);
-  const whatsappNumber = optStr(c.whatsappNumber);
+  const authorPhone = normalizeBangladeshMobile(optStr(c.authorPhone)) ?? undefined;
+  const whatsappNumber = normalizeBangladeshMobile(optStr(c.whatsappNumber)) ?? undefined;
   const authorName = optStr(c.authorName);
   // A row with no number in it is not a contact. Returning null here is what
   // makes the detail page show "number নেই" instead of a dead call button.
@@ -2470,7 +2514,6 @@ export async function createCommunityPostReport(input: {
     details: input.details?.trim() || null,
   });
   if (error) return { success: false, error: error.message };
-  void requestAdminTelegramAlert('community_post_reports', reportId);
   return { success: true };
 }
 
@@ -2524,7 +2567,7 @@ export async function fetchMyPostForEdit(id: string): Promise<CommunityPost | nu
     .maybeSingle();
   if (error) throw new Error(`পোস্ট সম্পাদনার তথ্য লোড করা যায়নি: ${error.message}`);
   if (!data) return null;
-  const post = mapPost(data as Record<string, unknown>);
+  const post = mapPost(data as Record<string, unknown>, true);
   // An already-approved post is not editable from the draft/edit screen.
   if (post.status === 'approved') return null;
   return post;
@@ -2551,7 +2594,7 @@ export async function fetchMyPosts(strict = false): Promise<CommunityPost[]> {
     throw new Error(`আপনার পোস্ট লোড করা যায়নি: ${error.message}`);
   }
   if (!data) return [];
-  return (data as Record<string, unknown>[]).map(mapPost);
+  return (data as Record<string, unknown>[]).map((row) => mapPost(row));
 }
 
 /**
@@ -2672,8 +2715,17 @@ export async function createCommunityPost(
 
   const payload = {
     ...toSnakeObject(rest as Record<string, unknown>),
+    ...(input.kind === 'job' || input.kind === 'buy_sell'
+      ? {
+          author_phone: normalizeBangladeshMobile(input.authorPhone),
+          whatsapp_number:
+            normalizeBangladeshMobile(input.whatsappNumber) ??
+            normalizeBangladeshMobile(input.authorPhone),
+        }
+      : {}),
     author_id: userId,
     author_name: authorName,
+    marketplace_status: input.kind === 'buy_sell' ? 'available' : null,
     // Moderation is never client-controlled.
     status: 'pending',
   };
@@ -2750,6 +2802,16 @@ export async function updateCommunityPost(
   } = patch;
   const payload = {
     ...toSnakeObject(rest as Record<string, unknown>),
+    ...(current.kind === 'job' || current.kind === 'buy_sell'
+      ? {
+          ...(patch.authorPhone !== undefined
+            ? { author_phone: normalizeBangladeshMobile(patch.authorPhone) }
+            : {}),
+          ...(patch.whatsappNumber !== undefined
+            ? { whatsapp_number: normalizeBangladeshMobile(patch.whatsappNumber) }
+            : {}),
+        }
+      : {}),
     author_name: authorName,
     // An edit re-enters moderation.
     status: 'pending',
@@ -2841,7 +2903,7 @@ export async function adminFetchPosts(kind?: PostKind): Promise<CommunityPost[]>
   const { data, error } = await q;
   if (error) throw new Error(`অ্যাডমিন পোস্ট লোড করা যায়নি: ${error.message}`);
   if (!data) return [];
-  return (data as Record<string, unknown>[]).map(mapPost);
+  return (data as Record<string, unknown>[]).map((row) => mapPost(row));
 }
 
 /** Approve / reject / feature a post. Admin only. */

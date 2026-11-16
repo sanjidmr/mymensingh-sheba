@@ -19,3 +19,7 @@ export const SERVICE_REQUEST_STATUSES = [
   'cancelled',
   'rejected',
 ] as const;
+
+export function isHomeServiceSlug(value: string): value is (typeof HOME_SERVICE_SLUGS)[number] {
+  return HOME_SERVICE_SLUGS.some((slug) => slug === value);
+}

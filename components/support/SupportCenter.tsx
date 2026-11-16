@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { Mail, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
-import { requestAdminTelegramAlert } from '@/lib/admin-telegram-alerts';
 
 export type SupportMode = 'messages' | 'complaints';
 
@@ -246,10 +245,6 @@ export default function SupportCenter({ mode }: { mode: SupportMode }) {
         }
         throw new Error(`অভিযোগ জমা দেওয়া যায়নি: ${insertError.message}.${cleanupNote}`);
       }
-      if (['safety', 'payment'].includes(complaintCategory)) {
-        void requestAdminTelegramAlert('contact_message', messageId);
-      }
-
       setComplaintSubject('');
       setComplaintDetails('');
       setAttachment(null);

@@ -120,7 +120,7 @@ iconName: 'GraduationCap',
     categoryType: 'community',
     tagBadge: 'যাতায়াত',
     searchPlaceholder: 'গাড়ি, অটো বা CNG খুঁজুন...',
-    coverImage: '/carrent.png',
+    coverImage: '/carrent.webp',
   },
   {
     id: 'ac-fridge',
@@ -132,7 +132,7 @@ iconName: 'GraduationCap',
     categoryType: 'admin_managed',
     tagBadge: 'দ্রুত মেরামত',
     searchPlaceholder: 'এসি বা ফ্রিজের সমস্যা লিখুন...',
-    coverImage: '/ac.png',
+    coverImage: '/ac.webp',
   },
   {
     id: 'buysell',
@@ -236,22 +236,9 @@ iconName: 'GraduationCap',
     iconName: 'Flame',
     categoryType: 'community',
     tagBadge: 'জরুরি',
-    coverImage: '/fireservice.jpg',
+    coverImage: '/fireservice.webp',
   },
 ];
-
-/**
- * Platform fee engine now lives in lib/tolet-fees.ts (single source of truth).
- * Re-exported here for backward compatibility with existing pages/components.
- */
-export {
-  type ToletFeeRules,
-  DEFAULT_TOLET_FEE_RULES,
-  calculateToletFee,
-  calculateToletTotal,
-  getToletFeeRules,
-  setToletFeeRules,
-} from './tolet-fees';
 
 export interface SampleToletListing {
   id: string;
@@ -262,8 +249,6 @@ export interface SampleToletListing {
   areaNameBn: string;
   specificAddressBn: string;
   rentAmount: number;
-  platformFee: number;
-  totalAmount: number;
   bedrooms: number;
   bathrooms: number;
   balconies: number;
@@ -286,8 +271,6 @@ export const SAMPLE_TOLET_LISTINGS: SampleToletListing[] = [
     areaNameBn: 'চরপাড়া',
     specificAddressBn: 'চরপাড়া নাহার মেমোরিয়াল রোড, ময়মনসিংহ',
     rentAmount: 14000,
-    platformFee: 200,
-    totalAmount: 14200,
     bedrooms: 3,
     bathrooms: 2,
     balconies: 2,
@@ -308,8 +291,6 @@ export const SAMPLE_TOLET_LISTINGS: SampleToletListing[] = [
     areaNameBn: 'সানকিপাড়া',
     specificAddressBn: 'সানকিপাড়া শেষ মোড়, রেলওয়ে কলোনি সংলগ্ন',
     rentAmount: 9500,
-    platformFee: 100,
-    totalAmount: 9600,
     bedrooms: 2,
     bathrooms: 1,
     balconies: 1,
@@ -330,8 +311,6 @@ export const SAMPLE_TOLET_LISTINGS: SampleToletListing[] = [
     areaNameBn: 'কাঁচিঝুলি',
     specificAddressBn: 'কাঁচিঝুলি মোড়, ময়মনসিংহ জিলা স্কুল সংলগ্ন',
     rentAmount: 22000,
-    platformFee: 400,
-    totalAmount: 22400,
     bedrooms: 3,
     bathrooms: 3,
     balconies: 3,
@@ -352,8 +331,6 @@ export const SAMPLE_TOLET_LISTINGS: SampleToletListing[] = [
     areaNameBn: 'নতুন বাজার',
     specificAddressBn: 'নতুন বাজার পোস্ট অফিস রোড',
     rentAmount: 2800,
-    platformFee: 50,
-    totalAmount: 2850,
     bedrooms: 1,
     bathrooms: 1,
     balconies: 1,
@@ -374,8 +351,6 @@ export const SAMPLE_TOLET_LISTINGS: SampleToletListing[] = [
     areaNameBn: 'আকুয়া',
     specificAddressBn: 'আকুয়া চৌরঙ্গী মোড়, ময়মনসিংহ',
     rentAmount: 8500,
-    platformFee: 100,
-    totalAmount: 8600,
     bedrooms: 2,
     bathrooms: 2,
     balconies: 1,
@@ -395,8 +370,6 @@ export const SAMPLE_TOLET_LISTINGS: SampleToletListing[] = [
     areaNameBn: 'নওমহল',
     specificAddressBn: 'নওমহল লেন-৩, ময়মনসিংহ',
     rentAmount: 4500,
-    platformFee: 50,
-    totalAmount: 4550,
     bedrooms: 1,
     bathrooms: 1,
     balconies: 1,

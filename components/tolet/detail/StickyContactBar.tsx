@@ -8,23 +8,8 @@ import { useListingContact } from '@/components/tolet/detail/ContactActions';
 /**
  * StickyContactBar — the mobile action bar for a listing detail page.
  *
- * How it coexists with the site bottom navigation
- * -----------------------------------------------
- * The global bottom nav (`components/home/MobileBottomNav.tsx`) is `fixed` at
- * `bottom-0`, is `--mms-bottom-nav-h` (3.5rem) tall, and hides itself at
- * `lg`. This bar therefore does NOT try to sit at the bottom of the viewport —
- * that slot is already taken and fighting over it produces the classic
- * two-bars-overlapping-a-button mess.
- *
- * Instead it is a floating pill anchored `bottom-0` with a bottom margin equal
- * to the nav's height token:
- *
- *     bottom margin = var(--mms-bottom-nav-h) + gap
- *
- * Because the margin references the SAME `--mms-bottom-nav-h` token that
- * `globals.css` uses to reserve space for the nav, the two can never drift
- * apart if one of them is resized. It is `lg:hidden` to match the nav's own
- * breakpoint, so desktop shows only the sidebar panel.
+ * The mobile action pill sits above the device safe area and is hidden on
+ * desktop, where the page's contact panel is available.
  *
  * Space at the end of the page is reserved by `<StickyContactBarSpacer />`
  * rather than by padding the body, so the reservation is scoped to the pages
@@ -57,10 +42,9 @@ export function StickyContactBar({
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 lg:hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-[3.5rem] z-40 px-3 lg:hidden"
       style={{
-        // Sits directly on top of the site bottom nav, never on top of it.
-        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom) + var(--mms-bottom-nav-h))',
+        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))',
       }}
     >
       <div className="pointer-events-auto mx-auto flex w-full max-w-lg gap-2 rounded-xl border border-brand-200 bg-white p-1.5 shadow-[0_4px_16px_rgba(7,39,31,0.10)]">
@@ -88,10 +72,7 @@ export function StickyContactBar({
  * page (the similar-properties rail, the safety note) is never trapped
  * underneath it.
  *
- * `globals.css` already pads the BODY by the bottom-nav height, so this spacer
- * only has to cover the bar's own height plus its gap above the nav
- * (~3.6rem + 0.5rem). It is `lg:hidden`, matching the bar, so desktop spacing is
- * untouched.
+ * It is `lg:hidden`, matching the bar, so desktop spacing is untouched.
  */
 export function StickyContactBarSpacer({ isLoggedIn }: { isLoggedIn: boolean }) {
   if (!isLoggedIn) return null;

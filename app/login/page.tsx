@@ -4,7 +4,6 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
 import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
@@ -195,7 +194,6 @@ export default function LoginPage() {
       <Suspense fallback={<SplashScreen />}>
         <LoginForm />
       </Suspense>
-      <Footer />
     </div>
   );
 }

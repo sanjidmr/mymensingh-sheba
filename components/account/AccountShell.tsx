@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -29,6 +29,19 @@ export default function AccountShell({ children }: { children: React.ReactNode }
   const { logout } = useAuth();
   const [logoutError, setLogoutError] = useState('');
   const [loggingOut, setLoggingOut] = useState(false);
+  const [submissionSuccess, setSubmissionSuccess] = useState(false);
+
+  useEffect(() => {
+    const updateSubmissionState = (event?: Event) => {
+      const active = event
+        ? (event as CustomEvent<boolean>).detail
+        : document.body.dataset.submissionSuccess === 'true';
+      setSubmissionSuccess(active);
+    };
+    updateSubmissionState();
+    window.addEventListener('mms:submission-confirmation', updateSubmissionState);
+    return () => window.removeEventListener('mms:submission-confirmation', updateSubmissionState);
+  }, []);
 
   const handleLogout = async () => {
     if (loggingOut || !window.confirm('আপনি কি লগআউট করতে চান?')) return;
@@ -49,6 +62,10 @@ export default function AccountShell({ children }: { children: React.ReactNode }
       ? pathname === route
       : pathname === route || pathname.startsWith(`${route}/`);
   };
+
+  if (submissionSuccess) {
+    return <div className="min-h-screen">{children}</div>;
+  }
 
   return (
     <div data-dashboard-shell className="min-h-screen overflow-x-clip bg-[#faf9f6]">

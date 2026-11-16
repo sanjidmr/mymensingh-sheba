@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { normalizeBdPhone } from '@/lib/contact-types';
-import { notifyOrder } from '@/lib/notify-order.server';
 import { readBoundedRequestBody } from '@/lib/bounded-request-body';
 
 export const runtime = 'nodejs';
@@ -146,7 +145,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'অনুরোধটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 500 });
   }
 
-  await notifyOrder(data, slug, '/admin/requests');
   return NextResponse.json({
     success: true,
     requestId: data.id,

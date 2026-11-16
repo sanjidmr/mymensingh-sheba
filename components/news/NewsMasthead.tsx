@@ -71,10 +71,10 @@ export default function NewsMasthead({
                 ময়মনসিংহ শেবা · সংবাদ
               </p>
               <div
-                aria-label="ময়মনসিংহের নিউজ"
+                aria-label="ময়মনসিংহের খবর"
                 className="font-[family-name:var(--font-news-serif)] text-[24px] font-black leading-[1.08] tracking-[-0.015em] text-[#141414] sm:text-[38px] lg:text-[46px]"
               >
-                ময়মনসিংহের <span className="text-[#0c3b2e]">নিউজ</span>
+                ময়মনসিংহের <span className="text-[#0c3b2e]">খবর</span>
               </div>
               <p className="mt-1 hidden text-[11px] font-medium text-[#6d685f] sm:block">
                 ময়মনসিংহ থেকে প্রকাশিত নির্ভরযোগ্য সংবাদ

@@ -1,6 +1,5 @@
 import { redirect } from 'next/navigation';
 import { cookies } from 'next/headers';
-import { createServerSideClient } from '@/lib/supabase/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 // ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
 import { DEV_AUTH_BYPASS } from '@/lib/dev-auth-bypass';
@@ -41,6 +40,7 @@ async function hasSupabaseSessionCookie(): Promise<boolean> {
 /** The signed-in user id, or null. Never throws. */
 export async function getAuthenticatedUserId(): Promise<string | null> {
   if (!(await hasSupabaseSessionCookie())) return null;
+  const { createServerSideClient } = await import('@/lib/supabase/server');
   const supabase = await createServerSideClient();
   if (!supabase) return null;
 
@@ -75,6 +75,7 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   }
 
   if (!(await hasSupabaseSessionCookie())) return null;
+  const { createServerSideClient } = await import('@/lib/supabase/server');
   const supabase = await createServerSideClient();
   if (!supabase) return null;
 
@@ -140,5 +141,6 @@ export async function requireAdmin(nextPath?: string): Promise<AdminSession> {
 export async function getAdminClient(): Promise<SupabaseClient | null> {
   const session = await getAdminSession();
   if (!session) return null;
+  const { createServerSideClient } = await import('@/lib/supabase/server');
   return createServerSideClient();
 }

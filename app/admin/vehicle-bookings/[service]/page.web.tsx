@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import Link from 'next/link';
 import { CalendarClock, MapPin, Phone } from 'lucide-react';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { AdminEmpty, AdminError } from '@/components/admin/States';
@@ -13,9 +14,17 @@ import { formatDateTime } from '@/lib/admin/format';
 export const dynamic = 'force-dynamic';
 
 const SERVICE_LABELS = {
+  car: { title: 'গাড়ি বুকিং অনুরোধ', short: 'গাড়ি' },
   auto: { title: 'অটো বুকিং অনুরোধ', short: 'অটো' },
   cng: { title: 'CNG বুকিং অনুরোধ', short: 'CNG' },
 } as const;
+
+const CATEGORIES = [
+  { value: 'all', label: 'সব বুকিং' },
+  { value: 'car', label: 'গাড়ি' },
+  { value: 'auto', label: 'অটো' },
+  { value: 'cng', label: 'CNG' },
+] as const;
 
 const STATUS_FILTERS = [
   { value: 'pending', label: 'অপেক্ষমাণ' },
@@ -25,7 +34,7 @@ const STATUS_FILTERS = [
 ];
 
 export function generateStaticParams() {
-  return [ { "service": 'auto' }, { "service": 'cng' } ];
+  return [{ service: 'car' }, { service: 'auto' }, { service: 'cng' }];
 }
 
 export default async function VehicleBookingsAdminPage({
@@ -36,11 +45,19 @@ export default async function VehicleBookingsAdminPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { service } = await routeParams;
-  if (service !== 'auto' && service !== 'cng') notFound();
-  const config = SERVICE_LABELS[service];
+  if (service !== 'car' && service !== 'auto' && service !== 'cng') notFound();
   const resolvedSearchParams = await searchParams;
   const params = parseListParams(resolvedSearchParams, { pageSize: 20 });
-  const result = await fetchVehicleBookings(service, params);
+  const rawType = Array.isArray(resolvedSearchParams.type)
+    ? resolvedSearchParams.type[0]
+    : resolvedSearchParams.type;
+  const selectedType = service === 'car'
+    ? (rawType === 'car' || rawType === 'auto' || rawType === 'cng' ? rawType : undefined)
+    : service;
+  const config = selectedType
+    ? SERVICE_LABELS[selectedType]
+    : { title: 'গাড়ি / অটো / CNG বুকিং অনুরোধ', short: 'যানবাহন' };
+  const result = await fetchVehicleBookings(selectedType, params);
 
   const columns: AdminColumn<AdminVehicleBookingRow>[] = [
     {
@@ -50,12 +67,24 @@ export default async function VehicleBookingsAdminPage({
       render: (row) => (
         <span className="block">
           <span className="block font-semibold">{row.passenger_name}</span>
+          <span className="block text-[11px] font-semibold text-admin-muted">{row.reference_code}</span>
           <a href={`tel:${row.mobile_number}`} className="mt-1 inline-flex min-h-8 items-center gap-1.5 text-xs font-semibold text-brand-700 hover:underline">
             <Phone className="h-3.5 w-3.5" aria-hidden="true" /> {row.mobile_number}
           </a>
-          <span className="block text-xs text-admin-muted">{row.current_address}</span>
+          {row.current_address && <span className="block text-xs text-admin-muted">{row.current_address}</span>}
         </span>
       ),
+    },
+    {
+    key: 'vehicle',
+    header: 'ধরন ও যাত্রী',
+    render: (row) => (
+      <span className="block text-xs leading-5 text-admin-text">
+        <span className="font-semibold">{SERVICE_LABELS[row.service_type]?.short ?? row.service_type}</span>
+        <span>{row.passenger_count.toLocaleString('bn-BD')} জন যাত্রী</span>
+        <span className="block text-admin-muted">{row.vehicle_preference}</span>
+      </span>
+    ),
     },
     {
       key: 'route',
@@ -97,6 +126,24 @@ export default async function VehicleBookingsAdminPage({
         description={`${config.short} ভাড়ার অনুরোধ, যাত্রাপথ ও যোগাযোগের তথ্য দেখুন।`}
         count={`এই পাতায় ${result.total.toLocaleString('bn-BD')} টি অনুরোধ`}
       />
+      <nav aria-label="যানবাহনের ধরন" className="mb-4 flex flex-wrap gap-2">
+        {CATEGORIES.map((category) => (
+          <Link
+            key={category.value}
+            href={category.value === 'all'
+              ? '/admin/vehicle-bookings/car'
+              : `/admin/vehicle-bookings/car?type=${category.value}`}
+            aria-current={(selectedType ?? 'all') === category.value ? 'page' : undefined}
+            className={`inline-flex min-h-10 items-center rounded-md border px-4 text-sm font-bold ${
+              service === category.value
+                ? 'border-admin-navy bg-admin-navy text-white'
+                : 'border-admin-border bg-white text-admin-text hover:bg-admin-page'
+            }`}
+          >
+            {category.label}
+          </Link>
+        ))}
+      </nav>
       {result.unavailable ? (
         <AdminError title="বুকিং অনুরোধ লোড করা যায়নি" message={result.error} />
       ) : (

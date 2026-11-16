@@ -398,10 +398,8 @@ export interface CommunityPost {
   /**
    * The author's contact number.
    *
-   * Not a free-for-all: it is populated from the signed-in user's profile, or
-   * typed by a guest at post time, and it is only ever READ BACK on a
-   * marketplace item — a news article or a job ad never exposes it. See
-   * `fetchMarketContact` in the service layer for the server-side gate.
+   * Not a free-for-all: it is returned only for approved jobs and available
+   * marketplace items by `fetchMarketContact`; news-author numbers stay private.
    */
   authorPhone?: string;
   /** Separate WhatsApp number when it differs from the call number. */

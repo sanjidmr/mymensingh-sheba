@@ -8,9 +8,17 @@
  */
 import type { ServiceRequestStatus } from '@/lib/supabase/types';
 
-export type StaffServiceKey = 'kajer-bua' | 'electrician' | 'plumber' | 'ac-fridge';
+export type StaffServiceKey = 'kajer-bua' | 'electrician' | 'plumber' | 'ac-fridge' | 'auto' | 'cng' | 'home-moving';
 
-export const STAFF_SERVICE_KEYS: StaffServiceKey[] = ['kajer-bua', 'electrician', 'plumber', 'ac-fridge'];
+export const STAFF_SERVICE_KEYS: StaffServiceKey[] = [
+  'kajer-bua',
+  'electrician',
+  'plumber',
+  'ac-fridge',
+  'auto',
+  'cng',
+  'home-moving',
+];
 
 export type StaffAvailability = 'available' | 'limited' | 'busy';
 
@@ -247,5 +255,50 @@ export const STAFF_SERVICE_UI: Record<StaffServiceKey, StaffServiceUiConfig> = {
     usesEmergency: true,
     hasPhotoOnRequest: true,
     supportsSearchPlaceholder: 'যেমন: এসি সার্ভিসিং, ফ্রিজ গ্যাস চার্জ...',
+  },
+  auto: {
+    key: 'auto',
+    route: '/gari-auto-cng',
+    nameBn: 'অটো',
+    nameEn: 'Auto',
+    heroTitle: 'অটো সেবা',
+    heroSubtitle: 'অটো চালক ও যানবাহন-সংশ্লিষ্ট কর্মীদের তথ্য।',
+    categoryBadge: 'অ্যাডমিন পরিচালিত • যাতায়াত',
+    accent: 'amber',
+    workTypeLabel: 'সেবার ধরন',
+    usesSalary: false,
+    usesEmergency: false,
+    hasPhotoOnRequest: false,
+    supportsSearchPlaceholder: 'যেমন: অটো চালক...',
+  },
+  cng: {
+    key: 'cng',
+    route: '/gari-auto-cng',
+    nameBn: 'CNG',
+    nameEn: 'CNG',
+    heroTitle: 'CNG সেবা',
+    heroSubtitle: 'CNG চালক ও যানবাহন-সংশ্লিষ্ট কর্মীদের তথ্য।',
+    categoryBadge: 'অ্যাডমিন পরিচালিত • যাতায়াত',
+    accent: 'sky',
+    workTypeLabel: 'সেবার ধরন',
+    usesSalary: false,
+    usesEmergency: false,
+    hasPhotoOnRequest: false,
+    supportsSearchPlaceholder: 'যেমন: CNG চালক...',
+  },
+  'home-moving': {
+    key: 'home-moving',
+    route: '/home-moving',
+    nameBn: 'বাসা পাল্টানো',
+    nameEn: 'Home Moving',
+    heroTitle: 'বাসা পাল্টানো সেবা',
+    heroSubtitle: 'বাসা পাল্টানোর কাজে যুক্ত কর্মী ও সহায়তাকারীদের তথ্য।',
+    categoryBadge: 'অ্যাডমিন পরিচালিত • বাসা পাল্টানো',
+    accent: 'emerald',
+    workTypeLabel: 'কাজের ধরন',
+    usesSalary: false,
+    usesEmergency: false,
+    hasPhotoOnRequest: false,
+    supportsSearchPlaceholder: 'যেমন: বাসা পাল্টানোর কর্মী...',
   },
 };

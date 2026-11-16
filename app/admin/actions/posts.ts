@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { runAdminAction, toActionError, type ActionResult } from '@/lib/admin/actions';
 import type { AdminPostInput } from '@/lib/admin/post-input';
-import { normalizeBdPhone } from '@/lib/contact-types';
+import { normalizeBangladeshMobile } from '@/lib/bangladesh-phone';
 import {
   JOB_TYPES,
   MARKET_CATEGORIES,
@@ -130,10 +130,10 @@ function normalizePostInput(
       return { ok: false, error: 'পণ্যের সঠিক দাম লিখুন।' };
     }
     if (!authorName) return { ok: false, error: 'বিক্রেতার নাম লিখুন।' };
-    if (!/^01[3-9]\d{8}$/.test(normalizeBdPhone(authorPhoneRaw))) {
+    if (!normalizeBangladeshMobile(authorPhoneRaw)) {
       return { ok: false, error: 'সঠিক বিক্রেতার মোবাইল নম্বর দিন।' };
     }
-    if (whatsappRaw && !/^01[3-9]\d{8}$/.test(normalizeBdPhone(whatsappRaw))) {
+    if (whatsappRaw && !normalizeBangladeshMobile(whatsappRaw)) {
       return { ok: false, error: 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন।' };
     }
     if (!coverImageUrl && gallery.length === 0) {
@@ -151,6 +151,12 @@ function normalizePostInput(
   }
   if (input.kind === 'job') {
     if (organizationBn.length < 2) return { ok: false, error: 'প্রতিষ্ঠানের নাম লিখুন।' };
+    if (!normalizeBangladeshMobile(authorPhoneRaw)) {
+      return { ok: false, error: 'সঠিক যোগাযোগের মোবাইল নম্বর দিন।' };
+    }
+    if (whatsappRaw && !normalizeBangladeshMobile(whatsappRaw)) {
+      return { ok: false, error: 'সঠিক হোয়াটসঅ্যাপ নম্বর দিন।' };
+    }
     if (!JOB_TYPES.some((item) => item.id === jobType) && jobType !== existing?.job_type) {
       return { ok: false, error: 'চাকরির ধরন বেছে নিন।' };
     }
@@ -198,8 +204,14 @@ function normalizePostInput(
       coverImageUrl,
       gallery,
       authorName,
-      authorPhone: input.kind === 'buy_sell' ? normalizeBdPhone(authorPhoneRaw) : '',
-      whatsappNumber: input.kind === 'buy_sell' && whatsappRaw ? normalizeBdPhone(whatsappRaw) : '',
+      authorPhone: input.kind === 'buy_sell' || input.kind === 'job'
+        ? normalizeBangladeshMobile(authorPhoneRaw) ?? ''
+        : '',
+      whatsappNumber: input.kind === 'buy_sell' || input.kind === 'job'
+        ? normalizeBangladeshMobile(whatsappRaw) ??
+          normalizeBangladeshMobile(authorPhoneRaw) ??
+          ''
+        : '',
       price: input.kind === 'buy_sell' ? price : null,
       conditionLabel: input.kind === 'buy_sell' ? conditionLabel : '',
       organizationBn: input.kind === 'job' ? organizationBn : '',
@@ -232,8 +244,13 @@ function postContent(value: NormalizedPostInput) {
       ? {
           author_name: value.authorName,
           author_phone: value.authorPhone,
-          whatsapp_number: value.whatsappNumber || null,
+          whatsapp_number: value.whatsappNumber || value.authorPhone,
         }
+      : value.kind === 'job'
+        ? {
+            author_phone: value.authorPhone,
+            whatsapp_number: value.whatsappNumber || value.authorPhone,
+          }
       : value.kind === 'news'
         ? { author_name: value.authorName || null }
         : {}),
@@ -341,9 +358,9 @@ export async function createAdminPost(input: AdminPostInput): Promise<ActionResu
         slug: uniqueSlug(value.titleBn, value.kind),
         author_id: adminId,
         author_name: value.authorName || adminName,
-        status: 'pending',
+        status: 'approved',
         is_featured: false,
-        published_at: null,
+        published_at: new Date().toISOString(),
         rejection_reason: null,
       })
       .select('id')
@@ -355,7 +372,7 @@ export async function createAdminPost(input: AdminPostInput): Promise<ActionResu
       };
     }
     revalidatePosts(data.id);
-    return { ok: true, postId: data.id, message: 'পোস্টটি অপেক্ষমাণ হিসেবে তৈরি হয়েছে।' };
+    return { ok: true, postId: data.id, message: 'পোস্টটি তৈরি ও প্রকাশ করা হয়েছে।' };
   });
 }
 
@@ -385,7 +402,12 @@ export async function updateAdminPost(
 
     const { data, error } = await client
       .from('community_posts')
-      .update(postContent(validated.value))
+      .update({
+        ...postContent(validated.value),
+        status: 'approved',
+        published_at: new Date().toISOString(),
+        rejection_reason: null,
+      })
       .eq('id', postId)
       .eq('updated_at', current.updated_at)
       .select('id')
@@ -393,7 +415,7 @@ export async function updateAdminPost(
     if (error) return { ok: false, error: toActionError(error) };
     if (!data) return { ok: false, error: 'পোস্টটি অন্য কেউ পরিবর্তন করেছেন। রিফ্রেশ করে আবার চেষ্টা করুন।' };
     revalidatePosts(postId);
-    return { ok: true, message: 'পোস্টের তথ্য সংরক্ষণ হয়েছে।' };
+    return { ok: true, message: 'পোস্টের তথ্য সংরক্ষণ ও প্রকাশ করা হয়েছে।' };
   });
 }
 

@@ -74,8 +74,8 @@ export default function ServiceRequestHero({ config }: ServiceRequestHeroProps) 
 
           {/* Row 1–2, columns 8–12 — the service photo. */}
           <figure className="lg:col-span-5 lg:col-start-8 lg:row-span-2 lg:row-start-1">
-            <div className={`overflow-hidden rounded-xl border lg:h-full ${
-              cleanHero ? 'border-brand-100 bg-mist-50' : 'border-bronze-400/45 bg-brand-900'
+            <div className={`relative aspect-[16/10] overflow-hidden rounded-xl border lg:h-full ${
+              cleanHero ? 'border-brand-100 bg-white' : 'border-bronze-400/45 bg-brand-900'
             }`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -85,14 +85,34 @@ export default function ServiceRequestHero({ config }: ServiceRequestHeroProps) 
                 height={540}
                 loading="eager"
                 decoding="async"
-                className={`w-full object-cover ${
+                className={`block h-full w-full ${
                   config.compactHero
-                    ? 'aspect-[16/10] lg:aspect-[16/10]'
-                    : 'aspect-[16/11] lg:aspect-auto lg:h-full lg:min-h-[19rem]'
-                }`}
+                    ? ''
+                    : 'lg:min-h-[19rem]'
+                } ${config.slug === 'kajer-bua' ? 'object-contain' : 'object-cover'}`}
                 style={{ objectPosition: config.image.position }}
               />
             </div>
+            {config.serviceHighlights && config.serviceHighlights.length > 0 && (
+              <figcaption className="mt-2.5 rounded-xl border border-brand-100 bg-white p-3 sm:p-4">
+                <h2 className="text-xs font-bold text-ink-900">যে ধরনের কাজের সেবা পাবেন</h2>
+                {['kajer-bua', 'electrician', 'plumber'].includes(config.slug) && (
+                  <p className="mt-0.5 text-[11px] font-medium text-ink-500">
+                    এছাড়াও আরও প্রয়োজনীয় সেবা পাবেন
+                  </p>
+                )}
+                <ul className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-3">
+                  {config.serviceHighlights.map((service) => (
+                    <li
+                      key={service}
+                      className="min-w-0 rounded-lg bg-mist-50 px-2 py-1.5 text-[11px] leading-snug text-ink-700 sm:text-xs"
+                    >
+                      {service}
+                    </li>
+                  ))}
+                </ul>
+              </figcaption>
+            )}
           </figure>
 
           {/* Row 2, columns 1–7 — why it is useful, then the single next step. */}

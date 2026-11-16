@@ -20,7 +20,7 @@ export default async function AdminApprovalsPage({
     <>
       <PageHeader
         title="সকল অনুমোদন"
-        description="কমিউনিটি পোস্ট, বাসা ভাড়া ও মালিক, গৃহশিক্ষক, রক্তদাতা এবং গ্রাহক-জমা সার্ভিস প্রোফাইল একই তালিকা থেকে পর্যালোচনা করুন।"
+        description="শুধু অপেক্ষমাণ পোস্ট, প্রোফাইল ও রিভিউ এখানে দেখানো হয়। অনুমোদিত পোস্ট পোস্ট ব্যবস্থাপনা পাতায় সংরক্ষিত থাকবে।"
         count={`অপেক্ষমাণ ${result.total.toLocaleString('bn-BD')} টি`}
       />
       {result.unavailable ? (

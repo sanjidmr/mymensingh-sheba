@@ -20,9 +20,7 @@ import type {
  * Clone the showcase seed so the store is mutable per browser session (owners
  * can edit/archive their own demo listings without corrupting the seed).
  *
- * The platform fee is deliberately NOT precomputed here — `lib/tolet-fees.ts`
- * is the single source of truth and every surface calls it live, so a fee-rule
- * change can never leave a stale total baked into a cached row.
+ * The monthly rent is stored directly; no additional charge is calculated.
  */
 let listings: ToletListing[] = DEMO_TOLET_LISTINGS.map((seed) => ({
   ...seed,

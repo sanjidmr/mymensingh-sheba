@@ -38,6 +38,7 @@ import {
 import { TutorCtaBullets, TutorSalaryCard } from '@/components/home-tutor/detail/TutorSalaryCard';
 import { TutorCtaBar, TutorCtaBarSpacer } from '@/components/home-tutor/detail/TutorCtaBar';
 import SubmissionSuccess from '@/components/service-request/SubmissionSuccess';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 import { fetchPublishedTutorById } from '@/lib/home-tutor-service';
 import { useAuth } from '@/lib/auth-context';
 import type { HomeTutorProfile } from '@/lib/supabase/types';
@@ -47,7 +48,7 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
   const [tutor, setTutor] = useState<HomeTutorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [reportOpen, setReportOpen] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submission, setSubmission] = useState<ServiceRequestSuccessData | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,12 +98,23 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
     );
   }
 
+  if (submission) {
+    return (
+      <main className="min-h-screen bg-mist-50">
+        <SubmissionSuccess
+          serviceTitle="গৃহশিক্ষক"
+          serviceMessage="আপনার গৃহশিক্ষক অনুরোধটি সংরক্ষণ করা হয়েছে। টিম তথ্য যাচাই করে আপনার দেওয়া মোবাইল নম্বরে যোগাযোগ করবে।"
+          submission={submission}
+        />
+      </main>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-mist-50">
       <Navbar />
 
       <main className="mx-auto max-w-5xl px-4 py-5 sm:py-8">
-        {submitted ? <SubmissionSuccess /> : (
         <>
         <TutorProfileHeader tutor={tutor} />
 
@@ -120,8 +132,6 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
             <TutorEducationSection tutor={tutor} />
             <TutorCurrentActivitySection tutor={tutor} />
             <TutorTeachingSection tutor={tutor} />
-
-            <TutorReviewsSection tutor={tutor} />
 
             {/* A 26px-tall button is not a target a thumb can hit reliably, even though it
                 looks like quiet secondary text. `min-h-11` keeps the visual
@@ -145,8 +155,10 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
               <TutorSalaryCard tutor={tutor} />
 
               <div id="tutor-request" className="scroll-mt-4">
-                <TutorRequestForm tutor={tutor} onSubmitted={() => setSubmitted(true)} />
+                <TutorRequestForm tutor={tutor} onSubmitted={setSubmission} />
               </div>
+
+              <TutorReviewsSection tutor={tutor} />
 
               <section className="rounded-2xl border border-mist-200 bg-white p-4">
                 <h2 className="flex items-center gap-2 text-[13.5px] font-extrabold text-ink-900">
@@ -161,19 +173,16 @@ function TutorProfileContent({ tutorId }: { tutorId: string }) {
 
         <TutorCtaBarSpacer />
         </>
-        )}
       </main>
 
-      {!submitted && <TutorCtaBar tutor={tutor} />}
+      <TutorCtaBar tutor={tutor} />
 
-      {!submitted && (
-        <TutorReportSheet
-          open={reportOpen}
-          onClose={() => setReportOpen(false)}
-          tutorId={tutor.id}
-          user={user}
-        />
-      )}
+      <TutorReportSheet
+        open={reportOpen}
+        onClose={() => setReportOpen(false)}
+        tutorId={tutor.id}
+        user={user}
+      />
     </div>
   );
 }

@@ -20,6 +20,9 @@ export const STAFF_WORK_TYPE_LABELS: Record<StaffServiceKey, Record<string, stri
   electrician: buildMap(ELECTRICIAN_SERVICE_TYPES),
   plumber: buildMap(PLUMBING_SERVICE_TYPES),
   'ac-fridge': buildMap(AC_FRIDGE_SERVICE_TYPES),
+  auto: {},
+  cng: {},
+  'home-moving': {},
 };
 
 export function staffWorkTypeLabels(slug: StaffServiceKey, ids: string[]): string[] {

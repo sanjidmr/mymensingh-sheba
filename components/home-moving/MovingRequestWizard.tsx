@@ -2,9 +2,9 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { CheckCircle2, Loader2, Lock, Send, Truck } from 'lucide-react';
+import { Loader2, Lock, Send, Truck } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { validateMovingRoute } from '@/lib/locations';
+import { getAreaById, validateMovingRoute } from '@/lib/locations';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import { uploadRequestAttachment } from '@/lib/home-moving-service';
 import {
@@ -12,12 +12,21 @@ import {
 } from '@/lib/home-moving-types';
 import { normalizeBdPhone } from '@/lib/catalog-service';
 import { trackFormSubmit } from '@/lib/site-analytics';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 
 const FIELD_CLASS =
-  'min-h-11 w-full rounded-xl border border-slate-200 bg-white px-3.5 py-2.5 text-[15px] text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:text-sm';
-const LABEL_CLASS = 'mb-1.5 block text-[13px] font-bold text-slate-700';
+  'min-h-11 w-full min-w-0 rounded-lg border border-slate-200 bg-white px-3 py-2 text-[15px] text-slate-900 outline-none transition focus:border-brand-500 focus:ring-2 focus:ring-brand-100 sm:rounded-xl sm:px-3.5 sm:py-2.5 sm:text-sm';
+const LABEL_CLASS = 'mb-1 block text-xs font-bold text-slate-700 sm:mb-1.5 sm:text-[13px]';
 
-export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () => void }) {
+export default function MovingRequestWizard({
+  formOpen,
+  onFormOpenChange,
+  onSubmitted,
+}: {
+  formOpen: boolean;
+  onFormOpenChange: (open: boolean) => void;
+  onSubmitted?: (submission: ServiceRequestSuccessData) => void;
+}) {
   const { user, createServiceRequest } = useAuth();
   const [pickupAreaId, setPickupAreaId] = useState<string | null>(null);
   const [pickupAddress, setPickupAddress] = useState('');
@@ -38,9 +47,6 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [requestSent, setRequestSent] = useState(false);
-  const [requestReference, setRequestReference] = useState('');
-  const [formOpen, setFormOpen] = useState(false);
 
   const clearFieldError = (name: string) => {
     setFieldErrors((previous) => {
@@ -155,10 +161,29 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
         setError(result.error || 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
         return;
       }
-      setRequestReference(result.referenceCode || '');
+      const reference = result.referenceCode ?? result.requestId;
+      if (!reference) {
+        setError('অনুরোধটি সংরক্ষিত হয়েছে, কিন্তু রেফারেন্স আইডি পাওয়া যায়নি। আমার অনুরোধ পাতায় যাচাই করুন।');
+        return;
+      }
       trackFormSubmit({ ctaType: 'home_moving_request', category: 'home-moving' });
-      setRequestSent(true);
-      onSubmitted?.();
+      onSubmitted?.({
+        reference,
+        summary: [
+          `নাম: ${contactNameValue.trim()}`,
+          `মোবাইল: ${normalizedPhone}`,
+          `পিকআপ: ${getAreaById(pickupId)?.nameBn ?? pickupId} — ${pickupAddress.trim()}`,
+          `গন্তব্য: ${getAreaById(destinationId)?.nameBn ?? destinationId} — ${destinationAddress.trim()}`,
+          `মালামাল: ${items.trim()}`,
+          `পিকআপের তলা: ${pickupFloor}`,
+          `গন্তব্যের তলা: ${destinationFloor}`,
+          `পিকআপ ভবনে লিফট: ${hasLift ? 'আছে' : 'নেই'}`,
+          ...(parkingInfo.trim() ? [`পার্কিং / প্রবেশের তথ্য: ${parkingInfo.trim()}`] : []),
+        ],
+        preferredDate,
+        preferredTime,
+        details: [description.trim(), photoUrl ? 'মালামালের ছবি সংযুক্ত করা হয়েছে।' : ''].filter(Boolean).join('\n'),
+      });
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
     } finally {
@@ -166,31 +191,11 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
     }
   };
 
-  if (requestSent) {
-    return (
-      <section className="rounded-2xl border border-brand-200 bg-white p-6 text-center sm:p-8" role="status">
-        <CheckCircle2 className="mx-auto h-12 w-12 text-brand-700" aria-hidden="true" />
-        <h3 className="mt-3 text-xl font-extrabold text-slate-900">আপনার অনুরোধ পাঠানো হয়েছে</h3>
-        <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-slate-600">
-          অনুরোধটি অ্যাডমিন টিমের তালিকায় জমা হয়েছে। তারা তথ্য যাচাই করে খরচ ও সময় চূড়ান্ত করতে আপনার সঙ্গে যোগাযোগ করবেন।
-        </p>
-        {requestReference && (
-          <p className="mx-auto mt-3 inline-flex rounded-lg border border-brand-200 bg-brand-50 px-4 py-2 text-sm font-bold text-brand-800">
-            রেফারেন্স নম্বর: {requestReference}
-          </p>
-        )}
-        <Link href="/profile/requests" className="mt-5 inline-flex min-h-11 items-center justify-center rounded-xl bg-brand-700 px-5 text-sm font-bold text-white hover:bg-brand-800">
-          আমার অনুরোধ দেখুন
-        </Link>
-      </section>
-    );
-  }
-
   if (!formOpen) {
     return (
       <button
         type="button"
-        onClick={() => setFormOpen(true)}
+        onClick={() => onFormOpenChange(true)}
         className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-bold text-white transition-colors hover:bg-brand-800"
       >
         অনুরোধ জমা দিন
@@ -219,10 +224,10 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-6">
+    <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 sm:space-y-5 sm:rounded-2xl sm:p-6">
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">{error}</p>}
 
-      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-4 sm:grid-cols-2 sm:p-5">
+      <fieldset className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">১. পিকআপ ও গন্তব্য</legend>
         <div className="space-y-3">
           <LocationSelectInput value={pickupAreaId} onChange={(value) => { setPickupAreaId(value); clearFieldError('pickupArea'); }} placeholder="পিকআপ এলাকা বেছে নিন" label="পিকআপ এলাকা *" />
@@ -244,7 +249,7 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-4 sm:grid-cols-2 sm:p-5">
+      <fieldset className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">২. তারিখ, সময় ও মালামাল</legend>
         <div>
           <label htmlFor="moving-date" className={LABEL_CLASS}>শিফটিংয়ের সম্ভাব্য তারিখ *</label>
@@ -261,12 +266,12 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
         </div>
         <div className="sm:col-span-2">
           <label htmlFor="moving-items" className={LABEL_CLASS}>সরানোর মালামালের তালিকা *</label>
-          <textarea id="moving-items" value={items} onChange={(event) => { setItems(event.target.value); clearFieldError('items'); }} placeholder="যেমন: ২টি খাট, আলমারি, ফ্রিজ, ৪টি চেয়ার..." rows={4} className={`${FIELD_CLASS} resize-y ${fieldErrors.items ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.items)} required />
+          <textarea id="moving-items" value={items} onChange={(event) => { setItems(event.target.value); clearFieldError('items'); }} placeholder="যেমন: ২টি খাট, আলমারি, ফ্রিজ, ৪টি চেয়ার..." rows={3} className={`${FIELD_CLASS} resize-y ${fieldErrors.items ? 'border-rose-500' : ''}`} aria-invalid={Boolean(fieldErrors.items)} required />
           {fieldErrors.items && <FieldError>{fieldErrors.items}</FieldError>}
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-4 sm:grid-cols-2 sm:p-5">
+      <fieldset className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">৩. বাসা ও প্রবেশপথের তথ্য</legend>
         <div>
           <label htmlFor="moving-pickup-floor" className={LABEL_CLASS}>পিকআপ বাসার তলা *</label>
@@ -294,7 +299,7 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-4 sm:grid-cols-2 sm:p-5">
+      <fieldset className="grid gap-3 rounded-xl border border-slate-100 p-3 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">৪. যোগাযোগ ও অতিরিক্ত তথ্য</legend>
         <div>
           <label htmlFor="moving-contact-name" className={LABEL_CLASS}>আপনার নাম *</label>
@@ -308,7 +313,7 @@ export default function MovingRequestWizard({ onSubmitted }: { onSubmitted?: () 
         </div>
         <div>
           <label htmlFor="moving-description" className={LABEL_CLASS}>আরও কিছু জানাতে চান?</label>
-          <textarea id="moving-description" rows={3} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="বিশেষ বা ভঙ্গুর মালামাল, সিঁড়ি বা অন্য কোনো প্রয়োজন লিখুন" className={FIELD_CLASS} />
+          <textarea id="moving-description" rows={2} value={description} onChange={(event) => setDescription(event.target.value)} placeholder="বিশেষ বা ভঙ্গুর মালামাল, সিঁড়ি বা অন্য কোনো প্রয়োজন লিখুন" className={FIELD_CLASS} />
         </div>
         <div>
           <label htmlFor="moving-photo" className={LABEL_CLASS}>মালামালের ছবি (ঐচ্ছিক)</label>

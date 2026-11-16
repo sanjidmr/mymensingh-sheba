@@ -3,9 +3,8 @@
 import { revalidatePath } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
 import { requireAdminAction } from '@/lib/admin/actions';
-import { STAFF_SERVICE_UI, type StaffProfileInput, type StaffServiceKey } from '@/lib/staff-types';
+import { STAFF_SERVICE_KEYS, STAFF_SERVICE_UI, type StaffProfileInput, type StaffServiceKey } from '@/lib/staff-types';
 
-const STAFF_SERVICES: StaffServiceKey[] = ['kajer-bua', 'electrician', 'plumber', 'ac-fridge'];
 const STAFF_AVAILABILITY = ['available', 'limited', 'busy'] as const;
 
 function isUuid(value: string): boolean {
@@ -13,10 +12,10 @@ function isUuid(value: string): boolean {
 }
 
 function validateInput(input: StaffProfileInput): string | null {
-  if (!STAFF_SERVICES.includes(input.serviceSlug)) return 'কর্মীর সেবার ধরন সঠিক নয়।';
+  if (!STAFF_SERVICE_KEYS.includes(input.serviceSlug)) return 'কর্মীর সেবার ধরন সঠিক নয়।';
   if (input.nameBn.trim().length < 2 || input.nameBn.trim().length > 120) return 'কর্মীর নাম ২ থেকে ১২০ অক্ষরের মধ্যে লিখুন।';
   if (input.titleBn != null && (input.titleBn.trim().length < 2 || input.titleBn.trim().length > 160)) return 'পদবি ২ থেকে ১৬০ অক্ষরের মধ্যে লিখুন।';
-  if (input.aboutBn.trim().length < 10 || input.aboutBn.length > 5000) return 'কর্মীর পরিচিতি ১০ থেকে ৫০০০ অক্ষরের মধ্যে লিখুন।';
+  if (input.aboutBn.trim().length > 5000) return 'কর্মীর পরিচিতি সর্বোচ্চ ৫০০০ অক্ষরের মধ্যে লিখুন।';
   if (input.availability != null && !STAFF_AVAILABILITY.includes(input.availability)) return 'কর্মীর প্রাপ্যতার মান সঠিক নয়।';
   if (input.experienceYears != null && (!Number.isInteger(input.experienceYears) || input.experienceYears < 0 || input.experienceYears > 100)) return 'অভিজ্ঞতার বছর সঠিক নয়।';
   if (input.areaIds != null && input.areaIds.some((area) => typeof area !== 'string' || area.length > 80)) return 'কর্ম-এলাকার তথ্য সঠিক নয়।';
@@ -69,6 +68,8 @@ function revalidateStaffPaths(id?: string) {
   revalidatePath('/kajer-bua');
   revalidatePath('/electrician');
   revalidatePath('/plumber');
+  revalidatePath('/home-moving');
+  revalidatePath('/gari-auto-cng');
   if (id) revalidatePath(`/admin/services/${id}`);
 }
 
@@ -128,6 +129,26 @@ export async function setStaffActive(id: string, isActive: boolean): Promise<Act
   });
 }
 
+export async function adjustStaffCompletedJobs(id: string, delta: number): Promise<ActionResult> {
+  return runAdminAction(async (client) => {
+    if (!isUuid(id) || (delta !== -1 && delta !== 1)) {
+      return { ok: false, error: 'কর্মী বা কাজের সংখ্যা সঠিক নয়।' };
+    }
+
+    const { data, error } = await client.rpc('fn_admin_adjust_staff_completed_jobs', {
+      p_staff_id: id,
+      p_delta: delta,
+    });
+    if (error) return { ok: false, error: `সম্পন্ন কাজের সংখ্যা আপডেট ব্যর্থ হয়েছে: ${error.message}` };
+    if (!Number.isSafeInteger(Number(data)) || Number(data) < 0) {
+      return { ok: false, error: 'ডেটাবেজ থেকে কাজের সংখ্যার উত্তর সঠিক নয়।' };
+    }
+
+    revalidateStaffPaths(id);
+    return { ok: true, message: `সম্পন্ন কাজের সংখ্যা ${Number(data).toLocaleString('bn-BD')} হয়েছে।` };
+  });
+}
+
 export async function removeStaffProfile(id: string): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     if (!isUuid(id)) return { ok: false, error: 'কর্মী আইডি সঠিক নয়।' };
@@ -165,7 +186,7 @@ export async function getAssignableStaffOptions(serviceSlug: string): Promise<
 > {
   const context = await requireAdminAction();
   if (!context.ok) return context;
-  if (!STAFF_SERVICES.includes(serviceSlug as StaffServiceKey)) {
+  if (!STAFF_SERVICE_KEYS.includes(serviceSlug as StaffServiceKey)) {
     return { ok: true, rows: [] };
   }
   const { data, error } = await context.client

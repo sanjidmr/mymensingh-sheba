@@ -42,7 +42,7 @@ export default function OnboardingPage() {
 }
 
 function OnboardingForm({ user }: { user: UserProfile }) {
-  const [fullName, setFullName] = useState(user.fullName || '');
+  const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState(user.phone || '');
   const [primaryAreaId, setPrimaryAreaId] = useState(
     user.primaryAreaId === 'charpara' && !user.onboardingCompletedAt
@@ -53,10 +53,6 @@ function OnboardingForm({ user }: { user: UserProfile }) {
   const [formError, setFormError] = useState('');
   const [saving, setSaving] = useState(false);
 
-  const nameWasProvided =
-    Boolean(user.fullName.trim()) &&
-    user.fullName.trim().toLocaleLowerCase() !==
-      user.email?.split('@')[0]?.trim().toLocaleLowerCase();
   const phoneWasProvided = Boolean(normalizeBangladeshPhone(user.phone || ''));
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
@@ -129,20 +125,14 @@ function OnboardingForm({ user }: { user: UserProfile }) {
                   <UserRound className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-400" aria-hidden="true" />
                   <input
                     id="onboarding-name"
-                    autoComplete="name"
+                    autoComplete="off"
                     value={fullName}
                     onChange={(event) => setFullName(event.target.value)}
-                    readOnly={nameWasProvided}
                     maxLength={100}
-                    className="min-h-12 w-full border border-brand-200 bg-white py-3 pl-11 pr-3 text-[15px] text-ink-900 outline-none transition-colors focus:border-brand-600 read-only:bg-mist-50"
-                    aria-describedby={nameWasProvided ? 'onboarding-name-hint' : undefined}
+                    placeholder="আপনার পূর্ণ নাম লিখুন"
+                    className="min-h-12 w-full border border-brand-200 bg-white py-3 pl-11 pr-3 text-[15px] text-ink-900 outline-none transition-colors focus:border-brand-600"
                   />
                 </div>
-                {nameWasProvided && (
-                  <p id="onboarding-name-hint" className="mt-1.5 text-xs text-ink-500">
-                    আপনার অ্যাকাউন্টে দেওয়া নামটি রাখা হয়েছে।
-                  </p>
-                )}
               </div>
 
               <div>

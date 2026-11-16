@@ -50,28 +50,25 @@ export default function ServiceListingActions({ row }: { row: AdminServiceListin
   };
 
   return (
-    <div className="flex min-w-36 flex-col items-start gap-1.5">
-      <Link href={`/admin/directories/${category}/${row.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-navy hover:bg-admin-page">
+    <div className="flex min-w-0 items-center justify-end gap-1">
+      <Link href={`/admin/directories/${category}/${row.id}/edit`} aria-label="সম্পাদনা" title="সম্পাদনা" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-admin-navy hover:bg-admin-page">
         <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
-        সম্পাদনা
       </Link>
       {row.owner_id && row.status !== 'approved' && (
-        <div className="flex gap-1">
-          <button type="button" onClick={() => void moderate('approved')} disabled={busy} className="inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 disabled:opacity-60">
-            <Check className="h-3.5 w-3.5" aria-hidden="true" />অনুমোদন
+        <>
+          <button type="button" onClick={() => void moderate('approved')} disabled={busy} aria-label="অনুমোদন" title="অনুমোদন" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-emerald-700 hover:bg-emerald-50 disabled:opacity-60">
+            <Check className="h-3.5 w-3.5" aria-hidden="true" />
           </button>
-          {row.status !== 'rejected' && <button type="button" onClick={() => void moderate('rejected')} disabled={busy} className="inline-flex min-h-9 items-center gap-1 rounded-md px-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60">
-            <X className="h-3.5 w-3.5" aria-hidden="true" />প্রত্যাখ্যান
+          {row.status !== 'rejected' && <button type="button" onClick={() => void moderate('rejected')} disabled={busy} aria-label="প্রত্যাখ্যান" title="প্রত্যাখ্যান" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-rose-700 hover:bg-rose-50 disabled:opacity-60">
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
           </button>}
-        </div>
+        </>
       )}
-      <button type="button" onClick={() => setDialog('publish')} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-text hover:bg-admin-page disabled:opacity-60">
+      <button type="button" onClick={() => setDialog('publish')} disabled={busy} aria-label={row.is_active ? 'অপ্রকাশিত করুন' : 'প্রকাশ করুন'} title={row.is_active ? 'অপ্রকাশিত করুন' : 'প্রকাশ করুন'} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-admin-text hover:bg-admin-page disabled:opacity-60">
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Power className="h-3.5 w-3.5" aria-hidden="true" />}
-        {row.is_active ? 'অপ্রকাশিত করুন' : 'প্রকাশ করুন'}
       </button>
-      <button type="button" onClick={() => setDialog('delete')} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60">
+      <button type="button" onClick={() => setDialog('delete')} disabled={busy} aria-label="স্থায়ীভাবে মুছুন" title="স্থায়ীভাবে মুছুন" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-rose-700 hover:bg-rose-50 disabled:opacity-60">
         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-        মুছুন
       </button>
       {message && <span role="status" className="max-w-56 text-xs text-admin-muted">{message}</span>}
       <ConfirmDialog
@@ -80,8 +77,8 @@ export default function ServiceListingActions({ row }: { row: AdminServiceListin
         description={
           dialog === 'delete'
             ? category === 'vehicle'
-              ? 'যানবাহন রিকোয়েস্ট যুক্ত থাকলে সেগুলোর সম্পর্ক রক্ষায় মুছে ফেলা বন্ধ হবে; সেক্ষেত্রে অপ্রকাশিত করুন।'
-              : 'এই তালিকাটি স্থায়ীভাবে মুছে যাবে; কোনো গ্রাহক রিকোয়েস্ট এতে সংযুক্ত নেই।'
+              ? 'তালিকাটি স্থায়ীভাবে মুছে যাবে। আগের রিকোয়েস্টের ইতিহাস থাকবে, তবে এই যানবাহনের সঙ্গে সম্পর্ক বিচ্ছিন্ন হবে।'
+              : 'এই তালিকাটি স্থায়ীভাবে মুছে যাবে।'
             : row.is_active
               ? 'এই তালিকাটি পাবলিক ডিরেক্টরি থেকে সরানো হবে; পুরোনো যানবাহন রিকোয়েস্ট অক্ষত থাকবে।'
               : 'তথ্য যাচাই করে তবেই প্রকাশ করুন। সক্রিয় মান কোনো যাচাইকরণ বা প্রাপ্যতার নিশ্চয়তা নয়।'

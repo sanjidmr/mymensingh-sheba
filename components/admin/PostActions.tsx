@@ -3,13 +3,9 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
-import { ArrowUpRight, Check, Eye, Pencil, Star, Trash2, X } from 'lucide-react';
+import { Pencil, Trash2, X } from 'lucide-react';
 import type { AdminPostRow } from '@/lib/admin/queries';
-import {
-  setPostStatus,
-  togglePostFeatured,
-  deletePost,
-} from '@/app/admin/actions/posts';
+import { setPostStatus, deletePost } from '@/app/admin/actions/posts';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { useToast } from '@/components/admin/ToastProvider';
 import { Button } from '@/components/ui/Button';
@@ -29,7 +25,6 @@ export default function PostActions({ post }: { post: AdminPostRow }) {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [deleting, setDeleting] = useState(false);
-  const [confirmStatus, setConfirmStatus] = useState<'approved' | 'pending' | null>(null);
   const [busy, setBusy] = useState(false);
 
   const run = async (fn: () => Promise<{ ok: boolean; error?: string; message?: string }>) => {
@@ -68,102 +63,31 @@ export default function PostActions({ post }: { post: AdminPostRow }) {
     if (ok) setDeleting(false);
   };
 
-  const confirmModeration = async () => {
-    if (!confirmStatus) return;
-    const ok = await run(() => setPostStatus(post.id, confirmStatus));
-    if (ok) setConfirmStatus(null);
-  };
-
-  const isPending = post.status === 'pending';
-
   return (
     <>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Link
-          href={post.kind === 'news' ? `/admin/news/${post.id}/preview` : post.kind === 'job' ? `/jobs/${post.slug}` : `/buy-sell/${post.slug}`}
-          target="_blank"
-          rel="noreferrer"
-          aria-label="সাইটে প্রিভিউ দেখুন"
-          title="সাইটে প্রিভিউ"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-admin-border bg-white text-admin-muted hover:bg-admin-page hover:text-admin-navy"
-        >
-          <ArrowUpRight className="h-4 w-4" aria-hidden="true" />
-        </Link>
-        <Link
-          href={`/admin/posts/${post.id}`}
-          aria-label="বিস্তারিত"
-          title="বিস্তারিত"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-admin-border bg-white text-admin-muted hover:bg-admin-page hover:text-admin-navy"
-        >
-          <Eye className="h-4 w-4" aria-hidden="true" />
-        </Link>
+      <div className="flex flex-nowrap items-center justify-end gap-1 whitespace-nowrap">
         <Link
           href={`/admin/posts/${post.id}/edit`}
           aria-label="পোস্ট সম্পাদনা"
           title="সম্পাদনা"
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-admin-border bg-white text-admin-muted hover:bg-admin-page hover:text-admin-navy"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-admin-border bg-white text-admin-muted hover:bg-admin-page hover:text-admin-navy"
         >
-          <Pencil className="h-4 w-4" aria-hidden="true" />
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
         </Link>
-        {post.status !== 'rejected' && (
-          <>
-            {(isPending || post.status === 'draft') && (
-              <Button
-                size="sm"
-                variant="success"
-                leftIcon={<Check className="h-3.5 w-3.5" />}
-                onClick={() => setConfirmStatus('approved')}
-                disabled={busy}
-              >
-                অনুমোদন
-              </Button>
-            )}
-            <Button
-              size="sm"
-              variant="danger"
-              leftIcon={<X className="h-3.5 w-3.5" />}
-              onClick={() => {
-                setReason(post.rejection_reason ?? '');
-                setRejecting(true);
-              }}
-              disabled={busy}
-            >
-              {post.status === 'approved' ? 'প্রত্যাহার' : 'প্রত্যাখ্যান'}
-            </Button>
-          </>
-        )}
-
         {post.status === 'approved' && (
-          <>
-            <Button
-              size="sm"
-              variant={post.is_featured ? 'secondary' : 'ghost'}
-              leftIcon={<Star className="h-3.5 w-3.5" />}
-              onClick={() => run(() => togglePostFeatured(post.id))}
-              disabled={busy}
-            >
-              {post.is_featured ? 'ফিচার সরান' : 'ফিচার'}
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setConfirmStatus('pending')}
-              disabled={busy}
-            >
-              আবার অপেক্ষমাণ
-            </Button>
-          </>
-        )}
-
-        {post.status === 'rejected' && (
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setConfirmStatus('pending')}
+          <button
+            type="button"
+            onClick={() => {
+              setReason(post.rejection_reason ?? '');
+              setRejecting(true);
+            }}
             disabled={busy}
+            aria-label="প্রকাশনা প্রত্যাহার"
+            title="প্রকাশনা প্রত্যাহার"
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-amber-200 bg-white text-amber-700 hover:bg-amber-50 disabled:opacity-50"
           >
-            আবার অপেক্ষমাণ
-          </Button>
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+          </button>
         )}
 
         <button
@@ -171,9 +95,10 @@ export default function PostActions({ post }: { post: AdminPostRow }) {
           onClick={() => setDeleting(true)}
           disabled={busy}
           aria-label="পোস্ট মুছুন"
-          className="flex h-9 w-9 items-center justify-center rounded-md border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
+          title="পোস্ট মুছুন"
+          className="flex h-8 w-8 items-center justify-center rounded-md border border-rose-200 text-rose-600 hover:bg-rose-50 disabled:opacity-50"
         >
-          <Trash2 className="h-4 w-4" />
+          <Trash2 className="h-3.5 w-3.5" />
         </button>
       </div>
 
@@ -227,20 +152,6 @@ export default function PostActions({ post }: { post: AdminPostRow }) {
       )}
 
       {/* ---------- Delete confirmation ---------- */}
-      <ConfirmDialog
-        open={confirmStatus !== null}
-        title={confirmStatus === 'approved' ? 'পোস্টটি প্রকাশ করবেন?' : 'পোস্টটি আবার পর্যালোচনায় পাঠাবেন?'}
-        description={
-          confirmStatus === 'approved'
-            ? <>“{post.title_bn}” পোস্টটি সর্বসাধারণের জন্য প্রকাশিত হবে।</>
-            : <>“{post.title_bn}” পোস্টটির স্ট্যাটাস অপেক্ষমাণ হবে এবং এটি প্রকাশিত থাকবে না।</>
-        }
-        confirmLabel={confirmStatus === 'approved' ? 'প্রকাশ করুন' : 'অপেক্ষমাণ করুন'}
-        tone="primary"
-        isLoading={busy}
-        onConfirm={confirmModeration}
-        onCancel={() => setConfirmStatus(null)}
-      />
       <ConfirmDialog
         open={deleting}
         title="পোস্টটি মুছে ফেলবেন?"

@@ -366,10 +366,10 @@ export default function ProfileManager() {
                           disabled={donorAvailabilityBusy}
                           aria-pressed={donorAvailable}
                           className={cn(
-                            'mt-2 inline-flex min-h-9 items-center rounded-lg border px-3 text-[11.5px] font-bold disabled:cursor-wait disabled:opacity-60',
+                            'mt-2 inline-flex min-h-9 items-center rounded-lg border px-3 text-[11.5px] font-bold shadow-sm transition-colors disabled:cursor-wait disabled:opacity-60',
                             donorAvailable
-                              ? 'border-amber-200 text-amber-800 hover:bg-amber-50'
-                              : 'border-emerald-200 text-emerald-800 hover:bg-emerald-50'
+                              ? 'border-[#14532d] bg-[#14532d] text-white hover:bg-[#166534]'
+                              : 'border-[#991b1b] bg-[#991b1b] text-white hover:bg-[#7f1d1d]'
                           )}
                         >
                           {donorAvailabilityBusy

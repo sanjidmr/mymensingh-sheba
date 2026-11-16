@@ -138,8 +138,10 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
     setBusy(false);
     if (!result.ok) {
       setError(result.error);
+      setDeleteConfirmOpen(false);
       return;
     }
+    setDeleteConfirmOpen(false);
     router.push('/admin/verifications');
     router.refresh();
   };
@@ -152,11 +154,32 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
       <PageHeader
         title={text(row.full_name) || 'গৃহ শিক্ষক প্রোফাইল'}
         description="শিক্ষকের তথ্য, ব্যক্তিগত যোগাযোগ এবং মডারেশন অবস্থা।"
-        count={`প্রোফাইল ID: ${id}`}
-        actions={<span className="rounded-full border border-admin-border bg-white px-3 py-2 text-xs font-semibold text-admin-text">{profileStatus}</span>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-admin-border bg-white px-3 py-2 text-xs font-semibold text-admin-text">{profileStatus}</span>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setDeleteConfirmOpen(true)}
+              className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-50"
+            >
+              <Trash2 className="h-4 w-4" aria-hidden="true" /> প্রোফাইল স্থায়ীভাবে মুছুন
+            </button>
+          </div>
+        }
       />
       {error && <AdminNotice tone="danger" title="কাজটি সম্পন্ন হয়নি">{error}</AdminNotice>}
       {message && <AdminNotice tone="success">{message}</AdminNotice>}
+      <ConfirmDialog
+        open={deleteConfirmOpen}
+        title="টিউটর প্রোফাইলটি স্থায়ীভাবে মুছবেন?"
+        description="প্রোফাইলটি ডিরেক্টরি ও অ্যাডমিন তালিকা থেকে মুছে যাবে। সংশ্লিষ্ট অনুরোধের ইতিহাস অক্ষত থাকবে। এই কাজ ফিরিয়ে আনা যাবে না। নিশ্চিত করতে শিক্ষকের নাম লিখুন।"
+        confirmLabel="স্থায়ীভাবে মুছুন"
+        isLoading={busy}
+        requireText={text(row.full_name)}
+        onConfirm={() => void removeProfile()}
+        onCancel={() => setDeleteConfirmOpen(false)}
+      />
 
       <Panel title="মডারেশন" description={`বর্তমান অবস্থা: ${profileStatus}`}>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -185,16 +208,6 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
               পুনরায় পর্যালোচনায় পাঠান
             </button>
           )}
-        </div>
-        <div className="mt-4 border-t border-admin-border pt-4">
-          <button
-            type="button"
-            disabled={busy}
-            onClick={() => setDeleteConfirmOpen(true)}
-            className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-rose-200 bg-rose-50 px-4 text-sm font-semibold text-rose-700 hover:bg-rose-100 disabled:opacity-50"
-          >
-            <Trash2 className="h-4 w-4" aria-hidden="true" /> প্রোফাইল স্থায়ীভাবে মুছুন
-          </button>
         </div>
       </Panel>
 
@@ -301,16 +314,6 @@ export default function TutorProfileAdminDetail({ row }: { row: ProfileRow }) {
         isLoading={busy}
         onConfirm={confirmStatus}
         onCancel={() => setConfirmOpen(false)}
-      />
-      <ConfirmDialog
-        open={deleteConfirmOpen}
-        title="টিউটর প্রোফাইল স্থায়ীভাবে মুছবেন?"
-        description="প্রোফাইলের সঙ্গে যুক্ত রিভিউ ও রিপোর্ট মুছে যাবে। অনুরোধ যুক্ত থাকলে ইতিহাস রক্ষায় মুছে ফেলা বন্ধ হবে। এই কাজ ফেরানো যাবে না।"
-        confirmLabel="প্রোফাইল মুছুন"
-        tone="danger"
-        isLoading={busy}
-        onConfirm={removeProfile}
-        onCancel={() => setDeleteConfirmOpen(false)}
       />
     </div>
   );

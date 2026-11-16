@@ -14,20 +14,17 @@ import {
 } from '@/lib/site-content';
 import { useAuth } from '@/lib/auth-context';
 import { fetchSiteContentOverrides } from '@/lib/site-content-client';
-import { useIsAppShellContent } from '@/components/layout/AppShellContext';
 
 /**
  * The public footer.
  *
  * The admin's contact, footer and service-catalog overrides are read from the
- * existing public site-content endpoint. The contact block honours the rule in
- * `lib/site-contact.ts`: until a real number is published, the footer offers a
- * link to the contact form rather than a `tel:` link to a number that does not
- * exist.
+ * existing public site-content endpoint. The published hotline is public;
+ * until a real number exists, the footer links to the contact form instead of
+ * rendering an invalid `tel:` link.
  */
 export default function Footer() {
   const { user, isLoading } = useAuth();
-  const isAppShellContent = useIsAppShellContent();
   const currentYear = 2026;
   const [overrides, setOverrides] = useState<SiteContentOverrides>();
 
@@ -72,20 +69,17 @@ export default function Footer() {
 
   const footerContent = overrides?.footer_content ?? DEFAULT_FOOTER_CONTENT;
   const companyLinks = footerContent.companyLinks;
-  const supportLinks = footerContent.supportLinks;
-
-  if (isAppShellContent) return null;
 
   return (
     <footer className="border-t border-brand-900 bg-brand-950 text-brand-100/80">
-      <div className="mx-auto w-full max-w-7xl px-4 py-6 max-sm:py-4 sm:px-6 sm:py-7 lg:px-8">
-        <div className="grid grid-cols-1 gap-x-4 gap-y-6 max-sm:grid-cols-2 max-sm:gap-x-3 max-sm:gap-y-4 sm:grid-cols-2 lg:grid-cols-12 lg:gap-x-7">
+      <div className="mx-auto w-full max-w-7xl px-4 py-5 max-sm:py-3 sm:px-6 sm:py-7 lg:px-8">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-4 max-sm:gap-y-3 sm:grid-cols-2 sm:gap-x-4 sm:gap-y-6 lg:grid-cols-12 lg:gap-x-7">
           {/* Brand */}
-          <div className="col-span-1 max-sm:col-span-2 sm:col-span-2 lg:col-span-4">
+          <div className="col-span-2 sm:col-span-2 lg:col-span-4">
             <Link href="/" className="inline-flex items-center gap-3">
               <div className="relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-xl bg-white ring-1 ring-white/10">
                 <Image
-                  src="/logo.png"
+                  src="/logo.webp"
                   alt="Mymensingh Sheba লোগো"
                   width={230}
                   height={230}
@@ -100,35 +94,24 @@ export default function Footer() {
               </div>
             </Link>
 
-            <p className="mt-2.5 max-w-sm text-[13px] leading-relaxed text-brand-100/70">
+            <p className="mt-2 max-w-sm text-[13px] leading-relaxed text-brand-100/70">
               {footerContent.description}
             </p>
 
-            <div className="mt-3 inline-flex items-center gap-2 rounded-lg border border-bronze-400/25 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-brand-100/90">
+            <div className="mt-2 inline-flex items-center gap-2 rounded-lg border border-bronze-400/25 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-brand-100/90">
               <MapPin className="h-3.5 w-3.5 shrink-0 text-bronze-300" />
               ময়মনসিংহ সিটি কর্পোরেশন এলাকার সেবায়
             </div>
 
-            <div className="mt-3 space-y-1.5 text-[13px]">
-              {/* Reads from SITE_CONTACT so the footer can never advertise a
-                  number that isn't published — the same rule the /contact page
-                  follows. Previously this was a dead tel: link to an invented
-                  number while /contact said none existed. */}
-              {contact.phone && user ? (
+            <div className="mt-2 space-y-1 text-[13px]">
+              {contact.phone ? (
                 <a
-                  href={`https://wa.me/${contact.phone.replace(/\D/g, '').replace(/^0/, '880')}`}
-                  target="_blank"
-                  rel="noreferrer"
+                  href={`tel:${contact.phone.replace(/[^\d+]/g, '')}`}
                   className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white"
                 >
                   <Phone className="h-4 w-4 text-brand-300" />
                   {contact.phone}
                 </a>
-              ) : !user || isLoading ? (
-                <Link href="/login" className="flex items-center gap-2.5 text-brand-100/70">
-                  <Phone className="h-4 w-4 text-brand-300" />
-                  যোগাযোগে লগইন করুন
-                </Link>
               ) : (
                 <a href={`/#${CONTACT_FORM_ANCHOR}`} className="flex items-center gap-2.5 text-brand-100/70">
                   <Phone className="h-4 w-4 text-brand-300" />
@@ -143,7 +126,7 @@ export default function Footer() {
               )}
             </div>
 
-            <div className="mt-3 flex items-center gap-2.5">
+            <div className="mt-2 flex items-center gap-2.5">
               {!user || isLoading ? (
                 <Link href="/login" className="text-xs font-semibold text-brand-100/70 hover:text-white">
                   চ্যাট বা বার্তার জন্য লগইন করুন
@@ -202,7 +185,7 @@ export default function Footer() {
           {/* সেবা */}
           <div className="col-span-1 lg:col-span-3">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">সেবা</h4>
-            <ul className="mt-2.5 space-y-1.5 text-[13px]">
+            <ul className="mt-2 grid gap-y-0.5 text-[12px] sm:mt-2.5 sm:block sm:space-y-1.5 sm:text-[13px]">
               {serviceLinks.map((s) => (
                 <li key={s.id}>
                   <Link
@@ -219,7 +202,7 @@ export default function Footer() {
           {/* কোম্পানি */}
           <div className="col-span-1 lg:col-span-2">
             <h4 className="text-xs font-bold uppercase tracking-widest text-white">কোম্পানি</h4>
-            <ul className="mt-2.5 space-y-1.5 text-[13px]">
+            <ul className="mt-2 grid gap-y-0.5 text-[12px] sm:mt-2.5 sm:block sm:space-y-1.5 sm:text-[13px]">
               {companyLinks.map((l) => (
                 <li key={`${l.label}-${l.href}`}>
                   <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
@@ -230,27 +213,19 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* সহায়তা */}
-          <div className="col-span-1 sm:col-span-2 lg:col-span-3 max-sm:hidden">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-white">সহায়তা ও অ্যাকাউন্ট</h4>
-            <ul className="mt-2.5 space-y-1.5 text-[13px]">
-              {supportLinks.map((l) => (
-                <li key={`${l.label}-${l.href}`}>
-                  <Link href={l.href} className="text-brand-100/70 transition-colors hover:text-white">
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
         </div>
 
-        <div className="mt-6 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-4 text-xs text-brand-100/60 max-sm:mt-4 max-sm:pt-3 sm:flex-row">
+        <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-3 text-xs text-brand-100/60 max-sm:mt-3 max-sm:pt-2 sm:flex-row">
           <p>© {currentYear} Mymensingh Sheba (ময়মনসিংহ সেবা)। সর্বস্বত্ব সংরক্ষিত।</p>
-          <span className="flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5 text-brand-300" />
-            অ্যাডমিন-যাচাইকৃত স্থানীয় প্ল্যাটফর্ম
-          </span>
+          <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+            <Link href="/privacy" className="underline-offset-2 hover:text-white hover:underline">
+              গোপনীয়তা নীতি
+            </Link>
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-brand-300" />
+              অ্যাডমিন-যাচাইকৃত স্থানীয় প্ল্যাটফর্ম
+            </span>
+          </div>
         </div>
       </div>
     </footer>

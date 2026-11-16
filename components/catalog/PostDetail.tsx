@@ -18,8 +18,9 @@ import { ArrowLeft, Flag, ShieldAlert } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { JobCard } from '@/components/catalog/CommunityCards';
+import DirectPostContact from '@/components/catalog/DirectPostContact';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
-import { fetchApprovedPosts, fetchPostForViewer } from '@/lib/catalog-service';
+import { fetchApprovedPosts, fetchMarketContact, fetchPostForViewer } from '@/lib/catalog-service';
 import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import {
@@ -63,13 +64,35 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
   const [related, setRelated] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [contact, setContact] = useState<{ authorPhone?: string; whatsappNumber?: string } | null>(null);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactError, setContactError] = useState('');
 
   useEffect(() => {
     let active = true;
     (async () => {
       try {
         const data = await fetchPostForViewer(kind, slug);
-        if (active) setPost(data);
+        if (!active) return;
+        setContactError('');
+        setPost(data);
+        const postContact =
+          data?.authorPhone || data?.whatsappNumber
+            ? { authorPhone: data.authorPhone, whatsappNumber: data.whatsappNumber }
+            : null;
+        setContact(postContact);
+        if (kind === 'job' && data?.status === 'approved') {
+          setContactLoading(!postContact);
+          try {
+            setContact((await fetchMarketContact(slug)) ?? postContact);
+          } catch (cause) {
+            if (!postContact) {
+              setContactError(cause instanceof Error ? cause.message : 'যোগাযোগের নম্বর লোড করা যায়নি।');
+            }
+          } finally {
+            if (active) setContactLoading(false);
+          }
+        }
       } catch (cause) {
         if (active) {
           setLoadError(cause instanceof Error ? cause.message : 'পোস্ট লোড করা যায়নি।');
@@ -412,6 +435,19 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
           </div>
         </article>
 
+        {kind === 'job' && post.status === 'approved' && (
+          <div className="mt-3">
+            <DirectPostContact
+              phone={contact?.authorPhone}
+              whatsapp={contact?.whatsappNumber}
+              loading={contactLoading}
+              error={contactError}
+              slug={post.slug}
+              category="job"
+            />
+          </div>
+        )}
+
         {isAuthor && (
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
@@ -486,18 +522,12 @@ function Frame({ children, kind }: { children: React.ReactNode; kind: PostKind }
         <header className="border-b border-[#ded9ce]">
           <div className="mx-auto flex w-full max-w-[1180px] items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
             <Link href="/news" className="flex min-w-0 items-center gap-2.5">
-              <span
-                aria-hidden="true"
-                className="flex h-9 w-9 shrink-0 items-center justify-center bg-[#0c3b2e] font-[family-name:var(--font-news-serif)] text-[19px] font-bold leading-none text-white"
-              >
-                ম
-              </span>
               <span className="min-w-0">
                 <span className="block text-[8.5px] font-bold uppercase tracking-[0.22em] text-[#8a6b2f]">
                   ময়মনসিংহ শেবা · সংবাদ
                 </span>
                 <span className="block font-[family-name:var(--font-news-serif)] text-[18px] font-black leading-tight sm:text-[20px]">
-                  ময়মনসিংহের <span className="text-[#0c3b2e]">নিউজ</span>
+                  ময়মনসিংহের খবর
                 </span>
               </span>
             </Link>

@@ -678,7 +678,7 @@ Two user-requested features (mobile-first, Deep Navy + Off-White, no regressions
 
 ### 23.4 `/about` — custom page (was a placeholder shell)
 - `app/about/page.tsx` (server + `metadata`) renders `Navbar`, breadcrumb, 12 chapters and `Footer`; new `components/about/*`: `AboutSectionBits`, `AboutHero`, `AboutStory`, `FounderSection`, `WhyUsSection`, `MissionVisionSection`, `AboutHowItWorks`, `AboutServices`, `AboutValues`, `AboutTrust`, `AboutCommitment`, `AboutFinalCta`.
-- Founder portrait is **optional**: `FOUNDER.image` is `null`, so a monogram avatar renders; set it to `'/founder.jpg'` (and drop the file in `public/`) to show the photo. Gold numerals use `text-accent-700` (contrast-safe). CTAs are existing routes only (`/services`, `/register`, `/contact`).
+- Founder portrait is **optional**: `FOUNDER.image` is `null`, so a monogram avatar renders; set it to `'/founder.webp'` (and drop the file in `public/`) to show the photo. Gold numerals use `text-accent-700` (contrast-safe). CTAs are existing routes only (`/services`, `/register`, `/contact`).
 
 ### 23.5 `/mymensingh` — interactive digital history (replaces the 8-section page of §19.2)
 - `components/mymensingh/MymensinghCityPage.tsx` is now a thin composer: `Navbar` → `CityHero` → sticky `CitySectionNav` → 17 chapter components → `Sources` → `CityClosing` → `Footer` + `MobileBottomNav`. **19 chapters, mobile-first, no horizontal page overflow.**
@@ -698,5 +698,5 @@ Two user-requested features (mobile-first, Deep Navy + Off-White, no regressions
 - Not yet done: real-browser pass (mobile/desktop overflow + interaction), and sourcing/licensing any real photograph.
 
 ### 23.7 Open items for the user
-- Founder portrait: set `FOUNDER.image = '/founder.jpg'`.
+- Founder portrait: set `FOUNDER.image = '/founder.webp'`.
 - `/mymensingh`: supply licensed/public-domain images to `public/mymensingh/` (`hero-river.jpg`, `brahmaputra-boats.jpg`, `shashi-lodge.jpg`, `zainul-park-boat.jpg`, plus the nature/district frames) and pass a `credit` to each `ArchivePhoto`; replace the §19.2 source links in `Sources.tsx` once individual documents are verified.

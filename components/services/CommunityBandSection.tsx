@@ -5,7 +5,7 @@ import { PenSquare, Workflow, MessageCircle } from 'lucide-react';
 
 const COMMUNITY_ITEMS = [
   { label: 'পোস্ট করুন', icon: PenSquare, href: '/register' },
-  { label: 'কীভাবে কাজ করে', icon: Workflow, href: '/how-it-works' },
+  { label: 'কিভাবে সেবা নেবো/দেবো', icon: Workflow, href: '/how-it-works' },
   { label: 'যোগাযোগ করুন', icon: MessageCircle, href: '/contact' },
 ];
 

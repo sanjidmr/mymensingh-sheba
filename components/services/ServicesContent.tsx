@@ -44,7 +44,9 @@ export default function ServicesContent({ services }: { services: ServiceCategor
   const initialQuery = searchParams.get('q') || '';
   const [searchQuery, setSearchQuery] = useState<string>(initialQuery);
 
-  const filteredServices = services.filter((service) => {
+  const filteredServices = services.filter(
+    (service) => service.slug !== 'doctor' && service.slug !== 'fire-service'
+  ).filter((service) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return (

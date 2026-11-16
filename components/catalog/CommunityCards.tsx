@@ -14,11 +14,13 @@
  */
 import React, { useState } from 'react';
 import Link from 'next/link';
-import { BadgeCheck, MapPin } from 'lucide-react';
+import { MapPin, MessageCircle, Phone } from 'lucide-react';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { bnTaka, tagLabel, tagLabels } from '@/lib/catalog-types';
 import type { CommunityPost, PostStatus } from '@/lib/catalog-types';
 import { getAreaById } from '@/lib/locations';
+import { resolveBangladeshContact } from '@/lib/bangladesh-phone';
+import { trackCtaClick } from '@/lib/site-analytics';
 
 const CARD_BASE =
   'group flex h-full flex-col overflow-hidden rounded-xl border border-brand-100 bg-white transition-all duration-200 hover:-translate-y-0.5 hover:border-bronze-300 hover:shadow-md hover:shadow-brand-900/[0.07] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600';
@@ -136,6 +138,10 @@ export function NewsListRow({ post }: { post: CommunityPost }) {
 // ---------------------------------------------------------------------------
 
 export function JobCard({ post }: { post: CommunityPost }) {
+  const { callHref, whatsappHref: whatsappUrl } = resolveBangladeshContact(
+    post.authorPhone,
+    post.whatsappNumber
+  );
   const salary =
     post.salaryMin != null || post.salaryMax != null
       ? `${post.salaryMin != null ? bnTaka(post.salaryMin) : ''}${
@@ -144,7 +150,10 @@ export function JobCard({ post }: { post: CommunityPost }) {
       : undefined;
 
   return (
-    <Link href={`/jobs/${post.slug}`} className={CARD_BASE}>
+    <article className={CARD_BASE}>
+      <Link href={`/jobs/${post.slug}`} className="relative block aspect-[16/7] w-full overflow-hidden bg-mist-100">
+        <ListingMedia src={post.coverImageUrl || '/job.jpg'} alt={post.titleBn} label={post.organizationBn || post.titleBn} />
+      </Link>
       <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
         <div className="flex items-start justify-between gap-2">
           {post.category && (
@@ -187,13 +196,41 @@ export function JobCard({ post }: { post: CommunityPost }) {
           </ul>
         )}
 
-        <div className="mt-auto flex items-center justify-between gap-2 border-t border-brand-100 pt-2.5">
-          <span className="flex min-w-0 items-center gap-1 text-xs font-bold text-brand-700 sm:text-sm">
-            <span className="truncate">বিস্তারিত</span>
-          </span>
+        <div className="mt-3 border-t border-brand-100 pt-2.5">
+          {(callHref || whatsappUrl) && post.status === 'approved' ? (
+            <>
+              <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {callHref && (
+                  <a
+                    href={callHref}
+                    onClick={() => trackCtaClick({ ctaType: 'call', category: 'job', contentId: post.slug, routeKind: 'post' })}
+                    className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg bg-brand-700 px-2 text-xs font-bold text-white hover:bg-brand-800"
+                  >
+                    <Phone className="h-3.5 w-3.5" aria-hidden="true" /> কল করুন
+                  </a>
+                )}
+                {whatsappUrl && (
+                  <a
+                    href={whatsappUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    onClick={() => trackCtaClick({ ctaType: 'whatsapp', category: 'job', contentId: post.slug, routeKind: 'post' })}
+                    className="inline-flex min-h-11 items-center justify-center gap-1 rounded-lg border border-brand-200 px-2 text-center text-xs font-bold leading-tight text-brand-800 hover:bg-brand-50"
+                  >
+                    <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /> WhatsApp-এ মেসেজ দিন
+                  </a>
+                )}
+              </div>
+            </>
+          ) : post.status === 'approved' ? (
+            <p className="text-xs text-ink-500">যোগাযোগের নম্বর দেওয়া হয়নি</p>
+          ) : null}
+          <Link href={`/jobs/${post.slug}`} className="mt-2 inline-flex min-h-9 w-full items-center justify-center rounded-lg border border-brand-100 text-xs font-bold text-brand-700 hover:bg-mist-50">
+            বিস্তারিত দেখুন
+          </Link>
         </div>
       </div>
-    </Link>
+    </article>
   );
 }
 

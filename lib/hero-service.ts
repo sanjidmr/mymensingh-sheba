@@ -1,5 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
+import { fetchWithTimeout } from './fetch-with-timeout';
 
 /**
  * Public read of the hero carousel.
@@ -22,7 +24,7 @@ export interface PublicHeroSlide {
   description?: string;
 }
 
-export const fetchPublicHeroSlides = cache(async (): Promise<PublicHeroSlide[] | null> => {
+const readPublicHeroSlides = unstable_cache(async (): Promise<PublicHeroSlide[] | null> => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return null;
@@ -32,26 +34,29 @@ export const fetchPublicHeroSlides = cache(async (): Promise<PublicHeroSlide[] |
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
+    global: { fetch: fetchWithTimeout },
   });
 
-  const { data, error } = await client
-    .from('hero_slides')
-    .select('image_url, caption_bn, title_bn, subtitle_bn, description_bn')
-    .eq('is_enabled', true)
-    .order('sort_order', { ascending: true })
-    .limit(20);
+  try {
+    const { data, error } = await client
+      .from('hero_slides')
+      .select('image_url, caption_bn, title_bn, subtitle_bn, description_bn')
+      .eq('is_enabled', true)
+      .order('sort_order', { ascending: true })
+      .limit(20);
 
-  if (error) {
-    console.error('Public hero slides could not be loaded; using built-in slides.', error.message);
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+
+    return data.map((row) => ({
+      image: row.image_url,
+      caption: row.title_bn ?? row.caption_bn ?? '',
+      title: row.title_bn ?? row.caption_bn ?? '',
+      subtitle: row.subtitle_bn ?? '',
+      description: row.description_bn ?? '',
+    }));
+  } catch {
     return null;
   }
-  if (!Array.isArray(data) || data.length === 0) return null;
+}, ['public-hero-slides-v1'], { revalidate: 120, tags: ['hero-slides'] });
 
-  return data.map((row) => ({
-    image: row.image_url,
-    caption: row.title_bn ?? row.caption_bn ?? '',
-    title: row.title_bn ?? row.caption_bn ?? '',
-    subtitle: row.subtitle_bn ?? '',
-    description: row.description_bn ?? '',
-  }));
-});
+export const fetchPublicHeroSlides = cache(readPublicHeroSlides);

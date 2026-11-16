@@ -30,7 +30,6 @@ import {
   mockGetReportsForListing,
 } from './tolet-service-mock';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
-import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import { mockTrackListingMeta } from './tolet-tracking';
 import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
 import { searchToletAreas } from './tolet-areas';
@@ -775,7 +774,6 @@ export async function createListingReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: error.message };
-  void requestAdminTelegramAlert('listing_reports', reportId);
   return { success: true };
 }
 

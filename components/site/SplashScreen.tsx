@@ -29,7 +29,7 @@ export default function SplashScreen({
     >
       <div className="mms-splash-center">
         <span className="mms-splash-logo">
-          <Image src="/logo.png" alt="Mymensingh Sheba" width={1536} height={1024} priority />
+          <Image src="/logo.webp" alt="Mymensingh Sheba" width={800} height={533} />
         </span>
         <p className="mms-splash-tagline">ঘরে বসেই নিন আপনার প্রয়োজনীয় সেবা</p>
         <span className="mms-splash-spinner" aria-hidden="true" />

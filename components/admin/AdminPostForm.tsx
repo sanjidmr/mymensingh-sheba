@@ -19,7 +19,7 @@ import {
   type PostKind,
 } from '@/lib/catalog-types';
 import { uploadPostImage } from '@/lib/catalog-service';
-import { normalizeBdPhone } from '@/lib/contact-types';
+import { normalizeBangladeshMobile } from '@/lib/bangladesh-phone';
 
 type FormValues = Omit<AdminPostInput, 'kind' | 'tags' | 'coverImageUrl' | 'gallery'>;
 type Photo = { url: string; file?: File };
@@ -143,9 +143,17 @@ export function AdminPostForm({
       setError('পণ্যের অন্তত একটি ছবি দিন।');
       return;
     }
-    if (kind === 'buy_sell' && !/^01[3-9]\d{8}$/.test(normalizeBdPhone(values.authorPhone))) {
-      setError('সঠিক বিক্রেতার মোবাইল নম্বর দিন।');
-      return;
+    if (kind === 'buy_sell' || kind === 'job') {
+      if (!normalizeBangladeshMobile(values.authorPhone)) {
+        setError(kind === 'job'
+          ? 'সঠিক যোগাযোগের মোবাইল নম্বর দিন।'
+          : 'সঠিক বিক্রেতার মোবাইল নম্বর দিন।');
+        return;
+      }
+      if (values.whatsappNumber.trim() && !normalizeBangladeshMobile(values.whatsappNumber)) {
+        setError('সঠিক হোয়াটসঅ্যাপ নম্বর দিন।');
+        return;
+      }
     }
     if (
       kind === 'job' &&
@@ -228,7 +236,7 @@ export function AdminPostForm({
           <p className="text-xs font-semibold text-admin-text">বর্তমান প্রত্যাখ্যানের কারণ</p>
           <p className="mt-1 break-words text-sm text-admin-muted">{post.rejection_reason}</p>
           <p className="mt-2 text-xs text-admin-muted">
-            বিষয়বস্তু সম্পাদনা করলে বর্তমান স্ট্যাটাস অপরিবর্তিত থাকবে; পুনরায় পর্যালোচনার জন্য আলাদাভাবে অপেক্ষমাণ করুন।
+            পরিবর্তন সংরক্ষণ করলে পোস্টটি অনুমোদিত হয়ে সঙ্গে সঙ্গে প্রকাশিত হবে।
           </p>
         </div>
       )}
@@ -356,6 +364,15 @@ export function AdminPostForm({
             <Input label="সর্বনিম্ন বেতন (ঐচ্ছিক)" type="number" min="0" step="1" value={values.salaryMin} onChange={(event) => set('salaryMin', event.target.value)} />
             <Input label="সর্বোচ্চ বেতন (ঐচ্ছিক)" type="number" min="0" step="1" value={values.salaryMax} onChange={(event) => set('salaryMax', event.target.value)} />
             <Input label="আবেদনের শেষ তারিখ (ঐচ্ছিক)" type="date" value={values.deadline} onChange={(event) => set('deadline', event.target.value)} />
+            <Input label="যোগাযোগের মোবাইল নম্বর" type="tel" value={values.authorPhone} onChange={(event) => set('authorPhone', event.target.value)} required maxLength={30} />
+            <Input
+              label="হোয়াটসঅ্যাপ নম্বর (ঐচ্ছিক)"
+              type="tel"
+              value={values.whatsappNumber}
+              onChange={(event) => set('whatsappNumber', event.target.value)}
+              maxLength={30}
+              helperText="না দিলে যোগাযোগের নম্বরটিই ব্যবহার হবে"
+            />
           </div>
         </section>
       )}
@@ -381,7 +398,7 @@ export function AdminPostForm({
           <div className="mt-4 grid gap-4 sm:grid-cols-2">
             <Input label="বিক্রেতার নাম" value={values.authorName} onChange={(event) => set('authorName', event.target.value)} required maxLength={120} />
             <Input label="যোগাযোগ নম্বর" type="tel" value={values.authorPhone} onChange={(event) => set('authorPhone', event.target.value)} required maxLength={30} />
-            <Input label="হোয়াটসঅ্যাপ নম্বর (ঐচ্ছিক)" type="tel" value={values.whatsappNumber} onChange={(event) => set('whatsappNumber', event.target.value)} maxLength={30} />
+            <Input label="হোয়াটসঅ্যাপ নম্বর (ঐচ্ছিক)" type="tel" value={values.whatsappNumber} onChange={(event) => set('whatsappNumber', event.target.value)} maxLength={30} helperText="না দিলে যোগাযোগের নম্বরটিই ব্যবহার হবে" />
             <Input label="দাম (৳)" type="number" min="0" step="1" value={values.price} onChange={(event) => set('price', event.target.value)} required />
             <label className="block space-y-1.5 text-sm font-semibold text-admin-text">
               পণ্যের অবস্থা

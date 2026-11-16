@@ -24,10 +24,12 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Sparkles } from 'lucide-react';
 import DirectoryShell from '@/components/directory/DirectoryShell';
 import { TileCard } from '@/components/catalog/CatalogCards';
 import { DetailSkeleton, CatalogDetailMissing } from '@/components/catalog/CatalogDetailView';
+import SubmissionSuccess from '@/components/service-request/SubmissionSuccess';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 import {
   VehicleGallery,
   VehiclePricing,
@@ -49,8 +51,7 @@ export default function VehicleDetail({ slug }: { slug: string }) {
   const [suggestionsLoading, setSuggestionsLoading] = useState(true);
   const [suggestionError, setSuggestionError] = useState('');
   const [requestSuccess, setRequestSuccess] = useState<{
-    listingId: string;
-    referenceCode: string;
+    submission: ServiceRequestSuccessData;
     message: string;
   } | null>(null);
   // Mobile only. On desktop the form is in the sidebar from the first paint, so
@@ -109,56 +110,19 @@ export default function VehicleDetail({ slug }: { slug: string }) {
   if (loading) return <DetailSkeleton />;
   if (!listing) return <CatalogDetailMissing ui={ui} />;
 
-  if (requestSuccess?.listingId === listing.id) {
+  const kind = vehicleKindOf(listing);
+  if (requestSuccess) {
     return (
-      <DirectoryShell
-        title="অনুরোধ সফলভাবে জমা হয়েছে"
-        hideHeading
-        breadcrumbs={[
-          { label: ui.title, href: ui.route },
-          { label: listing.titleBn },
-        ]}
-      >
-        <section className="mx-auto max-w-2xl rounded-3xl border border-emerald-200 bg-white px-5 py-8 text-center shadow-sm sm:px-10 sm:py-12">
-          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-50 text-emerald-700 sm:h-20 sm:w-20">
-            <CheckCircle2 className="h-9 w-9 sm:h-11 sm:w-11" aria-hidden="true" />
-          </span>
-          <h1 className="mt-5 text-2xl font-black leading-tight text-ink-900 sm:text-3xl">
-            অনুরোধ সফলভাবে জমা হয়েছে
-          </h1>
-          <p className="mx-auto mt-2 max-w-lg text-sm leading-relaxed text-ink-600">
-            {requestSuccess.message}
-          </p>
-          <div className="mx-auto mt-6 max-w-md rounded-2xl border border-brand-100 bg-mist-50 p-4">
-            <p className="text-xs font-semibold text-ink-500">সংশ্লিষ্ট গাড়ির ID</p>
-            <p className="mt-1 break-all font-mono text-2xl font-black tracking-wider text-brand-800 sm:text-3xl">
-              {listing.publicCode || listing.publicId || 'ID সিঙ্ক হচ্ছে'}
-            </p>
-            <p className="mt-2 text-sm font-bold text-ink-800">{listing.titleBn}</p>
-            {requestSuccess.referenceCode && (
-              <p className="mt-2 text-xs text-ink-500">
-                অনুরোধ রেফারেন্স: <span className="font-mono font-bold">{requestSuccess.referenceCode}</span>
-              </p>
-            )}
-          </div>
-          <Link
-            href="/gari-auto-cng"
-            className={`mt-6 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 text-sm font-extrabold text-white hover:bg-brand-800 ${LIGHT_FOCUS}`}
-          >
-            <ArrowLeft className="h-4 w-4" aria-hidden="true" />
-            গাড়ির তালিকায় ফিরুন
-          </Link>
-        </section>
-        <VehicleSuggestions
-          listings={suggestions}
-          loading={suggestionsLoading}
-          error={suggestionError}
+      <main className="min-h-screen bg-mist-50">
+        <SubmissionSuccess
+          serviceTitle={`${kind ?? 'গাড়ি'} ভাড়া`}
+          serviceMessage={`আপনার ${kind ?? 'গাড়ি'} ভাড়ার অনুরোধটি সংরক্ষণ করা হয়েছে। টিম যাত্রার তথ্য যাচাই করে আপনার দেওয়া মোবাইল নম্বরে যোগাযোগ করবে.${requestSuccess.message ? ` ${requestSuccess.message}` : ''}`}
+          submission={requestSuccess.submission}
         />
-      </DirectoryShell>
+      </main>
     );
   }
 
-  const kind = vehicleKindOf(listing);
   // The subtitle is the thing that distinguishes one Axio from another on the
   // page: year, seats, and whether a driver comes with it.
   const subLine = [
@@ -258,8 +222,8 @@ export default function VehicleDetail({ slug }: { slug: string }) {
                 <VehicleServiceRequest
                   listing={listing}
                   defaultKind={kind ?? undefined}
-                  onSuccess={(referenceCode, message) =>
-                    setRequestSuccess({ listingId: listing.id, referenceCode, message })
+                  onSuccess={(submission, message) =>
+                    setRequestSuccess({ submission, message })
                   }
                 />
               </div>
@@ -359,21 +323,13 @@ function VehicleSuggestions({
   );
 }
 
-/**
- * The floating "সেবা নিন" bar.
- *
- * Offset by `var(--mms-bottom-nav-h)` rather than a hard-coded pixel value, for
- * the same reason as everywhere else on this site: the global bottom navigation
- * is `fixed` and its height is a token, so anything that also lives at the
- * bottom of the viewport has to be measured against the same token or the two
- * overlap the moment either one is restyled.
- */
+/** The floating "সেবা নিন" bar. */
 function MobileServiceBar({ onOpen }: { onOpen: () => void }) {
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 lg:hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-[3.5rem] z-40 px-3 lg:hidden"
       style={{
-        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom) + var(--mms-bottom-nav-h))',
+        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))',
       }}
     >
       <button

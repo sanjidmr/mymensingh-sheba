@@ -13,13 +13,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { CheckCircle2, Clock, Plus, XCircle } from 'lucide-react';
+import { CheckCircle2, Clock, Loader2, Plus, Trash2, XCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { MyPostRow } from '@/components/catalog/CommunityCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
-import { fetchMyPosts } from '@/lib/catalog-service';
+import { deleteCommunityPost, fetchMyPosts } from '@/lib/catalog-service';
 import type { CommunityPost, PostKind, PostStatus } from '@/lib/catalog-types';
 
 const GROUPS: {
@@ -69,6 +69,8 @@ export default function MyPosts() {
   // "not loading", which is what caused the cascading re-render.
   const [loaded, setLoaded] = useState(false);
   const [loadError, setLoadError] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [deletingId, setDeletingId] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -96,6 +98,26 @@ export default function MyPosts() {
 
   // Only wait while there is actually an account whose posts are in flight.
   const loading = !!user && !loaded;
+
+  const deletePost = async (post: CommunityPost) => {
+    if (!window.confirm(`“${post.titleBn}” পোস্টটি স্থায়ীভাবে মুছে ফেলবেন? এই কাজ ফিরিয়ে আনা যাবে না।`)) {
+      return;
+    }
+    setDeletingId(post.id);
+    setDeleteError('');
+    try {
+      const result = await deleteCommunityPost(post.id);
+      if (!result.success) {
+        setDeleteError(result.error || 'পোস্টটি মুছে ফেলা যায়নি।');
+        return;
+      }
+      setPosts((current) => current.filter((item) => item.id !== post.id));
+    } catch (cause) {
+      setDeleteError(cause instanceof Error ? cause.message : 'পোস্টটি মুছে ফেলা যায়নি।');
+    } finally {
+      setDeletingId('');
+    }
+  };
 
   const grouped = useMemo(
     () =>
@@ -154,6 +176,12 @@ export default function MyPosts() {
           </p>
         )}
 
+        {deleteError && (
+          <p role="alert" className="mt-3 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[12.5px] text-rose-800">
+            {deleteError}
+          </p>
+        )}
+
         <div className="mt-4 flex flex-wrap gap-2">
           {CREATE_LINKS.map((link) => (
             <Link
@@ -205,14 +233,27 @@ export default function MyPosts() {
                     <ul className="mt-2 space-y-2">
                       {group.items.map((post) => (
                         <li key={post.id}>
-                          <MyPostRow
-                            post={post}
-                            href={
-                              post.status === 'approved'
-                                ? `${ROUTE[post.kind as Exclude<PostKind, 'news'>]}/${post.slug}`
-                                : `/profile/posts/${post.kind}/${post.id}/edit`
-                            }
-                          />
+                          <div className="flex items-center gap-2">
+                            <MyPostRow
+                              post={post}
+                              href={
+                                post.status === 'approved'
+                                  ? `${ROUTE[post.kind as Exclude<PostKind, 'news'>]}/${post.slug}`
+                                  : `/profile/posts/${post.kind}/${post.id}/edit`
+                              }
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void deletePost(post)}
+                              disabled={Boolean(deletingId)}
+                              aria-label={`“${post.titleBn}” পোস্ট মুছুন`}
+                              className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-red-200 text-red-700 hover:bg-red-50 disabled:opacity-50"
+                            >
+                              {deletingId === post.id
+                                ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                                : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                            </button>
+                          </div>
                         </li>
                       ))}
                     </ul>

@@ -1,6 +1,5 @@
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import MobileBottomNav from '@/components/home/MobileBottomNav';
 import CityHero from './CityHero';
 import CitySectionNav from './CitySectionNav';
 import CityQuickFacts from './CityQuickFacts';

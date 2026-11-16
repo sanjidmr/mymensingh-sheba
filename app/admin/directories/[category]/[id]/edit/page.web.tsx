@@ -6,7 +6,7 @@ import { PageHeader } from '@/components/admin/PageHeader';
 import { fetchAdminServiceListing } from '@/lib/admin/queries';
 import type { ServiceCategory } from '@/lib/catalog-types';
 
-const CATEGORIES: ServiceCategory[] = ['vehicle', 'wifi', 'coaching'];
+const CATEGORIES: ServiceCategory[] = ['wifi', 'coaching'];
 
 export const dynamic = 'force-dynamic';
 
@@ -32,8 +32,7 @@ export default async function EditServiceListingPage({
       </>
     );
   }
-  if (!listing || listing.category !== category ||
-      (category === 'vehicle' && !listing.tags.includes('গাড়ি'))) notFound();
+  if (!listing || listing.category !== category) notFound();
   return (
     <div className="space-y-6">
       <ServiceListingForm category={category as ServiceCategory} listing={listing} />

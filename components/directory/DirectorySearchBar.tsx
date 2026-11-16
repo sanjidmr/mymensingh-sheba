@@ -123,7 +123,7 @@ export default function DirectorySearchBar({
             type="button"
             onClick={openSheet}
             aria-haspopup="dialog"
-            className={`inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-bold text-white transition-colors hover:bg-brand-800 sm:min-h-[42px] sm:text-sm ${LIGHT_FOCUS}`}
+            className={`inline-flex min-h-[46px] w-full items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-bold text-white transition-colors hover:bg-brand-800 sm:min-h-[42px] sm:text-sm ${LIGHT_FOCUS}`}
           >
             <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
             {filterLabel}

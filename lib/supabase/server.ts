@@ -2,6 +2,7 @@ import { createServerClient } from '@supabase/ssr';
 import { cookies, headers } from 'next/headers';
 import { isSupabaseConfigured } from './client';
 import { supabaseCookieOptions } from './cookie-options';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 /**
  * Creates a Supabase server client.
@@ -22,7 +23,10 @@ export async function createServerSideClient() {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
-      ...(authorization ? { global: { headers: { Authorization: authorization } } } : {}),
+      global: {
+        fetch: fetchWithTimeout,
+        ...(authorization ? { headers: { Authorization: authorization } } : {}),
+      },
       cookieOptions: supabaseCookieOptions,
       cookies: {
         getAll() {

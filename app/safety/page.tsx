@@ -24,9 +24,9 @@ export default function SafetyPage() {
         </div>
 
         <div className="space-y-4">
-          <h3 className="text-lg font-bold text-slate-900">২. স্বচ্ছ ভাড়া ও প্ল্যাটফর্ম ফি নীতি</h3>
+          <h3 className="text-lg font-bold text-slate-900">২. ভাড়া ও খরচের স্বচ্ছতা</h3>
           <p className="text-slate-600 text-sm">
-            বাসা ভাড়ার প্রতিটি বিজ্ঞাপনে মূল ভাড়ার সাথে নির্ধারিত প্ল্যাটফর্ম ফি স্বচ্ছভাবে আলাদা করে দেখানো হয়। কোনো ধরনের গোপন কমিশন বা অপ্রত্যাশিত চার্জ গ্রাহকের উপর চাপানো হয় না।
+            বাসা ভাড়ার বিজ্ঞাপনে কেবল মালিকের দেওয়া মাসিক ভাড়া দেখানো হয়। Mymensingh Sheba কোনো অতিরিক্ত টাকা বা কমিশন নেয় না।
           </p>
 
           <h3 className="text-lg font-bold text-slate-900">৩. রক্তদান নীতিমালা</h3>

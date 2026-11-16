@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { AlertCircle, CheckCircle2, Lock, Mail, UserPlus } from 'lucide-react';
 import Navbar from '@/components/Navbar';
-import Footer from '@/components/Footer';
 import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
 import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
@@ -119,7 +118,6 @@ function RegisterForm() {
             </Link>
           </section>
         </main>
-        <Footer />
       </div>
     );
   }
@@ -193,7 +191,6 @@ function RegisterForm() {
         </div>
         <GoogleSignInButton onClick={handleGoogleSignIn} loading={googleLoading} />
       </AuthShell>
-      <Footer />
     </div>
   );
 }

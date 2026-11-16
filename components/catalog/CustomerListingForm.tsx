@@ -608,7 +608,7 @@ export default function CustomerListingForm({
       <section className="rounded-2xl border border-brand-100 bg-white p-3.5 sm:p-5">
         <h2 className="text-[14px] font-extrabold text-ink-900">ছবি / লোগো</h2>
         <div className="mt-2 flex flex-col gap-3 sm:flex-row sm:items-center">
-          <div className="relative h-32 w-full overflow-hidden rounded-xl border border-brand-100 bg-mist-50 sm:w-48">
+          <div className="relative h-24 w-full overflow-hidden rounded-xl border border-brand-100 bg-mist-50 sm:h-32 sm:w-48">
             {form.imageUrl ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img src={form.imageUrl} alt="নির্বাচিত ছবি" className="h-full w-full object-cover" />
@@ -723,7 +723,7 @@ export default function CustomerListingForm({
         </Field>
         <Field label="বিস্তারিত বর্ণনা (ঐচ্ছিক)">
           <textarea
-            rows={4}
+            rows={3}
             value={form.descriptionBn}
             onChange={(e) => set('descriptionBn', e.target.value)}
             className={textAreaClass}
@@ -746,7 +746,7 @@ export default function CustomerListingForm({
         )}
         <Field label="সম্পূর্ণ ঠিকানা" required hint="বাড়ি/প্রতিষ্ঠান, সড়ক, বিস্তারিত ঠিকানা লিখুন।">
           <textarea
-            rows={3}
+            rows={2}
             maxLength={400}
             required
             value={form.addressBn}

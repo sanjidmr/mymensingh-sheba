@@ -234,7 +234,7 @@ export default function ToletSetupPage() {
         </div>
       </main>
 
-      <Footer />
+      {!success && <Footer />}
     </div>
   );
 }

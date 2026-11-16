@@ -1,19 +1,20 @@
 import type { Metadata, Viewport } from 'next';
-import '@fontsource/hind-siliguri/400.css';
-import '@fontsource/hind-siliguri/500.css';
-import '@fontsource/hind-siliguri/600.css';
-import '@fontsource/hind-siliguri/700.css';
+import '@fontsource/noto-sans-bengali/300.css';
+import '@fontsource/noto-sans-bengali/400.css';
+import '@fontsource/noto-sans-bengali/500.css';
+import '@fontsource/noto-sans-bengali/600.css';
+import '@fontsource/noto-sans-bengali/700.css';
+import '@fontsource/noto-sans-bengali/800.css';
 import '@fontsource/noto-serif-bengali/400.css';
 import '@fontsource/noto-serif-bengali/600.css';
 import '@fontsource/noto-serif-bengali/700.css';
 import '@fontsource/noto-serif-bengali/900.css';
 import './globals.css';
 import { ClientProviders } from '@/components/ClientProviders';
+import MobileBottomNav from '@/components/home/MobileBottomNav';
 import PageViewTracker from '@/components/analytics/PageViewTracker';
-import { AppShell } from '@/components/layout/AppShell';
 import SitePreloader from '@/components/site/SitePreloader';
-import { ThemeProvider } from '@/components/layout/ThemeProvider';
-import { ToastProvider } from '@/components/ui/ToastProvider';
+import { NativePageTransition } from '@/components/NativePageTransition';
 import { getSiteContentOverrides } from '@/lib/site-content-server';
 
 export const viewport: Viewport = {
@@ -34,6 +35,9 @@ export async function generateMetadata(): Promise<Metadata> {
     const image = seo?.ogImage?.trim();
     return {
       metadataBase: new URL('https://mymensinghsheba.com'),
+      alternates: {
+        canonical: '/',
+      },
       title: {
         default: title,
         template: '%s | Mymensingh Sheba',
@@ -49,6 +53,7 @@ export async function generateMetadata(): Promise<Metadata> {
         description,
         type: 'website',
         locale: 'bn_BD',
+        url: 'https://mymensinghsheba.com',
         ...(image ? { images: [image] } : {}),
       },
       twitter: {
@@ -64,11 +69,21 @@ export async function generateMetadata(): Promise<Metadata> {
   } catch {
     return {
       metadataBase: new URL('https://mymensinghsheba.com'),
+      alternates: {
+        canonical: '/',
+      },
       title: {
         default: DEFAULT_SITE_TITLE,
         template: '%s | Mymensingh Sheba',
       },
       description: DEFAULT_SITE_DESCRIPTION,
+      openGraph: {
+        title: DEFAULT_SITE_TITLE,
+        description: DEFAULT_SITE_DESCRIPTION,
+        type: 'website',
+        locale: 'bn_BD',
+        url: 'https://mymensinghsheba.com',
+      },
     };
   }
 }
@@ -78,18 +93,32 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const organizationSchema = {
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    name: 'Mymensingh Sheba',
+    url: 'https://mymensinghsheba.com',
+    logo: 'https://mymensinghsheba.com/favicon.png',
+    sameAs: [
+      'https://www.facebook.com',
+    ],
+    areaServed: 'Mymensingh, Bangladesh',
+    description: 'ময়মনসিংহে প্রয়োজনীয় সেবা, এক জায়গায় — বাসা ভাড়া, কাজের বুয়া, ইলেক্ট্রিশিয়ান, প্লাম্বার, বাসা পাল্টানো, গৃহশিক্ষক ও রক্তদাতা।',
+  };
+
   return (
     <html lang="bn" translate="no" className="scroll-smooth">
-      <body className="min-h-screen bg-[var(--ui-bg)] text-[var(--ui-text)] antialiased font-sans selection:bg-[var(--ui-accent)]/30 selection:text-[var(--ui-primary-strong)]">
-        <ThemeProvider>
-          <SitePreloader />
-          <PageViewTracker />
-          <ClientProviders>
-            <ToastProvider>
-              <AppShell>{children}</AppShell>
-            </ToastProvider>
-          </ClientProviders>
-        </ThemeProvider>
+      <body data-mobile-bottom-nav="true" className="min-h-screen bg-white text-slate-900 antialiased font-sans selection:bg-emerald-100 selection:text-emerald-900">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationSchema) }}
+        />
+        <SitePreloader />
+        <PageViewTracker />
+        <ClientProviders>
+          <NativePageTransition>{children}</NativePageTransition>
+          <MobileBottomNav />
+        </ClientProviders>
       </body>
     </html>
   );

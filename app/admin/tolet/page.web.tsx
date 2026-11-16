@@ -4,12 +4,9 @@ import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
-import { Settings, CheckCircle2, Save, Search, ShieldCheck, Plus, ChevronLeft, ChevronRight, Eye, Phone } from 'lucide-react';
-import { getToletFeeRules, loadToletFeeRules, setToletFeeRules } from '@/lib/tolet-fees';
-import { saveToletFeeRules } from '@/app/admin/actions/settings';
+import { Search, ShieldCheck, Plus, ChevronLeft, ChevronRight, Eye, Phone, MessageCircle, ClipboardCheck, Pencil, ExternalLink } from 'lucide-react';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminError, AdminLoading } from '@/components/admin/States';
-import type { ToletFeeRules } from '@/lib/tolet-fees';
 import { adminFetchListingsPage } from '@/lib/tolet-service';
 import type { ToletListing, ToletListingStatus } from '@/lib/tolet-types';
 import { adminFetchToletListingMetrics } from '@/lib/tolet-tracking';
@@ -18,7 +15,8 @@ import { ListingStatusBadge } from '@/components/tolet/ListingStatusBadge';
 import { ToletAnalyticsTable } from '@/components/tolet/admin/ToletAnalytics';
 import { getToletAreaById, TOLET_AREA_SOURCE } from '@/lib/tolet-areas';
 import LocationSelectInput from '@/components/LocationSelectInput';
-import ToletListingDeleteButton from '@/components/admin/ToletListingDeleteButton';
+import ToletListingDeleteAction from '@/components/admin/ToletListingDeleteAction';
+import ToletAnalyticsSummary from '@/components/tolet/admin/ToletAnalyticsSummary';
 
 const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color: string; active: string }> = [
   { key: 'all', label: 'সব', color: 'bg-slate-200 text-slate-700', active: 'bg-slate-800 text-white' },
@@ -33,17 +31,11 @@ const STATUS_TABS: Array<{ key: ToletListingStatus | 'all'; label: string; color
 
 export default function AdminToletPage() {
   const searchParams = useSearchParams();
-  const [feeRules, setFeeRules] = useState<ToletFeeRules>(getToletFeeRules());
-  const [feeSaved, setFeeSaved] = useState(false);
-  const [feeError, setFeeError] = useState('');
-  const [feeLoading, setFeeLoading] = useState(true);
-
   const [listings, setListings] = useState<ToletListing[]>([]);
   const [resultCount, setResultCount] = useState(0);
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [listError, setListError] = useState('');
-  const [savingFee, setSavingFee] = useState(false);
   const [tab, setTab] = useState<ToletListingStatus | 'all'>(() => {
     const requestedStatus = searchParams.get('status');
     return STATUS_TABS.find((option) => option.key === requestedStatus)?.key ?? 'all';
@@ -61,7 +53,7 @@ export default function AdminToletPage() {
   const statsRequestKey = `${listingKey}:${refreshTick}`;
   const [statsResult, setStatsResult] = useState<{
     key: string;
-    metrics: Record<string, { views: number; callClicks: number }>;
+    metrics: Record<string, { views: number; callClicks: number; whatsappClicks: number }>;
   } | null>(null);
   const [statsFailure, setStatsFailure] = useState<{ key: string; message: string } | null>(null);
   const listingStats = statsResult?.key === statsRequestKey ? statsResult.metrics : {};
@@ -90,23 +82,6 @@ export default function AdminToletPage() {
     }, 350);
     return () => window.clearTimeout(timer);
   }, [search]);
-
-  useEffect(() => {
-    let active = true;
-    loadToletFeeRules()
-      .then(() => {
-        if (active) setFeeRules(getToletFeeRules());
-      })
-      .catch((err: unknown) => {
-        if (active) setFeeError(err instanceof Error ? err.message : 'প্ল্যাটফর্ম ফি লোড ব্যর্থ হয়েছে।');
-      })
-      .finally(() => {
-        if (active) setFeeLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, []);
 
   useEffect(() => {
     let active = true;
@@ -168,26 +143,6 @@ export default function AdminToletPage() {
     };
   }, [statsRequestKey]);
 
-  const handleSaveFee = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setFeeError('');
-    setSavingFee(true);
-    try {
-      const result = await saveToletFeeRules(feeRules);
-      if (result.ok) {
-        setToletFeeRules(feeRules);
-        setFeeSaved(true);
-        setTimeout(() => setFeeSaved(false), 3000);
-      } else {
-        setFeeError(result.error || 'সংরক্ষণ ব্যর্থ হয়েছে।');
-      }
-    } catch (err) {
-      setFeeError(err instanceof Error ? err.message : 'সংরক্ষণ ব্যর্থ হয়েছে।');
-    } finally {
-      setSavingFee(false);
-    }
-  };
-
   const totalPages = Math.max(1, Math.ceil(resultCount / pageSize));
   const clearListingFilters = () => {
     setSearch('');
@@ -203,8 +158,8 @@ export default function AdminToletPage() {
     <div>
       
       <PageHeader
-        title="To-Let ও প্ল্যাটফর্ম ফি ম্যানেজমেন্ট"
-        description="বিজ্ঞাপন অনুমোদন, মালিকদের প্রপার্টি যাচাই ও প্ল্যাটফর্ম সার্ভিস ফি স্ল্যাব কনফিগারেশন।"
+        title="বাসা ভাড়া ব্যবস্থাপনা"
+        description="বাসা ভাড়ার বিজ্ঞাপন পর্যালোচনা ও অনুমোদন করুন।"
         count={`মোট ${resultCount.toLocaleString('bn-BD')} টি ফলাফল · সব বিজ্ঞাপন ${Number(statusCounts.all ?? 0).toLocaleString('bn-BD')} টি`}
         actions={<>
           <Link href="/admin/tolet/new" className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-admin-navy px-3.5 text-xs font-semibold text-white hover:bg-admin-navy/90">
@@ -219,89 +174,8 @@ export default function AdminToletPage() {
       {listError && <AdminError title="বাসা ভাড়ার তালিকায় সমস্যা" message={listError} className="mb-4" />}
       {statsError && <AdminError title="ভিজিট ও কলের সংখ্যা লোড করা যায়নি" message={statsError} className="mb-4" />}
 
-        <div className="grid min-w-0 grid-cols-1 gap-6 lg:grid-cols-12 lg:gap-8">
-          {/* Fee config */}
-          <div className="min-w-0 space-y-6 lg:col-span-4">
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 lg:sticky lg:top-6">
-              <div className="flex items-center gap-2 text-emerald-800 text-sm font-bold mb-2">
-                <Settings className="w-4 h-4" />
-                <span>প্ল্যাটফর্ম ফি (সার্ভিস ফি স্ল্যাব)</span>
-              </div>
-              <p className="text-xs text-slate-600 mb-5 leading-relaxed">
-                এই স্ল্যাবগুলো পরিবর্তন করলে বিজ্ঞাপনের মোট হিসাব স্বয়ংক্রিয়ভাবে আপডেট হবে।
-              </p>
-
-              {feeSaved && (
-                <div className="p-3 mb-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 text-xs flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-emerald-700" />
-                  <span>ফি স্ল্যাব সংরক্ষিত হয়েছে!</span>
-                </div>
-              )}
-              {feeError && (
-                <div className="p-3 mb-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 text-xs">
-                  {feeError}
-                </div>
-              )}
-
-              {feeLoading ? (
-                <AdminLoading label="প্ল্যাটফর্ম ফি লোড হচ্ছে..." rows={2} />
-              ) : feeError ? (
-                <AdminError title="প্ল্যাটফর্ম ফি লোড করা যায়নি" message={feeError} />
-              ) : <form onSubmit={handleSaveFee} className="space-y-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">মেস / হোস্টেল / সিট ফি (৳)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={feeRules.messSeatFee}
-                    onChange={(e) => setFeeRules({ ...feeRules, messSeatFee: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">ভাড়া ১০,০০০ পর্যন্ত (৳)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={feeRules.tier1Max10k}
-                    onChange={(e) => setFeeRules({ ...feeRules, tier1Max10k: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">ভাড়া ১০,০০০–২০,০০০ (৳)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={feeRules.tier2Max20k}
-                    onChange={(e) => setFeeRules({ ...feeRules, tier2Max20k: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">ভাড়া ২০,০০০-এর ঊর্ধ্বে (৳)</label>
-                  <input
-                    type="number"
-                    min={0}
-                    value={feeRules.tier3Above20k}
-                    onChange={(e) => setFeeRules({ ...feeRules, tier3Above20k: Number(e.target.value) })}
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold"
-                  />
-                </div>
-                <button
-                  type="submit"
-                  disabled={savingFee}
-                  className="w-full py-2.5 px-4 rounded-xl bg-emerald-800 hover:bg-emerald-900 text-white font-semibold text-xs flex items-center justify-center gap-1.5"
-                >
-                  <Save className="w-3.5 h-3.5" />
-                  <span>{savingFee ? 'সংরক্ষণ হচ্ছে...' : 'কনফিগারেশন সেভ করুন'}</span>
-                </button>
-              </form>}
-            </div>
-          </div>
-
-          {/* Listings moderation */}
-          <div className="min-w-0 space-y-4 lg:col-span-8">
+        <ToletAnalyticsSummary />
+        <div className="min-w-0 space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="text-base font-bold text-slate-900">বিজ্ঞাপন মডারেশন ও অনুমোদন</h3>
               <div className="relative">
@@ -390,60 +264,62 @@ export default function AdminToletPage() {
                   const area = getToletAreaById(item.areaId);
                   const cover = item.photos[0];
                   return (
-                    <div key={item.id} className="bg-white rounded-2xl border border-slate-200 p-4 sm:p-5 flex items-start gap-4">
-                      <div className="relative w-20 h-16 rounded-xl overflow-hidden bg-slate-100 shrink-0 hidden sm:block">
+                    <div key={item.id} className="bg-white rounded-xl border border-slate-200 p-3 flex items-start gap-3">
+                      <div className="relative w-16 h-12 rounded-lg overflow-hidden bg-slate-100 shrink-0 hidden sm:block">
                         {cover && (
                           <Image src={cover} alt="" fill sizes="80px" className="object-cover" referrerPolicy="no-referrer" />
                         )}
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2 mb-1">
+                        <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-1.5 mb-0.5">
                           <span className="text-[11px] font-semibold px-2 py-0.5 rounded-md bg-slate-100 text-slate-700">
                             {typeInfo?.labelBn}
                           </span>
                           <ListingStatusBadge status={item.status} />
-                          <span className="text-[11px] text-slate-400">{item.id.slice(0, 18)}</span>
                         </div>
                         <h4 className="font-bold text-slate-900 text-sm line-clamp-1">{item.title}</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">
+                        <p className="text-[11px] text-slate-500 mt-0.5">
                           {area?.nameBn || item.areaId} • মালিক: {item.ownerName || '—'}{' '}
                           {item.ownerVerified ? '(ভেরিফাইড)' : ''}
                         </p>
-                        <p className="text-[11px] text-slate-600 mt-0.5">
+                        <p className="text-[11px] text-slate-600">
                           ভাড়া: ৳{item.rentPrice.toLocaleString('bn-BD')}/মাস • বিছানা: {item.bedrooms} • বাথ: {item.bathrooms}
                         </p>
-                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[11px] font-medium text-slate-600" aria-label="বিজ্ঞাপনের মোট এনগেজমেন্ট">
-                          <span className="inline-flex items-center gap-1">
+                        </div>
+                        <div className="flex shrink-0 items-center gap-0.5">
+                          <Link href={`/admin/tolet/${item.id}`} aria-label="পর্যালোচনা করুন" title="পর্যালোচনা করুন" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-admin-navy hover:bg-admin-page">
+                            <ClipboardCheck className="h-4 w-4" aria-hidden="true" />
+                          </Link>
+                          <Link href={`/admin/tolet/${item.id}/edit`} aria-label="সম্পাদনা" title="সম্পাদনা" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-admin-muted hover:bg-admin-page hover:text-admin-navy">
+                            <Pencil className="h-4 w-4" aria-hidden="true" />
+                          </Link>
+                          <ToletListingDeleteAction
+                            id={item.id}
+                            title={item.title}
+                            onDeleted={() => setRefreshTick((tick) => tick + 1)}
+                          />
+                          {item.status === 'approved' && (
+                            <Link href={`/tolet/${item.id}`} aria-label="পাবলিক ভিউ" title="পাবলিক ভিউ" target="_blank" rel="noreferrer" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100">
+                              <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                            </Link>
+                          )}
+                        </div>
+                        </div>
+                        <div className="mt-1.5 flex flex-nowrap items-center gap-x-3 overflow-x-auto pb-0.5 text-[10px] font-medium text-slate-600" aria-label="বিজ্ঞাপনের মোট এনগেজমেন্ট">
+                          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
                             <Eye className="h-3.5 w-3.5 text-slate-400" aria-hidden="true" />
                             {statsLoading ? 'লোড হচ্ছে…' : statsError ? 'ভিজিট —' : `${(listingStats[item.id]?.views ?? 0).toLocaleString('bn-BD')} মোট ভিজিট`}
                           </span>
-                          <span className="inline-flex items-center gap-1">
+                          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
                             <Phone className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" />
                             {statsLoading ? 'লোড হচ্ছে…' : statsError ? 'কল বাটনে চাপ —' : `${(listingStats[item.id]?.callClicks ?? 0).toLocaleString('bn-BD')} বার কল বাটন চাপ`}
                           </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-3">
-                          <Link
-                            href={`/admin/tolet/${item.id}`}
-                            className="px-3.5 py-2 rounded-xl bg-emerald-800 text-white text-[11px] font-semibold hover:bg-emerald-900"
-                          >
-                            পর্যালোচনা করুন
-                          </Link>
-                          <Link
-                            href={`/admin/tolet/${item.id}/edit`}
-                            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-600 text-[11px] font-semibold hover:bg-slate-50"
-                          >
-                            সম্পাদনা
-                          </Link>
-                          {item.status === 'approved' && (
-                            <Link
-                              href={`/tolet/${item.id}`}
-                              className="px-3.5 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-500 text-[11px] font-semibold hover:bg-slate-100"
-                            >
-                              পাবলিক ভিউ
-                            </Link>
-                          )}
-                          <ToletListingDeleteButton listingId={item.id} />
+                          <span className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap">
+                            <MessageCircle className="h-3.5 w-3.5 text-emerald-700" aria-hidden="true" />
+                            {statsLoading ? 'লোড হচ্ছে…' : statsError ? 'WhatsApp বাটনে চাপ —' : `${(listingStats[item.id]?.whatsappClicks ?? 0).toLocaleString('bn-BD')} বার WhatsApp চাপ`}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -467,10 +343,9 @@ export default function AdminToletPage() {
           {/* Property-wise engagement, across every listing rather than one row
               of the moderation list. Rendered last so a moderator reads the
               queue first and the numbers second. */}
-          <div className="mt-2 min-w-0 lg:col-span-12">
+          <div className="mt-2 min-w-0">
             <ToletAnalyticsTable limit={25} />
           </div>
         </div>
-    </div>
   );
 }

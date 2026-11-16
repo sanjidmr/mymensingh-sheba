@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { MessageSquarePlus, Star, X, CheckCircle2, PenLine, Tag } from 'lucide-react';
+import { MessageSquarePlus, Star, X, CheckCircle2, PenLine } from 'lucide-react';
 import Link from 'next/link';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
 import { useAuth } from '@/lib/auth-context';
+import SiteReviewCard from '@/components/home/SiteReviewCard';
 import {
   fetchPublishedSiteReviews,
   submitSiteReview,
@@ -53,7 +54,6 @@ function StarSelector({ value, onChange }: { value: number; onChange: (n: number
     </div>
   );
 }
-
 /**
  * প্রকাশিত রিভিউ দেখায় এবং লগইন করা ব্যবহারকারীকে নতুন রিভিউ জমা দিতে দেয়।
  */
@@ -213,45 +213,30 @@ export default function ReviewSection() {
               এখনো কোনো প্রকাশিত রিভিউ নেই। আপনার অভিজ্ঞতা জানাতে রিভিউ দিন।
             </p>
           ) : !reviewsError && !reviewsLoading && (
-            <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div
+              role="region"
+              aria-label="সাম্প্রতিক রিভিউ"
+              className="mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain pb-2"
+            >
               {reviews.slice(0, 6).map((review) => (
-                <figure
+                <div
                   key={review.id}
-                  className="flex h-full flex-col rounded-2xl border border-brand-100 bg-white p-5 shadow-sm"
+                  className="w-[82vw] max-w-72 shrink-0 snap-start"
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="flex items-center gap-0.5" aria-label={`${review.rating} স্টার`}>
-                      {Array.from({ length: 5 }, (_, index) => (
-                        <Star
-                          key={index}
-                          className={`h-4 w-4 ${index < review.rating ? 'fill-amber-400 text-amber-400' : 'text-brand-200'}`}
-                          aria-hidden="true"
-                        />
-                      ))}
-                    </span>
-                    <time className="text-[11px] text-ink-400" dateTime={review.createdAt}>
-                      {relativeDate(review.createdAt)}
-                    </time>
-                  </div>
-                  {review.service && (
-                    <p className="mt-3 inline-flex w-fit items-center gap-1.5 rounded-md border border-brand-100 bg-brand-50 px-2 py-1 text-[11px] font-bold text-brand-800">
-                      <Tag className="h-3 w-3" aria-hidden="true" />
-                      {review.service}
-                    </p>
-                  )}
-                  <blockquote className="mt-3 flex-1 text-sm leading-relaxed text-ink-700">
-                    “{review.body}”
-                  </blockquote>
-                  <figcaption className="mt-4 flex items-center gap-2.5 border-t border-brand-100 pt-3">
-                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-brand-700 text-[13px] font-bold text-white">
-                      {review.name.charAt(0)}
-                    </span>
-                    <p className="text-sm font-bold text-ink-900">{review.name}</p>
-                  </figcaption>
-                </figure>
+                  <SiteReviewCard review={review} compact />
+                </div>
               ))}
             </div>
           )}
+
+          <div className="mt-5 flex justify-center">
+            <Link
+              href="/reviews"
+              className="inline-flex min-h-11 items-center justify-center rounded-xl border border-brand-200 bg-white px-5 py-2.5 text-sm font-bold text-brand-800 transition-colors hover:bg-brand-50"
+            >
+              আরও রিভিউ দেখুন
+            </Link>
+          </div>
         </div>
       </section>
 
@@ -383,19 +368,4 @@ export default function ReviewSection() {
       )}
     </>
   );
-}
-
-function relativeDate(iso: string): string {
-  // Hand-formatted rather than toLocaleDateString: Node and the browser carry
-  // different ICU data and render bn-BD differently, which is a hydration
-  // mismatch. See formatBanglaDate in lib/mymensingh-live.ts.
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  const months = [
-    'জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন',
-    'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর',
-  ];
-  const bn = (n: number) =>
-    String(n).replace(/\d/g, (d2) => '০১২৩৪৫৬৭৮৯'[Number(d2)]);
-  return `${bn(d.getDate())} ${months[d.getMonth()]}, ${bn(d.getFullYear())}`;
 }

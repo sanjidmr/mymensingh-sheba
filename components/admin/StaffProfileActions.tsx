@@ -33,19 +33,18 @@ export default function StaffProfileActions({ profile }: { profile: AdminStaffLi
   };
 
   return (
-    <div className="flex min-w-[112px] flex-col items-start gap-1.5">
-      <Link href={`/admin/services/${profile.id}/edit`} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-navy hover:bg-admin-page">
+    <div className="flex min-w-0 flex-col items-end gap-1">
+      <div className="flex items-center justify-end gap-1">
+      <Link href={`/admin/services/${profile.id}/edit`} aria-label="সম্পাদনা" title="সম্পাদনা" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-admin-navy hover:bg-admin-page">
         <Edit3 className="h-3.5 w-3.5" aria-hidden="true" />
-        সম্পাদনা
       </Link>
-      <button type="button" onClick={toggleActive} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-admin-text hover:bg-admin-page disabled:opacity-60">
+      <button type="button" onClick={toggleActive} disabled={busy} aria-label={profile.is_active ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'} title={profile.is_active ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'} className="inline-flex h-8 w-8 items-center justify-center rounded-md text-admin-text hover:bg-admin-page disabled:opacity-60">
         {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Power className="h-3.5 w-3.5" aria-hidden="true" />}
-        {profile.is_active ? 'নিষ্ক্রিয় করুন' : 'সক্রিয় করুন'}
       </button>
-      <button type="button" onClick={() => setConfirmDelete(true)} disabled={busy} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-xs font-semibold text-rose-700 hover:bg-rose-50 disabled:opacity-60">
+      <button type="button" onClick={() => setConfirmDelete(true)} disabled={busy} aria-label="প্রোফাইল সরান" title="প্রোফাইল সরান" className="inline-flex h-8 w-8 items-center justify-center rounded-md text-rose-700 hover:bg-rose-50 disabled:opacity-60">
         <Trash2 className="h-3.5 w-3.5" aria-hidden="true" />
-        সরান
       </button>
+      </div>
       {message && <span role="status" className="max-w-48 text-xs text-admin-muted">{message}</span>}
       <ConfirmDialog
         open={confirmDelete}

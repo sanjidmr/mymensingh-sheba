@@ -20,6 +20,7 @@ import DirectoryShell from '@/components/directory/DirectoryShell';
 import { ListingMedia, TileCard } from '@/components/catalog/CatalogCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
+import { trackCtaClick } from '@/lib/site-analytics';
 import {
   areaNames,
   bnTakaRange,
@@ -405,6 +406,7 @@ export function ContactBlock({
       <div className="mt-2.5 grid grid-cols-2 gap-2">
         <a
           href={`tel:${tel}`}
+          onClick={() => trackCtaClick({ ctaType: 'call' })}
           className={`inline-flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg bg-brand-700 px-3 text-[14px] font-extrabold text-white transition-colors hover:bg-brand-800 ${LIGHT_FOCUS}`}
         >
           <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -415,6 +417,7 @@ export function ContactBlock({
             href={`https://wa.me/${whatsapp}`}
             target="_blank"
             rel="noopener noreferrer"
+            onClick={() => trackCtaClick({ ctaType: 'whatsapp' })}
             className={`inline-flex min-h-[48px] w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-600 bg-emerald-50 px-3 text-[14px] font-extrabold text-emerald-800 transition-colors hover:bg-emerald-100 ${LIGHT_FOCUS}`}
           >
             <MessageCircle className="h-4 w-4 shrink-0" aria-hidden="true" />

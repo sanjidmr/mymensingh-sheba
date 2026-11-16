@@ -79,7 +79,7 @@ function displayDate(value: string): string {
 }
 
 export default function DashboardPosts() {
-  const { user, homeTutorProfile, bloodDonorProfile } = useAuth();
+  const { user } = useAuth();
   const params = useSearchParams();
   const draftCleanupValue = params.get('draftCleanup');
   const draftCleanupKind: PostKind | null =
@@ -164,8 +164,8 @@ export default function DashboardPosts() {
   }, [user]);
 
   const rows = useMemo(
-    () => mergeRows(posts, listings, homeTutorProfile, bloodDonorProfile, draftRows, listingStats),
-    [posts, listings, homeTutorProfile, bloodDonorProfile, draftRows, listingStats]
+    () => mergeRows(posts, listings, undefined, undefined, draftRows, listingStats),
+    [posts, listings, draftRows, listingStats]
   );
   const shown = useMemo(() => {
     const needle = search.trim().toLocaleLowerCase();
@@ -412,7 +412,7 @@ export default function DashboardPosts() {
       ) : (
         <ul className="space-y-2.5">
           {shown.map((row) => (
-            <li key={`${row.source}-${row.id}`} className="rounded-2xl border border-brand-100 bg-white p-3">
+            <li key={`${row.source}-${row.id}`} className="rounded-2xl border border-brand-100 bg-white p-2.5 sm:p-3">
               <div className="flex min-w-0 gap-3">
                 <div className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-mist-100">
                   <ListingMedia src={row.image} alt={row.title} label={row.title} />
@@ -468,57 +468,69 @@ export default function DashboardPosts() {
                   )}
                 </div>
               </div>
-              <div className="mt-2.5 grid grid-cols-2 gap-2 border-t border-brand-100/70 pt-2.5 sm:grid-cols-3">
+              <div className="mt-2 grid grid-cols-2 gap-1.5 border-t border-brand-100/70 pt-2 sm:grid-cols-4 sm:gap-2 sm:pt-2.5">
                 <Link
                   href={row.viewHref}
-                  className={`flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-brand-200 text-[12px] font-bold text-brand-700 hover:bg-mist-50 ${LIGHT_FOCUS}`}
+                  title="দেখুন"
+                  aria-label={`${row.title} দেখুন`}
+                  className={`flex min-h-9 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-200 px-1.5 text-[10px] font-bold text-brand-700 hover:bg-mist-50 sm:min-h-[40px] sm:px-2 sm:text-xs ${LIGHT_FOCUS}`}
                 >
-                  <Eye className="h-3.5 w-3.5" /> দেখুন
+                  <Eye className="h-4 w-4" aria-hidden="true" />
+                  <span className="sr-only sm:not-sr-only">দেখুন</span>
                 </Link>
                 {row.editHref ? (
                   <Link
                     href={row.editHref}
-                    className={`flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-brand-200 text-[12px] font-bold text-brand-700 hover:bg-mist-50 ${LIGHT_FOCUS}`}
+                    title="সম্পাদনা"
+                    aria-label={`${row.title} সম্পাদনা`}
+                    className={`flex min-h-9 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-200 px-1.5 text-[10px] font-bold text-brand-700 hover:bg-mist-50 sm:min-h-[40px] sm:px-2 sm:text-xs ${LIGHT_FOCUS}`}
                   >
-                    <Pencil className="h-3.5 w-3.5" /> সম্পাদনা
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                    <span className="sr-only sm:not-sr-only">সম্পাদনা</span>
                   </Link>
                 ) : (
-                  <span className="flex min-h-[40px] items-center justify-center rounded-lg bg-mist-50 text-[11px] font-bold text-ink-400">
+                  <span className="flex min-h-9 items-center justify-center rounded-lg bg-mist-50 text-[10px] font-bold text-ink-400 sm:min-h-[40px] sm:text-[11px]">
                     সম্পাদনা নয়
                   </span>
                 )}
                 {row.canRemove && (
                   row.source === 'tolet' && row.listing ? (
-                    <div className="col-span-2 grid gap-2 sm:col-span-1">
+                    <div className="col-span-2 grid grid-cols-2 gap-1.5 sm:col-span-2 sm:gap-2">
                       {row.listing.status === 'archived' ? (
                         <button
                           type="button"
                           disabled={busyId === row.id}
                           onClick={() => void restoreListing(row.listing!)}
-                          className={`flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-brand-200 text-[12px] font-bold text-brand-700 hover:bg-mist-50 disabled:opacity-50 ${LIGHT_FOCUS}`}
+                          title="পুনরুদ্ধার"
+                          aria-label={`${row.title} পুনরুদ্ধার`}
+                          className={`flex min-h-9 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-200 px-1.5 text-[10px] font-bold text-brand-700 hover:bg-mist-50 disabled:opacity-50 sm:min-h-[40px] sm:px-2 sm:text-xs ${LIGHT_FOCUS}`}
                         >
-                          {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
-                          পুনরুদ্ধার · অনুমোদন লাগবে
+                          {busyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <RotateCcw className="h-4 w-4" aria-hidden="true" />}
+                          <span className="sr-only sm:not-sr-only">পুনরুদ্ধার · অনুমোদন লাগবে</span>
                         </button>
                       ) : row.canArchive ? (
                         <button
                           type="button"
                           disabled={busyId === row.id}
                           onClick={() => void archiveListing(row.listing!)}
-                          className={`flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-brand-200 text-[12px] font-bold text-brand-700 hover:bg-mist-50 disabled:opacity-50 ${LIGHT_FOCUS}`}
+                          title="ডিসপ্লে থেকে সরান"
+                          aria-label={`${row.title} ডিসপ্লে থেকে সরান`}
+                          className={`flex min-h-9 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-brand-200 px-1.5 text-[10px] font-bold text-brand-700 hover:bg-mist-50 disabled:opacity-50 sm:min-h-[40px] sm:px-2 sm:text-xs ${LIGHT_FOCUS}`}
                         >
-                          {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Archive className="h-3.5 w-3.5" />}
-                          ডিসপ্লে থেকে সরান
+                          {busyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Archive className="h-4 w-4" aria-hidden="true" />}
+                          <span className="sr-only sm:not-sr-only">ডিসপ্লে থেকে সরান</span>
                         </button>
                       ) : null}
                       <button
                         type="button"
                         disabled={busyId === row.id}
                         onClick={() => void permanentlyDeleteListing(row.listing!)}
-                        className={`flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-red-200 text-[12px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 ${LIGHT_FOCUS}`}
+                        title="স্থায়ীভাবে ডিলিট"
+                        aria-label={`${row.title} স্থায়ীভাবে ডিলিট`}
+                        className={`flex min-h-9 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-red-200 px-1.5 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:min-h-[40px] sm:px-2 sm:text-xs ${LIGHT_FOCUS}`}
                       >
-                        {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        স্থায়ীভাবে ডিলিট
+                        {busyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                        <span className="sr-only sm:not-sr-only">স্থায়ীভাবে ডিলিট</span>
                       </button>
                     </div>
                   ) : (
@@ -526,10 +538,14 @@ export default function DashboardPosts() {
                       type="button"
                       disabled={busyId === row.id}
                       onClick={() => void removeRow(row)}
-                      className={`col-span-2 flex min-h-[40px] items-center justify-center gap-1 rounded-lg border border-red-200 text-[12px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:col-span-1 ${LIGHT_FOCUS}`}
+                      title="স্থায়ীভাবে ডিলিট"
+                      aria-label={`${row.title} স্থায়ীভাবে ডিলিট`}
+                      className={`col-span-2 flex min-h-9 items-center justify-center gap-1 whitespace-nowrap rounded-lg border border-red-200 px-1.5 text-[10px] font-bold text-red-700 hover:bg-red-50 disabled:opacity-50 sm:col-span-1 sm:min-h-[40px] sm:px-2 sm:text-xs ${LIGHT_FOCUS}`}
                     >
-                      {busyId === row.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                      {row.source === 'draft' ? 'জমা দেওয়া হয়নি পোস্ট মুছুন' : 'স্থায়ীভাবে মুছুন'}
+                      {busyId === row.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" aria-hidden="true" />}
+                      <span className="sr-only sm:not-sr-only">
+                        {row.source === 'draft' ? 'জমা দেওয়া হয়নি পোস্ট মুছুন' : 'স্থায়ীভাবে ডিলিট'}
+                      </span>
                     </button>
                   )
                 )}

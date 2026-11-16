@@ -10,14 +10,12 @@ import type { AdminEmergencyContactRow } from '@/lib/admin/queries';
 import type { EmergencyService } from '@/lib/catalog-types';
 
 const SERVICES: { value: EmergencyService; label: string }[] = [
-  { value: 'doctor', label: 'ডাক্তার' },
   { value: 'police', label: 'পুলিশ' },
   { value: 'ambulance', label: 'অ্যাম্বুলেন্স' },
-  { value: 'fire_service', label: 'ফায়ার সার্ভিস' },
 ];
 
 const EMPTY_FORM: EmergencyContactFormData = {
-  service: 'doctor',
+  service: 'police',
   nameBn: '',
   organizationBn: '',
   areaId: '',
@@ -60,7 +58,10 @@ export default function EmergencyContactEditor({
     event.preventDefault();
     setBusy(true);
     try {
-      const result = await saveEmergencyContact(contact?.id ?? null, form);
+      const result = await saveEmergencyContact(contact?.id ?? null, {
+        service: form.service,
+        phone: form.phone,
+      });
       if (!result.ok) {
         notify('error', 'সংরক্ষণ ব্যর্থ হয়েছে', result.error);
         return;
@@ -77,14 +78,26 @@ export default function EmergencyContactEditor({
 
   return (
     <>
-      <Button
-        size="sm"
-        variant={contact ? 'secondary' : 'primary'}
-        leftIcon={contact ? <Pencil className="h-3.5 w-3.5" /> : <Plus className="h-4 w-4" />}
-        onClick={() => setOpen(true)}
-      >
-        {contact ? 'সম্পাদনা' : 'নম্বর যোগ করুন'}
-      </Button>
+      {contact ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="জরুরি যোগাযোগ সম্পাদনা"
+          title="সম্পাদনা"
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-admin-border text-admin-muted hover:bg-admin-page hover:text-admin-navy"
+        >
+          <Pencil className="h-3.5 w-3.5" aria-hidden="true" />
+        </button>
+      ) : (
+        <Button
+          size="sm"
+          variant="primary"
+          leftIcon={<Plus className="h-4 w-4" />}
+          onClick={() => setOpen(true)}
+        >
+          যোগাযোগ যোগ করুন
+        </Button>
+      )}
       {open && (
         <div
           className="fixed inset-0 z-50 flex items-end justify-center bg-slate-950/50 p-0 sm:items-center sm:p-4"
@@ -115,45 +128,25 @@ export default function EmergencyContactEditor({
             </div>
             <form onSubmit={submit} className="grid gap-3 sm:grid-cols-2">
               <label className="grid gap-1 text-xs font-semibold text-ink-700">
-                সেবার ধরন
+                সেবার নাম
                 <select
                   value={form.service}
                   onChange={(event) => update('service', event.target.value as EmergencyService)}
                   className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm"
                 >
+                  {contact && (contact.service === 'doctor' || contact.service === 'fire_service') && (
+                    <option value={contact.service} disabled>
+                      {contact.service === 'doctor' ? 'চিকিৎসক (পুরোনো রেকর্ড)' : 'ফায়ার সার্ভিস (পুরোনো রেকর্ড)'}
+                    </option>
+                  )}
                   {SERVICES.map((service) => (
                     <option key={service.value} value={service.value}>{service.label}</option>
                   ))}
                 </select>
               </label>
               <label className="grid gap-1 text-xs font-semibold text-ink-700">
-                নাম / ইউনিট
-                <input required maxLength={120} value={form.nameBn} onChange={(event) => update('nameBn', event.target.value)} className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm" />
-              </label>
-              <label className="grid gap-1 text-xs font-semibold text-ink-700">
                 ফোন নম্বর
                 <input required type="tel" maxLength={30} value={form.phone} onChange={(event) => update('phone', event.target.value)} className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm" />
-              </label>
-              <label className="grid gap-1 text-xs font-semibold text-ink-700">
-                প্রতিষ্ঠান
-                <input maxLength={160} value={form.organizationBn} onChange={(event) => update('organizationBn', event.target.value)} className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm" />
-              </label>
-              <label className="grid gap-1 text-xs font-semibold text-ink-700">
-                এলাকা আইডি
-                <input maxLength={100} value={form.areaId} onChange={(event) => update('areaId', event.target.value)} className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm" />
-              </label>
-              <label className="grid gap-1 text-xs font-semibold text-ink-700">
-                তালিকায় ক্রম
-                <input required type="number" min={0} max={9999} value={form.sortOrder} onChange={(event) => update('sortOrder', Number(event.target.value))} className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm" />
-              </label>
-              <label className="grid gap-1 text-xs font-semibold text-ink-700 sm:col-span-2">
-                ঠিকানা
-                <input maxLength={300} value={form.addressBn} onChange={(event) => update('addressBn', event.target.value)} className="min-h-11 rounded-lg border border-brand-100 px-3 text-sm" />
-              </label>
-              <label className="grid gap-1 text-xs font-semibold text-ink-700 sm:col-span-2">
-                তথ্য যাচাইয়ের উৎস / নোট
-                <textarea required maxLength={500} rows={3} value={form.sourceNote} onChange={(event) => update('sourceNote', event.target.value)} className="rounded-lg border border-brand-100 px-3 py-2 text-sm" />
-                <span className="font-normal text-ink-500">তথ্যসূত্র বা যাচাইয়ের নোট লিখুন। নতুন নম্বর প্রথমে বন্ধ থাকবে; তথ্য পর্যালোচনা করে চালু করুন।</span>
               </label>
               <div className="flex justify-end gap-2 pt-2 sm:col-span-2">
                 <Button type="button" variant="ghost" disabled={busy} onClick={() => setOpen(false)}>বাতিল</Button>

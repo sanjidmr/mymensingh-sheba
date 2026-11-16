@@ -58,7 +58,7 @@ Deno.serve(async (request) => {
   const path = typeof input.path === 'string' ? input.path : '';
   const method = typeof input.method === 'string' ? input.method.toUpperCase() : '';
   const endpoint = ALLOWED_ENDPOINTS.get(path);
-  const bookingMatch = /^\/api\/vehicle-bookings\/(auto|cng)$/.exec(path);
+  const bookingMatch = /^\/api\/vehicle-bookings\/(car|auto|cng)$/.exec(path);
   const allowed = endpoint?.has(method) || (Boolean(bookingMatch) && method === 'POST');
   if (!allowed) {
     return Response.json({ error: 'This API endpoint is not available to the app.' }, { status: 404, headers });

@@ -46,7 +46,6 @@ import { ReportListingSheet } from '@/components/buy-sell/ReportListingSheet';
 import { ProductCard } from '@/components/buy-sell/ProductCard';
 import {
   fetchApprovedPosts,
-  fetchMarketContact,
   fetchPostForViewer,
 } from '@/lib/catalog-service';
 import { useAuth } from '@/lib/auth-context';
@@ -91,21 +90,14 @@ export default function MarketDetail({ slug }: { slug: string }) {
         const data = await fetchPostForViewer('buy_sell', slug);
         if (!active) return;
         setPost(data);
-        if (data) {
-          if (!user) {
-            setContact(null);
-            setPhase('none');
-            return;
-          }
-          setPhase('loading');
-          // The contact is a second request because it is a separate permission
-          // question from reading the post. Fetching the post first also means
-          // the page paints its photo before it waits on the RPC.
-          const c = await fetchMarketContact(slug);
-          if (!active) return;
-          setContact(c);
-          setPhase(c ? 'ready' : 'none');
-        }
+        setContact(data
+          ? {
+              authorName: data.authorName,
+              authorPhone: data.authorPhone,
+              whatsappNumber: data.whatsappNumber,
+            }
+          : null);
+        setPhase(data?.authorPhone || data?.whatsappNumber ? 'ready' : 'none');
       } catch (cause) {
         if (active) {
           setLoadError(cause instanceof Error ? cause.message : 'বিজ্ঞাপন লোড করা যায়নি।');
@@ -411,8 +403,6 @@ export default function MarketDetail({ slug }: { slug: string }) {
                 contact={contact}
                 phase={phase}
                 isAuthor={isAuthor}
-                signedIn={Boolean(user)}
-                onRequestContact={() => setReportOpen(true)}
               />
 
               <div className="flex gap-2">

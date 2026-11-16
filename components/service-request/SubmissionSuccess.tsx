@@ -17,13 +17,20 @@ export interface ServiceRequestSuccessData {
 interface SubmissionSuccessProps {
   config?: ServiceRequestPageConfig;
   submission?: ServiceRequestSuccessData;
+  serviceTitle?: string;
+  serviceMessage?: string;
 }
 
-export default function SubmissionSuccess({ config, submission }: SubmissionSuccessProps) {
+export default function SubmissionSuccess({
+  config,
+  submission,
+  serviceTitle,
+  serviceMessage,
+}: SubmissionSuccessProps) {
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    if (!config || !submission) return;
+    if (!submission) return;
     const showTimer = window.setTimeout(() => {
       window.dispatchEvent(new CustomEvent('mms:service-request-success', { detail: true }));
     }, 0);
@@ -44,7 +51,7 @@ export default function SubmissionSuccess({ config, submission }: SubmissionSucc
     }
   };
 
-  if (!config || !submission) {
+  if (!submission) {
     return (
       <div
         className="mx-auto flex min-h-[50vh] max-w-3xl items-center justify-center px-4 py-10"
@@ -56,7 +63,7 @@ export default function SubmissionSuccess({ config, submission }: SubmissionSucc
             <CheckCircle2 className="mms-welcome-check h-7 w-7" aria-hidden="true" />
           </span>
           <p className="mt-4 text-lg font-extrabold text-ink-900 sm:text-xl">
-            আপনার অনুরোধ জমা হয়েছে।
+            আপনার অনুরোধ সফলভাবে জমা হয়েছে!
           </p>
         </div>
       </div>
@@ -74,11 +81,10 @@ export default function SubmissionSuccess({ config, submission }: SubmissionSucc
           <CheckCircle2 className="mms-welcome-check h-7 w-7" aria-hidden="true" />
         </span>
         <h1 className="mt-4 text-xl font-extrabold tracking-tight text-ink-900 sm:text-2xl">
-          আপনার অনুরোধ সফলভাবে জমা হয়েছে!
+          আপনার অনুরোধ সফলভাবে জমা হয়েছে!
         </h1>
         <p className="mx-auto mt-2.5 max-w-md text-sm leading-relaxed text-ink-600">
-          {config.title} সেবার অনুরোধটি আমাদের টিমের কাছে পৌঁছেছে। যাচাই করার পর
-          আপনার দেওয়া মোবাইল নম্বরে যোগাযোগ করে সেবার সময় জানানো হবে।
+          {serviceMessage ?? `${config?.title ?? serviceTitle ?? 'সেবা'} অনুরোধটি সংরক্ষণ করা হয়েছে। আমাদের টিম তথ্য যাচাই করে আপনার দেওয়া মোবাইল নম্বরে যোগাযোগ করবে।`}
         </p>
 
         {submission.reference && (

@@ -41,7 +41,7 @@ export function isSameDhakaDay(a: DhakaDateParts, b: DhakaDateParts): boolean {
   return a.y === b.y && a.m === b.m && a.day === b.day;
 }
 
-export async function fetchJsonWithTimeout(url: string, timeoutMs = 12000): Promise<unknown> {
+export async function fetchJsonWithTimeout(url: string, timeoutMs = 5000): Promise<unknown> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {

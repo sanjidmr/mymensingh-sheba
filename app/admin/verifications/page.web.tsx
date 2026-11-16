@@ -8,12 +8,11 @@ import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
 import { FilterNav } from '@/components/admin/FilterNav';
 import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
 import { AdminEmpty, AdminError } from '@/components/admin/States';
-import { StatusPill } from '@/components/admin/StatCard';
-import { fetchTutorProfiles, parseListParams, type AdminTutorListRow } from '@/lib/admin/queries';
+import { StatCard } from '@/components/admin/StatCard';
+import { fetchAdminEngagementAnalytics, fetchTutorProfiles, parseListParams, type AdminTutorListRow } from '@/lib/admin/queries';
 import { formatDateTime } from '@/lib/admin/format';
-import { getAreaById } from '@/lib/locations';
 import type { TutorProfileStatus } from '@/lib/supabase/types';
-import TutorProfileDeleteAction from '@/components/admin/TutorProfileDeleteAction';
+import TutorListActions from '@/components/admin/TutorListActions';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,21 +25,20 @@ const TUTOR_STATUSES: Array<{ value: TutorProfileStatus; label: string; tone: 's
   { value: 'suspended', label: 'স্থগিত', tone: 'danger' },
 ];
 
-function Status({ value }: { value: string }) {
-  const status = TUTOR_STATUSES.find((item) => item.value === value);
-  return <StatusPill label={status?.label ?? value} tone={status?.tone ?? 'neutral'} />;
-}
-
 const columns: AdminColumn<AdminTutorListRow>[] = [
   {
     key: 'name',
     header: 'শিক্ষক প্রোফাইল',
     mobilePrimary: true,
     render: (row) => (
-      <span className="block min-w-0">
-        <span className="block break-words font-semibold">{row.full_name}</span>
-        <span className="mt-0.5 block break-all font-mono text-[10px] text-admin-muted">{row.id}</span>
-        <span className="mt-0.5 block text-xs text-admin-muted">{row.qualification} · {row.institution}</span>
+      <span className="flex min-w-0 items-start justify-between gap-2">
+        <span className="min-w-0">
+        <Link href={`/admin/verifications/${row.id}`} className="block break-words font-semibold text-admin-navy hover:underline">
+          {row.full_name}
+        </Link>
+        <span className="mt-0.5 block text-xs text-admin-muted">{row.institution || 'শিক্ষাপ্রতিষ্ঠান উল্লেখ নেই'}</span>
+        </span>
+        <TutorListActions tutor={row} />
       </span>
     ),
   },
@@ -51,29 +49,28 @@ const columns: AdminColumn<AdminTutorListRow>[] = [
     render: (row) => `${row.preferred_subjects?.join(' · ') || '—'} / ${row.preferred_classes?.join(' · ') || '—'}`,
   },
   {
-    key: 'areas',
-    header: 'এলাকা',
-    hideOnMobile: true,
-    render: (row) => row.preferred_areas?.map((id) => getAreaById(id)?.nameBn || id).join(' · ') || '—',
-  },
-  {
     key: 'salary',
     header: 'প্রত্যাশিত বেতন',
     render: (row) => row.expected_salary
       ? `৳${Number(row.expected_salary).toLocaleString('bn-BD')}`
       : '—',
   },
-  { key: 'status', header: 'অবস্থা', render: (row) => <Status value={row.status} /> },
-  {
-    key: 'actions',
-    header: 'অ্যাকশন',
-    render: (row) => <TutorProfileDeleteAction id={row.id} />,
-  },
   {
     key: 'created',
     header: 'জমার সময়',
-    hideOnMobile: true,
     render: (row) => <span className="text-xs text-admin-muted">{formatDateTime(row.created_at)}</span>,
+  },
+  {
+    key: 'phone',
+    header: 'ফোন নম্বর',
+    render: (row) => row.private_phone
+      ? <a href={`tel:${row.private_phone}`} className="whitespace-nowrap font-medium text-admin-navy hover:underline">{row.private_phone}</a>
+      : 'নম্বর দেওয়া হয়নি',
+  },
+  {
+    key: 'views',
+    header: 'প্রোফাইল ভিউ',
+    render: (row) => row.profile_views == null ? '—' : row.profile_views.toLocaleString('bn-BD'),
   },
 ];
 
@@ -88,7 +85,14 @@ export default async function AdminTutorVerificationsPage({
   if (focus && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(focus)) {
     redirect(`/admin/verifications/${focus}`);
   }
-  const result = await fetchTutorProfiles(params);
+  const [result, analytics] = await Promise.all([
+    fetchTutorProfiles(params),
+    fetchAdminEngagementAnalytics('home-tutor'),
+  ]);
+  const rows = result.rows.map((row) => ({
+    ...row,
+    profile_views: analytics.error ? null : analytics.profiles[row.id]?.views ?? 0,
+  }));
 
   return (
     <>
@@ -111,6 +115,13 @@ export default async function AdminTutorVerificationsPage({
         <AdminError title="টিউটর প্রোফাইল লোড করা যায়নি" message={result.error} />
       ) : (
         <>
+          {analytics.error && <AdminError title="টিউটর অ্যানালিটিক্স লোড করা যায়নি" message={analytics.error} className="mb-4" />}
+          <section aria-label="গৃহশিক্ষক পেজের পরিসংখ্যান" className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <StatCard label="গৃহশিক্ষক পেজ ভিজিট" value={analytics.error ? '—' : analytics.directoryVisits} />
+            <StatCard label="শিক্ষক প্রোফাইল ভিজিট" value={analytics.error ? '—' : analytics.profileViews} />
+            <StatCard label="যোগাযোগ বাটন চাপ" value={analytics.error ? '—' : analytics.otherClicks} tone="good" />
+            <StatCard label="শিক্ষক আবেদন জমা" value={analytics.error ? '—' : analytics.formSubmits} tone="good" />
+          </section>
           <section aria-label="টিউটর প্রোফাইলের অবস্থা" className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
             <Link href="/admin/verifications" className="rounded-admin-card border border-admin-border bg-white p-3 hover:border-admin-navy/30">
               <span className="block text-xs text-admin-muted">সব প্রোফাইল</span><span className="mt-1 block text-lg font-bold text-admin-text">{result.counts.all.toLocaleString('bn-BD')}</span>
@@ -123,7 +134,7 @@ export default async function AdminTutorVerificationsPage({
           </section>
 
           <div className="mb-3 flex flex-col gap-2 sm:flex-row">
-            <AdminSearch placeholder="নাম, প্রোফাইল ID, প্রতিষ্ঠান খুঁজুন…" className="sm:max-w-md" />
+            <AdminSearch placeholder="নাম বা প্রতিষ্ঠান খুঁজুন…" className="sm:max-w-md" />
             <FilterNav
               id="tutor-status"
               label="প্রোফাইলের অবস্থা"
@@ -149,14 +160,14 @@ export default async function AdminTutorVerificationsPage({
           </div>
           <AdminTable
             columns={columns}
-            rows={result.rows}
+            rows={rows}
             getKey={(row) => row.id}
-            getHref={(row) => `/admin/verifications/${row.id}`}
+            compact
             caption="গৃহ শিক্ষক প্রোফাইল"
             empty={<AdminEmpty title="কোনো টিউটর প্রোফাইল নেই" description="এই সার্চ বা ফিল্টারে কোনো রেকর্ড মেলেনি।" icon={<GraduationCap className="h-5 w-5" />} />}
           />
           <TablePager page={result.page} pageSize={result.pageSize} total={result.total} searchParams={resolved} />
-          <p className="mt-3 flex items-center gap-1 text-[11px] text-admin-muted"><ArrowUpRight className="h-3 w-3" /> কোনো প্রোফাইলের সারিতে চাপ দিয়ে ব্যক্তিগত ও পূর্ণ বিবরণ খুলুন।</p>
+          <p className="mt-3 flex items-center gap-1 text-[11px] text-admin-muted"><ArrowUpRight className="h-3 w-3" /> শিক্ষকের নাম নির্বাচন করে ব্যক্তিগত ও পূর্ণ বিবরণ খুলুন।</p>
         </>
       )}
     </>

@@ -1,12 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useContext } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { BookOpen, Wifi } from 'lucide-react';
 import ServiceCard from '@/components/home/ServiceCard';
 import { fetchServiceListings } from '@/lib/catalog-service';
 import { listingToPreviewCard } from '@/lib/home-preview';
 import type { HomePreviewCard } from '@/lib/home-preview';
+import { QueryCacheRestoringContext } from '@/lib/query-cache-context';
+import { useNearViewport } from '@/hooks/use-near-viewport';
 
 /** Three of each keeps the pair balanced in a single desktop row of six. */
 const CARD_LIMIT = 3;
@@ -27,31 +30,31 @@ interface LoadedCards {
  * only entrance to the full lists.
  */
 export default function WifiCoachingSection() {
-  const [cards, setCards] = useState<LoadedCards | null>(null);
+  const isRestoring = useContext(QueryCacheRestoringContext);
+  const { ref, isNearViewport } = useNearViewport<HTMLElement>();
+  const query = useQuery({
+    queryKey: ['home-preview', 'wifi-coaching'],
+    queryFn: async (): Promise<LoadedCards> => {
+      const [wifi, coaching] = await Promise.all([
+        fetchServiceListings('wifi'),
+        fetchServiceListings('coaching'),
+      ]);
+      return {
+        wifi: wifi.slice(0, CARD_LIMIT).map(listingToPreviewCard),
+        coaching: coaching.slice(0, CARD_LIMIT).map(listingToPreviewCard),
+      };
+    },
+    enabled: !isRestoring && isNearViewport,
+    meta: { persist: true },
+  });
 
-  useEffect(() => {
-    let alive = true;
-    Promise.all([fetchServiceListings('wifi'), fetchServiceListings('coaching')])
-      .then(([wifi, coaching]) => {
-        if (!alive) return;
-        setCards({
-          wifi: wifi.slice(0, CARD_LIMIT).map(listingToPreviewCard),
-          coaching: coaching.slice(0, CARD_LIMIT).map(listingToPreviewCard),
-        });
-      })
-      .catch(() => {
-        if (alive) setCards({ wifi: [], coaching: [] });
-      });
-    return () => {
-      alive = false;
-    };
-  }, []);
-
+  const cards = query.data ?? null;
   const shown = cards ? [...cards.wifi, ...cards.coaching] : [];
-  const loading = cards === null;
+  const loading = cards === null && !query.isError;
 
   return (
     <section
+      ref={ref}
       aria-labelledby="wifi-coaching-heading"
       className="border-b border-brand-100/70 bg-mist-50"
     >

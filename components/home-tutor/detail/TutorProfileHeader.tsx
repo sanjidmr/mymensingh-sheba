@@ -94,7 +94,7 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
             </p>
           )}
           {tutor.publicId && (
-            <p className="mt-2 inline-flex rounded-md border border-brand-200 bg-brand-50 px-2.5 py-1 font-mono text-sm font-extrabold tracking-wider text-brand-800">
+            <p className="mt-2 inline-flex rounded-md border border-brand-100 bg-mist-50 px-2 py-0.5 font-mono text-[11px] font-semibold tracking-normal text-ink-600">
               আইডি: {tutor.publicId}
             </p>
           )}

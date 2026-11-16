@@ -1,7 +1,7 @@
 'use client';
 
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { ChevronRight } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
@@ -14,6 +14,8 @@ import ContactFaq from '@/components/contact/ContactFaq';
 import ContactLocation from '@/components/contact/ContactLocation';
 import ContactClosing from '@/components/contact/ContactClosing';
 import { mergeSiteContact } from '@/lib/site-content';
+import type { SiteContentOverrides } from '@/lib/site-content';
+import { fetchSiteContentOverrides } from '@/lib/site-content-client';
 import type { ContactSubject } from '@/lib/contact-types';
 
 export const metadata: Metadata = {
@@ -24,9 +26,21 @@ export const metadata: Metadata = {
 
 export default function ContactPageClient() {
   const searchParams = useSearchParams();
+  const [overrides, setOverrides] = useState<SiteContentOverrides>();
   const requestedSubject = searchParams.get('subject');
   const initialSubject: ContactSubject | '' = requestedSubject === 'news_submission' ? 'news_submission' : '';
-  const contact = mergeSiteContact();
+
+  useEffect(() => {
+    let active = true;
+    fetchSiteContentOverrides().then((payload) => {
+      if (active && payload) setOverrides(payload);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const contact = mergeSiteContact(overrides);
 
   return (
     <div className="flex min-h-screen flex-col overflow-x-clip bg-mist-50">

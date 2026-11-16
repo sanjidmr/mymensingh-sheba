@@ -168,6 +168,13 @@ export function classifyPath(path: string): {
     const category = first === 'buy-sell' ? 'buy_sell' : first === 'jobs' ? 'job' : 'news';
     return { routeKind: 'post', contentId: segments[1], category };
   }
+  if (['wifi', 'coaching', 'blood-donor', 'home-tutor'].includes(first)) {
+    return {
+      routeKind: 'directory',
+      contentId: segments[1] ?? null,
+      category: first,
+    };
+  }
   if (SERVICE_SLUGS.has(first)) {
     if (segments.length === 1) return { routeKind: 'service', contentId: first, category: first };
     return { routeKind: 'directory', contentId: segments[1] ?? first, category: first };
@@ -241,30 +248,37 @@ interface EventPayload {
   ctaType?: CtaClickType | FormSubmitType | null;
 }
 
+function postAnalytics(path: string, body: Record<string, unknown>): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), 3500);
+  return apiFetch(path, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    keepalive: true,
+    signal: controller.signal,
+    body: JSON.stringify(body),
+  }).finally(() => window.clearTimeout(timeoutId));
+}
+
 async function writeEvent(payload: EventPayload): Promise<void> {
   if (typeof window === 'undefined') return;
   if (!shouldTrackPath(payload.path)) return;
 
   try {
     const classified = classifyPath(payload.path);
-    await apiFetch('/api/analytics/events', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      keepalive: true,
-      body: JSON.stringify({
-        eventId: randomEventId(),
-        eventType: payload.eventType,
-        path: payload.path,
-        routeKind: payload.routeKind ?? classified.routeKind,
-        contentId: payload.contentId ?? classified.contentId,
-        category: payload.category ?? classified.category,
-        ctaType: payload.ctaType ?? null,
-        deviceType: deviceType(),
-        referrerHost: referrerHost(),
-        visitorId: getVisitorId(),
-        identityPersistent: hasPersistentVisitorId(),
-        sessionId: getSessionId(),
-      }),
+    await postAnalytics('/api/analytics/events', {
+      eventId: randomEventId(),
+      eventType: payload.eventType,
+      path: payload.path,
+      routeKind: payload.routeKind ?? classified.routeKind,
+      contentId: payload.contentId ?? classified.contentId,
+      category: payload.category ?? classified.category,
+      ctaType: payload.ctaType ?? null,
+      deviceType: deviceType(),
+      referrerHost: referrerHost(),
+      visitorId: getVisitorId(),
+      identityPersistent: hasPersistentVisitorId(),
+      sessionId: getSessionId(),
     });
   } catch {
     // Analytics are best-effort and must not interrupt the user experience.
@@ -276,6 +290,7 @@ async function writeEvent(payload: EventPayload): Promise<void> {
 // ---------------------------------------------------------------------------
 
 let lastActiveVisitorAt = 0;
+const profileViewsInMemory = new Set<string>();
 
 function randomEventId(): string {
   if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
@@ -309,6 +324,31 @@ export function trackPageView(path: string): void {
   void writeEvent({ eventType: 'page_view', path });
 }
 
+/** Records one visible donor-card impression per profile and browser session. */
+export function trackProfileView(profileId: string, category: 'blood-donor'): void {
+  if (typeof window === 'undefined' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(profileId)) return;
+  const key = `${category}:${profileId}`;
+  if (profileViewsInMemory.has(key)) return;
+  try {
+    const storageKey = `mms_profile_view:${key}`;
+    if (window.sessionStorage.getItem(storageKey)) {
+      profileViewsInMemory.add(key);
+      return;
+    }
+    window.sessionStorage.setItem(storageKey, '1');
+  } catch {
+    // The in-memory guard still limits this tab to one impression per profile.
+  }
+  profileViewsInMemory.add(key);
+  void writeEvent({
+    eventType: 'page_view',
+    path: `/${category}/${profileId}`,
+    routeKind: 'directory',
+    contentId: profileId,
+    category,
+  });
+}
+
 /** Records a lightweight heartbeat for the opaque browser visitor id. */
 export function trackActiveVisitor(path: string): void {
   if (typeof window === 'undefined' || !shouldTrackPath(path)) return;
@@ -316,14 +356,9 @@ export function trackActiveVisitor(path: string): void {
   if (now - lastActiveVisitorAt < 20_000) return;
   lastActiveVisitorAt = now;
 
-  void apiFetch('/api/analytics/active-visitors', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    keepalive: true,
-    body: JSON.stringify({
-      visitorId: getVisitorId(),
-      identityPersistent: hasPersistentVisitorId(),
-    }),
+  void postAnalytics('/api/analytics/active-visitors', {
+    visitorId: getVisitorId(),
+    identityPersistent: hasPersistentVisitorId(),
   }).catch(() => {
     // Keep the heartbeat throttle even when the endpoint is temporarily unavailable.
   });

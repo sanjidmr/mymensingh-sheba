@@ -72,8 +72,9 @@ export default function PostAuthGate({
     );
   }
 
+  const isNewsRoute = pathname === '/news' || pathname.startsWith('/news/');
   const canManageNews = user.role === 'admin' || user.role === 'news_editor';
-  if (!canManageNews) {
+  if (isNewsRoute && !canManageNews) {
     return (
       <div className="min-h-screen bg-mist-50">
         <Navbar />

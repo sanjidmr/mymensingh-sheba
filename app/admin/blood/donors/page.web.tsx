@@ -5,28 +5,14 @@ import { TablePager } from '@/components/admin/TablePager';
 import { AdminSearch, ClearFilters } from '@/components/admin/AdminSearch';
 import { FilterNav } from '@/components/admin/FilterNav';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
-import { StatusPill } from '@/components/admin/StatCard';
+import { StatusPill, StatCard } from '@/components/admin/StatCard';
 import { formatDateTime } from '@/lib/admin/format';
 import { fetchAdminBloodDonors, parseListParams, type AdminBloodDonorRow } from '@/lib/admin/queries';
 import { getAllMCCAreas, getAreaById } from '@/lib/locations';
+import { fetchAdminEngagementAnalytics } from '@/lib/admin/queries';
+import DonorListActions from '@/components/admin/DonorListActions';
 
 export const dynamic = 'force-dynamic';
-
-const STATUS_LABELS: Record<string, string> = {
-  draft: 'জমা দেওয়া হয়নি',
-  pending_approval: 'পর্যালোচনায়',
-  approved: 'অনুমোদিত',
-  rejected: 'প্রত্যাখ্যাত',
-  paused: 'বিরতিতে',
-  suspended: 'স্থগিত',
-};
-
-function getStatusTone(status: string): 'success' | 'warning' | 'danger' | 'neutral' {
-  if (status === 'approved') return 'success';
-  if (status === 'pending_approval') return 'warning';
-  if (status === 'rejected' || status === 'suspended') return 'danger';
-  return 'neutral';
-}
 
 const columns: AdminColumn<AdminBloodDonorRow>[] = [
   {
@@ -34,9 +20,11 @@ const columns: AdminColumn<AdminBloodDonorRow>[] = [
     header: 'রক্তদাতা',
     mobilePrimary: true,
     render: (row) => (
-      <span className="block min-w-0">
-        <span className="block truncate">{row.full_name}</span>
-        <span className="mt-0.5 block text-xs font-normal text-ink-500">{row.id}</span>
+      <span className="flex min-w-0 items-start justify-between gap-2">
+        <Link href={`/admin/blood/donors/${row.id}`} className="min-w-0 break-words font-semibold text-admin-navy hover:underline">
+          {row.full_name}
+        </Link>
+        <DonorListActions donor={row} />
       </span>
     ),
   },
@@ -48,6 +36,8 @@ const columns: AdminColumn<AdminBloodDonorRow>[] = [
       : 'নম্বর দেওয়া হয়নি',
   },
   { key: 'blood', header: 'রক্তের গ্রুপ', render: (row) => row.blood_group || 'উল্লেখ নেই' },
+  { key: 'views', header: 'প্রোফাইল ভিউ', render: (row) => row.profile_views == null ? '—' : row.profile_views.toLocaleString('bn-BD') },
+  { key: 'calls', header: 'কল বাটন চাপ', render: (row) => row.call_clicks == null ? '—' : row.call_clicks.toLocaleString('bn-BD') },
   {
     key: 'area',
     header: 'এলাকা',
@@ -59,11 +49,6 @@ const columns: AdminColumn<AdminBloodDonorRow>[] = [
     render: (row) => row.is_available
       ? <StatusPill label="উপলভ্য" tone="success" />
       : <StatusPill label="উপলভ্য নন" tone="neutral" />,
-  },
-  {
-    key: 'status',
-    header: 'মডারেশন',
-    render: (row) => <StatusPill label={STATUS_LABELS[row.status] ?? row.status} tone={getStatusTone(row.status)} />,
   },
   {
     key: 'created',
@@ -108,7 +93,15 @@ export default async function AdminBloodDonorsPage({
 }) {
   const resolved = await searchParams;
   const params = parseListParams(resolved, { pageSize: 20 });
-  const result = await fetchAdminBloodDonors(params);
+  const [result, analytics] = await Promise.all([
+    fetchAdminBloodDonors(params),
+    fetchAdminEngagementAnalytics('blood-donor'),
+  ]);
+  const rows = result.rows.map((row) => ({
+    ...row,
+    profile_views: analytics.error ? null : analytics.profiles[row.id]?.views ?? 0,
+    call_clicks: analytics.error ? null : analytics.profiles[row.id]?.callClicks ?? 0,
+  }));
 
   if (result.unavailable) {
     return (
@@ -135,6 +128,9 @@ export default async function AdminBloodDonorsPage({
       />
 
       <div className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-5">
+        <StatCard label="রক্তদাতা পেজ ভিজিট" value={analytics.error ? '—' : analytics.directoryVisits} />
+        <StatCard label="প্রোফাইল ভিউ" value={analytics.error ? '—' : analytics.profileViews} />
+        <StatCard label="কল বাটন চাপা" value={analytics.error ? '—' : analytics.callClicks} tone="good" />
         {cards.map((card) => (
           <Link key={card.label} href={card.href} className="rounded-admin-card border border-admin-border bg-white p-3 transition-colors hover:border-brand-300 sm:p-4">
             <span className="block text-xs font-medium text-admin-muted">{card.label}</span>
@@ -142,6 +138,7 @@ export default async function AdminBloodDonorsPage({
           </Link>
         ))}
       </div>
+      {analytics.error && <AdminError title="রক্তদাতা অ্যানালিটিক্স লোড করা যায়নি" message={analytics.error} className="mb-4" />}
 
       <div className="mb-4 grid gap-3">
         <div className="flex flex-col gap-2 lg:flex-row lg:items-center">
@@ -169,9 +166,9 @@ export default async function AdminBloodDonorsPage({
 
       <AdminTable
         columns={columns}
-        rows={result.rows}
+        rows={rows}
         getKey={(row) => row.id}
-        getHref={(row) => `/admin/blood/donors/${row.id}`}
+        compact
         caption="রক্তদাতা প্রোফাইল"
         empty={<AdminEmpty title="কোনো রক্তদাতা পাওয়া যায়নি" description="সার্চ বা ফিল্টার পরিবর্তন করুন, অথবা নতুন সাবমিশন এলে এখানে দেখা যাবে।" />}
       />

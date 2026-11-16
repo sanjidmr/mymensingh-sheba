@@ -18,6 +18,7 @@ import Link from 'next/link';
 import { Eye, Loader2, Save, Trash2, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
 import {
@@ -33,7 +34,7 @@ import {
 } from '@/lib/catalog-service';
 import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
 import LocationSelectInput from '@/components/LocationSelectInput';
-import { normalizeBdPhone } from '@/lib/contact-types';
+import { normalizeBangladeshMobile } from '@/lib/bangladesh-phone';
 import {
   JOB_EXPERIENCE,
   JOB_TYPES,
@@ -188,8 +189,8 @@ function seedFrom(post: CommunityPost) {
       experience: '',
       deadline: post.deadline ?? '',
       condition: post.conditionLabel ?? '',
-      phone: '',
-      sellerPhone: post.authorPhone ?? '',
+      phone: post.kind === 'job' ? post.authorPhone ?? '' : '',
+      sellerPhone: post.kind === 'buy_sell' ? post.authorPhone ?? '' : '',
       whatsapp: post.whatsappNumber ?? '',
     },
     tags: post.tags ?? [],
@@ -247,6 +248,11 @@ export default function PostForm({
   const [autosaving, setAutosaving] = useState(false);
   const [autosaveRevision, setAutosaveRevision] = useState(0);
   const [showPreview, setShowPreview] = useState(false);
+  const [submission, setSubmission] = useState<{
+    id: string;
+    summary: string[];
+    notice?: string;
+  } | null>(null);
   const userId = user?.id;
   const hasInteractedRef = useRef(false);
   const submittedRef = useRef(false);
@@ -453,7 +459,7 @@ export default function PostForm({
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
 
-  const phoneRequired = !editing && !user;
+  const phoneRequired = kind === 'job' || (!editing && !user);
 
   function validate(): Errors {
     const next: Errors = {};
@@ -490,15 +496,15 @@ export default function PostForm({
       if (photos.length === 0) next.photos = 'পণ্যের অন্তত একটি ছবি দিন।';
 
       // The seller's number is required here for the same reason: a listing a
-      // buyer cannot call is not a listing. `normalizeBdPhone` handles the
-      // Bangladeshi formats (01…, +8801…, spaces) and returns '' on garbage.
-      const seller = normalizeBdPhone(values.sellerPhone);
-      if (!/^01[3-9]\d{8}$/.test(seller)) {
+      // buyer cannot call is not a listing. The shared normalizer validates
+      // local and international Bangladeshi mobile formats.
+      const seller = normalizeBangladeshMobile(values.sellerPhone);
+      if (!seller) {
         next.sellerPhone = 'সঠিক মোবাইল নম্বর দিন (যেমন ০১৭১২৩৪৫৬৭৮)।';
       }
       if (values.whatsapp.trim()) {
-        const wa = normalizeBdPhone(values.whatsapp);
-        if (!/^01[3-9]\d{8}$/.test(wa)) {
+        const wa = normalizeBangladeshMobile(values.whatsapp);
+        if (!wa) {
           next.whatsapp = 'হোয়াটসঅ্যাপ নম্বরটি সঠিক নয়।';
         }
       }
@@ -524,8 +530,8 @@ export default function PostForm({
     }
 
     if (phoneRequired) {
-      const phone = normalizeBdPhone(values.phone);
-      if (!/^01[3-9]\d{8}$/.test(phone)) {
+      const phone = normalizeBangladeshMobile(values.phone);
+      if (!phone) {
         next.phone = 'সঠিক মোবাইল নম্বর দিন (যেমন ০১৭১২৩৪৫৬৭৮)।';
       }
     }
@@ -555,6 +561,14 @@ export default function PostForm({
       const persistedPhotos = await uploadPendingPhotos(photos, () => setUploadedCount((n) => n + 1));
       const urls = persistedPhotos.map((photo) => photo.url);
       if (pendingCount === 0) setUploadedCount(0);
+      const contactPhone = kind === 'buy_sell'
+        ? normalizeBangladeshMobile(values.sellerPhone)
+        : kind === 'job'
+          ? normalizeBangladeshMobile(values.phone)
+          : null;
+      const whatsappPhone = kind === 'buy_sell' && values.whatsapp.trim()
+        ? normalizeBangladeshMobile(values.whatsapp)
+        : contactPhone;
 
       const allTags: string[] = [];
       if (kind === 'job' && values.education.trim()) allTags.push(values.education.trim());
@@ -577,14 +591,9 @@ export default function PostForm({
         areaId: values.areaId || undefined,
         tags: allTags,
         authorName: editing?.authorName,
-        authorPhone:
-          kind === 'buy_sell'
-            ? normalizeBdPhone(values.sellerPhone)
-            : phoneRequired
-              ? normalizeBdPhone(values.phone)
-              : editing?.authorPhone,
+        authorPhone: contactPhone ?? (kind === 'news' ? editing?.authorPhone : undefined),
         whatsappNumber:
-          kind === 'buy_sell' ? normalizeBdPhone(values.whatsapp) || null : undefined,
+          kind === 'buy_sell' || kind === 'job' ? whatsappPhone : undefined,
         status: 'pending' as const,
         isFeatured: false,
         authorId: '',
@@ -625,9 +634,49 @@ export default function PostForm({
             draftCleanupFailed = true;
           }
         }
-        router.push(
-          `/dashboard/posts?submitted=${encodeURIComponent(result.data.slug)}${draftCleanupFailed ? `&draftCleanup=${kind}` : ''}`
-        );
+        if (kind === 'news') {
+          router.push(
+            `/dashboard/posts?submitted=${encodeURIComponent(result.data.slug)}${draftCleanupFailed ? `&draftCleanup=${kind}` : ''}`
+          );
+        } else {
+          const submittedSummary = [
+            `শিরোনাম: ${values.title.trim()}`,
+            values.category ? `ক্যাটাগরি: ${
+              kind === 'buy_sell'
+                ? MARKET_CATEGORIES.find((category) => category.id === values.category)?.labelBn ?? values.category
+                : values.category
+            }` : '',
+            values.areaId
+              ? `এলাকা: ${areas.find((area) => area.id === values.areaId)?.nameBn ?? values.areaId}`
+              : '',
+            values.summary.trim() ? `বিবরণ: ${values.summary.trim()}` : '',
+            photos.length ? `ছবি: ${photos.length}টি` : '',
+            kind === 'buy_sell' ? `দাম: ৳${values.price}` : '',
+            kind === 'buy_sell'
+              ? `পণ্যের অবস্থা: ${MARKET_CONDITIONS.find((condition) => condition.id === values.condition)?.labelBn ?? values.condition}`
+              : '',
+            kind === 'job' && values.organization.trim() ? `প্রতিষ্ঠান: ${values.organization.trim()}` : '',
+            kind === 'job' && values.jobType
+              ? `চাকরির ধরন: ${JOB_TYPES.find((jobType) => jobType.id === values.jobType)?.labelBn ?? values.jobType}`
+              : '',
+            kind === 'job' && values.salaryMin ? `সর্বনিম্ন বেতন: ৳${values.salaryMin}` : '',
+            kind === 'job' && values.salaryMax ? `সর্বোচ্চ বেতন: ৳${values.salaryMax}` : '',
+            kind === 'job' && values.education.trim() ? `শিক্ষাগত যোগ্যতা: ${values.education.trim()}` : '',
+            kind === 'job' && values.experience
+              ? `অভিজ্ঞতা: ${JOB_EXPERIENCE.find((experience) => experience.id === values.experience)?.labelBn ?? values.experience}`
+              : '',
+            kind === 'job' && values.deadline ? `আবেদনের শেষ তারিখ: ${values.deadline}` : '',
+            tags.length ? `ট্যাগ: ${tags.join(' · ')}` : '',
+            kind === 'buy_sell' || kind === 'job' ? 'যোগাযোগের তথ্য যোগ করা হয়েছে' : '',
+          ].filter(Boolean);
+          setSubmission({
+            id: result.data.id,
+            summary: submittedSummary,
+            notice: draftCleanupFailed
+              ? 'পোস্ট জমা হয়েছে, তবে আগের জমা দেওয়া হয়নি পোস্টটি রয়ে গেছে। পরে আমার পোস্টগুলো থেকে সেটি মুছে দিন।'
+              : undefined,
+          });
+        }
       }
     } catch (error) {
       console.error('Post submission failed', error);
@@ -812,6 +861,21 @@ export default function PostForm({
     setDraftNotice('জমা দেওয়া হয়নি সংরক্ষণ মুছে ফেলা হয়েছে।');
   }
 
+  if (submission) {
+    return (
+      <SubmissionConfirmation
+        type="post"
+        id={submission.id}
+        summary={submission.summary}
+        reminder={kind === 'job'
+          ? 'চাকরির জন্য লোক পাওয়া হয়ে গেলে অনুগ্রহ করে পোস্টটি ডিলিট করে দিন।'
+          : 'পণ্য বিক্রি হয়ে গেলে অনুগ্রহ করে পোস্টটি ডিলিট করে দিন।'}
+        footer
+        notice={submission.notice}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen bg-mist-50">
       <Navbar />
@@ -884,7 +948,7 @@ export default function PostForm({
           </p>
         )}
 
-        <form onSubmit={handleSubmit} className="mt-4 space-y-3.5" noValidate>
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3" noValidate>
           <Field
             id="title"
             label="শিরোনাম"
@@ -1041,7 +1105,7 @@ export default function PostForm({
                 </select>
               </Field>
 
-              <div className="grid gap-3.5 sm:grid-cols-2">
+              <div className="grid gap-3 min-[380px]:grid-cols-2 sm:gap-3.5">
                 <Field id="salaryMin" label="সর্বনিম্ন বেতন" error={errors.salaryMin}>
                   <input
                     id="field-salaryMin"
@@ -1064,7 +1128,7 @@ export default function PostForm({
                 </Field>
               </div>
 
-              <div className="grid gap-3.5 sm:grid-cols-2">
+              <div className="grid gap-3 min-[380px]:grid-cols-2 sm:gap-3.5">
                 <Field id="education" label="শিক্ষাগত যোগ্যতা">
                   <input
                     id="field-education"
@@ -1138,9 +1202,9 @@ export default function PostForm({
               {/* Seller contact. Required, because a marketplace listing whose
                   buyer cannot call the seller is not a listing. The number goes
                   to `author_phone`, which the public page reads back only
-                  through `fetch_market_contact` — see `lib/catalog-service.ts`.
-                  Kept out of the news and job forms entirely: nothing in those
-                  two workflows asks an author to publish a number. */}
+                  through the approved-post contact RPC — see
+                  `lib/catalog-service.ts`. This field is separate from the
+                  required applicant contact on job posts. */}
               <fieldset className="rounded-xl border border-mist-200 bg-mist-50/60 p-3">
                 <legend className="px-1 text-[12px] font-extrabold text-ink-700">
                   বিক্রেতার যোগাযোগ
@@ -1295,10 +1359,12 @@ export default function PostForm({
           {phoneRequired && (
             <Field
               id="phone"
-              label="আপনার মোবাইল নম্বর"
+              label={kind === 'job' ? 'যোগাযোগের মোবাইল নম্বর' : 'আপনার মোবাইল নম্বর'}
               required
               error={errors.phone}
-              hint="অ্যাডমিন যোগাযোগ করতে ব্যবহার করবেন, প্রকাশ করা হবে না"
+              hint={kind === 'job'
+                ? 'অনুমোদনের পর চাকরিপ্রার্থীরা সরাসরি যোগাযোগ করতে পারবেন'
+                : 'অ্যাডমিন যোগাযোগ করতে ব্যবহার করবেন, প্রকাশ করা হবে না'}
             >
               <input
                 id="field-phone"

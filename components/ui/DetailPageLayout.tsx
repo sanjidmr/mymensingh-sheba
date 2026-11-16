@@ -16,6 +16,7 @@ import {
 import { Button } from '@/components/ui/Button';
 import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
+import { shareContent } from '@/lib/native-actions';
 
 export interface DetailMetric {
   label: string;
@@ -122,11 +123,7 @@ export function DetailPageLayout({
 
             <button
               type="button"
-              onClick={() => {
-                if (navigator.share) {
-                  navigator.share({ title, url: window.location.href });
-                }
-              }}
+              onClick={() => void shareContent({ title, url: window.location.href })}
               className="p-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50 transition-colors"
               aria-label="শেয়ার করুন"
             >
@@ -316,7 +313,7 @@ export function DetailPageLayout({
       </main>
 
       {/* Mobile Sticky Bottom Action Bar */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 p-3 sm:p-4 shadow-lg safe-area-pb">
+      <div className="fixed bottom-[3.5rem] left-0 right-0 z-40 border-t border-slate-200 bg-white/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] shadow-lg backdrop-blur-md lg:hidden sm:p-4">
         <div className="flex items-center gap-2.5 max-w-lg mx-auto">
           {onFavoriteToggle && (
             <button

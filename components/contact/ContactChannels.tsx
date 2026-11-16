@@ -7,6 +7,7 @@ import {
   MessageCircle,
   Phone,
   Facebook,
+  MessagesSquare,
 } from 'lucide-react';
 import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
 import type { mergeSiteContact } from '@/lib/site-content';
@@ -48,6 +49,15 @@ export default function ContactChannels({
   const { user, isLoading } = useAuth();
   const messenger = contact.socials.find((s) => s.icon === 'messenger');
   const facebook = contact.socials.find((s) => s.icon === 'facebook');
+  const phoneDigits = contact.phone?.replace(/\D/g, '') ?? '';
+  const whatsappDigits = phoneDigits.startsWith('00')
+    ? phoneDigits.slice(2)
+    : phoneDigits.startsWith('0')
+      ? `88${phoneDigits}`
+      : phoneDigits;
+  const whatsappHref = whatsappDigits.length >= 8 && whatsappDigits.length <= 15
+    ? `https://wa.me/${whatsappDigits}`
+    : undefined;
 
   if (isLoading || !user) {
     return (
@@ -83,15 +93,24 @@ export default function ContactChannels({
       fallbackHref: `#${CONTACT_FORM_ANCHOR}`,
     },
     {
-      id: 'messenger',
+      id: 'whatsapp',
       icon: MessageCircle,
-      title: 'WhatsApp / Messenger',
-      description: 'দ্রুত চ্যাটে জিজ্ঞাসা বা ছবি পাঠাতে সুবিধাজনক।',
+      title: 'WhatsApp',
+      description: 'ফোন নম্বর দিয়ে WhatsApp-এ সরাসরি বার্তা পাঠান।',
+      state: whatsappHref ? 'ready' : 'pending',
+      detail: contact.phone ?? SITE_CONTACT.phonePendingBn,
+      actionLabel: whatsappHref ? 'WhatsApp খুলুন' : 'বার্তা লিখুন',
+      href: whatsappHref,
+      fallbackHref: `#${CONTACT_FORM_ANCHOR}`,
+    },
+    {
+      id: 'messenger',
+      icon: MessagesSquare,
+      title: 'Messenger',
+      description: 'Facebook Messenger-এ সরাসরি বার্তা পাঠান।',
       state: messenger?.href ? 'ready' : 'pending',
-      detail: messenger?.href
-        ? 'এখান থেকেই সরাসরি বার্তা পাঠান।'
-        : 'এই চ্যানেলটি এখনো প্রকাশ করা হয়নি।',
-      actionLabel: messenger?.href ? 'চ্যাট করুন' : 'বার্তা লিখুন',
+      detail: messenger?.href ? 'এখান থেকেই সরাসরি বার্তা পাঠান।' : 'এই চ্যানেলটি এখনো প্রকাশ করা হয়নি।',
+      actionLabel: messenger?.href ? 'Messenger খুলুন' : 'বার্তা লিখুন',
       href: messenger?.href ?? undefined,
       fallbackHref: `#${CONTACT_FORM_ANCHOR}`,
     },
@@ -100,10 +119,11 @@ export default function ContactChannels({
       icon: Mail,
       title: 'ইমেইল করুন',
       description: 'বিস্তারিত লিখে বা সংযুক্তি দিয়ে পাঠাতে সুবিধা।',
-      state: 'ready',
-      detail: contact.email,
-      actionLabel: 'ইমেইল খুলুন',
-      href: `mailto:${contact.email}`,
+      state: contact.email ? 'ready' : 'pending',
+      detail: contact.email || 'ইমেইল ঠিকানা এখনো প্রকাশ করা হয়নি।',
+      actionLabel: contact.email ? 'ইমেইল খুলুন' : 'বার্তা লিখুন',
+      href: contact.email ? `mailto:${contact.email}` : undefined,
+      fallbackHref: `#${CONTACT_FORM_ANCHOR}`,
     },
     {
       id: 'location',
@@ -226,8 +246,8 @@ export default function ContactChannels({
           <Facebook className="h-4 w-4" />
         </Link>
         <p className="text-[12px] leading-snug text-ink-400">
-          সোশ্যাল চ্যানেলগুলো এখনো প্রকাশ করা হয়নি — তৎক্ষণের জন্য বার্তা ফর্মটি
-          ব্যবহার করুন।
+          {facebook?.href ? 'আমাদের Facebook পেজে যুক্ত হোন।' : 'Facebook পেজ এখনো প্রকাশ করা হয়নি — তৎক্ষণের জন্য বার্তা ফর্মটি'}
+          {!facebook?.href && ' ব্যবহার করুন।'}
         </p>
       </div>
     </div>

@@ -1,8 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import { cache } from 'react';
+import { unstable_cache } from 'next/cache';
 import { LAUNCH_SERVICES } from './services-data';
+import { fetchWithTimeout } from './fetch-with-timeout';
 import type { ServiceOverride, SiteContentOverrides } from './site-content';
-import { createServerSideClient } from './supabase/server';
 import {
   SITE_CONTACT_EMAIL,
   SITE_CONTACT_PHONE,
@@ -12,6 +13,7 @@ import {
 const OVERRIDE_KEYS = new Set([
   'homepage_sections',
   'launch_services',
+  'service_seo',
   'site_contact',
   'announcement',
   'about_content',
@@ -24,19 +26,22 @@ const OVERRIDE_KEYS = new Set([
 const SITE_CONTENT_TIMEOUT_MS = 3500;
 
 async function withSiteContentTimeout<T>(work: () => Promise<T>, fallback: T): Promise<T> {
+  let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       work(),
       new Promise<T>((resolve) => {
-        setTimeout(() => resolve(fallback), SITE_CONTENT_TIMEOUT_MS);
+        timeoutId = setTimeout(() => resolve(fallback), SITE_CONTENT_TIMEOUT_MS);
       }),
     ]);
   } catch {
     return fallback;
+  } finally {
+    if (timeoutId) clearTimeout(timeoutId);
   }
 }
 
-export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverrides> => {
+const readSiteContentOverrides = unstable_cache(async (): Promise<SiteContentOverrides> => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anonKey) return {};
@@ -47,6 +52,7 @@ export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverri
       autoRefreshToken: false,
       detectSessionInUrl: false,
     },
+    global: { fetch: fetchWithTimeout },
   });
 
   const fallback: SiteContentOverrides = {};
@@ -103,6 +109,41 @@ export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverri
                 }];
               })
             : [];
+          break;
+        }
+        case 'service_seo': {
+          const obj = value as Record<string, Record<string, unknown>>;
+          if (!obj || typeof obj !== 'object') break;
+          overrides.service_seo = {};
+          for (const [slug, entry] of Object.entries(obj)) {
+            if (!entry || typeof entry !== 'object') continue;
+            const schemaType = entry.schemaType;
+            const normalized = {
+              seoTitle: typeof entry.seoTitle === 'string' ? entry.seoTitle : undefined,
+              metaDescription: typeof entry.metaDescription === 'string' ? entry.metaDescription : undefined,
+              focusKeyword: typeof entry.focusKeyword === 'string' ? entry.focusKeyword : undefined,
+              secondaryKeywords: Array.isArray(entry.secondaryKeywords)
+                ? entry.secondaryKeywords.filter((item): item is string => typeof item === 'string')
+                : undefined,
+              canonicalUrl: typeof entry.canonicalUrl === 'string' ? entry.canonicalUrl : undefined,
+              customH1: typeof entry.customH1 === 'string' ? entry.customH1 : undefined,
+              seoDescription: typeof entry.seoDescription === 'string' ? entry.seoDescription : undefined,
+              ogTitle: typeof entry.ogTitle === 'string' ? entry.ogTitle : undefined,
+              ogDescription: typeof entry.ogDescription === 'string' ? entry.ogDescription : undefined,
+              twitterTitle: typeof entry.twitterTitle === 'string' ? entry.twitterTitle : undefined,
+              twitterDescription: typeof entry.twitterDescription === 'string' ? entry.twitterDescription : undefined,
+              imageAlt: typeof entry.imageAlt === 'string' ? entry.imageAlt : undefined,
+              schemaType: schemaType === 'Service' || schemaType === 'LocalBusiness' || schemaType === 'Organization'
+                ? schemaType as 'Service' | 'LocalBusiness' | 'Organization'
+                : undefined,
+              index: typeof entry.index === 'boolean' ? entry.index : undefined,
+            };
+            if (
+              normalized.seoTitle || normalized.metaDescription || normalized.focusKeyword || normalized.canonicalUrl || normalized.customH1 || normalized.ogTitle || normalized.twitterTitle || normalized.index !== undefined
+            ) {
+              overrides.service_seo[slug] = normalized;
+            }
+          }
           break;
         }
         case 'site_contact': {
@@ -219,10 +260,18 @@ export const getSiteContentOverrides = cache(async (): Promise<SiteContentOverri
   }, fallback);
 
   return result;
-});
+}, ['public-site-content-overrides-v1'], { revalidate: 120, tags: ['site-content'] });
+
+export const getSiteContentOverrides = cache(readSiteContentOverrides);
+
+export async function getServiceSeoEntry(slug: string) {
+  const overrides = await getSiteContentOverrides();
+  return overrides.service_seo?.[slug];
+}
 
 export const getSiteContentForViewer = cache(async (): Promise<SiteContentOverrides> => {
   const overrides = await getSiteContentOverrides();
+  const { createServerSideClient } = await import('./supabase/server');
   const client = await createServerSideClient();
   const { data, error } = client
     ? await client.auth.getUser()
@@ -235,14 +284,12 @@ export const getSiteContentForViewer = cache(async (): Promise<SiteContentOverri
     const contact = overrides.site_contact;
     return {
       ...overrides,
-      site_contact: contact
-        ? {
-            ...contact,
-            phone: null,
-            email: '',
-            socials: contact.socials?.map((social) => ({ ...social, href: null })),
-          }
-        : undefined,
+      site_contact: {
+        ...contact,
+        phone: contact?.phone ?? SITE_CONTACT_PHONE,
+        email: '',
+        socials: contact?.socials?.map((social) => ({ ...social, href: null })) ?? [],
+      },
     };
   }
 

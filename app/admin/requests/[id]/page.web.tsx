@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { use } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -387,8 +388,15 @@ export default function AdminRequestDetailPage({
               </strong>
               <div className="grid grid-cols-3 gap-2">
                 {photoUrls.map((url, i) => (
-                  <a key={i} href={url} target="_blank" rel="noopener noreferrer">
-                    <img src={url} alt={`মালামালের ছবি ${i + 1}`} className="w-full h-24 object-cover rounded-xl" />
+                  <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="block overflow-hidden rounded-xl">
+                    <Image
+                      src={url}
+                      alt={`মালামালের ছবি ${i + 1}`}
+                      width={240}
+                      height={96}
+                      unoptimized
+                      className="w-full h-24 object-cover"
+                    />
                   </a>
                 ))}
               </div>

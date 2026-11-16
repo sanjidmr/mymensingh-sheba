@@ -3,9 +3,9 @@
 ## Routes
 
 - `/admin/directories/bus`, `/admin/directories/wifi`, and `/admin/directories/coaching` are the separate admin directory pages.
-- `/admin/directories/vehicle` remains available for the existing vehicle listings.
+- `/admin/directories/vehicle` is no longer an admin route or navigation item. Existing vehicle listings remain in storage and continue to support public pages and bookings.
 - Each category page provides category-specific search, filters, counts, pagination, create/edit, publication controls, and guarded deletion.
-- `/admin/vehicle-requests` and `/admin/vehicle-requests/[id]` provide the request inbox and details.
+- `/admin/vehicle-requests` and `/admin/vehicle-requests/[id]` remain available for existing request management and notifications, but are no longer in the admin navigation.
 
 ## Existing schema reused
 
@@ -18,7 +18,7 @@ The schema has no dedicated vehicle-kind column, so the admin form stores exactl
 ## Workflows and limits
 
 - Admins create and manage bus listings; customer policies and server-side guards restrict customer-created listings to coaching and WiFi. Coaching/WiFi submissions are owner-linked and enter moderation before public display. Customers can view their listing status and edit their own records; owner edits and coaching/WiFi child-record changes return the listing to pending review.
-- Admins can review, edit, approve/reject, publish/unpublish, and delete directory records, subject to the existing references guard for vehicles. Shared and category-specific form values are validated on the server. Admin images upload to the existing `site` storage bucket.
+- Admins can review, edit, approve/reject, publish/unpublish, and delete the directory categories that remain in admin management. Existing vehicle listings are retained for public and booking relationships; this change removes their admin directory route, not their data. Shared and category-specific form values are validated on the server. Admin images upload to the existing `site` storage bucket.
 - Public directory reads require approved, active listings. Reviews remain separate from listing submissions and retain their existing per-author uniqueness and rating validation.
 - `is_active` controls publication only; there is no verification field. A listing being published does not mean its claims, coverage, pricing, or availability were independently verified.
 - The public directory cards no longer display a verification mark for these records; detail pages explicitly say the information is admin-managed but has no separate verification state.

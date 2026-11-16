@@ -66,9 +66,7 @@ const ASSISTED_SERVICES = [
 ];
 
 const EMERGENCY_SERVICES = [
-  { title: 'ডাক্তার', href: '/doctor' },
   { title: 'পুলিশ', href: '/police' },
-  { title: 'ফায়ার সার্ভিস', href: '/fire-service' },
   { title: 'অ্যাম্বুলেন্স', href: '/ambulance' },
 ];
 
@@ -110,7 +108,7 @@ export default function HowItWorksPage() {
         >
           <Link href="/" className="transition-colors hover:text-brand-800">হোম</Link>
           <ChevronRight className="h-3.5 w-3.5 shrink-0 text-brand-300" aria-hidden="true" />
-          <span aria-current="page" className="font-medium text-ink-700">কীভাবে কাজ করে</span>
+          <span aria-current="page" className="font-medium text-ink-700">কিভাবে সেবা নেবো/দেবো</span>
         </nav>
 
         <section className="relative isolate overflow-hidden bg-brand-950 text-white">
@@ -123,8 +121,7 @@ export default function HowItWorksPage() {
                 ময়মনসিংহ সেবা · সহজ ব্যবহার নির্দেশিকা
               </p>
               <h1 className="mt-5 text-3xl font-extrabold leading-tight tracking-tight sm:text-4xl lg:text-5xl">
-                আপনার প্রয়োজনের সেবা,
-                <span className="block text-emerald-200">কয়েকটি সহজ ধাপে</span>
+                কিভাবে সেবা নেবো/দেবো
               </h1>
               <p className="mt-4 max-w-2xl text-sm leading-relaxed text-emerald-50/85 sm:text-base">
                 সেবা খোঁজা থেকে সরাসরি যোগাযোগ, আবার নিজের তথ্য প্রকাশ—প্রতিটি কাজের পথ এখানে স্পষ্ট করে দেওয়া হয়েছে।

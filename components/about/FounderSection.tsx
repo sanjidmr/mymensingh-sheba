@@ -27,7 +27,7 @@ export default function FounderSection({
   const founder = { ...DEFAULT_FOUNDER_CONTENT, ...content };
   return (
     <AboutSection labelledBy="about-founder-heading" className="bg-white">
-      <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr] lg:items-start lg:gap-x-14 lg:gap-y-0">
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.15fr] lg:items-start lg:gap-x-8 lg:gap-y-0">
         {/* 1 — heading (first on phones) */}
         <Reveal className="order-1 lg:order-none lg:col-start-2 lg:row-start-1">
           <SectionLabel>যিনি শুরু করেছিলেন</SectionLabel>
@@ -54,7 +54,7 @@ export default function FounderSection({
 
         {/* 3 — portrait (third on phones, left column on desktop) */}
         <Reveal className="order-3 lg:order-none lg:col-start-1 lg:row-start-1 lg:row-span-3">
-          <div className="relative aspect-[4/3] w-full overflow-hidden rounded-2xl bg-mist-100 sm:aspect-[4/5]">
+          <div className="relative aspect-[2/3] w-full overflow-hidden rounded-2xl bg-mist-100">
             {founder.imageUrl ? (
               <Image
                 src={founder.imageUrl}

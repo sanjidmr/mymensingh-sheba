@@ -26,6 +26,7 @@ import type { TutorTeachingMode } from '@/lib/supabase/types';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
 
 const AVAILABLE_CLASSES = [
   '১ম - ৫ম শ্রেণি',
@@ -34,6 +35,7 @@ const AVAILABLE_CLASSES = [
   'একাদশ - দ্বাদশ শ্রেণি (HSC)',
   'ভর্তি পরীক্ষা / এডমিশন',
   'মাদ্রাসা',
+  'আরবী',
 ];
 
 const AVAILABLE_SUBJECTS = [
@@ -78,6 +80,8 @@ export default function HomeTutorSetupPage() {
   );
   const [newClass, setNewClass] = useState('');
   const [newSubject, setNewSubject] = useState('');
+  const [customAreaName, setCustomAreaName] = useState('');
+  const [areaDraft, setAreaDraft] = useState('');
   const [salary, setSalary] = useState(homeTutorProfile?.expectedSalary ?? 3000);
   const [daysPerWeek, setDaysPerWeek] = useState(homeTutorProfile?.daysPerWeek || 3);
   const [bio, setBio] = useState(homeTutorProfile?.bio || '');
@@ -92,6 +96,7 @@ export default function HomeTutorSetupPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [submission, setSubmission] = useState<{ id: string; summary: string[] } | null>(null);
   const [error, setError] = useState('');
 
   const toggleClass = (cls: string) => {
@@ -119,6 +124,22 @@ export default function HomeTutorSetupPage() {
     }
     setSelectedClasses((prev) => [...prev, value]);
     setNewClass('');
+    setError('');
+  };
+
+  const addCustomArea = () => {
+    const value = customAreaName.trim() || areaDraft.trim();
+    if (!value) {
+      setError('এলাকার নাম লিখুন।');
+      return;
+    }
+    if (selectedAreas.some((areaId) => areaId.toLocaleLowerCase() === value.toLocaleLowerCase())) {
+      setError('এই এলাকা আগে থেকেই যোগ করা হয়েছে।');
+      return;
+    }
+    setSelectedAreas((prev) => [...prev, value]);
+    setCustomAreaName('');
+    setAreaDraft('');
     setError('');
   };
 
@@ -214,6 +235,25 @@ export default function HomeTutorSetupPage() {
         profilePhotoUrl,
       }, mode);
       if (!result.success) throw new Error(result.error || 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
+      if (mode === 'submit' && !homeTutorProfile) {
+        setSubmission({
+          id: result.profile.id,
+          summary: [
+            `শিক্ষকের নাম: ${fullName.trim()}`,
+            `প্রতিষ্ঠান: ${institution.trim()}`,
+            `বিভাগ / বিষয়: ${department.trim()}`,
+            `শিক্ষাগত যোগ্যতা: ${qualification.trim()}`,
+            selectedAreas.length
+              ? `পছন্দের এলাকা: ${selectedAreas.map((id) => getAreaById(id)?.nameBn ?? id).join(' · ')}`
+              : '',
+            selectedClasses.length ? `শ্রেণি: ${selectedClasses.join(' · ')}` : '',
+            selectedSubjects.length ? `বিষয়: ${selectedSubjects.join(' · ')}` : '',
+            `পড়ানোর মাধ্যম: ${TUTOR_TEACHING_MODE_LABELS[teachingMode]}`,
+            `প্রত্যাশিত মাসিক বেতন: ৳${Number(salary).toLocaleString('bn-BD')}`,
+          ].filter(Boolean),
+        });
+        return;
+      }
       setSuccess(true);
       setSuccessMessage(
         homeTutorProfile?.status === 'approved'
@@ -223,7 +263,7 @@ export default function HomeTutorSetupPage() {
             : 'গৃহ শিক্ষক প্রোফাইল জমা হয়েছে! অ্যাডমিন অনুমোদনের পরে সক্রিয় হবে।'
       );
       setTimeout(() => {
-        router.push('/dashboard/posts');
+        router.push('/dashboard/profiles');
       }, 1200);
     } catch (saveError) {
       console.error('Tutor profile save failed', saveError);
@@ -237,6 +277,17 @@ export default function HomeTutorSetupPage() {
     e.preventDefault();
     void saveProfile('submit');
   };
+
+  if (submission) {
+    return (
+      <SubmissionConfirmation
+        type="profile"
+        id={submission.id}
+        serviceName="গৃহশিক্ষক"
+        summary={submission.summary}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
@@ -322,7 +373,7 @@ export default function HomeTutorSetupPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষকের পুরো নাম
@@ -366,7 +417,7 @@ export default function HomeTutorSetupPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষা প্রতিষ্ঠান
@@ -575,12 +626,37 @@ export default function HomeTutorSetupPage() {
                 value={null}
                 allowClear={false}
                 placeholder="এলাকা খুঁজে নির্বাচন করুন"
-                onChange={(areaId) => {
-                  if (areaId && !selectedAreas.includes(areaId)) {
-                    setSelectedAreas((prev) => [...prev, areaId]);
-                  }
+                onChange={(areaName) => {
+                  setAreaDraft(areaName ?? '');
                 }}
               />
+              <div className="mt-3 space-y-2">
+                <div className="flex flex-col gap-2 sm:flex-row">
+                  <input
+                    value={customAreaName || areaDraft}
+                    onChange={(event) => {
+                      setCustomAreaName(event.target.value);
+                      setAreaDraft(event.target.value);
+                    }}
+                    maxLength={80}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        addCustomArea();
+                      }
+                    }}
+                    placeholder="এলাকার নাম লিখে এখানে যোগ করুন"
+                    className="min-w-0 flex-1 rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomArea}
+                    className="rounded-xl border border-brand-200 px-4 py-2.5 text-xs font-semibold text-brand-800 hover:bg-brand-50"
+                  >
+                    যোগ করুন
+                  </button>
+                </div>
+              </div>
               <div className="mt-2 flex flex-wrap gap-2">
                 {selectedAreas.map((areaId) => {
                   const area = getAreaById(areaId);
@@ -717,7 +793,7 @@ export default function HomeTutorSetupPage() {
         </div>
       </main>
 
-      <Footer />
+      {!success && <Footer />}
     </div>
   );
 }

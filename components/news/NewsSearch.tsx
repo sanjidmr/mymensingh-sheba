@@ -94,7 +94,7 @@ export default function NewsSearch({ items }: { items: NewsSearchItem[] }) {
             <div className="flex items-center justify-between border-b-2 border-[#141414] px-4 py-3 sm:px-5">
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-[#0c3b2e]">
-                  ময়মনসিংহের নিউজ
+                  ময়মনসিংহের খবর
                 </p>
                 <h2 id="news-search-title" className="mt-0.5 text-lg font-extrabold text-[#141414]">
                   সংবাদ খুঁজুন

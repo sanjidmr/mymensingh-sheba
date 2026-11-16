@@ -72,27 +72,39 @@ function submitErrorMessage(code?: string): string {
   return 'রিভিউ জমা হয়নি। ইন্টারনেট সংযোগ যাচাই করে আবার চেষ্টা করুন।';
 }
 
-/** Newest published reviews, shown in the homepage review section. */
-export async function fetchPublishedSiteReviews(limit = 24): Promise<SiteReview[]> {
+/** Newest published reviews. Pass null to retrieve all published reviews. */
+export async function fetchPublishedSiteReviews(limit: number | null = 24): Promise<SiteReview[]> {
   if (!isSupabaseConfigured) throw new Error('রিভিউ সেবা এখন চালু নেই।');
   const client = createClient();
   if (!client) throw new Error('রিভিউ সেবা এখন চালু নেই।');
 
-  const { data, error } = await client
-    .from('site_reviews')
-    .select('id, name, service, rating, body, created_at')
-    .eq('status', 'published')
-    .order('created_at', { ascending: false })
-    .limit(limit);
+  const pageSize = 200;
+  const reviews: SiteReview[] = [];
+  const requestedLimit = limit ?? Number.POSITIVE_INFINITY;
 
-  if (error) {
-    console.error('site_reviews_fetch_failed', { code: error.code ?? 'unknown' });
-    throw new Error('রিভিউ লোড করা যায়নি। একটু পরে আবার চেষ্টা করুন।');
+  for (let offset = 0; offset < requestedLimit; offset += pageSize) {
+    const end = Math.min(offset + pageSize, requestedLimit) - 1;
+    const { data, error } = await client
+      .from('site_reviews')
+      .select('id, name, service, rating, body, created_at')
+      .eq('status', 'published')
+      .order('created_at', { ascending: false })
+      .order('id', { ascending: true })
+      .range(offset, end);
+
+    if (error) {
+      console.error('site_reviews_fetch_failed', { code: error.code ?? 'unknown' });
+      throw new Error('রিভিউ লোড করা যায়নি। একটু পরে আবার চেষ্টা করুন।');
+    }
+    if (!Array.isArray(data)) {
+      throw new Error('রিভিউর তথ্য পাওয়া যায়নি।');
+    }
+
+    reviews.push(...(data as RawReviewRow[]).map(mapRow));
+    if (limit !== null || data.length < pageSize) break;
   }
-  if (!Array.isArray(data)) {
-    throw new Error('রিভিউর তথ্য পাওয়া যায়নি।');
-  }
-  return (data as RawReviewRow[]).map(mapRow);
+
+  return reviews;
 }
 
 /** Store one review for admin approval. Validation is also enforced by RLS. */

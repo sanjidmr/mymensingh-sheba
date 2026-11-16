@@ -3,6 +3,10 @@ node_modules/
 out/
 android/app/build/
 android/.gradle/
+android/keystore.properties
+android/app/google-services.json
+*.jks
+*.keystore
 coverage/
 .DS_Store
 *.log

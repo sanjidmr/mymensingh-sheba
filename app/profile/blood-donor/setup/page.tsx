@@ -13,9 +13,11 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BloodGroup } from '@/lib/supabase/types';
+import { getAreaById } from '@/lib/locations';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
 
 const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -53,6 +55,7 @@ export default function BloodDonorSetupPage() {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [submission, setSubmission] = useState<{ id: string; summary: string[] } | null>(null);
   const [error, setError] = useState('');
 
   const saveProfile = async (mode: 'draft' | 'submit') => {
@@ -91,6 +94,21 @@ export default function BloodDonorSetupPage() {
         profilePhotoUrl: bloodDonorProfile?.profilePhotoUrl,
       }, mode);
       if (!result.success) throw new Error(result.error || 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
+      if (mode === 'submit' && !bloodDonorProfile) {
+        setSubmission({
+          id: result.profile.id,
+          summary: [
+            `রক্তদাতার নাম: ${fullName.trim()}`,
+            `রক্তের গ্রুপ: ${bloodGroup}`,
+            `এলাকা: ${getAreaById(areaId)?.nameBn ?? areaId}`,
+            `লিঙ্গ: ${gender === 'male' ? 'পুরুষ' : 'নারী'}`,
+            `রক্তদানে প্রস্তুত: ${isAvailable ? 'হ্যাঁ' : 'না'}`,
+            lastDonationDate ? `সর্বশেষ রক্তদানের তারিখ: ${lastDonationDate}` : '',
+            intro.trim() ? `পরিচিতি: ${intro.trim()}` : '',
+          ].filter(Boolean),
+        });
+        return;
+      }
       setSuccess(true);
       setSuccessMessage(
         bloodDonorProfile?.status === 'approved'
@@ -100,7 +118,7 @@ export default function BloodDonorSetupPage() {
             : 'রক্তদাতা প্রোফাইল জমা হয়েছে! অ্যাডমিন অনুমোদনের পরে সক্রিয় হবে।'
       );
       setTimeout(() => {
-        router.push('/dashboard/posts');
+        router.push('/dashboard/profiles');
       }, 1200);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'প্রোফাইল সংরক্ষণ ব্যর্থ হয়েছে।');
@@ -114,11 +132,22 @@ export default function BloodDonorSetupPage() {
     void saveProfile('submit');
   };
 
+  if (submission) {
+    return (
+      <SubmissionConfirmation
+        type="profile"
+        id={submission.id}
+        serviceName="রক্তদাতা"
+        summary={submission.summary}
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
 
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-3 py-4 sm:px-4 sm:py-12">
         <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
           <Link href="/profile" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -128,8 +157,8 @@ export default function BloodDonorSetupPage() {
           <span className="text-ink-800 font-semibold">রক্তদাতা (Blood Donor) প্রোফাইল সেটআপ</span>
         </div>
 
-        <div className="bg-white rounded-2xl border border-brand-100  p-6 sm:p-8">
-          <div className="flex items-center gap-3.5 mb-6 pb-6 border-b border-brand-100">
+        <div className="bg-white rounded-xl border border-brand-100 p-3 sm:rounded-2xl sm:p-8">
+          <div className="flex items-center gap-3.5 mb-4 pb-4 border-b border-brand-100 sm:mb-6 sm:pb-6">
             <div className="w-12 h-12 rounded-xl bg-rose-100 text-rose-500 flex items-center justify-center shrink-0">
               <Heart className="w-6 h-6 fill-rose-500" />
             </div>
@@ -157,7 +186,7 @@ export default function BloodDonorSetupPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
             {/* Blood Group Selection */}
             <div>
               <label className="block text-xs font-semibold text-ink-800 mb-2">
@@ -184,7 +213,7 @@ export default function BloodDonorSetupPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   রক্তদাতার পুরো নাম
@@ -241,7 +270,7 @@ export default function BloodDonorSetupPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   সর্বশেষ রক্তদানের তারিখ (যদি দিয়ে থাকেন)
@@ -359,7 +388,7 @@ export default function BloodDonorSetupPage() {
         </div>
       </main>
 
-      <Footer />
+      {!success && <Footer />}
     </div>
   );
 }

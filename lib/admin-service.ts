@@ -23,7 +23,6 @@ import type {
   UserProfile,
   ServiceRequestStatus,
 } from '@/lib/supabase/types';
-import { DEFAULT_TOLET_FEE_RULES, type ToletFeeRules } from './tolet-fees';
 import type {
   AdminUserRow,
   AdminReportRow,
@@ -287,8 +286,11 @@ export async function adminUpdateTutorReview(
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   try {
-    const dbPatch: Record<string, unknown> = { updated_at: new Date().toISOString() };
-    if (typeof patch.isPublished === 'boolean') dbPatch.is_published = patch.isPublished;
+    const dbPatch: Record<string, unknown> = {};
+    if (typeof patch.isPublished === 'boolean') {
+      dbPatch.is_published = patch.isPublished;
+      dbPatch.moderation_status = patch.isPublished ? 'approved' : 'rejected';
+    }
     const { error } = await client.from('tutor_reviews').update(dbPatch).eq('id', id);
     if (error) return { success: false, error: error.message };
     return { success: true };
@@ -306,7 +308,6 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   const client = createClient();
   if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি; আবার চেষ্টা করুন।');
   const { data, error } = await client.from('platform_settings').select('key, value').in('key', [
-    'tolet_fee_rules',
     'service_availability',
     'notification_settings',
   ]);
@@ -318,7 +319,6 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
     return typeof v === 'object' && v !== null ? v : fallback;
   };
   return {
-    toletFeeRules: (parse('tolet_fee_rules', DEFAULT_TOLET_FEE_RULES) as ToletFeeRules) || DEFAULT_TOLET_FEE_RULES,
     serviceAvailability: (parse('service_availability', {}) as Record<string, boolean>) || {},
     notificationSettings: (parse('notification_settings', {
       notifyOnRequestSubmitted: true,
@@ -335,7 +335,6 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
 }
 
 export async function savePlatformSettings(patch: {
-  toletFeeRules?: ToletFeeRules;
   serviceAvailability?: Record<string, boolean>;
   notificationSettings?: PlatformSettings['notificationSettings'];
 }): Promise<{ success: boolean; error?: string }> {
@@ -343,12 +342,6 @@ export async function savePlatformSettings(patch: {
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
   try {
-    if (patch.toletFeeRules) {
-      const { error } = await client
-        .from('platform_settings')
-        .upsert({ key: 'tolet_fee_rules', value: patch.toletFeeRules }, { onConflict: 'key' });
-      if (error) throw error;
-    }
     if (patch.serviceAvailability) {
       const { error } = await client
         .from('platform_settings')

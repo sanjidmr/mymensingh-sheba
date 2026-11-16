@@ -236,8 +236,8 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
     <details className="admin-menu relative" data-admin-menu>
       <summary
         className={cn(
-          'flex min-h-10 cursor-pointer list-none items-center gap-2 rounded-md text-left text-admin-text hover:bg-admin-page [&::-webkit-details-marker]:hidden',
-          isCompact ? 'w-10 justify-center sm:w-auto sm:max-w-56 sm:justify-start sm:px-2' : 'max-w-56 px-2'
+          'flex min-h-11 cursor-pointer list-none items-center gap-2 rounded-md text-left text-admin-text hover:bg-admin-page [&::-webkit-details-marker]:hidden sm:min-h-10',
+          isCompact ? 'w-11 justify-center sm:w-auto sm:max-w-56 sm:justify-start sm:px-2' : 'max-w-56 px-2'
         )}
         aria-label={`অ্যাডমিন প্রোফাইল: ${adminName}`}
       >
@@ -372,7 +372,7 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
             onClick={() => setDrawerOpen(false)}
             className="absolute inset-0 h-full w-full bg-admin-navy-dark/55"
           />
-          <aside className="absolute inset-y-0 left-0 flex w-[min(18rem,88vw)] flex-col bg-admin-navy-dark shadow-2xl">
+          <aside className="absolute inset-y-0 left-0 flex w-[min(18rem,88vw)] flex-col bg-admin-navy-dark pb-[env(safe-area-inset-bottom)] pt-[env(safe-area-inset-top)] shadow-2xl">
             {renderBrand(false, true)}
             {navigation(false)}
             <div className="border-t border-white/10 p-3">
@@ -393,11 +393,11 @@ export default function AdminShell({ children, badges, adminName }: AdminShellPr
 
       <div className="min-h-screen transition-[padding] duration-200 lg:pl-[var(--admin-sidebar-width)]">
         <header className="sticky top-0 z-20 border-b border-admin-border bg-white/95 backdrop-blur-sm">
-          <div className="flex min-h-[64px] items-center gap-2 px-3 sm:px-5 lg:px-7">
+          <div className="flex min-h-[64px] items-center gap-2 px-3 pt-[env(safe-area-inset-top)] sm:px-5 lg:px-7">
             <button
               type="button"
               onClick={() => setDrawerOpen(true)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-admin-navy hover:bg-admin-page lg:hidden"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-admin-navy hover:bg-admin-page lg:hidden"
               aria-label="মেনু খুলুন"
               aria-expanded={drawerOpen}
             >

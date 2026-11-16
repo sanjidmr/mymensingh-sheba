@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
 import { normalizeBdPhone } from '@/lib/contact-types';
-import { HOME_SERVICE_SLUGS, SERVICE_REQUEST_STATUSES } from '@/lib/admin/service-request-constants';
+import { HOME_SERVICE_SLUGS, SERVICE_REQUEST_STATUSES, isHomeServiceSlug } from '@/lib/admin/service-request-constants';
 import { STAFF_SERVICE_KEYS, type StaffServiceKey } from '@/lib/staff-types';
 
 /**
@@ -23,20 +23,19 @@ export async function setServiceRequestStatus(
   adminNotes?: string
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
+    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(requestId)) {
+      return { ok: false, error: 'রিকোয়েস্ট আইডি সঠিক নয়।' };
+    }
     const { data: existing, error: readError } = await client
       .from('service_requests')
-      .select('id, status')
+      .select('id, service_slug')
       .eq('id', requestId)
       .maybeSingle();
 
     if (readError || !existing) {
       return { ok: false, error: 'রিকোয়েস্টটি পাওয়া যায়নি।' };
     }
-    const allowed = [
-      'new', 'submitted', 'reviewing', 'assigned',
-      'contacted', 'in_progress', 'completed', 'cancelled', 'rejected',
-    ];
-    if (!allowed.includes(status)) {
+    if (!isHomeServiceSlug(existing.service_slug) || !SERVICE_REQUEST_STATUSES.some((allowed) => allowed === status)) {
       return { ok: false, error: 'অবৈধ স্ট্যাটাস।' };
     }
 
@@ -44,14 +43,19 @@ export async function setServiceRequestStatus(
     if (quotation !== undefined) patch.quotation = quotation.trim() || null;
     if (adminNotes !== undefined) patch.admin_notes = adminNotes.trim() || null;
 
-    const { error } = await client
+    const { data: updated, error } = await client
       .from('service_requests')
       .update(patch)
-      .eq('id', requestId);
+      .eq('id', requestId)
+      .eq('service_slug', existing.service_slug)
+      .select('id')
+      .maybeSingle();
 
     if (error) return { ok: false, error: error.message };
+    if (!updated) return { ok: false, error: 'রিকোয়েস্টটি আপডেট করা যায়নি। আবার লোড করে চেষ্টা করুন।' };
 
     revalidatePath('/admin/requests');
+    revalidatePath('/profile/requests');
     return { ok: true, message: 'রিকোয়েস্টের স্ট্যাটাস আপডেট হয়েছে।' };
   });
 }
@@ -233,14 +237,14 @@ export async function setVehicleRequestStatus(
 
 export async function updateVehicleBookingStatus(
   bookingId: string,
-  serviceType: 'auto' | 'cng',
+  serviceType: 'car' | 'auto' | 'cng',
   status: string
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(bookingId)) {
       return { ok: false, error: 'বুকিং আইডি সঠিক নয়।' };
     }
-    if (!['auto', 'cng'].includes(serviceType) ||
+    if (!['car', 'auto', 'cng'].includes(serviceType) ||
         !['pending', 'confirmed', 'completed', 'cancelled'].includes(status)) {
       return { ok: false, error: 'বুকিংয়ের ধরন বা অবস্থা সঠিক নয়।' };
     }

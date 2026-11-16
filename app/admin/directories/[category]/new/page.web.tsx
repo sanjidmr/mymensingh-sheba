@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation';
 import ServiceListingForm from '@/components/admin/ServiceListingForm';
 import type { ServiceCategory } from '@/lib/catalog-types';
 
-const CATEGORIES: ServiceCategory[] = ['vehicle', 'wifi', 'coaching'];
+const CATEGORIES: ServiceCategory[] = ['wifi', 'coaching'];
 
 export function generateStaticParams() {
   return [{ "category": '__app_dynamic__' }];

@@ -6,9 +6,10 @@ import CustomerListingForm from '@/components/catalog/CustomerListingForm';
 import OwnerCoachingSections from '@/components/catalog/OwnerCoachingSections';
 import OwnerWifiPackages from '@/components/catalog/OwnerWifiPackages';
 import { fetchMyServiceListing } from '@/lib/catalog-service';
-import { SERVICE_LISTING_STATUS_META, type CustomerServiceCategory, type ServiceListing } from '@/lib/catalog-types';
+import { areaNames, COACHING_CATEGORIES, SERVICE_LISTING_STATUS_META, type CustomerServiceCategory, type ServiceListing } from '@/lib/catalog-types';
 import { useAuth } from '@/lib/auth-context';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
 
 export default function ServiceListingEditor({
   category,
@@ -22,6 +23,7 @@ export default function ServiceListingEditor({
   const [listing, setListing] = useState<ServiceListing | null>(null);
   const [loading, setLoading] = useState(Boolean(listingId));
   const [error, setError] = useState('');
+  const [submittedListing, setSubmittedListing] = useState<ServiceListing | null>(null);
 
   useEffect(() => {
     if (!listingId) return;
@@ -43,8 +45,38 @@ export default function ServiceListingEditor({
   }, [category, listingId, user?.id]);
 
   if (loading) return <p className="mx-auto max-w-3xl px-4 py-10 text-center text-sm text-ink-500">তালিকা লোড হচ্ছে…</p>;
-  if (error) return <div className="mx-auto max-w-3xl px-4 py-8"><p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p><button className={`mt-3 min-h-11 rounded-lg border px-4 text-sm font-bold ${LIGHT_FOCUS}`} onClick={() => router.push('/dashboard/service-listings')}>আমার তালিকায় ফিরুন</button></div>;
+  if (error) return <div className="mx-auto max-w-3xl px-4 py-8"><p role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-sm text-rose-800">{error}</p><button className={`mt-3 min-h-11 rounded-lg border px-4 text-sm font-bold ${LIGHT_FOCUS}`} onClick={() => router.push('/dashboard/profiles')}>আমার তালিকায় ফিরুন</button></div>;
   if (listingId && !listing) return null;
+  if (submittedListing) {
+    const serviceName = submittedListing.category === 'wifi' ? 'WiFi সার্ভিস' : 'কোচিং';
+    return (
+      <SubmissionConfirmation
+        type="profile"
+        id={submittedListing.id}
+        serviceName={serviceName}
+        summary={[
+          `প্রতিষ্ঠানের নাম: ${submittedListing.titleBn}`,
+          submittedListing.coachingCategory
+            ? `কোচিং ক্যাটাগরি: ${COACHING_CATEGORIES.find((item) => item.id === submittedListing.coachingCategory)?.labelBn ?? submittedListing.coachingCategory}`
+            : '',
+          areaNames(submittedListing.areaIds) ? `এলাকা: ${areaNames(submittedListing.areaIds)}` : '',
+          submittedListing.addressBn ? `ঠিকানা: ${submittedListing.addressBn}` : '',
+          submittedListing.contactPhonePublic ? `যোগাযোগ: ${submittedListing.contactPhonePublic}` : '',
+          submittedListing.category === 'coaching' && submittedListing.monthlyFeeMin != null
+            ? `মাসিক ফি: ৳${submittedListing.monthlyFeeMin.toLocaleString('bn-BD')}`
+            : '',
+          submittedListing.category === 'wifi' && submittedListing.speedMbps
+            ? `সর্বোচ্চ গতি: ${submittedListing.speedMbps} Mbps`
+            : '',
+          submittedListing.category === 'wifi' && submittedListing.priceMin != null
+            ? `মাসিক প্যাকেজ মূল্য: ৳${submittedListing.priceMin.toLocaleString('bn-BD')}${submittedListing.priceMax !== submittedListing.priceMin ? `–৳${submittedListing.priceMax?.toLocaleString('bn-BD') ?? ''}` : ''}`
+            : '',
+          submittedListing.tags.length ? `বিষয় / সুবিধা: ${submittedListing.tags.join(' · ')}` : '',
+          submittedListing.descriptionBn ? `বিস্তারিত: ${submittedListing.descriptionBn}` : '',
+        ].filter(Boolean)}
+      />
+    );
+  }
 
   return (
     <div className="mx-auto max-w-4xl space-y-5 px-3 py-5 sm:px-5">
@@ -59,7 +91,13 @@ export default function ServiceListingEditor({
       <CustomerListingForm
         category={category}
         initialListing={listing}
-        onSaved={() => router.push('/dashboard/service-listings')}
+        onSaved={(savedListing, mode) => {
+          if (!listingId && mode === 'submit' && savedListing) {
+            setSubmittedListing(savedListing);
+            return;
+          }
+          router.push('/dashboard/profiles');
+        }}
       />
     </div>
   );

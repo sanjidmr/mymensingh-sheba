@@ -1,8 +1,8 @@
 import 'server-only';
 
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { createServerSideClient } from '@/lib/supabase/server';
 import { getSiteOrigin } from '@/lib/site-url';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import {
   classifyAnalyticsTraffic,
   type AnalyticsTrafficClass,
@@ -41,6 +41,7 @@ export async function getAnalyticsRequestContext(
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   try {
+    const { createServerSideClient } = await import('@/lib/supabase/server');
     const sessionClient = await createServerSideClient();
     if (!sessionClient || !url || !serviceRoleKey) {
       return { error: 'Analytics storage is not configured.', status: 204 };
@@ -89,6 +90,7 @@ export async function getAnalyticsRequestContext(
 
     const client = createClient(url, serviceRoleKey, {
       auth: { persistSession: false, autoRefreshToken: false },
+      global: { fetch: fetchWithTimeout },
     });
     return {
       client,

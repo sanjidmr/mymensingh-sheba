@@ -1,17 +1,8 @@
 'use client';
 
 /**
- * TutorCtaBar — the mobile action bar, and the spacer that keeps it off the
- * bottom navigation.
- *
- * Same construction as `components/tolet/detail/StickyContactBar`, for the same
- * reason. The global `MobileBottomNav` is `fixed` at `bottom-0` and
- * `--mms-bottom-nav-h` (3.5rem) tall; this bar does not fight it for that slot,
- * it floats directly on top of it with a bottom margin expressed in the SAME
- * token, so the two cannot drift apart if either is resized.
- *
- * The previous tutor page had `fixed bottom-0` with no offset at all, which put
- * its "Tutor Request করুন" button underneath the nav on every phone.
+ * TutorCtaBar — the mobile action bar, and the spacer that keeps page content
+ * visible above it.
  */
 
 import React from 'react';
@@ -34,9 +25,9 @@ export function TutorCtaBar({ tutor }: { tutor: HomeTutorProfile }) {
 
   return (
     <div
-      className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 lg:hidden"
+      className="pointer-events-none fixed inset-x-0 bottom-[3.5rem] z-40 px-3 lg:hidden"
       style={{
-        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom) + var(--mms-bottom-nav-h))',
+        paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))',
       }}
     >
       <div className="pointer-events-auto mx-auto w-full max-w-lg">

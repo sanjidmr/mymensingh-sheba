@@ -190,7 +190,7 @@ function AnalyticsSections({ data }: { data: AdminAnalytics }) {
         <MetricList title="অডিট লগ" description="বিদ্যমান audit trigger থেকে রেকর্ড হওয়া admin পরিবর্তন।" rows={data.auditActions} />
       </div>
 
-      <Panel title="আয় ও প্ল্যাটফর্ম ফি" description="বর্তমান schema-তে payment বা transaction record নেই; তাই বাস্তব সংগৃহীত আয় গণনা করা যায় না।">
+      <Panel title="লেনদেনের তথ্য" description="এই সাইটে কোনো অনলাইন পেমেন্ট বা লেনদেন রেকর্ড রাখা হয় না।">
         <p className="text-sm text-admin-muted">আয় এখনো ডেটাবেজে নির্ভরযোগ্যভাবে ট্র্যাক করা হয় না। বিজ্ঞাপনের মূল্য, ফি-নিয়ম, ক্লিক বা অনুরোধকে আয় হিসেবে গণনা করা হয়নি।</p>
       </Panel>
     </>

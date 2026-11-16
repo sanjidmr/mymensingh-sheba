@@ -3,29 +3,25 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, CheckCircle2, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createListing, uploadListingPhotos } from '@/lib/tolet-service';
-import type { ToletListing, ToletListingInput } from '@/lib/tolet-types';
+import { getToletAreaById } from '@/lib/tolet-areas';
+import {
+  TOLET_PROPERTY_TYPE_INFO,
+  type ToletListing,
+  type ToletListingInput,
+} from '@/lib/tolet-types';
 import { normalizeBdPhone } from '@/lib/contact-types';
 import { ToletListingForm } from '@/components/tolet/ToletListingForm';
-import { calculateToletFee, loadToletFeeRules } from '@/lib/tolet-fees';
-import { isSupabaseConfigured } from '@/lib/supabase/client';
-import { toBengaliDigits } from '@/lib/bengali-numerals';
+import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-
-function formatTaka(amount: number): string {
-  return `৳${toBengaliDigits(amount.toLocaleString('en-US'))}`;
-}
 
 export default function NewToletListingPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
-  const [createdPost, setCreatedPost] = React.useState<{
-    listing: ToletListing;
-    platformFee: number;
-  } | null>(null);
+  const [createdPost, setCreatedPost] = React.useState<ToletListing | null>(null);
   const [ownerPhoneInput, setOwnerPhoneInput] = React.useState(
     (user?.phone || '').replace(/[০-৯]/g, (digit) =>
       String('০১২৩৪৫৬৭৮৯'.indexOf(digit))
@@ -63,10 +59,6 @@ export default function NewToletListingPage() {
     }
 
     try {
-      if (!draft && isSupabaseConfigured) {
-        await loadToletFeeRules();
-      }
-
       const result = await createListing(
         user.id,
         user.fullName,
@@ -82,10 +74,7 @@ export default function NewToletListingPage() {
       }
 
       if (!draft) {
-        setCreatedPost({
-          listing: result.listing,
-          platformFee: calculateToletFee(result.listing.rentPrice, result.listing.propertyType),
-        });
+        setCreatedPost(result.listing);
       }
       return { success: true };
     } catch (error) {
@@ -96,10 +85,34 @@ export default function NewToletListingPage() {
     }
   };
 
+  if (createdPost) {
+    return (
+      <SubmissionConfirmation
+        type="post"
+        id={createdPost.id}
+        summary={[
+          `শিরোনাম: ${createdPost.title}`,
+          `বাসার ধরন: ${TOLET_PROPERTY_TYPE_INFO[createdPost.propertyType].labelBn}`,
+          `এলাকা: ${getToletAreaById(createdPost.areaId)?.nameBn ?? createdPost.areaId}`,
+          `ঠিকানা: ${createdPost.specificAddress}`,
+          `মাসিক ভাড়া: ৳${createdPost.rentPrice.toLocaleString('bn-BD')}`,
+          createdPost.totalRooms != null
+            ? `মোট সিট / শয্যা: ${createdPost.totalRooms}`
+            : `বেডরুম: ${createdPost.bedrooms} · বাথরুম: ${createdPost.bathrooms} · বারান্দা: ${createdPost.balconies}`,
+          createdPost.availableFrom ? `ভাড়া শুরু: ${createdPost.availableFrom}` : '',
+          createdPost.facilities.length ? `সুবিধা: ${createdPost.facilities.join(' · ')}` : '',
+          createdPost.description ? `বিবরণ: ${createdPost.description}` : '',
+        ].filter(Boolean)}
+        reminder="বাসা ভাড়া হয়ে গেলে অনুগ্রহ করে পোস্টটি ডিলিট করে দিন।"
+        footer
+      />
+    );
+  }
+
   return (
     <div className="min-h-screen flex flex-col bg-mist-50">
       <Navbar />
-      <main className="flex-1 max-w-3xl mx-auto w-full px-4 py-8 sm:py-12">
+      <main className="flex-1 max-w-3xl mx-auto w-full px-3 py-4 sm:px-4 sm:py-12">
         <div className="mb-4 flex items-center gap-2 text-xs text-ink-400">
           <Link href="/profile/tolet" className="hover:text-brand-700 flex items-center gap-1">
             <ArrowLeft className="w-3.5 h-3.5" />
@@ -150,71 +163,14 @@ export default function NewToletListingPage() {
           )}
         </div>
 
-        {createdPost ? (
-          <section
-            aria-labelledby="tolet-created-title"
-            className="overflow-hidden rounded-2xl border border-emerald-200 bg-white shadow-sm"
-          >
-            <div className="bg-emerald-50 px-5 py-6 text-center sm:px-8">
-              <CheckCircle2 className="mx-auto h-12 w-12 text-emerald-600" aria-hidden="true" />
-              <h2 id="tolet-created-title" className="mt-3 text-xl font-bold text-emerald-950">
-                আপনার বাসা ভাড়ার পোস্ট জমা হয়েছে
-              </h2>
-              <p className="mt-1 text-sm text-emerald-800">
-                যাচাই শেষে বিজ্ঞাপনটি প্রকাশ করা হবে।
-              </p>
-            </div>
-            <div className="space-y-5 p-5 sm:p-8">
-              <div className="rounded-xl border border-brand-100 bg-mist-50 p-4">
-                <p className="text-xs font-semibold text-ink-500">আপনার পোস্ট আইডি</p>
-                <p className="mt-1 break-all font-mono text-lg font-bold text-brand-800">
-                  {createdPost.listing.id}
-                </p>
-                {createdPost.listing.publicId && (
-                  <p className="mt-2 text-xs text-ink-500">
-                    পোস্ট কোড: <span className="font-semibold text-brand-800">{createdPost.listing.publicId}</span>
-                  </p>
-                )}
-              </div>
-
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 sm:p-5">
-                <h3 className="font-bold text-amber-950">ভাড়া ও প্ল্যাটফর্ম ফি</h3>
-                <p className="mt-2 text-sm leading-7 text-amber-950">
-                  ভাড়াটিয়ার কাছ থেকে বাসা ভাড়া {formatTaka(createdPost.listing.rentPrice)} এবং
-                  {' '}প্ল্যাটফর্ম ফি {formatTaka(createdPost.platformFee)} সংগ্রহ করুন।
-                  প্ল্যাটফর্ম ফি Mymensingh Sheba-কে
-                  {' '}<span className="whitespace-nowrap font-bold">01645832896</span> নম্বরে পাঠিয়ে দিন।
-                </p>
-                <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
-                  <div className="rounded-lg bg-white/80 p-3">
-                    <p className="text-xs text-amber-800">মাসিক ভাড়া</p>
-                    <p className="mt-1 font-bold text-amber-950">{formatTaka(createdPost.listing.rentPrice)}</p>
-                  </div>
-                  <div className="rounded-lg bg-white/80 p-3">
-                    <p className="text-xs text-amber-800">প্ল্যাটফর্ম ফি</p>
-                    <p className="mt-1 font-bold text-amber-950">{formatTaka(createdPost.platformFee)}</p>
-                  </div>
-                </div>
-              </div>
-
-              <Link
-                href="/profile/tolet"
-                className="inline-flex min-h-11 w-full items-center justify-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white transition-colors hover:bg-brand-800"
-              >
-                আমার পোস্টগুলো দেখুন
-              </Link>
-            </div>
-          </section>
-        ) : (
-          <ToletListingForm
-            mode="owner"
-            onUploadFile={handleUploadFile}
-            onSubmit={handleSubmit}
-            onDone={(action) => {
-              if (action === 'draft_saved') router.replace('/profile/tolet?draft=1');
-            }}
-          />
-        )}
+        <ToletListingForm
+          mode="owner"
+          onUploadFile={handleUploadFile}
+          onSubmit={handleSubmit}
+          onDone={(action) => {
+            if (action === 'draft_saved') router.replace('/profile/tolet?draft=1');
+          }}
+        />
       </main>
       <Footer />
     </div>

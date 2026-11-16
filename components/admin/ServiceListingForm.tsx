@@ -113,7 +113,7 @@ function initialForm(category: ServiceCategory, row?: AdminServiceListingRow): S
     availableFacilities: row?.available_facilities ?? [],
     unavailableFacilities: row?.unavailable_facilities ?? [],
     contactPhonePrivate: row?.contact_phone_private ?? '',
-    isActive: row?.is_active ?? false,
+    isActive: category === 'vehicle' ? true : row?.is_active ?? false,
     isFeatured: row?.is_featured ?? false,
   };
 }

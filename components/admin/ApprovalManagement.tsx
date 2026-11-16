@@ -4,7 +4,12 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Check, ExternalLink, Loader2, X } from 'lucide-react';
-import { moderateToletProfile } from '@/app/admin/actions/approvals';
+import {
+  moderateDirectoryReview,
+  moderateSiteReview,
+  moderateToletProfile,
+  moderateTutorReview,
+} from '@/app/admin/actions/approvals';
 import { updateDonorProfile } from '@/app/admin/actions/donor-profiles';
 import { setPostStatus } from '@/app/admin/actions/posts';
 import { moderateAdminServiceListing } from '@/app/admin/actions/service-listings';
@@ -21,6 +26,9 @@ const KIND_LABEL: Record<AdminApprovalKind, string> = {
   donor_profile: 'রক্তদাতা প্রোফাইল',
   service_listing: 'সার্ভিস তালিকা',
   tolet_profile: 'বাসা মালিক প্রোফাইল',
+  site_review: 'সাইট রিভিউ',
+  tutor_review: 'টিউটর রিভিউ',
+  directory_review: 'সার্ভিস রিভিউ',
 };
 
 const SERVICE_LABEL: Record<string, string> = {
@@ -50,7 +58,14 @@ function detailHref(row: AdminApprovalRow): string {
     case 'donor_profile': return `/admin/blood/donors/${row.id}`;
     case 'tolet_profile': return row.owner_id ? `/admin/users/${row.owner_id}` : '/admin/users';
     case 'service_listing': return `/admin/directories/${row.service_key}?search=${encodeURIComponent(row.id)}`;
+    case 'site_review': return `/admin/site-reviews?reviewId=${encodeURIComponent(row.id)}`;
+    case 'tutor_review': return `/admin/reviews?reviewId=${encodeURIComponent(row.id)}`;
+    case 'directory_review': return `/admin/directories/${row.service_key}?reviewId=${encodeURIComponent(row.id)}`;
   }
+}
+
+function needsRejectionReason(kind: AdminApprovalKind): boolean {
+  return !['site_review', 'tutor_review', 'directory_review'].includes(kind);
 }
 
 export default function ApprovalManagement({ rows: initialRows }: { rows: AdminApprovalRow[] }) {
@@ -94,6 +109,15 @@ export default function ApprovalManagement({ rows: initialRows }: { rows: AdminA
         case 'tolet_profile':
           result = await moderateToletProfile({ id: row.id, status: decision, reason: rejectionReason });
           break;
+        case 'site_review':
+          result = await moderateSiteReview(row.id, decision);
+          break;
+        case 'tutor_review':
+          result = await moderateTutorReview(row.id, decision);
+          break;
+        case 'directory_review':
+          result = await moderateDirectoryReview(row.id, decision);
+          break;
       }
     } catch (moderationError) {
       setBusyId(null);
@@ -118,7 +142,7 @@ export default function ApprovalManagement({ rows: initialRows }: { rows: AdminA
 
   const confirmReject = async () => {
     if (!rejecting) return;
-    if (reason.trim().length < 5) {
+    if (needsRejectionReason(rejecting.approval_kind) && reason.trim().length < 5) {
       setError('প্রত্যাখ্যানের কারণ অন্তত ৫ অক্ষরের মধ্যে লিখুন।');
       return;
     }
@@ -160,7 +184,15 @@ export default function ApprovalManagement({ rows: initialRows }: { rows: AdminA
                 <button
                   type="button"
                   disabled={busyId !== null}
-                  onClick={() => { setError(''); setReason(''); setRejecting(row); }}
+                  onClick={() => {
+                    setError('');
+                    setReason('');
+                    if (needsRejectionReason(row.approval_kind)) {
+                      setRejecting(row);
+                    } else {
+                      void moderate(row, 'rejected');
+                    }
+                  }}
                   className="inline-flex min-h-10 items-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-3 text-xs font-semibold text-rose-700 disabled:opacity-60"
                 >
                   <X className="h-4 w-4" aria-hidden="true" /> প্রত্যাখ্যান

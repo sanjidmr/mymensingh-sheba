@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr';
+import type { User } from '@supabase/supabase-js';
 import { NextResponse, type NextRequest } from 'next/server';
 import { isOnboardingComplete } from '@/lib/onboarding';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 import { getSiteOrigin } from '@/lib/site-url';
 import { supabaseCookieOptions } from '@/lib/supabase/cookie-options';
 
@@ -28,6 +30,7 @@ const PUBLIC_API_PATHS = new Set([
   '/api/analytics/events',
   '/api/analytics/active-visitors',
   '/api/admin-telegram-alerts',
+  '/api/admin-telegram-alerts/worker',
 ]);
 
 const AUTH_REQUIRED_PAGE_PATHS = [
@@ -38,10 +41,6 @@ const AUTH_REQUIRED_PAGE_PATHS = [
   '/welcome',
   '/news/editor',
 ];
-
-const ROUTE_AUTHENTICATED_API_PATHS = new Set([
-  '/api/admin-telegram-alerts/worker',
-]);
 
 function isPublicPage(pathname: string): boolean {
   const normalizedPath = pathname.replace(/\/+$/, '') || '/';
@@ -123,24 +122,27 @@ export async function middleware(request: NextRequest) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const pathname = request.nextUrl.pathname.replace(/\/+$/, '') || '/';
-  const isRouteAuthenticatedApi = ROUTE_AUTHENTICATED_API_PATHS.has(pathname);
   const isApiRequest = request.nextUrl.pathname.startsWith('/api/');
   const isPublic = isApiRequest
     ? PUBLIC_API_PATHS.has(pathname) ||
-      EMERGENCY_PUBLIC_PATHS.has(pathname) ||
-      isRouteAuthenticatedApi
+      EMERGENCY_PUBLIC_PATHS.has(pathname)
     : isPublicPage(pathname);
+  const requiresAuthentication = !isPublic;
 
   const createResponse = () => {
     const nextResponse = NextResponse.next({
       request: { headers: request.headers },
     });
-    if (!isPublic || isRouteAuthenticatedApi) {
+    if (requiresAuthentication) {
       nextResponse.headers.set('Cache-Control', 'private, no-store, max-age=0');
     }
     return nextResponse;
   };
   let response = createResponse();
+
+  if (isPublic) {
+    return response;
+  }
 
   if (!url || !anonKey) {
     return isPublic
@@ -160,9 +162,12 @@ export async function middleware(request: NextRequest) {
   }
 
   const supabase = createServerClient(url, anonKey, {
-    ...(hasBearerSession && authorization
-      ? { global: { headers: { Authorization: authorization } } }
-      : {}),
+    global: {
+      fetch: fetchWithTimeout,
+      ...(hasBearerSession && authorization
+        ? { headers: { Authorization: authorization } }
+        : {}),
+    },
     cookieOptions: supabaseCookieOptions,
     cookies: {
       getAll() {
@@ -186,22 +191,62 @@ export async function middleware(request: NextRequest) {
   const bearerToken = hasBearerSession
     ? authorization?.match(/^Bearer\s+(\S+)$/i)?.[1]
     : undefined;
-  const {
-    data: { user },
-  } = await supabase.auth.getUser(bearerToken);
+  let user: User | null = null;
+  try {
+    const { data, error } = await supabase.auth.getUser(bearerToken);
+    if (error && error.status !== 401) {
+      const errorResponse = isApiRequest
+        ? NextResponse.json({ error: 'Authentication is temporarily unavailable' }, { status: 503 })
+        : new NextResponse('সার্ভার যাচাই করতে পারছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।', {
+            status: 503,
+            headers: { 'Cache-Control': 'private, no-store, max-age=0' },
+          });
+      return copyAuthCookies(errorResponse, response.cookies.getAll());
+    }
+    user = data.user;
+  } catch {
+    const errorResponse = isApiRequest
+      ? NextResponse.json({ error: 'Authentication is temporarily unavailable' }, { status: 503 })
+      : new NextResponse('সার্ভার যাচাই করতে পারছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।', {
+          status: 503,
+          headers: { 'Cache-Control': 'private, no-store, max-age=0' },
+        });
+    return copyAuthCookies(errorResponse, response.cookies.getAll());
+  }
 
-  if (!isPublic && !user) {
+  if (requiresAuthentication && !user) {
     return loginRequiredResponse(request, isApiRequest, response.cookies.getAll());
   }
 
-  if (!isPublic && user) {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('role, status, full_name, phone, primary_area_id, onboarding_completed_at')
-      .eq('id', user.id)
-      .maybeSingle();
+  if (requiresAuthentication && user) {
+    let profile: {
+      role: string | null;
+      status: string | null;
+      full_name: string | null;
+      phone: string | null;
+      primary_area_id: string | null;
+      onboarding_completed_at: string | null;
+    } | null = null;
+    let profileError: { message: string } | null = null;
+    try {
+      const result = await supabase
+        .from('profiles')
+        .select('role, status, full_name, phone, primary_area_id, onboarding_completed_at')
+        .eq('id', user.id)
+        .maybeSingle();
+      profile = result.data;
+      profileError = result.error;
+    } catch {
+      const errorResponse = isApiRequest
+        ? NextResponse.json({ error: 'Profile verification is temporarily unavailable' }, { status: 503 })
+        : new NextResponse('প্রোফাইল যাচাই করা যাচ্ছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।', {
+            status: 503,
+            headers: { 'Cache-Control': 'private, no-store, max-age=0' },
+          });
+      return copyAuthCookies(errorResponse, response.cookies.getAll());
+    }
 
-    if (error) {
+    if (profileError) {
       const errorResponse = isApiRequest
         ? NextResponse.json({ error: 'Profile verification failed' }, { status: 503 })
         : new NextResponse('প্রোফাইল যাচাই করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।', {

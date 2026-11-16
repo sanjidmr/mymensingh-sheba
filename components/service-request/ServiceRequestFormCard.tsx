@@ -50,7 +50,7 @@ import { trackFormSubmit } from '@/lib/site-analytics';
  * `text-[16px]` on phones keeps iOS from zooming the viewport on focus.
  */
 const CONTROL =
-  'w-full min-h-[52px] rounded-lg border bg-white px-3.5 py-2.5 text-[16px] text-ink-900 placeholder:text-ink-300 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-600/25 sm:text-sm';
+  'w-full min-h-11 rounded-lg border bg-white px-3 py-2 text-[15px] text-ink-900 placeholder:text-ink-300 transition-colors focus:outline-none focus:ring-2 focus:ring-brand-600/25 sm:text-sm';
 
 function controlClass(error?: string): string {
   return `${CONTROL} ${
@@ -67,7 +67,7 @@ const CHEVRON_BG = {
 
 /** One card / chip surface used by every radio and checkbox option. */
 function optionClass(active: boolean): string {
-  return `flex min-h-[48px] w-full items-center gap-2.5 rounded-lg border px-3 py-2.5 text-left text-[13.5px] leading-snug transition-colors sm:text-[13.5px] ${
+  return `flex min-h-11 w-full items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[13px] leading-snug transition-colors sm:text-[13.5px] ${
     active
       ? 'border-brand-600 bg-brand-50 font-bold text-brand-900'
       : 'border-brand-200 bg-white text-ink-700 hover:border-brand-300 hover:bg-mist-50'
@@ -402,8 +402,18 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
     const successAnswers = { ...form.answers, serviceType: form.serviceType };
     onSubmitted?.({
       reference: result.reference ?? result.requestId ?? null,
-      summary: formatAnswersBn(config, successAnswers),
-      areaName: getAreaById(form.locations.work.areaId)?.nameBn,
+      summary: [
+        `নাম: ${form.name.trim()}`,
+        `মোবাইল: ${form.phone.trim()}`,
+        ...(form.altPhone.trim() ? [`বিকল্প নম্বর: ${form.altPhone.trim()}`] : []),
+        ...config.locations.map((block) => {
+          const location = form.locations[block.key];
+          const areaName = getAreaById(location.areaId)?.nameBn ?? location.areaId;
+          const address = formatLocationBn(location);
+          return `${block.label}: ${[areaName, address].filter(Boolean).join(' — ')}`;
+        }),
+        ...formatAnswersBn(config, successAnswers),
+      ],
       preferredDate: form.preferredDate,
       preferredTime:
         form.preferredTime === CUSTOM_OPTION
@@ -470,9 +480,9 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
       noValidate
       autoComplete="off"
       aria-describedby="service-request-privacy"
-      className="rounded-2xl border border-brand-100 bg-white p-4 shadow-sm sm:p-7"
+      className="rounded-xl border border-brand-100 bg-white p-3 shadow-sm sm:rounded-2xl sm:p-6"
     >
-      <div className="flex flex-wrap items-start justify-between gap-3 border-b border-brand-100 pb-4">
+      <div className="flex flex-wrap items-start justify-between gap-2 border-b border-brand-100 pb-3">
         <div className="min-w-0">
           <h3 className="text-[17px] font-extrabold leading-tight tracking-tight text-ink-900 sm:text-xl">
             {config.title} অনুরোধের ছক
@@ -524,14 +534,14 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
         </div>
       )}
 
-      <div className="mt-7 space-y-8">
+      <div className="mt-5 space-y-5 sm:mt-6 sm:space-y-7">
         {/* ---------------- 1. ব্যক্তিগত তথ্য ---------------- */}
         <fieldset className="min-w-0">
           <SectionTitle icon={<User className="h-4 w-4" aria-hidden="true" />}>
             ব্যক্তিগত তথ্য
           </SectionTitle>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-4">
             <Field
               id="service-name"
               label="আপনার নাম"
@@ -614,7 +624,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
             ঠিকানার তথ্য
           </SectionTitle>
 
-          <div className="mt-4 space-y-6">
+          <div className="mt-3 space-y-4">
             {config.locations.map((block) => (
               <LocationBlock
                 key={block.key}
@@ -637,7 +647,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
             সেবার তথ্য
           </SectionTitle>
 
-          <div className="mt-4 space-y-6">
+          <div className="mt-3 space-y-4">
             <Field
               id="service-type"
               label={config.serviceTypesLabel}
@@ -746,7 +756,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
             কখন দরকার
           </SectionTitle>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2">
+          <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-4">
             <Field id="service-date" label={config.dateLabel}>
               <input
                 id="service-date"
@@ -824,7 +834,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
             অতিরিক্ত বিবরণ
           </SectionTitle>
 
-          <div className="mt-4 space-y-4">
+          <div className="mt-3 space-y-3">
             <Field
               id="service-details"
               label={config.detailsLabel}

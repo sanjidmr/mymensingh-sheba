@@ -33,6 +33,8 @@ import { TUTOR_CLASSES, TUTOR_SUBJECTS, TUTOR_TEACHING_MODES } from '@/lib/filte
 import { formatTutorFee } from '@/lib/home-tutor-types';
 import { trackFormSubmit } from '@/lib/site-analytics';
 import { normalizeBdPhone } from '@/lib/contact-types';
+import { getAreaById } from '@/lib/locations';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 
 const TIME_SLOTS = [
   'সকাল (৯টা – ১২টা)',
@@ -50,7 +52,7 @@ const LABEL_CLASS = 'mb-1.5 block text-[13px] font-bold text-ink-800 sm:text-[12
 
 interface TutorRequestFormProps {
   tutor: HomeTutorProfile;
-  onSubmitted?: () => void;
+  onSubmitted?: (submission: ServiceRequestSuccessData) => void;
 }
 
 export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFormProps) {
@@ -146,7 +148,7 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
       result = await createServiceRequest({
         serviceSlug: 'home-tutor',
         areaId,
-        addressLine: '',
+        addressLine: getAreaById(areaId)?.nameBn ?? areaId,
         contactName: contactName.trim(),
         contactPhone: normalizedPhone,
         preferredTime,
@@ -172,6 +174,11 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
       setError(result.error ?? 'অনুরোধ পাঠানো যায়নি। আবার চেষ্টা করুন।');
       return;
     }
+    const reference = result.referenceCode ?? result.requestId;
+    if (!reference) {
+      setError('অনুরোধটি সংরক্ষিত হয়েছে, কিন্তু রেফারেন্স আইডি পাওয়া যায়নি। আমার অনুরোধ পাতায় যাচাই করুন।');
+      return;
+    }
     setError('');
     // Only now is the request really on file.
     trackFormSubmit({
@@ -181,7 +188,23 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
       routeKind: 'directory',
     });
     setSuccess(true);
-    onSubmitted?.();
+    onSubmitted?.({
+      reference,
+      summary: [
+        `অভিভাবকের নাম: ${contactName.trim()}`,
+        `মোবাইল: ${normalizedPhone}`,
+        `শিক্ষক: ${tutor.fullName}`,
+        `এলাকা: ${getAreaById(areaId)?.nameBn ?? areaId}`,
+        `শ্রেণি: ${classLabel}`,
+        `বিষয়: ${subjectLabel}`,
+        `মাধ্যম: ${modeLabel}`,
+        `পছন্দের সময়: ${preferredTime}`,
+        `প্রত্যাশিত বেতন: ${formatTutorFee(tutor.expectedSalary)}`,
+      ],
+      preferredDate: '',
+      preferredTime: '',
+      details: note.trim(),
+    });
   };
 
   return (

@@ -62,9 +62,9 @@ export default function DesignSystemShowcasePage() {
   return (
     <div className="min-h-screen bg-mist-50 text-slate-900 pb-20">
       {/* Top Bar */}
-      <header className="bg-white border-b border-slate-200/80 sticky top-0 z-30">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
+      <header className="sticky top-[env(safe-area-inset-top)] z-30 border-b border-slate-200/80 bg-white">
+        <div className="mx-auto flex min-h-16 max-w-6xl flex-wrap items-center justify-between gap-2 px-4 py-2 sm:h-16 sm:flex-nowrap sm:gap-4 sm:px-6 sm:py-0">
+          <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-3">
             <Link
               href="/"
               className="p-2 -ml-2 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors flex items-center gap-1.5 text-xs font-semibold"
@@ -73,9 +73,9 @@ export default function DesignSystemShowcasePage() {
               <span>হোমপেইজে যান</span>
             </Link>
             <span className="text-slate-300">|</span>
-            <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-700" />
-              <h1 className="text-sm sm:text-base font-bold text-slate-900">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-emerald-700" />
+              <h1 className="min-w-0 truncate text-sm font-bold text-slate-900 sm:text-base">
                 Mymensingh Sheba — Design System
               </h1>
             </div>
@@ -610,7 +610,7 @@ export default function DesignSystemShowcasePage() {
 
         {/* 8. Toast Notifications */}
         {toastMessage && (
-          <div className="fixed bottom-6 right-6 z-50 animate-in fade-in slide-in-from-bottom-5">
+          <div className="fixed bottom-[calc(3.5rem+env(safe-area-inset-bottom)+1.5rem)] right-6 z-50 animate-in fade-in slide-in-from-bottom-5 sm:bottom-6">
             <Toast
               variant="success"
               title="সফল হয়েছে"

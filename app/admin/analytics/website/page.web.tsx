@@ -15,7 +15,9 @@ import { PageHeader, Panel } from '@/components/admin/PageHeader';
 import { AdminEmpty, AdminError } from '@/components/admin/States';
 import AnalyticsAutoRefresh from '@/components/admin/AnalyticsAutoRefresh';
 import WebsiteBusinessAnalytics from '@/components/admin/WebsiteBusinessAnalytics';
+import NewsAnalyticsPanel from '@/components/admin/NewsAnalyticsPanel';
 import { resolveAnalyticsDateRange } from '@/lib/admin/analytics-date';
+import { fetchNewsAnalytics } from '@/lib/admin/news-analytics';
 import {
   CTA_TYPE_LABELS,
   DEVICE_LABELS,
@@ -529,9 +531,10 @@ export default async function WebsiteAnalyticsPage({ searchParams }: { searchPar
   const route = params.route?.trim() || undefined;
   const eventType = params.eventType || undefined;
 
-  const [result, businessResult] = await Promise.all([
+  const [result, businessResult, newsResult] = await Promise.all([
     fetchWebsiteAnalytics({ from, to, category, route, eventType }),
     fetchWebsiteBusinessAnalytics({ from, to }),
+    fetchNewsAnalytics({ from, to }),
   ]);
   const presetHref = (range: 'today' | 'yesterday' | '7d' | '30d') => {
     const query = new URLSearchParams({ range });
@@ -659,22 +662,21 @@ export default async function WebsiteAnalyticsPage({ searchParams }: { searchPar
           message={result.error}
         />
       ) : result.data ? (
-        <>
-          <WebsiteAnalyticsSections data={result.data} />
-          {businessResult.error ? (
-            <AdminError
-              title={businessResult.unavailable ? 'ব্যবসায়িক মেট্রিক অনুপলভ্য' : 'ব্যবসায়িক তথ্য লোড করা যায়নি'}
-              message={businessResult.error}
-            />
-          ) : businessResult.data ? (
-            <WebsiteBusinessAnalytics data={businessResult.data} />
-          ) : (
-            <AdminError title="ব্যবসায়িক তথ্য লোড করা যায়নি" message="অ্যানালিটিক্স ডেটা ফেরত আসেনি।" />
-          )}
-        </>
+        <WebsiteAnalyticsSections data={result.data} />
       ) : (
         <AdminError title="তথ্য লোড করা যায়নি" message="কোনো অ্যানালিটিক্স ডেটা ফেরত আসেনি।" />
       )}
+      <NewsAnalyticsPanel data={newsResult.data} error={newsResult.error} showArticleTable />
+      {!result.error && (businessResult.error ? (
+        <AdminError
+          title={businessResult.unavailable ? 'ব্যবসায়িক মেট্রিক অনুপলভ্য' : 'ব্যবসায়িক তথ্য লোড করা যায়নি'}
+          message={businessResult.error}
+        />
+      ) : businessResult.data ? (
+        <WebsiteBusinessAnalytics data={businessResult.data} />
+      ) : (
+        <AdminError title="ব্যবসায়িক তথ্য লোড করা যায়নি" message="অ্যানালিটিক্স ডেটা ফেরত আসেনি।" />
+      ))}
     </div>
   );
 }

@@ -29,7 +29,6 @@
 import React, { useMemo, useState } from 'react';
 import {
   CalendarDays,
-  CheckCircle2,
   Clock,
   Coins,
   Loader2,
@@ -45,8 +44,9 @@ import type { ServiceListing, VehicleKind } from '@/lib/catalog-types';
 import { bnTakaDecimal, toBn } from '@/lib/catalog-types';
 import { getAllMCCAreas } from '@/lib/locations';
 import { normalizeBdPhone } from '@/lib/contact-types';
+import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 
-type Status = 'idle' | 'sending' | 'sent' | 'error';
+type Status = 'idle' | 'sending' | 'error';
 const BANGLA_DIGITS: Record<string, string> = {
   '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
   '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9',
@@ -70,7 +70,7 @@ interface Props {
   listing: ServiceListing;
   /** The kind implied by the listing this request was opened from. */
   defaultKind?: VehicleKind;
-  onSuccess?: (referenceCode: string, message: string) => void;
+  onSuccess: (submission: ServiceRequestSuccessData, message: string) => void;
 }
 
 export default function VehicleServiceRequest({ listing, defaultKind, onSuccess }: Props) {
@@ -96,7 +96,6 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
   const [notes, setNotes] = useState('');
   const [status, setStatus] = useState<Status>('idle');
   const [message, setMessage] = useState('');
-  const [requestReference, setRequestReference] = useState('');
   const [fieldError, setFieldError] = useState<Record<string, string>>({});
   const [manualDistance, setManualDistance] = useState('');
 
@@ -161,13 +160,33 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
         contentId: listing.id,
         routeKind: 'service',
       });
-      setStatus('sent');
-      const referenceCode = result.referenceCode ?? '';
+      const referenceCode = result.referenceCode ?? result.requestId;
+      if (!referenceCode) {
+        setStatus('error');
+        setMessage('অনুরোধটি সংরক্ষণ করা হয়েছে, কিন্তু রেফারেন্স আইডি পাওয়া যায়নি।');
+        return;
+      }
       const confirmationMessage =
         result.warning ?? 'আপনার অনুরোধ অ্যাডমিন টিমের কাছে পাঠানো হয়েছে।';
-      setRequestReference(referenceCode);
       setMessage(confirmationMessage);
-      onSuccess?.(referenceCode, confirmationMessage);
+      onSuccess?.({
+        reference: referenceCode,
+        summary: [
+          `নাম: ${name.trim()}`,
+          `মোবাইল: ${normalised}`,
+          `যানবাহন: ${listing.titleBn}`,
+          ...(listing.publicCode ? [`যানবাহন আইডি: ${listing.publicCode}`] : []),
+          `পিকআপ: ${pickup.trim()}`,
+          `গন্তব্য: ${destination.trim()}`,
+          `যাত্রী: ${passengerDigits || 'উল্লেখ করা হয়নি'}`,
+          `দূরত্ব: ${toBn(distance)} কিমি`,
+          ...(duration.trim() ? [`সময়কাল: ${duration.trim()}`] : []),
+          ...(budgetNumber ? [`বাজেট: ${bnTakaDecimal(budgetNumber)}`] : []),
+        ],
+        preferredDate: date,
+        preferredTime: time,
+        details: notes.trim(),
+      }, confirmationMessage);
     } else {
       setStatus('error');
       setMessage(result.error);
@@ -181,30 +200,6 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
   const estimatedFare = distanceFare == null
     ? null
     : distanceFare + (listing.additionalFee ?? 0);
-
-  if (status === 'sent') {
-    return (
-      <div className="rounded-2xl border border-brand-200 bg-brand-50 p-5">
-        <CheckCircle2 className="h-7 w-7 text-brand-600" aria-hidden="true" />
-        <h2 className="mt-2.5 text-[15px] font-extrabold text-ink-900">
-          সেবা নেওয়ার অনুরোধ পাঠানো হয়েছে
-        </h2>
-        <p className="mt-1.5 text-[13px] leading-relaxed text-ink-600">{message}</p>
-        {requestReference && (
-          <p className="mt-2 font-mono text-sm font-extrabold tracking-wider text-brand-800">
-            রিকোয়েস্ট রেফারেন্স: {requestReference}
-          </p>
-        )}
-        <p className="mt-3 rounded-xl bg-white/70 p-3 text-[12.5px] leading-relaxed text-ink-600">
-          <strong className="font-bold text-ink-900">{listing.titleBn}</strong>
-          {listing.publicCode && <><br />যানবাহন আইডি: {listing.publicCode}</>}
-          <br />
-          {pickup.trim()} → {destination.trim()}
-          {date ? ` · ${date}` : ''}
-        </p>
-      </div>
-    );
-  }
 
   return (
     <form

@@ -306,9 +306,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
               />
               <span>
                 <strong className="font-extrabold text-ink-800">নিরাপত্তা ও সতর্কতা:</strong>{' '}
-                ভাড়া দেওয়ার আগে ঘর, পানি ও বিদ্যুৎ সরাসরি দেখে নিন। কোনো টাকা বা
-                ডকুমেন্ট হাতে দেওয়ার আগে চুক্তিপত্রে মালিক ও ভাড়াটিয়ার দুই পক্ষের
-                স্বাক্ষর নিন। কোনো ব্যক্তিকে অগ্রিম টাকা পাঠাতে বলা হলে{' '}
+                কোনো ব্যক্তিকে অগ্রিম টাকা পাঠাতে বলা হলে{' '}
                 <Link
                   href="/contact"
                   className="font-bold text-brand-800 underline underline-offset-2"

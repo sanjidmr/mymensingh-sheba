@@ -6,13 +6,13 @@ import type { EmergencyService } from '@/lib/catalog-types';
 
 export interface EmergencyContactFormData {
   service: EmergencyService;
-  nameBn: string;
-  organizationBn: string;
-  areaId: string;
-  addressBn: string;
+  nameBn?: string;
+  organizationBn?: string;
+  areaId?: string;
+  addressBn?: string;
   phone: string;
-  sourceNote: string;
-  sortOrder: number;
+  sourceNote?: string;
+  sortOrder?: number;
 }
 
 function toEnglishDigits(value: string): string {
@@ -25,26 +25,46 @@ export async function saveEmergencyContact(
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
     const allowedServices: EmergencyService[] = ['doctor', 'police', 'ambulance', 'fire_service'];
-    const nameBn = input.nameBn.trim();
-    const organizationBn = input.organizationBn.trim();
-    const areaId = input.areaId.trim();
-    const addressBn = input.addressBn.trim();
-    const sourceNote = input.sourceNote.trim();
+    const nameBn = input.nameBn?.trim() ?? '';
+    const organizationBn = input.organizationBn?.trim() ?? '';
+    const areaId = input.areaId?.trim() ?? '';
+    const addressBn = input.addressBn?.trim() ?? '';
+    const sourceNote = input.sourceNote?.trim() ?? '';
     const phone = toEnglishDigits(input.phone).replace(/[^\d+]/g, '');
     const digits = phone.replace(/\D/g, '');
-    const sortOrder = Number(input.sortOrder);
+    const sortOrder = input.sortOrder === undefined ? 0 : Number(input.sortOrder);
+    const serviceLabels: Record<EmergencyService, string> = {
+      doctor: 'চিকিৎসক',
+      police: 'পুলিশ',
+      ambulance: 'অ্যাম্বুলেন্স',
+      fire_service: 'ফায়ার সার্ভিস',
+    };
 
     if (!allowedServices.includes(input.service)) {
       return { ok: false, error: 'জরুরি সেবার ধরন সঠিক নয়।' };
     }
-    if (!nameBn || nameBn.length > 120) {
-      return { ok: false, error: 'নাম ১ থেকে ১২০ অক্ষরের মধ্যে লিখুন।' };
+    if (!contactId && input.service !== 'police' && input.service !== 'ambulance') {
+      return { ok: false, error: 'নতুন যোগাযোগের জন্য পুলিশ বা অ্যাম্বুলেন্স নির্বাচন করুন।' };
+    }
+    if (contactId && (input.service === 'doctor' || input.service === 'fire_service')) {
+      const { data: existing, error: existingError } = await client
+        .from('emergency_contacts')
+        .select('service')
+        .eq('id', contactId)
+        .maybeSingle();
+      if (existingError) return { ok: false, error: `পুরোনো যোগাযোগ যাচাই ব্যর্থ হয়েছে: ${existingError.message}` };
+      if (!existing || existing.service !== input.service) {
+        return { ok: false, error: 'ডাক্তার ও ফায়ার সার্ভিস নতুন করে যোগ করা যাবে না।' };
+      }
+    }
+    if (nameBn.length > 120) {
+      return { ok: false, error: 'নাম সর্বোচ্চ ১২০ অক্ষরের মধ্যে লিখুন।' };
     }
     if (!/^\+?\d{7,15}$/.test(phone) || digits.length < 7 || digits.length > 15) {
       return { ok: false, error: 'সঠিক ফোন নম্বর লিখুন।' };
     }
-    if (!sourceNote || sourceNote.length > 500) {
-      return { ok: false, error: 'যোগাযোগের তথ্য যাচাইয়ের উৎস উল্লেখ করুন (সর্বোচ্চ ৫০০ অক্ষর)।' };
+    if (sourceNote.length > 500) {
+      return { ok: false, error: 'তথ্য যাচাইয়ের নোট সর্বোচ্চ ৫০০ অক্ষরের মধ্যে লিখুন।' };
     }
     if (
       organizationBn.length > 160 ||
@@ -57,25 +77,27 @@ export async function saveEmergencyContact(
       return { ok: false, error: 'প্রতিষ্ঠান, ঠিকানা বা তালিকার ক্রমের তথ্য সঠিক নয়।' };
     }
 
-    const values = {
+    const values: Record<string, unknown> = {
       service: input.service,
-      name_bn: nameBn,
-      organization_bn: organizationBn || null,
-      area_id: areaId || null,
-      address_bn: addressBn || null,
       phone,
-      source_note: sourceNote,
-      sort_order: sortOrder,
+      is_active: true,
     };
+    if (input.nameBn !== undefined || !contactId) {
+      values.name_bn = nameBn || serviceLabels[input.service];
+    }
+    if (input.organizationBn !== undefined || !contactId) values.organization_bn = organizationBn || null;
+    if (input.areaId !== undefined || !contactId) values.area_id = areaId || null;
+    if (input.addressBn !== undefined || !contactId) values.address_bn = addressBn || null;
+    if (input.sourceNote !== undefined || !contactId) values.source_note = sourceNote || null;
+    if (input.sortOrder !== undefined || !contactId) values.sort_order = sortOrder;
 
     const write = contactId
       ? await client.from('emergency_contacts').update(values).eq('id', contactId).select('id').maybeSingle()
-      : await client.from('emergency_contacts').insert({ ...values, is_active: false }).select('id').single();
+      : await client.from('emergency_contacts').insert(values).select('id').single();
 
     if (write.error) return { ok: false, error: write.error.message };
     if (!write.data) return { ok: false, error: 'জরুরি যোগাযোগের রেকর্ডটি পাওয়া যায়নি।' };
 
-    revalidatePath('/admin/emergency-contacts');
     revalidatePath('/admin/emergency-contacts');
     revalidatePath('/doctors');
     revalidatePath('/doctor');
@@ -85,7 +107,7 @@ export async function saveEmergencyContact(
     revalidatePath('/fire-service');
     return {
       ok: true,
-      message: contactId ? 'জরুরি যোগাযোগের তথ্য আপডেট হয়েছে।' : 'তথ্য যোগ হয়েছে; প্রকাশের আগে চালু করুন।',
+      message: contactId ? 'জরুরি যোগাযোগের তথ্য আপডেট ও প্রকাশিত হয়েছে।' : 'জরুরি যোগাযোগ যোগ ও প্রকাশিত হয়েছে।',
     };
   });
 }

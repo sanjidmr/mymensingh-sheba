@@ -22,7 +22,6 @@
  */
 
 import { isSupabaseConfigured } from './supabase/client';
-import { createServerSideClient } from './supabase/server';
 import { toCamelObject } from './supabase/transform';
 import { mockFetchStaffProfileById } from './staff-service-mock';
 import type { StaffProfile, StaffServiceKey } from './staff-types';
@@ -71,6 +70,7 @@ export async function fetchStaffProfileForMetadata(
   }
 
   try {
+    const { createServerSideClient } = await import('./supabase/server');
     const client = await createServerSideClient();
     if (!client) return null;
     const { data, error } = await client

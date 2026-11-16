@@ -7,9 +7,9 @@ import { AdminEmpty, AdminError } from '@/components/admin/States';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { StatCard, StatusPill } from '@/components/admin/StatCard';
 import StaffProfileActions from '@/components/admin/StaffProfileActions';
+import StaffCompletedJobsControl from '@/components/admin/StaffCompletedJobsControl';
 import { fetchAdminStaffDirectory, parseListParams, type AdminStaffListRow } from '@/lib/admin/queries';
 import { STAFF_SERVICE_UI, STAFF_AVAILABILITY_LABELS } from '@/lib/staff-types';
-import { getAllMCCAreas, getAreaById } from '@/lib/locations';
 
 export const dynamic = 'force-dynamic';
 
@@ -21,21 +21,23 @@ const columns: AdminColumn<AdminStaffListRow>[] = [
     render: (row) => (
       <span className="block min-w-0">
         <span className="block break-words font-semibold">{row.name_bn}</span>
-      {row.phone_private
-        ? <a href={`tel:${row.phone_private}`} className="block break-words text-xs text-admin-muted">{row.phone_private}</a>
-        : <span className="block text-xs text-admin-muted">ফোন নম্বর দেওয়া হয়নি</span>}
+        <span className="mt-0.5 block text-[11px] text-admin-muted">
+          নির্ধারিত কাজ: {Number(row.assigned_job_count ?? 0).toLocaleString('bn-BD')} টি
+        </span>
       </span>
     ),
+  },
+  {
+    key: 'phone',
+    header: 'ফোন নম্বর',
+    render: (row) => row.phone_private
+      ? <a href={`tel:${row.phone_private}`} className="whitespace-nowrap text-admin-navy hover:underline">{row.phone_private}</a>
+      : 'নম্বর দেওয়া হয়নি',
   },
   {
     key: 'service',
     header: 'সেবা',
     render: (row) => STAFF_SERVICE_UI[row.service_slug as keyof typeof STAFF_SERVICE_UI]?.nameBn ?? row.service_slug,
-  },
-  {
-    key: 'areas',
-    header: 'কর্ম-এলাকা',
-    render: (row) => row.areas.map((id) => getAreaById(id)?.nameBn ?? id).join(', ') || '—',
   },
   {
     key: 'availability',
@@ -48,14 +50,9 @@ const columns: AdminColumn<AdminStaffListRow>[] = [
     ),
   },
   {
-    key: 'verification',
-    header: 'যাচাই / অবস্থা',
-    render: (row) => (
-      <div className="flex flex-wrap gap-1.5">
-        <StatusPill label={row.is_verified ? 'যাচাইকৃত' : 'যাচাই হয়নি'} tone={row.is_verified ? 'success' : 'warning'} />
-        <StatusPill label={row.is_active ? 'সক্রিয়' : 'নিষ্ক্রিয়'} tone={row.is_active ? 'info' : 'neutral'} />
-      </div>
-    ),
+    key: 'completed',
+    header: 'সম্পন্ন কাজ',
+    render: (row) => <StaffCompletedJobsControl profile={row} />,
   },
   {
     key: 'actions',
@@ -90,12 +87,11 @@ export default async function AdminServicesPage({
     );
   }
 
-  const areaOptions = getAllMCCAreas({ activeOnly: true }).map(({ id, nameBn }) => ({ value: id, label: nameBn }));
   return (
     <>
       <PageHeader
         title="কর্মী ব্যবস্থাপনা"
-        description="কাজের বুয়া, ইলেকট্রিশিয়ান, প্লাম্বার ও এসি/ফ্রিজ মেরামত প্রোফাইল পরিচালনা করুন। কর্মীদের ব্যক্তিগত ফোন নম্বর শুধু এই অ্যাডমিন তালিকায় ও সুরক্ষিত ব্যবস্থাপনায় দেখা যায়।"
+        description="কাজের বুয়া, ইলেকট্রিশিয়ান, প্লাম্বার, অটো, CNG, বাসা পাল্টানো ও অন্যান্য সেবা-কর্মীর প্রোফাইল পরিচালনা করুন। কর্মীদের ব্যক্তিগত ফোন নম্বর শুধু অ্যাডমিন দেখতে পান।"
         count={`তালিকায় ${result.total} জন কর্মী`}
         actions={
           <Link href="/admin/services/new" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white hover:bg-admin-navy/90">
@@ -115,7 +111,6 @@ export default async function AdminServicesPage({
         <AdminSearch placeholder="নাম, ফোন বা কর্মী আইডি খুঁজুন…" />
         <FilterNav id="staff-service" label="সেবা" value={params.service ?? ''} options={SERVICE_OPTIONS} placeholder="সব সেবা" param="service" searchParams={resolvedSearchParams} />
         <FilterNav id="staff-status" label="অবস্থা" value={params.status ?? ''} options={STATUS_OPTIONS} placeholder="সব অবস্থা" param="status" searchParams={resolvedSearchParams} />
-        <FilterNav id="staff-area" label="এলাকা" value={params.area ?? ''} options={areaOptions} placeholder="সব এলাকা" param="area" searchParams={resolvedSearchParams} />
         <div className="sm:col-span-2 lg:col-span-4">
           <ClearFilters searchParams={resolvedSearchParams} />
         </div>
@@ -125,6 +120,7 @@ export default async function AdminServicesPage({
         columns={columns}
         rows={result.rows}
         getKey={(row) => row.id}
+        compact
         caption="কর্মী প্রোফাইল তালিকা"
         empty={<AdminEmpty title="কোনো কর্মী পাওয়া যায়নি" description="সার্চ বা ফিল্টার পরিবর্তন করুন, অথবা নতুন কর্মী যোগ করুন।" />}
       />

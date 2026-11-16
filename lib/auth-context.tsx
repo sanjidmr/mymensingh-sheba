@@ -17,6 +17,9 @@ import { isSafeInternalPath, type AppRole } from './auth-routes';
 import { normalizeBangladeshPhone } from './onboarding';
 import { normalizeAreaName } from './area-names';
 import { apiFetch } from './api-fetch';
+import { Browser } from '@capacitor/browser';
+import { isNative } from './platform';
+import { removeDeviceToken } from './native-push';
 
 const NOT_CONFIGURED_MESSAGE =
   'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।';
@@ -117,11 +120,11 @@ interface AuthContextType {
   activateHomeTutorProfile: (
     details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
     mode?: 'draft' | 'submit'
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: true; profile: HomeTutorProfile } | { success: false; error: string }>;
   activateBloodDonorProfile: (
     details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
     mode?: 'draft' | 'submit'
-  ) => Promise<{ success: boolean; error?: string }>;
+  ) => Promise<{ success: true; profile: BloodDonorProfile } | { success: false; error: string }>;
   toggleSaveItem: (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => Promise<{ success: boolean; error?: string }>;
   createServiceRequest: (
     request: Omit<ServiceRequestItem, 'id' | 'customerId' | 'createdAt' | 'status' | 'serviceTitleBn'>
@@ -176,7 +179,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setHasPassword(
         authUser?.id === userId ? authUserHasPassword(authUser) : false
       );
-      const { data: profileData } = await client.from('profiles').select('*').eq('id', userId).single();
+      const { data: profileData } = await client
+        .from('profiles')
+        .select('id, public_id, full_name, phone, email, avatar_url, primary_area_id, onboarding_completed_at, role, status, is_verified, emergency_contact, bio, notification_preferences, created_at, updated_at')
+        .eq('id', userId)
+        .single();
       if (!profileData) {
         clearSessionState();
         return { ok: false };
@@ -217,7 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       const { data: requestRows } = await client
         .from('service_requests')
-        .select('*')
+        .select('id, reference_code, customer_id, service_slug, status, area_id, address_line, contact_name, contact_phone, preferred_date, details, profile_id, profile_title, service_type, preferred_time, attachment_url, admin_notes, updated_at, created_at, pickup_area_id, destination_area_id, pickup_address, destination_address, pickup_floor, destination_floor, has_lift, parking_info, moving_items, photo_urls, quotation')
         .eq('customer_id', userId)
         .order('created_at', { ascending: false });
       const mappedRequests = (requestRows ?? []).map((row: Record<string, unknown>) => {
@@ -245,7 +252,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSavedListingsLoading(true);
       const { data: savedRows, error: savedError } = await client
         .from('saved_items')
-        .select('*')
+        .select('id, user_id, item_type, item_id, created_at')
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (savedError) {
@@ -338,23 +345,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!client) {
       return;
     }
-    client.auth.getSession().then(async ({ data }) => {
-      if (data.session?.user) {
-        const res = await refreshUserData(client, data.session.user.id, data.session.user);
-        if (res && !res.ok) {
-          await client.auth.signOut();
+    let cancelled = false;
+    let retryTimer: number | undefined;
+
+    const restoreSession = async (attempt = 0): Promise<void> => {
+      try {
+        const { data, error } = await client.auth.getSession();
+        if (error) throw error;
+        if (data.session?.user) {
+          const res = await refreshUserData(client, data.session.user.id, data.session.user);
+          if (res && !res.ok) {
+            await client.auth.signOut();
+          }
+        }
+        if (!cancelled) setIsLoading(false);
+      } catch {
+        if (cancelled) return;
+        clearSessionState();
+        setIsLoading(false);
+        if (attempt < 2) {
+          retryTimer = window.setTimeout(
+            () => void restoreSession(attempt + 1),
+            1000 * 2 ** attempt
+          );
         }
       }
-      setIsLoading(false);
-    }).catch(() => setIsLoading(false));
+    };
+
+    void restoreSession();
     const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
-        refreshUserData(client, session.user.id, session.user);
+        void refreshUserData(client, session.user.id, session.user).catch(() => {
+          clearSessionState();
+        });
       } else {
         clearSessionState();
       }
     });
-    return () => subscription.subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      subscription.subscription.unsubscribe();
+    };
   }, [refreshUserData, clearSessionState]);
 
   const login = async (email: string, pass: string) => {
@@ -404,12 +436,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: NOT_CONFIGURED_MESSAGE };
     }
     const target = isSafeInternalPath(next) ? next : '/profile';
-    const callback = new URL('/auth/callback', window.location.origin);
-    callback.searchParams.set('next', target);
-    const { error } = await client.auth.signInWithOAuth({
+    let callback: string;
+    if (isNative()) {
+      callback = `com.mymensinghsheba.app://auth/callback?next=${encodeURIComponent(target)}`;
+    } else {
+      const callbackUrl = new URL('/auth/callback', window.location.origin);
+      callbackUrl.searchParams.set('next', target);
+      callback = callbackUrl.toString();
+    }
+    const { data, error } = await client.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: callback.toString() },
+      options: { redirectTo: callback, ...(isNative() ? { skipBrowserRedirect: true } : {}) },
     });
+    if (!error && isNative()) {
+      if (!data.url) return { success: false, error: 'Google লগইন লিংক তৈরি করা যায়নি।' };
+      try {
+        await Browser.open({ url: data.url, toolbarColor: '#0c3b2e' });
+      } catch {
+        return { success: false, error: 'Google লগইন খোলা যায়নি। আবার চেষ্টা করুন।' };
+      }
+    }
     return error
       ? { success: false, error: error.message }
       : { success: true };
@@ -527,13 +573,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const email = data.email.trim().toLowerCase();
       const emailRedirectTo = new URL('/auth/callback', window.location.origin);
       const requestedTarget = isSafeInternalPath(data.next) ? data.next : '/profile';
-      emailRedirectTo.searchParams.set('next', requestedTarget);
+      const redirectTo = isNative()
+        ? `com.mymensinghsheba.app://auth/callback?next=${encodeURIComponent(requestedTarget)}`
+        : (() => {
+            emailRedirectTo.searchParams.set('next', requestedTarget);
+            return emailRedirectTo.toString();
+          })();
       const { data: signUpData, error } = await client.auth.signUp({
         email,
         password: data.password,
         options: {
-          emailRedirectTo: emailRedirectTo.toString(),
-          data: { email, full_name: email.split('@')[0] },
+          emailRedirectTo: redirectTo,
+          data: { email, full_name: 'নতুন ব্যবহারকারী' },
         },
       });
       if (error) {
@@ -588,7 +639,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const email = phoneOrEmail.includes('@') ? phoneOrEmail : `${phoneOrEmail}@mymensinghsheba.internal`;
       // Route the recovery link through the existing code-exchange callback so
       // the email opens a validated session, then land on the password form.
-      const redirectTo = new URL('/auth/callback?next=/reset-password', window.location.origin).toString();
+      const redirectTo = isNative()
+        ? 'com.mymensinghsheba.app://auth/callback?next=%2Freset-password'
+        : new URL('/auth/callback?next=/reset-password', window.location.origin).toString();
       const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
         return { success: false, error: error.message };
@@ -605,6 +658,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (isSupabaseConfigured) {
         const client = createClient();
         if (!client) throw new Error('Supabase সংযোগ তৈরি করা যায়নি।');
+        if (user) await removeDeviceToken(user.id);
         const { error } = await client.auth.signOut();
         if (error) throw new Error(`লগআউট করা যায়নি: ${error.message}`);
       }
@@ -778,12 +832,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isSupabaseConfigured) {
       const client = createClient();
       if (client) {
-        await client
+        const result = await client
           .from('tolet_profiles')
           .upsert(
             { ...toSnakeObject(details as Record<string, unknown>), user_id: user.id, status: 'pending_approval' },
             { onConflict: 'user_id' }
-          );
+          )
+          .select('id')
+          .maybeSingle();
+        if (result.data?.id) {
+          setToletProfile({ ...newProf, id: result.data.id });
+        }
       }
     }
   };
@@ -791,7 +850,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const activateHomeTutorProfile = async (
     details: Omit<HomeTutorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
     mode: 'draft' | 'submit' = 'submit'
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: true; profile: HomeTutorProfile } | { success: false; error: string }> => {
     if (!user) return { success: false, error: 'প্রোফাইল সংরক্ষণ করতে লগইন করুন।' };
     const validChoices = (items: string[]) =>
       items.length <= 30 &&
@@ -872,13 +931,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...details,
     };
     setHomeTutorProfile(newProf);
-    return { success: true };
+    return { success: true, profile: newProf };
   };
 
   const activateBloodDonorProfile = async (
     details: Omit<BloodDonorProfile, 'id' | 'userId' | 'createdAt' | 'updatedAt' | 'status'>,
     mode: 'draft' | 'submit' = 'submit'
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: true; profile: BloodDonorProfile } | { success: false; error: string }> => {
     if (!user) return { success: false, error: 'প্রোফাইল সংরক্ষণ করতে লগইন করুন।' };
     if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED_MESSAGE };
     const client = createClient();
@@ -942,7 +1001,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...details,
     };
     setBloodDonorProfile(newProf);
-    return { success: true };
+    return { success: true, profile: newProf };
   };
 
   const toggleSaveItem = async (item: Omit<SavedListingItem, 'id' | 'userId' | 'savedAt'>) => {

@@ -83,7 +83,7 @@ export default function ZamindariHeritage() {
 
         <Reveal delay={110}>
           <ArchivePhoto
-            src="/muktagacha.jpg"
+            src="/muktagacha.webp"
             alt="জামিলা ধাঁচের ঐতিহ্যবাহী বাড়ির ভবিষ্যৎ-অতীত চিত্র"
             slotNote="ঐতিহ্যবাহী স্থাপত্যের আর্কাইভাল ছবির স্থান"
             className="aspect-[4/5] w-full rounded-2xl"

@@ -53,7 +53,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       {children}
       <div
         aria-live="polite"
-        className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex flex-col items-center gap-2 p-3 sm:items-end sm:p-4"
+        className="pointer-events-none fixed inset-x-0 bottom-0 z-[70] flex flex-col items-center gap-2 px-3 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:items-end sm:p-4"
       >
         {toasts.map((toast) => (
           <ToastCard key={toast.id} toast={toast} onDismiss={() => dismiss(toast.id)} />
@@ -90,7 +90,7 @@ function ToastCard({ toast, onDismiss }: { toast: Toast; onDismiss: () => void }
       <button
         type="button"
         onClick={onDismiss}
-        className="shrink-0 rounded-md p-1 opacity-60 hover:opacity-100"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-md opacity-60 hover:opacity-100 sm:h-7 sm:w-7"
         aria-label="বন্ধ করুন"
       >
         <X className="h-4 w-4" />

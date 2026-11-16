@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useContext } from 'react';
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import ServiceCard from '@/components/home/ServiceCard';
 import {
   loadToletCards,
@@ -13,6 +14,9 @@ import {
   loadCommunityPostCards,
 } from '@/components/home/section-loaders';
 import type { HomePreviewCard } from '@/lib/home-preview';
+import { QueryCacheRestoringContext } from '@/lib/query-cache-context';
+import { useNearViewport } from '@/hooks/use-near-viewport';
+import VehicleCategoryCards from '@/components/vehicle-booking/VehicleCategoryCards';
 
 /** Serialisable loader keys. Resolved HERE (client) rather than passed from
  *  the page, because a Server Component may not hand a function to a Client
@@ -77,32 +81,28 @@ export default function ServiceRowSection({
   count = 6,
   hideKickerOnMobile = false,
 }: ServiceRowSectionProps) {
-  const [items, setItems] = useState<HomePreviewCard[] | null>(cards ?? null);
-  const [error, setError] = useState('');
+  const isRestoring = useContext(QueryCacheRestoringContext);
+  const { ref, isNearViewport } = useNearViewport<HTMLElement>();
   const imageMode = withImage && !hideImage;
 
   /** Stable module-level reference, so this dep never churns between renders. */
   const load = source ? ROW_LOADERS[source] : undefined;
-
-  useEffect(() => {
-    if (!load) return;
-    let alive = true;
-    load()
-      .then((list) => {
-        if (alive) {
-          setItems(list);
-          setError('');
-        }
-      })
-      .catch((cause: unknown) => {
-        if (alive) {
-          setError(cause instanceof Error ? cause.message : 'তথ্য লোড করা যায়নি।');
-        }
-      });
-    return () => {
-      alive = false;
-    };
-  }, [load]);
+  const query = useQuery({
+    queryKey: ['home-preview', source],
+    queryFn: () => {
+      if (!load) throw new Error('A home preview source is required.');
+      return load();
+    },
+    enabled: source !== 'vehicle' && Boolean(load) && !isRestoring && isNearViewport,
+    meta: { persist: true },
+  });
+  const isVehicleRental = source === 'vehicle';
+  const items = isVehicleRental ? [] : cards ?? query.data ?? null;
+  const error = query.error
+    ? query.error instanceof Error
+      ? query.error.message
+      : 'তথ্য লোড করা যায়নি।'
+    : '';
 
   const shown = (items ?? []).slice(0, count);
   const loading = items === null && !error;
@@ -121,6 +121,7 @@ export default function ServiceRowSection({
 
   return (
     <section
+      ref={ref}
       aria-label={title}
       className={
         tone === 'mist'
@@ -141,7 +142,9 @@ export default function ServiceRowSection({
         </div>
 
         {/* Cards */}
-        {error ? (
+        {isVehicleRental ? (
+          <VehicleCategoryCards className="mt-4" />
+        ) : error ? (
           <p role="alert" className="mt-4 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-800">
             {error}
           </p>
@@ -187,14 +190,16 @@ export default function ServiceRowSection({
         )}
 
         {/* See-more — bottom of every row */}
-        <div className="mt-5 flex justify-center">
-          <Link
-            href={href}
-            className="group inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-6 py-2.5 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50"
-          >
-            আরও দেখুন
-          </Link>
-        </div>
+        {source !== 'vehicle' && (
+          <div className="mt-5 flex justify-center">
+            <Link
+              href={href}
+              className="group inline-flex min-h-[44px] items-center justify-center gap-2 rounded-xl border border-brand-200 bg-white px-6 py-2.5 text-sm font-bold text-brand-700 transition-colors hover:border-brand-300 hover:bg-mist-50"
+            >
+              আরও দেখুন
+            </Link>
+          </div>
+        )}
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ import WebsiteSections from '@/components/admin/website/WebsiteSections';
 import WebsiteServices from '@/components/admin/website/WebsiteServices';
 import WebsiteContact from '@/components/admin/website/WebsiteContact';
 import WebsiteEditorial from '@/components/admin/website/WebsiteEditorial';
+import WebsiteServiceSeo from '@/components/admin/website/WebsiteServiceSeo';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
 
 export const dynamic = 'force-dynamic';
@@ -78,6 +79,12 @@ export default async function AdminWebsitePage() {
           description="ওয়েবসাইটে দেখানো ফোন, ইমেইল, সোশ্যাল মিডিয়া ও ঠিকানা।"
         >
           <WebsiteContact overrides={overrides.site_contact ?? {}} />
+        </Panel>
+        <Panel
+          title="সার্ভিস SEO"
+          description="প্রতিটি চলমান সার্ভিসের SEO title, description, canonical, keywords, H1 ও social metadata সংরক্ষণ করুন।"
+        >
+          <WebsiteServiceSeo serviceSeo={overrides.service_seo ?? {}} />
         </Panel>
         <Panel
           title="ঘোষণা, তথ্য পৃষ্ঠা, Footer ও SEO"

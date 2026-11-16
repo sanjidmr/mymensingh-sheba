@@ -53,7 +53,7 @@ export type AdminBadgeKey =
   | 'posts'
   | 'reports'
   | 'requests'
-  | 'verifications'
+  | 'approvals'
   | 'notifications';
 
 export interface AdminNavGroup {
@@ -80,15 +80,15 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         href: '/admin/approvals',
         label: 'সকল অনুমোদন',
         icon: ClipboardCheck,
-        badgeKey: 'verifications',
-        description: 'সব ধরনের অপেক্ষমাণ পোস্ট ও প্রোফাইল এক জায়গায় অনুমোদন করুন',
+        badgeKey: 'approvals',
+        description: 'অপেক্ষমাণ পোস্ট, প্রোফাইল ও রিভিউ অনুমোদন বা প্রত্যাখ্যান করুন',
       },
       {
         href: '/admin/posts',
-        label: 'পোস্ট ও অনুমোদন',
+        label: 'পোস্ট',
         icon: FileText,
         badgeKey: 'posts',
-        description: 'খবর, চাকরি ও কেনাবেচার পোস্ট পর্যালোচনা',
+        description: 'খবর, চাকরি ও কেনাবেচার পোস্ট পরিচালনা',
       },
       {
         href: '/admin/tolet',
@@ -132,24 +132,6 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         icon: GraduationCap,
         description: 'গ্রাহক-জমা কোচিং তথ্য ও অনুমোদন',
       },
-      {
-        href: '/admin/directories/vehicle',
-        label: 'গাড়ির তালিকা',
-        icon: Car,
-        description: 'গাড়ির ছবি, তথ্য, প্রকাশনা ও ভাড়া পরিচালনা',
-      },
-      {
-        href: '/admin/vehicle-bookings/auto',
-        label: 'অটো বুকিং অনুরোধ',
-        icon: ClipboardList,
-        description: 'অটো ভাড়ার অনুরোধ ও বুকিংয়ের অবস্থা পরিচালনা',
-      },
-      {
-        href: '/admin/vehicle-bookings/cng',
-        label: 'CNG বুকিং অনুরোধ',
-        icon: ClipboardList,
-        description: 'CNG ভাড়ার অনুরোধ ও বুকিংয়ের অবস্থা পরিচালনা',
-      },
     ],
   },
   {
@@ -186,10 +168,10 @@ export const ADMIN_NAV: AdminNavGroup[] = [
         description: 'নির্দিষ্ট গৃহশিক্ষকের জন্য পাঠানো আবেদন পর্যালোচনা',
       },
       {
-        href: '/admin/vehicle-requests',
-        label: 'যানবাহন বুকিং অনুরোধ',
+        href: '/admin/vehicle-bookings/car',
+        label: 'গাড়ি / অটো / CNG বুকিং',
         icon: Car,
-        description: 'গাড়ি, অটো ও CNG বুকিং অনুরোধ পর্যালোচনা ও পরিচালনা',
+        description: 'গাড়ি, অটো ও CNG ভাড়ার সব বুকিং অনুরোধ একসঙ্গে পরিচালনা',
       },
       {
         href: '/admin/analytics',

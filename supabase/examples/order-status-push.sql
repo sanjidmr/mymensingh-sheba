@@ -1,0 +1,45 @@
+-- Optional example only. Do not run until pg_net, Vault, the Edge Function,
+-- and the PUSH_TRIGGER_TOKEN secret are configured.
+--
+-- CREATE OR REPLACE FUNCTION public.notify_request_status_change()
+-- RETURNS trigger
+-- LANGUAGE plpgsql
+-- SECURITY DEFINER
+-- SET search_path = ''
+-- AS $$
+-- DECLARE
+--   v_push_token text;
+-- BEGIN
+--   IF NEW.status IS NOT DISTINCT FROM OLD.status THEN
+--     RETURN NEW;
+--   END IF;
+--   SELECT decrypted_secret INTO v_push_token
+--   FROM vault.decrypted_secrets
+--   WHERE name = 'push_trigger_token';
+--   IF v_push_token IS NULL THEN
+--     RETURN NEW;
+--   END IF;
+--
+--   PERFORM net.http_post(
+--     url := 'https://<project-ref>.supabase.co/functions/v1/send-push',
+--     headers := jsonb_build_object(
+--       'Content-Type', 'application/json',
+--       'Authorization', 'Bearer ' || v_push_token
+--     ),
+--     body := jsonb_build_object(
+--       'user_id', NEW.customer_id,
+--       'title', 'আপনার অনুরোধের আপডেট',
+--       'body', 'আপনার অনুরোধের অবস্থা: ' || NEW.status,
+--       'data', jsonb_build_object('href', '/profile/requests')
+--     )
+--   );
+--   RETURN NEW;
+-- END;
+-- $$;
+--
+-- CREATE TRIGGER service_request_status_push
+--   AFTER UPDATE OF status ON public.service_requests
+--   FOR EACH ROW EXECUTE FUNCTION public.notify_request_status_change();
+--
+-- Store push_trigger_token with Supabase Vault; never place a service-role key
+-- or Firebase service-account credential in a trigger body or client bundle.

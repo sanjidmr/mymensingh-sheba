@@ -5,10 +5,12 @@ import { FilterNav } from '@/components/admin/FilterNav';
 import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
 import { AdminEmpty, AdminError } from '@/components/admin/States';
 import { PageHeader } from '@/components/admin/PageHeader';
-import { StatCard, StatusPill } from '@/components/admin/StatCard';
+import { StatCard } from '@/components/admin/StatCard';
 import { TablePager } from '@/components/admin/TablePager';
+import RequestStatusDropdown from '@/components/admin/RequestStatusDropdown';
 import { fetchServiceRequests, fetchStaffAssignmentFilterOptions, parseListParams, type AdminRequestRow } from '@/lib/admin/queries';
-import { formatDateTime, lookupStatus } from '@/lib/admin/format';
+import { formatDateTime, STATUS_OPTIONS } from '@/lib/admin/format';
+import { SERVICE_REQUEST_STATUSES } from '@/lib/admin/service-request-constants';
 import { getAllMCCAreas } from '@/lib/locations';
 
 export const dynamic = 'force-dynamic';
@@ -59,10 +61,7 @@ const columns: AdminColumn<AdminRequestRow>[] = [
   {
     key: 'status',
     header: 'স্টատուս',
-    render: (row) => {
-      const status = lookupStatus(row.status);
-      return <StatusPill label={status.label} tone={status.tone} />;
-    },
+    render: (row) => <RequestStatusDropdown requestId={row.id} serviceSlug={row.service_slug} initialStatus={row.status} />,
   },
   {
     key: 'date',
@@ -70,18 +69,6 @@ const columns: AdminColumn<AdminRequestRow>[] = [
     hideOnMobile: true,
     render: (row) => <span className="text-xs text-admin-muted">{formatDateTime(row.created_at)}</span>,
   },
-];
-
-const STATUS_OPTIONS = [
-  { value: 'new', label: 'নতুন' },
-  { value: 'submitted', label: 'জমা দেওয়া' },
-  { value: 'reviewing', label: 'পর্যালোচনাধীন' },
-  { value: 'assigned', label: 'কর্মী নির্ধারিত' },
-  { value: 'contacted', label: 'যোগাযোগ হয়েছে' },
-  { value: 'in_progress', label: 'কাজ চলছে' },
-  { value: 'completed', label: 'সম্পন্ন' },
-  { value: 'cancelled', label: 'বাতিল' },
-  { value: 'rejected', label: 'প্রত্যাখ্যাত' },
 ];
 
 export default async function AdminRequestsPage({
@@ -136,7 +123,7 @@ export default async function AdminRequestsPage({
       {workerLoadError && <AdminError title="কর্মী ফিল্টার লোড করা যায়নি" message={workerLoadError} className="mb-4" />}
       <div className="mb-4 grid grid-cols-1 gap-2 rounded-admin-card border border-admin-border bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
         <AdminSearch placeholder="রিকোয়েস্ট আইডি, গ্রাহক বা ফোন খুঁজুন…" />
-        <FilterNav id="request-status" label="স্ট্যাটাস" value={params.status ?? ''} placeholder="সব স্ট্যাটাস" options={STATUS_OPTIONS} param="status" searchParams={resolvedSearchParams} />
+        <FilterNav id="request-status" label="স্ট্যাটাস" value={params.status ?? ''} placeholder="সব স্ট্যাটাস" options={STATUS_OPTIONS.service_requests.filter(({ value }) => SERVICE_REQUEST_STATUSES.some((status) => status === value))} param="status" searchParams={resolvedSearchParams} />
         <FilterNav id="request-service" label="সেবা" value={params.service ?? ''} placeholder="সব সেবা" options={Object.entries(SERVICE_LABEL).map(([value, label]) => ({ value, label }))} param="service" searchParams={resolvedSearchParams} />
         <FilterNav id="request-area" label="এলাকা" value={params.area ?? ''} placeholder="সব এলাকা" options={areaOptions} param="area" searchParams={resolvedSearchParams} />
         <FilterNav

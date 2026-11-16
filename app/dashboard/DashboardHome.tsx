@@ -602,7 +602,7 @@ export default function DashboardHome() {
               সব পোস্ট
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+          <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2.5 xl:grid-cols-6">
             <StatTile
               href="/dashboard/posts"
               icon={FileText}
@@ -1102,24 +1102,24 @@ function StatTile({
     <Link
       href={href}
       className={cn(
-        'group flex flex-col rounded-xl border border-ink-900/[0.08] bg-white p-3.5 transition-colors hover:border-ink-900/20 hover:bg-mist-50/40',
+        'group flex min-w-0 flex-col rounded-xl border border-ink-900/[0.08] bg-white p-2 transition-colors hover:border-ink-900/20 hover:bg-mist-50/40 sm:p-3.5',
         LIGHT_FOCUS,
         className
       )}
     >
-      <span className="flex items-center justify-between gap-2">
-        <span className="text-[11.5px] font-medium text-ink-500">{label}</span>
+      <span className="flex min-w-0 items-start justify-between gap-1">
+        <span className="line-clamp-2 min-w-0 text-[9.5px] font-medium leading-snug text-ink-500 sm:text-[11.5px]">{label}</span>
         <Icon
-          className="h-4 w-4 shrink-0 text-ink-300 transition-colors group-hover:text-ink-500"
+          className="hidden h-4 w-4 shrink-0 text-ink-300 transition-colors group-hover:text-ink-500 sm:block"
           aria-hidden="true"
         />
       </span>
-      <span className="mt-2.5 text-[25px] font-semibold leading-none text-ink-900">
+      <span className="mt-2 text-[20px] font-semibold leading-none text-ink-900 sm:mt-2.5 sm:text-[25px]">
         {typeof value === 'number' ? toBn(value) : value}
       </span>
-      <span className="mt-2 inline-flex items-center gap-1.5 text-[11.5px] text-ink-500">
+      <span className="mt-1.5 inline-flex min-w-0 items-center gap-1 text-[9px] leading-snug text-ink-500 sm:mt-2 sm:gap-1.5 sm:text-[11.5px]">
         <span className={cn('h-1.5 w-1.5 shrink-0 rounded-full', dot)} aria-hidden="true" />
-        {hint}
+        <span className="truncate">{hint}</span>
       </span>
     </Link>
   );
@@ -1259,7 +1259,7 @@ function DashboardSkeleton() {
   return (
     <div className="space-y-4 sm:space-y-5" aria-busy="true" aria-label="ড্যাশবোর্ড লোড হচ্ছে">
       <div className="h-36 animate-pulse rounded-xl border border-ink-900/[0.05] bg-mist-100 sm:h-32" />
-      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 xl:grid-cols-6">
+      <div className="grid grid-cols-3 gap-1.5 sm:gap-2.5 xl:grid-cols-6">
         {[0, 1, 2, 3, 4, 5].map((index) => (
           <div key={index} className="h-24 animate-pulse rounded-xl bg-mist-100" />
         ))}

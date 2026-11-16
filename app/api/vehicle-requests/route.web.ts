@@ -5,7 +5,6 @@ import { createServerSideClient } from '@/lib/supabase/server';
 import { calculateVehicleRoute } from '@/lib/vehicle-routing';
 import type { VehicleKind } from '@/lib/catalog-types';
 import { getAllMCCAreas } from '@/lib/locations';
-import { notifyOrder } from '@/lib/notify-order.server';
 
 export const runtime = 'nodejs';
 
@@ -193,33 +192,11 @@ export async function POST(request: Request) {
     .single();
   if (requestReadError || !savedRequest) {
     console.error('Vehicle request details could not be loaded for Telegram.', { code: requestReadError?.code });
-    await notifyOrder({
-      id: data,
-      vehicle_kind: body.vehicleKind,
-      contact_name: name,
-      contact_phone: normalizedPhone,
-      pickup_area_id: pickupArea,
-      destination_area_id: destinationArea,
-      travel_date: body.travelDate,
-      travel_time: body.travelTime,
-      passenger_count: body.passengerCount,
-      trip_duration: body.tripDuration,
-      budget: body.budget,
-      notes: body.notes,
-      estimated_distance_km: distanceKm,
-      distance_source: body.distanceSource,
-      created_at: new Date().toISOString(),
-    }, 'vehicle_request', `/admin/vehicle-requests/${data}`);
     return NextResponse.json(
       { success: true, requestId: data, warning: 'অনুরোধ জমা হয়েছে; রেফারেন্স নম্বরটি পরে দেখা যাবে।' },
       { status: 201 }
     );
   }
-  await notifyOrder(
-    savedRequest as Record<string, unknown>,
-    'vehicle_request',
-    `/admin/vehicle-requests/${data}`
-  );
   return NextResponse.json(
     { success: true, requestId: data, referenceCode: savedRequest.reference_code },
     { status: 201 }

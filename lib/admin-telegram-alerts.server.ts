@@ -5,7 +5,7 @@ import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AdminTelegramAlertType } from './admin-telegram-alerts';
 import { sendTelegram, TelegramApiError } from './telegram';
 
-const MAX_DELIVERY_ATTEMPTS = 5;
+const MAX_DELIVERY_ATTEMPTS = 4;
 const MAX_WORKER_JOBS = 3;
 const MAX_WORKER_RUNTIME_MS = 45_000;
 
@@ -26,6 +26,7 @@ type Alert = {
   summary: string;
   adminPath: string;
   occurredAt: string;
+  payload: Record<string, unknown>;
 };
 
 function getServerClient(): SupabaseClient | null {
@@ -37,18 +38,130 @@ function getServerClient(): SupabaseClient | null {
   });
 }
 
-function getAlertForJob(job: QueueJob): Alert | null {
-  const title = typeof job.payload?.title === 'string' ? job.payload.title : null;
-  const summary = typeof job.payload?.summary === 'string' ? job.payload.summary : null;
+function getAlertFromPayload(
+  payload: Record<string, unknown>,
+  createdAt: string
+): Alert | null {
+  const title = typeof payload.title === 'string' ? payload.title : null;
+  const summary = typeof payload.summary === 'string' ? payload.summary : null;
   if (!title || !summary) return null;
   return {
     title,
     summary,
-    adminPath:
-      typeof job.payload?.admin_path === 'string' ? job.payload.admin_path : '/admin',
-    occurredAt:
-      typeof job.payload?.occurred_at === 'string' ? job.payload.occurred_at : job.created_at,
+    adminPath: typeof payload.admin_path === 'string' ? payload.admin_path : '/admin',
+    occurredAt: typeof payload.occurred_at === 'string' ? payload.occurred_at : createdAt,
+    payload,
   };
+}
+
+function getAlertForJob(job: QueueJob): Alert | null {
+  return getAlertFromPayload(job.payload, job.created_at);
+}
+
+function text(value: unknown): string | undefined {
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined;
+}
+
+function alertStyle(eventType: string): { emoji: string; label: string } {
+  switch (eventType) {
+    case 'community_post':
+    case 'tolet_listing':
+      return { emoji: '🆕', label: 'New Post' };
+    case 'account_created':
+    case 'tolet_profile':
+    case 'tutor_profile':
+    case 'donor_profile':
+    case 'service_listing':
+      return { emoji: '👤', label: 'New Account / Profile' };
+    case 'service_request':
+    case 'vehicle_request':
+    case 'vehicle_booking':
+      return { emoji: '🛠', label: 'New Service Request' };
+    case 'tolet_listing_deleted':
+    case 'account_deleted':
+      return { emoji: '🗑', label: 'Deletion' };
+    case 'complaint':
+      return { emoji: '⚠️', label: 'Complaint' };
+    case 'contact_message':
+    case 'contact_message_reply':
+      return { emoji: '✉️', label: 'New Message' };
+    case 'critical_error':
+      return { emoji: '🚨', label: 'Critical Admin Error' };
+    case 'admin_test':
+      return { emoji: '🧪', label: 'Telegram Test' };
+    default:
+      return { emoji: '🔔', label: 'Admin Notification' };
+  }
+}
+
+function adminUrl(path: string): string {
+  const configuredOrigin = process.env.NEXT_PUBLIC_SITE_URL || 'https://mymensinghsheba.com';
+  let origin: URL;
+  try {
+    origin = new URL(configuredOrigin);
+  } catch {
+    throw new Error('NEXT_PUBLIC_SITE_URL must be a valid absolute URL.');
+  }
+  if (origin.protocol !== 'https:' && process.env.NODE_ENV !== 'development') {
+    throw new Error('NEXT_PUBLIC_SITE_URL must use HTTPS outside development.');
+  }
+  const safePath = path.startsWith('/') && !path.startsWith('//') ? path : '/admin';
+  return new URL(safePath, origin).toString();
+}
+
+function formatAdminTelegramMessage(eventType: string, alert: Alert): string {
+  const style = alertStyle(eventType);
+  const payload = alert.payload;
+  const parts = [`${style.emoji} ${style.label}: ${alert.title}`];
+  const name = text(payload.user_name) ?? text(payload.name);
+  const phone = text(payload.user_phone) ?? text(payload.phone);
+  const area = text(payload.area);
+  const itemTitle = text(payload.item_title);
+  const details = text(payload.details) ?? (!name && !phone && !area ? alert.summary : undefined);
+
+  if (name) parts.push(`👤 User: ${name}`);
+  if (phone) parts.push(`📞 Phone: ${phone}`);
+  if (area) parts.push(`📍 Area: ${area}`);
+  if (itemTitle && itemTitle !== alert.title) parts.push(`📝 Title: ${itemTitle}`);
+  if (details) parts.push(`📝 Details: ${details}`);
+
+  const date = new Date(alert.occurredAt);
+  const occurredAt = Number.isFinite(date.getTime())
+    ? date
+    : new Date();
+  parts.push(
+    `🕒 Time: ${occurredAt.toLocaleString('en-GB', {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+      timeZone: 'Asia/Dhaka',
+    })} (Asia/Dhaka)`
+  );
+  parts.push(`🔗 Admin link: ${adminUrl(alert.adminPath)}`);
+  return parts.join('\n');
+}
+
+export async function notifyAdmin(
+  eventType: string,
+  payload: Record<string, unknown>,
+  options: { attempt?: number } = {}
+): Promise<void> {
+  const alert = getAlertFromPayload(payload, new Date().toISOString());
+  if (!alert) throw new Error('Admin Telegram notification needs a title and summary.');
+
+  try {
+    await sendTelegram(formatAdminTelegramMessage(eventType, alert));
+    console.info('Admin Telegram notification attempt succeeded.', {
+      eventType,
+      attempt: options.attempt ?? 1,
+    });
+  } catch (error) {
+    console.error('Admin Telegram notification attempt failed.', {
+      eventType,
+      attempt: options.attempt ?? 1,
+      error: error instanceof Error ? error.message : 'unknown_telegram_error',
+    });
+    throw error;
+  }
 }
 
 async function updateClaimedJob(
@@ -78,11 +191,15 @@ async function updateClaimedJob(
 
 function isRetryable(error: unknown): boolean {
   if (!(error instanceof TelegramApiError)) return true;
-  return error.status === 408 || error.status === 429 || error.status >= 500;
+  return error.status === 0 || error.status === 408 || error.status === 429 || error.status >= 500;
 }
 
-function retryAt(attempt: number): string {
-  const delayMs = Math.min(60 * 60_000, 30_000 * 2 ** Math.max(0, attempt - 1));
+function retryAt(attempt: number, error: unknown): string {
+  const retryAfterSeconds =
+    error instanceof TelegramApiError ? error.retryAfterSeconds : undefined;
+  const delayMs = retryAfterSeconds
+    ? retryAfterSeconds * 1000
+    : Math.min(60 * 60_000, 30_000 * 2 ** Math.max(0, attempt - 1));
   return new Date(Date.now() + delayMs).toISOString();
 }
 
@@ -100,29 +217,14 @@ async function sendOneJob(client: SupabaseClient, job: QueueJob): Promise<'sent'
     return 'failed';
   }
 
-  const occurredAt = new Date(alert.occurredAt).toLocaleString('bn-BD', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-    timeZone: 'Asia/Dhaka',
-  });
-  const message = [
-    '🔔 Mymensingh Sheba Admin Alert',
-    '',
-    `📌 ${alert.title}`,
-    `📝 ${alert.summary}`,
-    `🕐 সময়: ${occurredAt} (Asia/Dhaka)`,
-    `📂 অ্যাডমিন প্যানেল: ${alert.adminPath}`,
-    `🆔 Event ID: ${job.event_id}`,
-  ].join('\n');
-
   try {
-    await sendTelegram(message);
+    await notifyAdmin(job.related_type, job.payload, { attempt: job.attempt_count });
   } catch (error) {
     const retryable = isRetryable(error) && job.attempt_count < MAX_DELIVERY_ATTEMPTS;
     await updateClaimedJob(client, job, {
       status: retryable ? 'retry_scheduled' : 'failed',
       last_error: error instanceof Error ? error.message.slice(0, 200) : 'telegram_send_failed',
-      next_retry_at: retryable ? retryAt(job.attempt_count) : null,
+      next_retry_at: retryable ? retryAt(job.attempt_count, error) : null,
       lease_token: null,
       lease_until: null,
     });
@@ -262,7 +364,7 @@ export async function processAdminTelegramQueue(
     for (let index = 0; index < batchSize; index += 1) {
       const { data, error } = await client.rpc('claim_admin_telegram_outbox_job', {
         p_lease_seconds: 180,
-        p_max_attempts: MAX_DELIVERY_ATTEMPTS,
+            p_max_attempts: MAX_DELIVERY_ATTEMPTS,
       });
       if (error) throw new Error('telegram_job_claim_failed');
       const job = (data as QueueJob[] | null)?.[0];

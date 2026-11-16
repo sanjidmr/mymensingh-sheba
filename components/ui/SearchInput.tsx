@@ -37,7 +37,7 @@ export function SearchInput({
   return (
     <div
       className={cn(
-        'ui-card w-full rounded-2xl border p-1.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 transition-all focus-within:border-emerald-700 focus-within:ring-2 focus-within:ring-emerald-700/20',
+        'w-full bg-white rounded-2xl border border-slate-200/90 shadow-sm p-1.5 flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 transition-all focus-within:border-emerald-700 focus-within:ring-2 focus-within:ring-emerald-700/20',
         className
       )}
     >

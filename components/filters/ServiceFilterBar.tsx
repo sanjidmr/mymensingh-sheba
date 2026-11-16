@@ -317,8 +317,9 @@ export default function ServiceFilterBar({
       typeof filterValues.bloodGroup === 'string' && filterValues.bloodGroup
         ? filterValues.bloodGroup
         : 'all';
-    const selectedLabel =
-      BLOOD_GROUPS.find((group) => group.id === selectedGroup)?.labelBn ?? 'সকল গ্রুপ';
+    const selectedLabel = selectedGroup === 'all'
+      ? 'বেছে নিন'
+      : BLOOD_GROUPS.find((group) => group.id === selectedGroup)?.labelBn ?? 'বেছে নিন';
 
     const chooseGroup = (groupId: string) => {
       const next: Record<string, unknown> = { ...filterValues };
@@ -457,56 +458,36 @@ export default function ServiceFilterBar({
 
     return (
       <section className="mb-3 rounded-xl border border-mist-200 bg-white p-2 sm:mb-4 sm:rounded-2xl sm:p-3">
-        <div className="flex min-w-0 items-center justify-between gap-1.5 sm:gap-2">
-          <div className="flex min-w-0 shrink-0 items-center gap-1 sm:gap-2">
-            {inlineAction}
-            <button
-              type="button"
-              aria-expanded={isDrawerOpen}
-              onClick={() => setIsDrawerOpen((open) => !open)}
-              className="inline-flex min-h-9 items-center gap-1 rounded-lg bg-brand-700 px-2 text-[11px] font-bold text-white transition-colors hover:bg-brand-800 sm:min-h-10 sm:gap-2 sm:rounded-xl sm:px-3.5 sm:text-[13px]"
-            >
-              <SlidersHorizontal className="h-3.5 w-3.5 sm:h-4 sm:w-4" aria-hidden="true" />
-              ফিল্টার
+        <div className="grid grid-cols-2 gap-2 sm:max-w-lg sm:grid-cols-2">
+          <button
+            type="button"
+            aria-expanded={isDrawerOpen}
+            onClick={() => setIsDrawerOpen((open) => !open)}
+            className="inline-flex h-12 w-full min-w-0 items-center justify-center gap-1 rounded-xl bg-brand-700 px-2 text-[11px] font-extrabold text-white transition-colors hover:bg-brand-800 min-[375px]:text-xs sm:basis-0 sm:flex-1 sm:gap-1.5 sm:px-4 sm:text-sm"
+          >
+            <SlidersHorizontal className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1">
+              বাছাই করুন
               {activeCount > 0 && (
                 <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent-400 px-1 text-[10px] font-extrabold text-brand-950 sm:h-5 sm:min-w-5 sm:text-[11px]">
                   {activeCount}
                 </span>
               )}
-            </button>
-            {activeCount > 0 && (
-              <button
-                type="button"
-                onClick={onResetFilters}
-                aria-label="সব ফিল্টার মুছুন"
-                className="inline-flex min-h-8 min-w-8 items-center justify-center gap-1 rounded-lg px-1.5 text-xs font-bold text-ink-500 hover:bg-mist-50 sm:min-h-10 sm:px-2"
-              >
-                <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-                <span className="hidden sm:inline">মুছুন</span>
-              </button>
-            )}
-          </div>
-          <div className="flex min-w-0 items-center justify-end gap-1.5 sm:gap-3">
-            <span className="shrink-0 text-[10px] text-ink-500 sm:text-xs">
-              <strong className="text-ink-800">{totalResults}</strong> জন
             </span>
-            {sortOptions && onSortChange && (
-              <label className="flex min-w-0 items-center gap-1 sm:gap-1.5">
-                <span className="sr-only sm:not-sr-only">সাজান</span>
-                <select
-                  aria-label="গৃহশিক্ষক সাজান"
-                  value={currentSort}
-                  onChange={(event) => onSortChange(event.target.value)}
-                  className="min-h-9 w-[86px] min-w-0 rounded-lg border border-brand-100 bg-mist-50 px-1 text-[10px] font-medium text-ink-800 sm:min-h-10 sm:w-auto sm:max-w-36 sm:px-2 sm:text-xs"
-                >
-                  {sortOptions.map((option) => (
-                    <option key={option.id} value={option.id}>{option.labelBn}</option>
-                  ))}
-                </select>
-              </label>
-            )}
-          </div>
+          </button>
+          {inlineAction}
         </div>
+        {activeCount > 0 && (
+          <button
+            type="button"
+            onClick={onResetFilters}
+            aria-label="সব ফিল্টার মুছুন"
+            className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-lg px-2 text-xs font-bold text-ink-500 hover:bg-mist-50"
+          >
+            <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
+            ফিল্টার মুছুন
+          </button>
+        )}
 
         {isDrawerOpen && (
           <div className="mt-3 grid grid-cols-2 gap-2.5 border-t border-mist-100 pt-3 sm:grid-cols-3 lg:grid-cols-4">

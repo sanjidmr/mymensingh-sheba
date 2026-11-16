@@ -267,7 +267,7 @@ export async function adminFetchToletAnalytics(
 
 export async function adminFetchToletListingMetrics(
   listingIds: string[]
-): Promise<Record<string, Pick<ToletListingStats, 'views' | 'callClicks'>>> {
+): Promise<Record<string, Pick<ToletListingStats, 'views' | 'callClicks' | 'whatsappClicks'>>> {
   const uniqueIds = [...new Set(listingIds)];
   if (uniqueIds.length > 100) throw new Error('একবারে সর্বোচ্চ ১০০টি বাসাভাড়ার পরিসংখ্যান চাওয়া যাবে।');
   if (uniqueIds.some((id) => !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id))) {
@@ -284,11 +284,12 @@ export async function adminFetchToletListingMetrics(
   if (error) throw new Error(`বাসাভাড়ার পরিসংখ্যান লোড ব্যর্থ হয়েছে: ${error.message}`);
   if (!Array.isArray(data)) throw new Error('বাসাভাড়ার পরিসংখ্যানের উত্তর সঠিক নয়।');
 
-  const metrics: Record<string, Pick<ToletListingStats, 'views' | 'callClicks'>> = {};
+  const metrics: Record<string, Pick<ToletListingStats, 'views' | 'callClicks' | 'whatsappClicks'>> = {};
   for (const row of data as Array<Record<string, unknown>>) {
     const listingId = row.listing_id;
     const views = Number(row.views);
     const callClicks = Number(row.call_clicks);
+    const whatsappClicks = Number(row.whatsapp_clicks);
     if (
       typeof listingId !== 'string' ||
       row.views == null ||
@@ -296,16 +297,48 @@ export async function adminFetchToletListingMetrics(
       views < 0 ||
       row.call_clicks == null ||
       !Number.isSafeInteger(callClicks) ||
-      callClicks < 0
+      callClicks < 0 ||
+      row.whatsapp_clicks == null ||
+      !Number.isSafeInteger(whatsappClicks) ||
+      whatsappClicks < 0
     ) {
       throw new Error('বাসাভাড়ার পরিসংখ্যানের উত্তর সঠিক নয়।');
     }
-    metrics[listingId] = { views, callClicks };
+    metrics[listingId] = { views, callClicks, whatsappClicks };
   }
   if (uniqueIds.some((id) => !metrics[id])) {
     throw new Error('সব বাসাভাড়ার পরিসংখ্যানের রেকর্ড পাওয়া যায়নি।');
   }
   return metrics;
+}
+
+export async function adminFetchToletPlatformSummary(): Promise<{
+  directoryVisits: number;
+  views: number;
+  callClicks: number;
+  whatsappClicks: number;
+}> {
+  if (!isSupabaseConfigured) throw new Error('Supabase সংযুক্ত নেই; প্রকৃত পরিসংখ্যান লোড করা যায়নি।');
+  const client = createClient();
+  if (!client) throw new Error('Supabase ক্লায়েন্ট তৈরি করা যায়নি।');
+
+  const { data, error } = await client.rpc('fn_admin_engagement_analytics', {
+    p_scope: 'tolet',
+  });
+  if (error) throw new Error(`বাসাভাড়ার সারাংশ লোড ব্যর্থ হয়েছে: ${error.message}`);
+  if (!data || typeof data !== 'object') throw new Error('বাসাভাড়ার সারাংশের উত্তর সঠিক নয়।');
+
+  const summary = data as Record<string, unknown>;
+  const directoryVisits = Number(summary.directoryVisits);
+  const views = Number(summary.profileViews);
+  const callClicks = Number(summary.callClicks);
+  const whatsappClicks = Number(summary.whatsappClicks);
+  if ([directoryVisits, views, callClicks, whatsappClicks].some(
+    (value) => !Number.isSafeInteger(value) || value < 0
+  )) {
+    throw new Error('বাসাভাড়ার সারাংশের সংখ্যা সঠিক নয়।');
+  }
+  return { directoryVisits, views, callClicks, whatsappClicks };
 }
 
 interface RawAnalyticsListing {

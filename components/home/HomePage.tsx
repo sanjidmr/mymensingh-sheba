@@ -1,10 +1,9 @@
+import dynamic from 'next/dynamic';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import HeroCarousel from '@/components/home/HeroCarousel';
 import SearchSection from '@/components/home/SearchSection';
 import CategorySection from '@/components/home/CategorySection';
-import ServiceRowSection from '@/components/home/ServiceRowSection';
-import WifiCoachingSection from '@/components/home/WifiCoachingSection';
 import CommunityInviteSection from '@/components/home/CommunityInviteSection';
 import WhySection from '@/components/home/WhySection';
 import StepsSection from '@/components/home/StepsSection';
@@ -17,6 +16,9 @@ import {
 import { getSiteContentOverrides } from '@/lib/site-content-server';
 import { fetchPublicHeroSlides } from '@/lib/hero-service';
 
+const ServiceRowSection = dynamic(() => import('@/components/home/ServiceRowSection'));
+const WifiCoachingSection = dynamic(() => import('@/components/home/WifiCoachingSection'));
+
 /**
  * ময়মনসিংহ সেবা — হোমপেজ
  *
@@ -26,7 +28,7 @@ import { fetchPublicHeroSlides } from '@/lib/hero-service';
  *   → সহায়ক টেক্সট + সার্চ
  *   → ক্যাটাগরি ০১ (দৈনন্দিন সেবা, white)
  *   → ক্যাটাগরি ০২ (কেনাকাটা, যাতায়াত ও তথ্য, mist)
- *   → ক্যাটাগরি ০৩ (জরুরি ও জনসেবা, সাদা — অন্য সেকশনের মতো, ডেন্স কার্ড)
+ *   → জরুরি অ্যাম্বুলেন্স ও পুলিশসহ প্রয়োজনীয় সেবা
  *   → সার্ভিস রো: বাসা ভাড়া → গৃহশিক্ষক → গাড়ি ভাড়া (৫টি ছোট imageless কার্ড এক রোতে)
  *   → ময়মনসিংহ কমিউনিটির জন্য
  *   → সার্ভিস রো: রক্তদাতা → WiFi ও কোচিং → স্থানীয় খবর ও ঘোষণা
@@ -79,9 +81,6 @@ export default async function HomePage() {
         {/* ক্যাটাগরি ০২ */}
         {visible('category_shop') && <CategorySection category={categories.shopTravel} />}
 
-        {/* ক্যাটাগরি ০৩ */}
-        {visible('category_emergency') && <CategorySection category={categories.emergency} />}
-
         {/* সার্ভিস রো — বাসা ভাড়া */}
         {visible('row_tolet') && (
           <ServiceRowSection
@@ -92,7 +91,7 @@ export default async function HomePage() {
             source="tolet"
             tone="mist"
             withImage
-            demoImages={['/home.jpg', '/homechange.jpg', '/sheba1.png', '/sheba2.png']}
+            demoImages={['/home.jpg', '/homechange.jpg', '/sheba1.webp', '/sheba2.webp']}
           />
         )}
 
@@ -106,7 +105,7 @@ export default async function HomePage() {
             source="tutor"
             tone="white"
             withImage
-            demoImages={['/tutor.jpg', '/coutching.jpg', '/sheba3.png', '/sheba4.png']}
+            demoImages={['/tutor.jpg', '/coutching.jpg', '/sheba3.webp', '/sheba4.webp']}
           />
         )}
 
@@ -120,6 +119,7 @@ export default async function HomePage() {
             source="vehicle"
             tone="mist"
             withImage
+            demoImages={['/carrent.webp', '/auto.jpg', '/cng.jpg']}
           />
         )}
 

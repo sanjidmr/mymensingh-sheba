@@ -97,17 +97,6 @@ export async function deleteTutorProfile(id: string): Promise<ActionResult> {
       return { ok: false, error: 'টিউটর প্রোফাইলের আইডি সঠিক নয়।' };
     }
 
-    const { data: requests, error: requestError } = await client
-      .from('service_requests')
-      .select('id')
-      .eq('profile_id', id)
-      .eq('service_slug', 'home-tutor')
-      .limit(1);
-    if (requestError) return { ok: false, error: `সংশ্লিষ্ট অনুরোধ যাচাই করা যায়নি: ${requestError.message}` };
-    if (requests?.length) {
-      return { ok: false, error: 'এই টিউটর প্রোফাইলের সঙ্গে অনুরোধ যুক্ত আছে। অনুরোধের ইতিহাস অক্ষত রাখতে আগে সেটি পরিচালনা করুন।' };
-    }
-
     const { data, error } = await client
       .from('home_tutor_profiles')
       .delete()
@@ -115,8 +104,9 @@ export async function deleteTutorProfile(id: string): Promise<ActionResult> {
       .select('id')
       .maybeSingle();
     if (error) return { ok: false, error: `টিউটর প্রোফাইল মুছে ফেলা যায়নি: ${error.message}` };
-    if (!data) return { ok: false, error: 'টিউটর প্রোফাইলটি পাওয়া যায়নি।' };
+    if (!data) return { ok: false, error: 'টিউটর প্রোফাইলটি পাওয়া যায়নি বা ইতিমধ্যে মুছে ফেলা হয়েছে।' };
 
+    revalidatePath('/admin');
     revalidatePath('/admin/verifications');
     revalidatePath(`/admin/verifications/${id}`);
     revalidatePath('/home-tutor');

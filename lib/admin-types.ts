@@ -44,12 +44,6 @@ export interface AdminDashboardStats {
 }
 
 export interface PlatformSettings {
-  toletFeeRules: {
-    messSeatFee: number;
-    tier1Max10k: number;
-    tier2Max20k: number;
-    tier3Above20k: number;
-  };
   serviceAvailability: Record<string, boolean>;
   notificationSettings: {
     notifyOnRequestSubmitted: boolean;

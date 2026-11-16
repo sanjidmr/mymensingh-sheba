@@ -194,24 +194,6 @@ function formatPostSalaryBn(min: number | undefined, max: number | undefined): s
 }
 
 export function vehicleToPreviewCard(listing: ServiceListing): HomePreviewCard {
-  const areas = listing.areaIds
-    .map((id) => getAreaById(id)?.nameBn)
-    .filter((n): n is string => Boolean(n));
-  const chips = [
-    listing.modelYear ? `${listing.modelYear} মডেল` : '',
-    listing.hasAc ? 'এসি' : '',
-    listing.driverIncluded ? 'ড্রাইভারসহ' : '',
-  ].filter(Boolean);
-  const price =
-    (listing.ratePerKm != null
-      ? `৳${listing.ratePerKm.toLocaleString('bn-BD')}/কিমি`
-      : undefined) ||
-    listing.priceNoteBn ||
-    (listing.priceMin != null && listing.priceMax != null
-      ? `৳${listing.priceMin.toLocaleString('bn-BD')}-${listing.priceMax.toLocaleString('bn-BD')}`
-      : listing.priceMin != null
-        ? `৳${listing.priceMin.toLocaleString('bn-BD')}`
-        : undefined);
   return {
     id: listing.id,
     href: `/gari-auto-cng/${listing.slug}`,
@@ -219,17 +201,10 @@ export function vehicleToPreviewCard(listing: ServiceListing): HomePreviewCard {
     avatarLabel: listing.titleBn.charAt(0) || '?',
     avatarTone: 'green',
     title: listing.titleBn,
-    subtitle: listing.subtitleBn || listing.modelNameBn,
-    location: areas.length ? areas.slice(0, 2).join(', ') : undefined,
-    metaChips: chips,
-    mobileMeta: listing.ratePerKm != null
-      ? [`৳${listing.ratePerKm.toLocaleString('bn-BD')}/কিমি`]
-      : [],
-    mobileMinimal: true,
-    availability: listing.isActive
-      ? { label: 'চলমান', tone: 'green' }
-      : { label: 'অনুপলব্ধ', tone: 'slate' },
-    footer: price,
+    subtitle: listing.modelNameBn || listing.subtitleBn,
+    metaChips: [],
+    availability: undefined,
+    footer: undefined,
   };
 }
 

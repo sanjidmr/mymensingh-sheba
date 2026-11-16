@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   Loader2,
   Save,
-  ShieldCheck,
   CheckCircle2,
   AlertTriangle,
   Phone,
@@ -37,8 +36,8 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
   const [rateLabel, setRateLabel] = useState(initialProfile?.rateLabel || '');
   const [aboutBn, setAboutBn] = useState(initialProfile?.aboutBn || '');
   const [phonePrivate, setPhonePrivate] = useState(initialProfile?.phonePrivate || '');
-  const [isVerified, setIsVerified] = useState(initialProfile?.isVerified || false);
-  const [isActive, setIsActive] = useState(initialProfile?.isActive ?? true);
+  const isVerified = initialProfile?.isVerified ?? false;
+  const isActive = initialProfile?.isActive ?? true;
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
@@ -68,7 +67,6 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
 
   const validate = (): string => {
     if (nameBn.trim().length < 2) return 'নাম লিখুন (সর্বনিম্ন ২ অক্ষর)';
-    if (aboutBn.trim().length < 10) return 'বিস্তারিত তথ্য লিখুন (সর্বনিম্ন ১০ অক্ষর)';
     return '';
   };
 
@@ -130,10 +128,10 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          {/* Service + status */}
+          {/* Service */}
           <section className="bg-white rounded-2xl border border-slate-200 p-5">
-            <h3 className="text-sm font-bold text-slate-900 mb-4">সার্ভিস ও গ্রহণযোগ্যতা</h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <h3 className="text-sm font-bold text-slate-900 mb-4">সার্ভিস নির্বাচন</h3>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className={labelCls}>সার্ভিস</label>
                 <select
@@ -142,39 +140,10 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
                   className={inputCls}
                   disabled={mode === 'edit'}
                 >
-                  <option value="kajer-bua">কাজের বুয়া</option>
-                  <option value="electrician">Electrician</option>
-                  <option value="plumber">Plumber</option>
-                  <option value="ac-fridge">এসি ও ফ্রিজ মেরামত</option>
+                  {Object.values(STAFF_SERVICE_UI).map(({ key, nameBn }) => (
+                    <option key={key} value={key}>{nameBn}</option>
+                  ))}
                 </select>
-              </div>
-              <div>
-                <label className={labelCls}>প্রকাশনার অবস্থা</label>
-                <select
-                  value={isActive ? 'active' : 'inactive'}
-                  onChange={(e) => setIsActive(e.target.value === 'active')}
-                  className={inputCls}
-                >
-                  <option value="active">সক্রিয় (নির্ধারণের জন্য প্রস্তুত)</option>
-                  <option value="inactive">নিষ্ক্রিয় (লুকানো)</option>
-                </select>
-              </div>
-              <div>
-                <label className={labelCls}>যাচাইয়ের অবস্থা</label>
-                <div className="flex items-center gap-3 h-[42px]">
-                  <button
-                    type="button"
-                    onClick={() => setIsVerified((v) => !v)}
-                    className={`w-full px-3.5 py-2.5 rounded-xl border text-xs font-bold flex items-center justify-center gap-1.5 transition-colors ${
-                      isVerified
-                        ? 'bg-emerald-50 border-emerald-300 text-emerald-900'
-                        : 'bg-white border-slate-200 text-slate-600'
-                    }`}
-                  >
-                    <ShieldCheck className="w-4 h-4" />
-                    {isVerified ? 'ভেরিফাইড' : 'ভেরিফাইড নয়'}
-                  </button>
-                </div>
               </div>
             </div>
           </section>
@@ -223,7 +192,7 @@ export default function StaffProfileForm({ mode, initialProfile }: StaffProfileF
 
           {/* About */}
           <section className="bg-white rounded-2xl border border-slate-200 p-5">
-            <label className={labelCls}>বিস্তারিত পরিচয় ও কর্মসূত্র*</label>
+            <label className={labelCls}>বিস্তারিত পরিচয় ও কর্মসূত্র</label>
             <textarea
               value={aboutBn}
               onChange={(e) => setAboutBn(e.target.value)}

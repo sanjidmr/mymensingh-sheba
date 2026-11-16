@@ -12,17 +12,16 @@ import ServiceListingActions from '@/components/admin/ServiceListingActions';
 import { fetchServiceListings, parseListParams, type AdminServiceListingRow } from '@/lib/admin/queries';
 import { COACHING_CATEGORIES, COACHING_CLASSES, COACHING_SUBJECTS } from '@/lib/catalog-types';
 import { getAllMCCAreas } from '@/lib/locations';
+import { fetchAdminEngagementAnalytics } from '@/lib/admin/queries';
 
 export const dynamic = 'force-dynamic';
 
 const LABELS = {
-  vehicle: 'গাড়ির তালিকা',
   wifi: 'WiFi প্রদানকারী',
   coaching: 'কোচিং সেন্টার',
 } as const;
 
 const PUBLIC_PATH = {
-  vehicle: '/gari-auto-cng',
   wifi: '/wifi',
   coaching: '/coaching',
 } as const;
@@ -42,27 +41,7 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
       ),
     },
   ];
-  if (category === 'vehicle') {
-    columns.push({
-      key: 'vehicle',
-      header: 'গাড়ির তথ্য',
-      render: (row) => (
-        <span className="block min-w-0">
-          <span className="block">{row.model_name_bn || 'মডেল উল্লেখ নেই'} · {row.seat_count ?? '—'} আসন</span>
-          {row.driver_name_bn && <span className="block text-xs text-admin-muted">চালক: {row.driver_name_bn}</span>}
-        </span>
-      ),
-    });
-    columns.push({
-      key: 'price',
-      header: 'ভাড়া (তথ্যসূত্র)',
-      render: (row) => row.rate_per_km != null
-        ? `৳${row.rate_per_km.toLocaleString('bn-BD', { maximumFractionDigits: 2 })}/কিমি${row.minimum_fare != null ? ` · সর্বনিম্ন ৳${row.minimum_fare.toLocaleString('bn-BD')}` : ''}${row.additional_fee ? ` · অতিরিক্ত ৳${row.additional_fee.toLocaleString('bn-BD')}` : ''}`
-        : row.price_min != null
-        ? `৳${row.price_min}${row.price_max != null ? `–${row.price_max}` : '+'}${row.price_note_bn ? ` · ${row.price_note_bn}` : ''}`
-        : 'উল্লেখ নেই',
-    });
-  } else if (category === 'wifi') {
+  if (category === 'wifi') {
     columns.push({ key: 'speed', header: 'স্পিড', render: (row) => row.speed_mbps != null ? `${row.speed_mbps} Mbps` : 'উল্লেখ নেই' });
     columns.push({
       key: 'price',
@@ -82,6 +61,15 @@ function categoryColumns(category: keyof typeof LABELS): AdminColumn<AdminServic
       render: (row) => COACHING_CATEGORIES.find((item) => item.id === row.coaching_category)?.labelBn || 'উল্লেখ নেই',
     });
   }
+  columns.push({
+    key: 'engagement',
+    header: 'ভিউ / কল চাপ',
+    render: (row) => (
+      <span className="whitespace-nowrap text-xs text-admin-muted">
+        {row.views == null ? '—' : row.views.toLocaleString('bn-BD')} / {row.call_clicks == null ? '—' : row.call_clicks.toLocaleString('bn-BD')}
+      </span>
+    ),
+  });
   columns.push({
     key: 'review',
     header: 'অনুমোদন',
@@ -126,7 +114,10 @@ export default async function AdminServiceListingsByCategoryPage({
   const category = rawCategory as keyof typeof LABELS;
   const resolvedSearchParams = await searchParams;
   const params = parseListParams(resolvedSearchParams, { pageSize: 20 });
-  const result = await fetchServiceListings(params, category);
+  const [result, analytics] = await Promise.all([
+    fetchServiceListings(params, category),
+    fetchAdminEngagementAnalytics(category),
+  ]);
   if (result.unavailable) {
     return (
       <>
@@ -137,36 +128,38 @@ export default async function AdminServiceListingsByCategoryPage({
   }
   const taxonomies = category === 'coaching'
     ? [...COACHING_CLASSES, ...COACHING_SUBJECTS, ...COACHING_CATEGORIES]
-    : category === 'vehicle'
-      ? [{ id: 'গাড়ি', labelBn: 'গাড়ি' }]
-      : [];
+    : [];
   const areaOptions = getAllMCCAreas({ activeOnly: true }).map(({ id, nameBn }) => ({ value: id, label: nameBn }));
+  const rows = result.rows.map((row) => ({
+    ...row,
+    views: analytics.error ? null : analytics.profiles[row.slug]?.views ?? 0,
+    call_clicks: analytics.error ? null : analytics.profiles[row.slug]?.callClicks ?? 0,
+  }));
 
   return (
     <>
       <PageHeader
         title={LABELS[category]}
-        description={category === 'vehicle'
-          ? 'গাড়ির ছবি, ভাড়া ও তথ্য পরিচালনা করুন। অটো ও CNG-এর জন্য এখানে কোনো যানতালিকা নেই।'
-          : 'প্রকৃত সরবরাহকৃত তথ্য পরিচালনা করুন। সক্রিয় অবস্থা প্রকাশনা বোঝায়; আলাদা যাচাইকরণ ক্ষেত্র এই স্কিমায় নেই।'}
+        description="প্রকৃত সরবরাহকৃত তথ্য পরিচালনা করুন। সক্রিয় অবস্থা প্রকাশনা বোঝায়; আলাদা যাচাইকরণ ক্ষেত্র এই স্কিমায় নেই।"
         breadcrumb={{ href: '/admin', label: 'অ্যাডমিন' }}
         count={`ফিল্টার করা ${result.total} টি তালিকা`}
         actions={
-          <>
-            {category === 'vehicle' && <Link href="/admin/vehicle-requests" className="inline-flex min-h-11 items-center rounded-md border border-admin-border px-3 text-sm font-semibold">গাড়ির অনুরোধ</Link>}
-            <Link href={`/admin/directories/${category}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white">
-              <Plus className="h-4 w-4" aria-hidden="true" />নতুন তালিকা
-            </Link>
-          </>
+          <Link href={`/admin/directories/${category}/new`} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white">
+            <Plus className="h-4 w-4" aria-hidden="true" />নতুন তালিকা
+          </Link>
         }
       />
-      <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
+      {analytics.error && <AdminError title="অ্যানালিটিক্স লোড করা যায়নি" message={analytics.error} className="mb-4" />}
+      <div className="mb-4 grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-6">
+        <StatCard label="ডিরেক্টরি ভিজিট" value={analytics.error ? '—' : analytics.directoryVisits} />
+        <StatCard label="মোট ভিউ" value={analytics.error ? '—' : analytics.profileViews} />
+        <StatCard label="কল বাটন চাপা" value={analytics.error ? '—' : analytics.callClicks} tone="good" />
         <StatCard label="মোট তালিকা" value={result.counts.total} />
         <StatCard label="প্রকাশিত" value={result.counts.active} tone="good" />
         <StatCard label="অপ্রকাশিত" value={result.counts.inactive} />
       </div>
       <div className="mb-4 grid grid-cols-1 gap-2 rounded-admin-card border border-admin-border bg-white p-3 sm:grid-cols-2 lg:grid-cols-4">
-        <AdminSearch placeholder="নাম, বিবরণ বা রুট খুঁজুন…" />
+        <AdminSearch placeholder="নাম বা বিবরণ খুঁজুন…" />
         <FilterNav id={`${category}-status`} label="অবস্থা" value={typeof params.status === 'string' ? params.status : ''} placeholder="সব অবস্থা" options={[
           { value: 'pending', label: 'অনুমোদন অপেক্ষমাণ' },
           { value: 'approved', label: 'অনুমোদিত' },
@@ -176,13 +169,14 @@ export default async function AdminServiceListingsByCategoryPage({
           { value: 'inactive', label: 'অপ্রকাশিত' },
         ]} param="status" searchParams={resolvedSearchParams} />
         <FilterNav id={`${category}-area`} label="এলাকা" value={typeof params.area === 'string' ? params.area : ''} placeholder="সব এলাকা" options={areaOptions} param="area" searchParams={resolvedSearchParams} />
-        {taxonomies.length > 0 && category !== 'vehicle' && <FilterNav id={`${category}-type`} label="ক্লাস/বিষয়" value={typeof params.kind === 'string' ? params.kind : ''} placeholder="সব ধরন" options={taxonomies.map(({ id, labelBn }) => ({ value: id, label: labelBn }))} param="kind" searchParams={resolvedSearchParams} />}
+        {taxonomies.length > 0 && <FilterNav id={`${category}-type`} label="ক্লাস/বিষয়" value={typeof params.kind === 'string' ? params.kind : ''} placeholder="সব ধরন" options={taxonomies.map(({ id, labelBn }) => ({ value: id, label: labelBn }))} param="kind" searchParams={resolvedSearchParams} />}
         <div className="sm:col-span-2 lg:col-span-4"><ClearFilters searchParams={resolvedSearchParams} /></div>
       </div>
       <AdminTable
         columns={categoryColumns(category)}
-        rows={result.rows}
+        rows={rows}
         getKey={(row) => row.id}
+        compact
         caption={`${LABELS[category]} তালিকা`}
         empty={<AdminEmpty title="কোনো তালিকা পাওয়া যায়নি" description="সার্চ বা ফিল্টার পরিবর্তন করুন, অথবা নতুন তালিকা যোগ করুন।" />}
       />

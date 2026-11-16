@@ -16,7 +16,6 @@ import {
 } from '@/lib/news/news-utils';
 import NewsMasthead from './NewsMasthead';
 import NewsImage from './NewsImage';
-import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 
 const CONTAINER = 'mx-auto w-full max-w-[1180px] px-4 sm:px-6 lg:px-8';
@@ -49,8 +48,7 @@ export default function NewsHome({
   const filtered = filterNews(ordered, { category, query: searchQuery });
 
   return (
-    <div className="flex min-h-screen flex-col overflow-x-clip bg-white text-[#141414]">
-      <Navbar hideOnScroll />
+    <div className="news-home-page flex min-h-screen flex-col overflow-x-clip bg-white text-[#141414]">
       <NewsMasthead
         todayLabel={todayLabel}
         searchItems={searchable}
@@ -303,30 +301,30 @@ function FilteredView({
       ) : (
         <div className="mt-5 grid gap-7 lg:grid-cols-12">
           <article className="min-w-0 lg:col-span-7">
-            <div className="grid gap-4 sm:grid-cols-[0.95fr_1.05fr] sm:items-start">
-              <div className="order-2 aspect-[16/10] overflow-hidden bg-[#f2f0ea] sm:order-1 sm:aspect-[4/3]">
-                <NewsImage
-                  src={lead.coverImageUrl}
-                  alt={lead.titleBn}
-                  eager
-                  className="h-full w-full object-cover"
-                />
-              </div>
-              <div className="order-1 min-w-0 sm:order-2">
-                <CategoryKicker story={lead} />
-                <h2 className={`${SERIF} mt-2 text-[24px] font-black leading-[1.2] text-[#141414] sm:text-[30px]`}>
-                  <Link href={`/news/${lead.slug}`} className="hover:text-[#0c3b2e]">
+            <CategoryKicker story={lead} />
+            <Link href={`/news/${lead.slug}`} className="group mt-2 block">
+              <div className="grid gap-4 sm:grid-cols-[0.95fr_1.05fr] sm:items-start">
+                <div className="order-2 aspect-[16/10] overflow-hidden bg-[#f2f0ea] sm:order-1 sm:aspect-[4/3]">
+                  <NewsImage
+                    src={lead.coverImageUrl}
+                    alt={lead.titleBn}
+                    eager
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+                <div className="order-1 min-w-0 sm:order-2">
+                  <h2 className={`${SERIF} text-[24px] font-black leading-[1.2] text-[#141414] group-hover:text-[#0c3b2e] sm:text-[30px]`}>
                     {lead.titleBn}
-                  </Link>
-                </h2>
-                {lead.summaryBn && (
-                  <p className="mt-2.5 line-clamp-4 text-[13.5px] leading-relaxed text-[#555148] sm:text-[14.5px]">
-                    {lead.summaryBn}
-                  </p>
-                )}
-                <StoryMeta story={lead} now={now} />
+                  </h2>
+                  {lead.summaryBn && (
+                    <p className="mt-2.5 line-clamp-4 text-[13.5px] leading-relaxed text-[#555148] sm:text-[14.5px]">
+                      {lead.summaryBn}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
+            </Link>
+            <StoryMeta story={lead} now={now} />
           </article>
 
           <div className="min-w-0 border-t border-[#141414]/20 pt-3 lg:col-span-5 lg:border-l lg:border-t-0 lg:pl-7 lg:pt-0">
@@ -356,9 +354,11 @@ function FilteredView({
 function LeadStory({ story, now }: { story: NewsStory; now: number }) {
   return (
     <article className="min-w-0">
-      <div
-        className={`grid gap-4 ${
-          story.coverImageUrl ? 'sm:grid-cols-[1.1fr_0.9fr] sm:items-start' : ''
+      <CategoryKicker story={story} />
+      <Link
+        href={`/news/${story.slug}`}
+        className={`group mt-2 block ${
+          story.coverImageUrl ? 'sm:grid sm:grid-cols-[1.1fr_0.9fr] sm:items-start sm:gap-4' : ''
         }`}
       >
         {story.coverImageUrl && (
@@ -371,32 +371,21 @@ function LeadStory({ story, now }: { story: NewsStory; now: number }) {
             />
           </div>
         )}
-
-        <div className="order-1 min-w-0 sm:order-2">
-          <CategoryKicker story={story} />
+        <div className="order-1 min-w-0">
           <h1
             id="lead-heading"
-            className={`${SERIF} mt-2 text-[27px] font-black leading-[1.17] tracking-[-0.01em] text-[#141414] sm:text-[32px] lg:text-[36px]`}
+            className={`${SERIF} text-[27px] font-black leading-[1.17] tracking-[-0.01em] text-[#141414] transition-colors group-hover:text-[#0c3b2e] sm:text-[32px] lg:text-[36px]`}
           >
-            <Link href={`/news/${story.slug}`} className="transition-colors hover:text-[#0c3b2e]">
               {story.titleBn}
-            </Link>
           </h1>
           {story.summaryBn && (
             <p className="mt-2.5 line-clamp-4 text-[13.5px] leading-[1.7] text-[#555148] sm:line-clamp-5 sm:text-[14.5px]">
               {story.summaryBn}
             </p>
           )}
-          <StoryMeta story={story} now={now} />
-          <Link
-            href={`/news/${story.slug}`}
-            className="mt-3 inline-flex items-center gap-1.5 text-[11.5px] font-bold text-[#0c3b2e] transition-colors hover:text-[#0a3227]"
-          >
-            পুরো প্রতিবেদন পড়ুন
-            <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-          </Link>
         </div>
-      </div>
+      </Link>
+      <StoryMeta story={story} now={now} />
     </article>
   );
 }
@@ -404,29 +393,29 @@ function LeadStory({ story, now }: { story: NewsStory; now: number }) {
 function SecondaryStory({ story, now }: { story: NewsStory; now: number }) {
   return (
     <article className="group min-w-0">
-      {story.coverImageUrl && (
-        <Link href={`/news/${story.slug}`} className="block aspect-[16/9] overflow-hidden bg-[#f2f0ea]">
-          <NewsImage
-            src={story.coverImageUrl}
-            alt={story.titleBn}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
-          />
-        </Link>
-      )}
-      <div className="mt-2.5">
-        <CategoryKicker story={story} />
-        <h3 className={`${SERIF} mt-1.5 text-[18px] font-black leading-[1.25] sm:text-[19px]`}>
-          <Link href={`/news/${story.slug}`} className="transition-colors group-hover:text-[#0c3b2e]">
-            {story.titleBn}
-          </Link>
-        </h3>
-        {story.summaryBn && (
-          <p className={`${MUTED} mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed`}>
-            {story.summaryBn}
-          </p>
+      <CategoryKicker story={story} />
+      <Link href={`/news/${story.slug}`} className="mt-1.5 block">
+        {story.coverImageUrl && (
+          <div className="aspect-[16/9] overflow-hidden bg-[#f2f0ea]">
+            <NewsImage
+              src={story.coverImageUrl}
+              alt={story.titleBn}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+            />
+          </div>
         )}
-        <StoryMeta story={story} now={now} compact />
-      </div>
+        <div className={story.coverImageUrl ? 'mt-2.5' : ''}>
+          <h3 className={`${SERIF} text-[18px] font-black leading-[1.25] transition-colors group-hover:text-[#0c3b2e] sm:text-[19px]`}>
+            {story.titleBn}
+          </h3>
+          {story.summaryBn && (
+            <p className={`${MUTED} mt-1.5 line-clamp-2 text-[12.5px] leading-relaxed`}>
+              {story.summaryBn}
+            </p>
+          )}
+        </div>
+      </Link>
+      <StoryMeta story={story} now={now} compact />
     </article>
   );
 }
@@ -474,32 +463,29 @@ function DeskSection({
             variant === 'feature-right' ? 'lg:order-2' : ''
           }`}
         >
-          {feature.coverImageUrl && (
-            <Link
-              href={`/news/${feature.slug}`}
-              className="block aspect-[16/9] overflow-hidden bg-[#f2f0ea]"
-            >
-              <NewsImage
-                src={feature.coverImageUrl}
-                alt={feature.titleBn}
-                className="h-full w-full object-cover"
-              />
-            </Link>
-          )}
-          <div className="mt-2.5">
-            <CategoryKicker story={feature} />
-            <h3 className={`${SERIF} mt-1.5 text-[21px] font-black leading-[1.22] sm:text-[24px]`}>
-              <Link href={`/news/${feature.slug}`} className="transition-colors hover:text-[#0c3b2e]">
-                {feature.titleBn}
-              </Link>
-            </h3>
-            {feature.summaryBn && (
-              <p className={`${MUTED} mt-2 line-clamp-3 text-[13px] leading-[1.65]`}>
-                {feature.summaryBn}
-              </p>
+          <CategoryKicker story={feature} />
+          <Link href={`/news/${feature.slug}`} className="group mt-1.5 block">
+            {feature.coverImageUrl && (
+              <div className="aspect-[16/9] overflow-hidden bg-[#f2f0ea]">
+                <NewsImage
+                  src={feature.coverImageUrl}
+                  alt={feature.titleBn}
+                  className="h-full w-full object-cover"
+                />
+              </div>
             )}
-            <StoryMeta story={feature} now={now} compact />
-          </div>
+            <div className={feature.coverImageUrl ? 'mt-2.5' : ''}>
+              <h3 className={`${SERIF} text-[21px] font-black leading-[1.22] transition-colors group-hover:text-[#0c3b2e] sm:text-[24px]`}>
+                {feature.titleBn}
+              </h3>
+              {feature.summaryBn && (
+                <p className={`${MUTED} mt-2 line-clamp-3 text-[13px] leading-[1.65]`}>
+                  {feature.summaryBn}
+                </p>
+              )}
+            </div>
+          </Link>
+          <StoryMeta story={feature} now={now} compact />
         </article>
 
         <div

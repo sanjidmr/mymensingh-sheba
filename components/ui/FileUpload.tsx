@@ -103,6 +103,7 @@ export function FileUpload({
             ref={inputRef}
             type="file"
             accept={accept}
+            capture={accept.startsWith('image/') ? 'environment' : undefined}
             onChange={handleChange}
             className="sr-only"
           />

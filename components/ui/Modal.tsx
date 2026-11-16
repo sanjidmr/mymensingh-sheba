@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useId, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -26,41 +26,25 @@ export function Modal({
   showCloseButton = true,
 }: ModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
-  const titleId = useId();
 
+  // Close on Escape key and lock scroll
   useEffect(() => {
-    if (!isOpen) return;
-    const previousOverflow = document.body.style.overflow;
-    const previouslyFocused = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
-    document.body.style.overflow = 'hidden';
-    modalRef.current?.focus();
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
+      if (e.key === 'Escape' && isOpen) {
         onClose();
-        return;
-      }
-      if (e.key === 'Tab' && modalRef.current) {
-        const focusable = modalRef.current.querySelectorAll<HTMLElement>(
-          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
-        );
-        const first = focusable[0];
-        const last = focusable[focusable.length - 1];
-        if (e.shiftKey && document.activeElement === first) {
-          e.preventDefault();
-          last?.focus();
-        } else if (!e.shiftKey && document.activeElement === last) {
-          e.preventDefault();
-          first?.focus();
-        }
       }
     };
-    window.addEventListener('keydown', handleKeyDown);
+
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+      window.addEventListener('keydown', handleKeyDown);
+    } else {
+      document.body.style.overflow = '';
+    }
+
     return () => {
+      document.body.style.overflow = '';
       window.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = previousOverflow;
-      previouslyFocused?.focus();
     };
   }, [isOpen, onClose]);
 
@@ -75,35 +59,35 @@ export function Modal({
 
   return (
     <div
-      className="fixed inset-0 z-[60] flex items-center justify-center overflow-y-auto p-3 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto px-3 py-[max(0.75rem,env(safe-area-inset-top))] pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:p-4"
     >
+      {/* Backdrop */}
       <div
-        aria-hidden="true"
-        className="fixed inset-0 bg-slate-950/60 backdrop-blur-xs transition-opacity"
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs transition-opacity"
         onClick={onClose}
       />
+
+      {/* Modal Dialog Box */}
       <div
         ref={modalRef}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={title ? titleId : undefined}
-        aria-label={title ? undefined : 'ডায়ালগ'}
-        tabIndex={-1}
         className={cn(
-          'ui-surface relative z-10 my-auto flex max-h-[90dvh] w-full flex-col overflow-hidden rounded-3xl border shadow-2xl transition-all duration-200',
+          'relative my-auto flex max-h-[calc(100dvh-1.5rem)] w-full flex-col overflow-hidden rounded-3xl border border-slate-200/90 bg-white shadow-2xl transition-all duration-200 sm:max-h-[90vh]',
           sizeClasses[size]
         )}
       >
+        {/* Header */}
         {(title || showCloseButton) && (
-          <div className="flex items-start justify-between gap-4 border-b border-[var(--ui-border)] px-5 pb-4 pt-5 sm:px-6">
+          <div className="px-5 sm:px-6 pt-5 pb-4 border-b border-slate-100 flex items-start justify-between gap-4">
             <div>
               {title && (
-                <h3 id={titleId} className="text-base font-bold text-text sm:text-lg">
+                <h3 className="text-base sm:text-lg font-bold text-slate-900">
                   {title}
                 </h3>
               )}
               {subtitle && (
-                <p className="mt-0.5 text-xs text-text-muted sm:text-sm">
+                <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
                   {subtitle}
                 </p>
               )}
@@ -113,7 +97,7 @@ export function Modal({
               <button
                 type="button"
                 onClick={onClose}
-                className="ui-pressable -mr-1.5 -mt-1 flex h-11 w-11 items-center justify-center rounded-xl text-text-muted transition-colors hover:bg-[var(--ui-surface-muted)] hover:text-text"
+                className="-mr-1 -mt-1 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-700"
                 aria-label="বন্ধ করুন"
               >
                 <X className="w-5 h-5" />
@@ -122,12 +106,14 @@ export function Modal({
           </div>
         )}
 
-        <div className="overflow-y-auto px-5 py-4 text-sm leading-relaxed text-text sm:px-6">
+        {/* Content */}
+        <div className="min-h-0 overflow-y-auto px-5 py-4 text-sm leading-relaxed text-slate-700 sm:px-6">
           {children}
         </div>
 
+        {/* Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-3 border-t border-[var(--ui-border)] bg-[var(--ui-surface-muted)] px-5 py-3.5 sm:px-6">
+          <div className="px-5 sm:px-6 py-3.5 bg-slate-50/70 border-t border-slate-100 flex items-center justify-end gap-3">
             {footer}
           </div>
         )}

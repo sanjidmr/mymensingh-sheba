@@ -140,14 +140,14 @@ export default function CommunityInviteSection() {
                 <Landmark className="h-6 w-6" />
               </span>
 
-              <div className="min-w-0 flex-1">
+              <div className="min-w-0 flex-1 text-center sm:text-left">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-accent-400/90 px-2.5 py-1 text-[10px] font-extrabold uppercase tracking-[0.16em] text-brand-900">
                   ইতিহাস · ঐতিহ্য · সংস্কৃতি
                 </span>
                 <h3 className="mt-2 text-base font-extrabold leading-snug text-white sm:text-lg">
                   ময়মনসিংহের ইতিহাস জানুন
                 </h3>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-white/85">
+                <p className="mt-1.5 hidden text-[13px] leading-relaxed text-white/85 sm:block">
                   ষোড়শ শতকের মোমেনশাহী থেকে আজকের চারটি জেলা — নামের উৎপত্তি, ব্রহ্মপুত্রের
                   গল্প, জমিদারি ঐতিহ্য আর মুক্তিযুদ্ধের স্মৃতি এক জায়গায়।
                 </p>
@@ -155,7 +155,7 @@ export default function CommunityInviteSection() {
 
               <Link
                 href="/mymensingh"
-                className="inline-flex min-h-[46px] shrink-0 items-center justify-center gap-2 self-stretch rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-950/30 ring-1 ring-white/15 transition-all duration-150 hover:bg-brand-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500 sm:self-center"
+                className="inline-flex min-h-[46px] shrink-0 items-center justify-center gap-2 self-center rounded-xl bg-brand-700 px-5 py-3 text-sm font-bold text-white shadow-md shadow-brand-950/30 ring-1 ring-white/15 transition-all duration-150 hover:bg-brand-800 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-500"
               >
                 <BookOpen className="h-4 w-4 shrink-0" />
                 ময়মনসিংহ পরিচিতি

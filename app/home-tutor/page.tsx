@@ -3,7 +3,7 @@
 import React, { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Lock, Loader2, PlusCircle } from 'lucide-react';
+import { Lock, Loader2, PlusCircle, Search } from 'lucide-react';
 import RoutePlaceholderShell from '@/components/RoutePlaceholderShell';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import ServiceFilterBar from '@/components/filters/ServiceFilterBar';
@@ -46,6 +46,7 @@ function HomeTutorContent() {
     subject: initialSubject,
   });
   const [sortBy, setSortBy] = useState('newest');
+  const [query, setQuery] = useState('');
   const [tutors, setTutors] = useState<HomeTutorProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -85,6 +86,21 @@ function HomeTutorContent() {
 
   const filteredTutors = useMemo(() => {
     let result = tutors.filter((t) => {
+      const normalizedQuery = query.trim().toLocaleLowerCase();
+      if (normalizedQuery) {
+        const searchableText = [
+          t.fullName,
+          t.institution,
+          t.department,
+          ...t.preferredSubjects,
+          ...t.preferredClasses,
+          ...t.preferredAreas.flatMap((areaId) => {
+            const area = getAreaById(areaId);
+            return [areaId, area?.nameBn ?? ''];
+          }),
+        ].join(' ').toLocaleLowerCase();
+        if (!searchableText.includes(normalizedQuery)) return false;
+      }
       if (
         filterValues.areaId &&
         !t.preferredAreas.some((area) => areaNameKey(area) === areaNameKey(String(filterValues.areaId)))
@@ -145,7 +161,7 @@ function HomeTutorContent() {
       );
     }
     return result;
-  }, [tutors, filterValues, sortBy]);
+  }, [tutors, filterValues, sortBy, query]);
 
   const subjectOptions = useMemo(() => {
     const customSubjects = new Map<string, string>();
@@ -174,7 +190,29 @@ function HomeTutorContent() {
       breadcrumbs={[{ label: 'গৃহশিক্ষক' }]}
       compact
     >
-      {/* Centralized Filter Bar */}
+      <label className="mb-2.5 flex min-h-12 items-center gap-2 rounded-xl border border-brand-100 bg-white px-3 shadow-xs focus-within:border-brand-400 focus-within:ring-2 focus-within:ring-brand-600/20">
+        <Search className="h-4 w-4 shrink-0 text-brand-500" aria-hidden="true" />
+        <input
+          type="search"
+          value={query}
+          onChange={(event) => setQuery(event.target.value)}
+          placeholder="নাম, বিষয় বা এলাকা দিয়ে খুঁজুন"
+          aria-label="গৃহশিক্ষক খুঁজুন"
+          className="h-full min-w-0 flex-1 bg-transparent text-sm text-ink-900 outline-none placeholder:text-ink-400"
+        />
+        {query && (
+          <button
+            type="button"
+            onClick={() => setQuery('')}
+            aria-label="খোঁজার লেখা মুছুন"
+            className="rounded-md px-2 py-1 text-xs font-semibold text-ink-600 hover:bg-mist-50"
+          >
+            মুছুন
+          </button>
+        )}
+      </label>
+
+      {/* Filter control directly follows search, as on To-Let. */}
       <ServiceFilterBar
         serviceType="home-tutor"
         filterValues={filterValues}
@@ -188,12 +226,10 @@ function HomeTutorContent() {
         inlineAction={
           <Link
             href="/profile/home-tutor/setup"
-            aria-label="গৃহশিক্ষক প্রোফাইল খুলুন"
-            title="গৃহশিক্ষক প্রোফাইল খুলুন"
-            className={`inline-flex min-h-9 shrink-0 items-center justify-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-2 text-[10px] font-extrabold text-brand-800 transition-colors hover:bg-brand-100 sm:min-h-10 sm:gap-1.5 sm:rounded-xl sm:px-3 sm:text-xs ${LIGHT_FOCUS}`}
+            className={`inline-flex h-12 w-full min-w-0 items-center justify-center gap-1 rounded-xl border border-brand-200 bg-brand-50 px-1.5 text-center text-[11px] font-bold leading-tight text-brand-800 transition-colors hover:bg-brand-100 min-[375px]:gap-1.5 min-[375px]:text-xs sm:basis-0 sm:flex-1 sm:gap-2 sm:px-3 sm:text-sm ${LIGHT_FOCUS}`}
           >
-            <PlusCircle className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" aria-hidden="true" />
-            <span className="whitespace-nowrap">গৃহশিক্ষক প্রোফাইল খুলুন</span>
+            <PlusCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+            <span className="whitespace-nowrap">গৃহশিক্ষক খুলুন</span>
           </Link>
         }
       />

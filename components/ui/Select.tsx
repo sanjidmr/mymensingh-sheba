@@ -67,7 +67,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
                 : undefined
             }
             className={cn(
-              'ui-control w-full h-11 sm:h-12 pl-3.5 pr-10 rounded-xl border text-base transition-colors duration-150 appearance-none cursor-pointer',
+              'w-full h-11 sm:h-12 pl-3.5 pr-10 rounded-xl bg-white border text-sm text-slate-900 transition-colors duration-150 appearance-none cursor-pointer',
               'focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-emerald-700',
               'disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed',
               hasError

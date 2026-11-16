@@ -187,25 +187,11 @@ export async function deleteAdminServiceListing(id: string): Promise<ActionResul
     if (!isUuid(id)) return { ok: false, error: 'তালিকার আইডি সঠিক নয়।' };
     const { data: listing, error: lookupError } = await client
       .from('service_listings')
-      .select('id, category, slug, tags')
+      .select('id, category, slug')
       .eq('id', id)
       .maybeSingle();
     if (lookupError) return { ok: false, error: `তালিকা যাচাই ব্যর্থ হয়েছে: ${lookupError.message}` };
     if (!listing) return { ok: false, error: 'তালিকাটি পাওয়া যায়নি।' };
-    if (listing.category === 'vehicle' && !listing.tags.includes('গাড়ি')) {
-      return { ok: false, error: 'শুধু গাড়ির তালিকা পরিচালনা করা যাবে।' };
-    }
-    if (listing.category === 'vehicle') {
-      const { data: requests, error: requestError } = await client
-        .from('vehicle_requests')
-        .select('id')
-        .eq('vehicle_listing_id', id)
-        .limit(1);
-      if (requestError) return { ok: false, error: `যানবাহন অনুরোধ যাচাই ব্যর্থ হয়েছে: ${requestError.message}` };
-      if (requests?.length) {
-        return { ok: false, error: 'এই যানবাহনের সঙ্গে ঐতিহাসিক রিকোয়েস্ট যুক্ত আছে। সেগুলোর সম্পর্ক রক্ষায় মুছে না দিয়ে অপ্রকাশিত করুন।' };
-      }
-    }
     const { error } = await client.from('service_listings').delete().eq('id', id);
     if (error) return { ok: false, error: `তালিকা মুছে ফেলা যায়নি: ${error.message}` };
     revalidateCategory(listing.category as ServiceCategory, listing.slug);

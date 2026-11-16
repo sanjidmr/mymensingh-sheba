@@ -213,10 +213,10 @@ function ToletDirectory() {
         inlineAction={
           <Link
             href="/profile/tolet/new"
-            className={`inline-flex min-h-10 w-full items-center justify-center gap-1.5 rounded-lg border border-brand-200 bg-brand-50 px-2 text-[11px] font-extrabold text-brand-800 transition-colors hover:bg-brand-100 sm:min-h-[42px] sm:gap-2 sm:px-3 sm:text-sm ${LIGHT_FOCUS}`}
+            className={`inline-flex min-h-[46px] min-w-0 w-full items-center justify-center gap-1 rounded-lg border border-brand-200 bg-brand-50 px-1.5 text-[11px] font-extrabold text-ink-900 transition-colors hover:bg-brand-100 sm:min-h-[42px] sm:gap-2 sm:px-3 sm:text-sm ${LIGHT_FOCUS}`}
           >
             <PlusCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-            <span className="whitespace-nowrap">আপনার বাসা ভাড়া দিন</span>
+            <span className="min-w-0 text-center leading-tight sm:whitespace-nowrap">আপনার বাসা ভাড়া দিন</span>
           </Link>
         }
       />

@@ -78,9 +78,6 @@ export function OwnerProfileCard({ listing }: { listing: ToletListing }) {
         </div>
       </div>
 
-      <p className="mt-3 rounded-lg bg-mist-50 px-3 py-2.5 text-[13px] leading-relaxed text-ink-700">
-        যোগাযোগের অনুরোধটি প্ল্যাটফর্মের মাধ্যমে মালিকের কাছে পৌঁছাবে।
-      </p>
     </section>
   );
 }

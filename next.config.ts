@@ -1,6 +1,33 @@
 import type {NextConfig} from 'next';
+import bundleAnalyzer from '@next/bundle-analyzer';
 
 const isApp = process.env.BUILD_TARGET === 'app';
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+});
+
+const imageConfig: NonNullable<NextConfig['images']> = {
+  remotePatterns: [
+    {
+      protocol: 'https',
+      hostname: 'picsum.photos',
+      port: '',
+      pathname: '/**',
+    },
+    {
+      protocol: 'https',
+      hostname: 'images.unsplash.com',
+      port: '',
+      pathname: '/**',
+    },
+    {
+      protocol: 'https',
+      hostname: '*.supabase.co',
+      port: '',
+      pathname: '/storage/v1/**',
+    },
+  ],
+};
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
@@ -10,31 +37,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'picsum.photos',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
-      // Supabase Storage (public buckets) serves uploaded images from
-      // https://<project-ref>.supabase.co/storage/v1/object/public/... — without
-      // this pattern every user-uploaded / admin-uploaded photo fails to render.
-      {
-        protocol: 'https',
-        hostname: '*.supabase.co',
-        port: '',
-        pathname: '/storage/v1/**',
-      },
-    ],
-  },
+  images: imageConfig,
   output: 'standalone',
   transpilePackages: ['motion'],
   pageExtensions: isApp
@@ -43,10 +46,10 @@ const nextConfig: NextConfig = {
   ...(isApp
     ? {
         output: 'export' as const,
-        images: { unoptimized: true },
+        images: { ...imageConfig, unoptimized: true },
         trailingSlash: true,
       }
     : {}),
 };
 
-export default nextConfig;
+export default withBundleAnalyzer(nextConfig);

@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { MapPin } from 'lucide-react';
 import type { ToletListing } from '@/lib/tolet-types';
 import { TOLET_PROPERTY_TYPE_INFO } from '@/lib/tolet-types';
-import { calculateToletFee } from '@/lib/tolet-fees';
 import { getToletAreaById } from '@/lib/tolet-areas';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
 import { cn } from '@/lib/utils';
@@ -22,10 +21,7 @@ import { cn } from '@/lib/utils';
  * Reusing `ListingCard` keeps price-led hierarchy, hairline sage borders and
  * the two-per-row mobile rhythm identical to the directory grid.
  *
- * What IS different here, and should be: on a details page the price on the
- * card is the TOTAL (rent + platform fee), because that is the figure the
- * tenant just read on the big rent card, and having the two disagree two
- * scrolls apart would look like an error.
+ * The rent shown here is the monthly rent stored on the listing.
  *
  * Mobile is a horizontal rail rather than a 2-up grid: with a phone-sized
  * viewport, a rail lets a tenant swipe through alternatives without the card
@@ -71,7 +67,6 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
   const typeInfo = TOLET_PROPERTY_TYPE_INFO[listing.propertyType];
   const isMessLike = typeInfo?.isMessLike ?? false;
   const cover = listing.photos[0] ?? '';
-  const total = listing.rentPrice + calculateToletFee(listing.rentPrice, listing.propertyType);
 
   const chips = [
     isMessLike
@@ -114,10 +109,10 @@ function SimilarCard({ listing }: { listing: ToletListing }) {
       </div>
 
       <div className="p-2.5 sm:p-3.5">
-        {/* Total, matching the big rent card above — rent + platform fee. */}
+        {/* Monthly rent only */}
         <p className="flex items-baseline gap-1 leading-none">
           <span className="text-[15px] font-extrabold tracking-tight text-brand-800">
-            ৳{toBengaliDigits(total)}
+            ৳{toBengaliDigits(listing.rentPrice)}
           </span>
           <span className="text-[11px] font-semibold text-ink-400">/মাস</span>
         </p>

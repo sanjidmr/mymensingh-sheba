@@ -6,7 +6,6 @@ import Image from 'next/image';
 import { usePathname, useRouter } from 'next/navigation';
 import { Search, Plus, UserRound, X, FilePlus2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
-import { useIsAppShellContent } from '@/components/layout/AppShellContext';
 import MymensinghLiveBar from '@/components/MymensinghLiveBar';
 import NotificationBell from '@/components/account/NotificationBell';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
@@ -35,8 +34,8 @@ function PostMenuButton({ compact = false }: { compact?: boolean }) {
         onClick={() => setOpen((current) => !current)}
         className={
           compact
-            ? 'inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-accent-400 px-3 text-xs font-extrabold text-brand-950 shadow-sm transition-colors hover:bg-accent-500'
-            : 'inline-flex min-h-10 items-center gap-2 rounded-xl bg-accent-400 px-4 text-sm font-bold text-brand-900 transition-colors hover:bg-accent-500'
+            ? 'inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-accent-400 px-2.5 text-[11px] font-extrabold text-brand-950 shadow-sm transition-colors hover:bg-accent-500'
+            : 'inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent-400 px-2.5 text-xs font-bold text-brand-900 transition-colors hover:bg-accent-500 xl:min-h-10 xl:gap-2 xl:px-4 xl:text-sm'
         }
       >
         <Plus className="h-4 w-4" aria-hidden="true" />
@@ -47,7 +46,7 @@ function PostMenuButton({ compact = false }: { compact?: boolean }) {
           id={menuId}
           role="group"
           aria-label="পোস্ট বা প্রোফাইল তৈরি"
-          className="absolute right-0 top-full z-[70] mt-2 w-64 rounded-2xl border border-brand-100 bg-white p-2 shadow-xl"
+          className="absolute right-0 top-full z-[70] mt-2 w-64 max-w-[calc(100vw-2rem)] rounded-2xl border border-brand-100 bg-white p-2 shadow-xl"
         >
           <p className="px-3 py-2 text-xs font-bold text-ink-500">কী করতে চান?</p>
           <Link
@@ -90,13 +89,21 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
   const lastScrollY = useRef(0);
   const pathname = usePathname();
   const router = useRouter();
-  const isAppShellContent = useIsAppShellContent();
   const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
     useAuth();
 
   // The homepage navbar is transparent at the top and adapts to a soft cream
   // blur after scrolling so content never collides with the links.
   const onHome = pathname === '/';
+  const showInfoBar = new Set([
+    '/',
+    '/services',
+    '/posts',
+    '/how-it-works',
+    '/about',
+    '/mymensingh',
+    '/contact',
+  ]).has(pathname);
   useEffect(() => {
     const onScroll = () => {
       const currentY = window.scrollY;
@@ -146,13 +153,11 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
     router.push(query ? `/services?q=${encodeURIComponent(query)}` : '/services');
   };
 
-  if (isAppShellContent) return null;
-
   return (
     <>
-      <MymensinghLiveBar />
+      {showInfoBar && <MymensinghLiveBar />}
       <header
-        className={`sticky top-0 z-50 ${
+        className={`sticky top-[env(safe-area-inset-top)] z-50 ${
           hideOnScroll
             ? `transition-transform duration-300 ease-in-out ${navHidden ? '-translate-y-full' : 'translate-y-0'}`
             : ''
@@ -165,7 +170,7 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
         }`}
       >
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="flex h-16 items-center justify-between gap-3 sm:h-[4.5rem]">
+        <div className="flex h-14 items-center justify-between gap-2 sm:h-[4.5rem] sm:gap-3">
           {/* Brand — the logo alone, filling the navbar height (no tile, no ring) */}
           <Link
             href="/"
@@ -173,24 +178,23 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
             className="group flex h-full shrink-0 items-center rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-accent-400"
           >
             <Image
-              src="/logo.png"
+              src="/logo.webp"
               alt="Mymensingh Sheba লোগো"
               width={230}
               height={230}
-              priority
-              className="h-[52px] w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03] sm:h-full"
+              className="h-12 w-auto object-contain transition-transform duration-300 group-hover:scale-[1.03] sm:h-full lg:h-14"
             />
           </Link>
 
           {/* Desktop links */}
-          <nav className="hidden items-center gap-1 lg:flex">
+          <nav className="hidden min-w-0 flex-nowrap items-center gap-0.5 lg:flex xl:gap-1">
             {SITE_NAV_LINKS.map((link) => {
               const active = isActive(link.href);
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+                  className={`whitespace-nowrap rounded-lg px-2 py-2 text-xs font-medium transition-colors xl:px-2.5 xl:text-sm 2xl:px-3.5 ${
                     active ? navLinkActive : navLink
                   }`}
                 >
@@ -201,14 +205,14 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
           </nav>
 
           {/* Right actions (desktop) — search / auth */}
-          <div className="hidden items-center gap-2 lg:flex">
+          <div className="hidden shrink-0 items-center gap-1 lg:flex xl:gap-2">
             <button
               type="button"
               aria-label={searchOpen ? 'সার্চ বন্ধ করুন' : 'সেবা খুঁজুন'}
               aria-expanded={searchOpen}
               aria-controls="navbar-search"
               onClick={() => setSearchOpen((current) => !current)}
-              className={`flex h-10 w-10 items-center justify-center ${iconBtn}`}
+              className={`flex h-9 w-9 items-center justify-center xl:h-10 xl:w-10 ${iconBtn}`}
             >
               {searchOpen ? <X className="h-5 w-5" /> : <Search className="h-5 w-5" />}
             </button>
@@ -220,7 +224,7 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
               <Link
                 href={isAdmin ? '/admin' : '/profile'}
                 aria-label={isAdmin ? 'অ্যাডমিন প্যানেল' : 'আমার প্রোফাইল'}
-                className="flex items-center gap-2 rounded-xl border border-brand-200 bg-white py-1.5 pl-1.5 pr-3 transition-colors hover:bg-brand-100/40"
+                className="flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-xl border border-brand-200 bg-white py-1.5 pl-1.5 pr-2 transition-colors hover:bg-brand-100/40 xl:gap-2 xl:pr-3"
               >
                 <div className="flex h-7 w-7 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-accent-400 text-xs font-bold text-brand-900">
                   {user.avatarUrl ? (
@@ -234,11 +238,11 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
                     user.fullName.charAt(0)
                   )}
                 </div>
-                <div className="flex flex-col text-left">
-                  <span className="text-xs font-bold leading-tight text-brand-900">
+                <div className="min-w-0 max-w-14 text-left xl:max-w-none">
+                  <span className="block truncate text-xs font-bold leading-tight text-brand-900">
                     {user.fullName.split(' ')[0]}
                   </span>
-                  <span className="text-[10px] font-medium leading-tight text-brand-600">
+                  <span className="block truncate text-[10px] font-medium leading-tight text-brand-600">
                     {roleLabel}
                   </span>
                 </div>
@@ -252,19 +256,19 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
               // the swap flicker-free in both directions.
               <div
                 aria-hidden="true"
-                className="h-11 w-[260px] animate-pulse rounded-xl bg-brand-100/60 motion-reduce:animate-none"
+                className="h-10 w-32 animate-pulse rounded-xl bg-brand-100/60 motion-reduce:animate-none xl:h-11 xl:w-[260px]"
               />
             ) : (
               <>
                 <Link
                   href="/login"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-xl border border-brand-300 px-4 py-2.5 text-sm font-semibold text-brand-800 transition-colors hover:bg-brand-100/60"
+                className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-xl border border-brand-300 px-2.5 py-2 text-xs font-semibold text-brand-800 transition-colors hover:bg-brand-100/60 xl:min-h-[44px] xl:gap-2 xl:px-4 xl:py-2.5 xl:text-sm"
               >
                   লগইন
                 </Link>
                 <Link
                   href="/register"
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-xl bg-accent-400 px-4 py-2.5 text-sm font-bold text-brand-900 shadow-sm transition-all hover:bg-accent-500 active:scale-[0.98]"
+                  className="inline-flex min-h-9 items-center gap-1.5 whitespace-nowrap rounded-xl bg-accent-400 px-2.5 py-2 text-xs font-bold text-brand-900 shadow-sm transition-all hover:bg-accent-500 active:scale-[0.98] xl:min-h-[44px] xl:gap-2 xl:px-4 xl:py-2.5 xl:text-sm"
                 >
                   রেজিস্ট্রেশন
                 </Link>
@@ -292,7 +296,7 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
             ) : user && isAdmin ? (
               <Link
                 href="/admin"
-                className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-brand-700 px-3 text-xs font-bold text-white"
+                className="inline-flex min-h-10 items-center gap-1.5 rounded-lg bg-brand-700 px-2.5 text-[11px] font-bold text-white"
               >
                 <UserRound className="h-4 w-4" aria-hidden="true" />
                 অ্যাডমিন
@@ -303,7 +307,7 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
               <div className="flex items-center gap-1.5">
                 <Link
                   href="/login"
-                  className="inline-flex min-h-10 items-center rounded-lg border border-brand-300 px-2.5 text-[11px] font-bold text-brand-800 transition-colors hover:bg-brand-50"
+                  className="inline-flex min-h-10 items-center rounded-lg border border-brand-700 bg-brand-700 px-2.5 text-[11px] font-bold text-white transition-colors hover:bg-brand-800"
                 >
                   লগইন
                 </Link>
@@ -337,7 +341,7 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
             />
             <button
               type="submit"
-              className="inline-flex h-8 shrink-0 items-center justify-center rounded-lg bg-accent-400 px-3 text-sm font-bold text-brand-900 transition-colors hover:bg-accent-500"
+              className="inline-flex min-h-11 shrink-0 items-center justify-center rounded-lg bg-accent-400 px-3 text-sm font-bold text-brand-900 transition-colors hover:bg-accent-500 sm:min-h-8"
             >
               খুঁজুন
             </button>

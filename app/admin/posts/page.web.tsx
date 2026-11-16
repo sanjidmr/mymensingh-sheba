@@ -1,4 +1,4 @@
-import { fetchPosts, fetchPostCounts, parseListParams } from '@/lib/admin/queries';
+import { fetchAdminEngagementAnalytics, fetchPosts, fetchPostCounts, parseListParams } from '@/lib/admin/queries';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { TablePager } from '@/components/admin/TablePager';
@@ -36,8 +36,9 @@ const columns: AdminColumn<AdminPostRow>[] = [
   {
     key: 'image',
     header: 'ছবি',
+    className: 'w-20',
     render: (row) => row.cover_image_url ? (
-      <span className="relative block h-12 w-16 overflow-hidden rounded-md bg-admin-page">
+      <span className="relative block h-10 w-14 overflow-hidden rounded-md bg-admin-page">
         <Image src={row.cover_image_url} alt="" fill sizes="64px" unoptimized className="object-cover" />
       </span>
     ) : <span className="text-xs text-admin-muted">ছবি নেই</span>,
@@ -46,10 +47,11 @@ const columns: AdminColumn<AdminPostRow>[] = [
     key: 'title',
     header: 'শিরোনাম',
     mobilePrimary: true,
+    className: 'min-w-48',
     render: (row) => (
       <Link href={`/admin/posts/${row.id}`} className="block min-w-0 text-admin-text hover:text-admin-navy">
         <span className="block break-words font-semibold">{row.title_bn}</span>
-        <span className="mt-0.5 block break-all text-[10px] font-mono text-admin-muted">
+        <span className="mt-0.5 block truncate font-mono text-[9px] text-admin-muted">
           ID: {row.id}
         </span>
         <span className="mt-0.5 block text-xs text-admin-muted">
@@ -61,27 +63,28 @@ const columns: AdminColumn<AdminPostRow>[] = [
   {
     key: 'facts',
     header: 'ক্যাটাগরি / তথ্য',
+    className: 'max-w-64',
     render: (row) => {
       if (row.kind === 'buy_sell') {
-        return <span className="block max-w-xs whitespace-normal text-xs leading-relaxed text-admin-muted">
+        return <span className="block max-w-xs whitespace-normal text-[11px] leading-snug text-admin-muted">
           {row.category ? tagLabel(row.category) : 'ক্যাটাগরি উল্লেখ নেই'} · {row.price != null ? `৳${bnTaka(row.price)}` : 'দাম উল্লেখ নেই'}
           {row.condition_label ? ` · ${tagLabel(row.condition_label)}` : ''}
-          {row.body_bn ? <span className="mt-1 block">{row.body_bn.slice(0, 100)}{row.body_bn.length > 100 ? '…' : ''}</span> : null}
+          {row.body_bn ? <span className="mt-0.5 block line-clamp-1">{row.body_bn}</span> : null}
         </span>;
       }
       if (row.kind === 'job') {
         const salary = row.salary_min != null || row.salary_max != null
           ? `${row.salary_min != null ? bnTaka(row.salary_min) : ''}${row.salary_min != null && row.salary_max != null ? '–' : ''}${row.salary_max != null ? bnTaka(row.salary_max) : ''}`
           : 'বেতন উল্লেখ নেই';
-        return <span className="block max-w-xs whitespace-normal text-xs leading-relaxed text-admin-muted">
+        return <span className="block max-w-xs whitespace-normal text-[11px] leading-snug text-admin-muted">
           {row.organization_bn || 'প্রতিষ্ঠান উল্লেখ নেই'} · {row.job_type || 'চাকরির ধরন উল্লেখ নেই'} · {salary}
           {row.deadline ? <span className="block">শেষ তারিখ: {row.deadline}</span> : null}
-          {row.tags?.length ? <span className="block">প্রয়োজনীয়তা: {row.tags.join(', ')}</span> : null}
+          {row.tags?.length ? <span className="block line-clamp-1">প্রয়োজনীয়তা: {row.tags.join(', ')}</span> : null}
         </span>;
       }
-      return <span className="block whitespace-normal text-xs text-admin-muted">
+      return <span className="block whitespace-normal text-[11px] leading-snug text-admin-muted">
         {row.category ? tagLabel(row.category) : 'ক্যাটাগরি উল্লেখ নেই'} · {row.author_name || 'লেখক/সূত্র উল্লেখ নেই'}
-        {row.summary_bn ? <span className="mt-1 block">{row.summary_bn}</span> : null}
+        {row.summary_bn ? <span className="mt-0.5 block line-clamp-1">{row.summary_bn}</span> : null}
       </span>;
     },
   },
@@ -132,7 +135,8 @@ const columns: AdminColumn<AdminPostRow>[] = [
   {
     key: 'actions',
     header: '',
-    headerClassName: 'w-1',
+    headerClassName: 'w-1 text-right',
+    className: 'text-right',
     render: (row) => <PostActions post={row} />,
   },
 ];
@@ -144,17 +148,18 @@ export default async function AdminPostsPage({
 }) {
   const resolvedSearchParams = await searchParams;
   const params = parseListParams(resolvedSearchParams, { pageSize: 20 });
-  const selectedKind = ['news', 'job', 'buy_sell'].includes(String(params.kind)) ? String(params.kind) : undefined;
-  const [result, summary] = await Promise.all([
+  const selectedKind = (['news', 'job', 'buy_sell'] as const).find((kind) => kind === params.kind);
+  const [result, summary, analytics] = await Promise.all([
     fetchPosts(params),
     fetchPostCounts(selectedKind),
+    fetchAdminEngagementAnalytics(selectedKind ?? 'posts'),
   ]);
   const categoryOptions = selectedKind === 'news'
     ? NEWS_CATEGORIES
     : selectedKind === 'buy_sell'
       ? MARKET_CATEGORIES
       : [];
-  const pageTitle = selectedKind ? KIND_LABEL[selectedKind as AdminPostRow['kind']] : 'পোস্ট ব্যবস্থাপনা';
+  const pageTitle = selectedKind ? KIND_LABEL[selectedKind] : 'পোস্ট';
 
   if (result.unavailable) {
     return (
@@ -183,7 +188,7 @@ export default async function AdminPostsPage({
             className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-admin-navy px-4 text-sm font-semibold text-white hover:bg-admin-navy/90"
           >
             <Plus className="h-4 w-4" aria-hidden="true" />
-            {selectedKind ? `নতুন ${KIND_LABEL[selectedKind as AdminPostRow['kind']]} পোস্ট` : 'নতুন পোস্ট'}
+            {selectedKind ? `নতুন ${KIND_LABEL[selectedKind]} পোস্ট` : 'নতুন পোস্ট'}
           </Link>
         }
       />
@@ -213,6 +218,17 @@ export default async function AdminPostsPage({
           <StatCard label="প্রকাশিত" value={summary.counts.approved} tone="good" />
           <StatCard label="প্রত্যাখ্যাত" value={summary.counts.rejected} tone="alert" />
         </div>
+      )}
+      {analytics.error ? (
+        <AdminError title="পোস্ট ভিজিট ও কলের সংখ্যা লোড করা যায়নি" message={analytics.error} className="mb-4" />
+      ) : (
+        <section aria-label="পোস্টের ভিজিট ও কল পরিসংখ্যান" className="mb-4 grid grid-cols-2 gap-3">
+          <StatCard
+            label={selectedKind ? `${KIND_LABEL[selectedKind]} পেজ ভিজিট` : 'সংবাদ, চাকরি ও কেনাবেচা পেজ ভিজিট'}
+            value={analytics.directoryVisits}
+          />
+          <StatCard label="কল বাটনে মোট চাপ" value={analytics.callClicks} tone="good" />
+        </section>
       )}
 
       <section aria-label="অন্যান্য গ্রাহক তালিকা" className="mb-5">
@@ -308,6 +324,7 @@ export default async function AdminPostsPage({
         columns={columns}
         rows={result.rows}
         getKey={(row) => String(row.id)}
+        compact
         caption={`${pageTitle} তালিকা`}
         empty={
           <AdminEmpty

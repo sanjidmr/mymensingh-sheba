@@ -5,9 +5,27 @@ import { LAUNCH_SERVICES } from './services-data';
 import type { SocialLink } from './site-contact';
 import { SITE_CONTACT } from './site-contact';
 
+export interface ServiceSeoEntry {
+  seoTitle?: string;
+  metaDescription?: string;
+  focusKeyword?: string;
+  secondaryKeywords?: string[];
+  canonicalUrl?: string;
+  customH1?: string;
+  seoDescription?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  twitterTitle?: string;
+  twitterDescription?: string;
+  imageAlt?: string;
+  schemaType?: 'Service' | 'LocalBusiness' | 'Organization';
+  index?: boolean;
+}
+
 export interface SiteContentOverrides {
   homepage_sections?: Record<string, boolean>;
   launch_services?: ServiceOverride[];
+  service_seo?: Record<string, ServiceSeoEntry>;
   site_contact?: {
     phone?: string | null;
     email?: string | null;
@@ -50,7 +68,7 @@ export const DEFAULT_ABOUT_CONTENT = {
 export const DEFAULT_FOUNDER_CONTENT: NonNullable<SiteContentOverrides['founder_content']> = {
   name: 'Mushfiqur Rahman Sanjid',
   designation: 'Founder & Creator, Mymensingh Sheba',
-  imageUrl: '/founder.jpg',
+  imageUrl: '/founder.webp',
   sectionHeading: 'Mymensingh-এর একজন মানুষ হিসেবে শুরু',
   story: [
     'আমি ময়মনসিংহেই বড় হয়েছি। তাই চরপাড়ার একটা সমস্যা, বাসার একটা ঝামেলা কিংবা একজন প্রয়োজনীয় মানুষ খুঁজে না পাওয়ার কষ্ট — এগুলো আমার কাছে শুনুম নয়, নিজে উপস্থিত থাকে।',
@@ -66,9 +84,8 @@ export const DEFAULT_FAQ_CONTENT = [
     answer: 'আমরা শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশন (MCC) এলাকার ভেতরে সেবা পরিচালনা করি।',
   },
   {
-    question: 'বাসা ভাড়ার ক্ষেত্রে প্ল্যাটফর্ম ফি কীভাবে নির্ধারিত হয়?',
-    answer:
-      'মেস বা সিট ভাড়ার ক্ষেত্রে প্ল্যাটফর্ম ফি ৳৫০। বাসা ভাড়ার ক্ষেত্রে: ১০,০০০ টাকা পর্যন্ত ৳১০০, ১০,০০১ থেকে ২০,০০০ টাকা পর্যন্ত ৳২০০ এবং ২০,০০০ টাকার ঊর্ধ্বে ৳৪০০। এই ফি তালিকা ও রসিদে সম্পূর্ণ স্বচ্ছভাবে প্রদর্শিত হয়।',
+    question: 'বাসা ভাড়ার বিজ্ঞাপনে কোন ভাড়া দেখানো হয়?',
+    answer: 'বিজ্ঞাপনে মালিকের দেওয়া মাসিক ভাড়াই দেখানো হয়। বাসা দেখতে বা ভাড়া নিতে অতিরিক্ত টাকা দিতে হয় না।',
   },
   {
     question: 'কাজের বুয়া ও ইলেক্ট্রিশিয়ান সেবা কারা পরিচালনা করেন?',
@@ -88,7 +105,7 @@ export const DEFAULT_FOOTER_CONTENT = {
   companyLinks: [
     { label: 'ময়মনসিংহ পরিচিতি', href: '/mymensingh' },
     { label: 'আমাদের সম্পর্কে', href: '/about' },
-    { label: 'কিভাবে কাজ করে', href: '/#how-it-works' },
+    { label: 'কিভাবে সেবা নেবো/দেবো', href: '/#how-it-works' },
     { label: 'যোগাযোগ ও ফিডব্যাক', href: '/contact' },
     { label: 'নিরাপত্তা নীতি', href: '/safety' },
   ],
@@ -110,12 +127,16 @@ export interface ServiceOverride {
   sort_order?: number;
 }
 
+const MIGRATED_SERVICE_IMAGES: Record<string, string> = {
+  '/carrent.png': '/carrent.webp',
+  '/ac.png': '/ac.webp',
+};
+
 export const HOMEPAGE_SECTIONS = [
   { key: 'hero', label: 'হিরো ক্যারোসেল' },
   { key: 'search', label: 'সার্চ সেকশন' },
   { key: 'category_daily', label: 'দৈনন্দিন সেবা' },
   { key: 'category_shop', label: 'কেনাকাটা ও যাতায়াত' },
-  { key: 'category_emergency', label: 'জরুরি সেবা' },
   { key: 'row_tolet', label: 'বাসা ভাড়া' },
   { key: 'row_tutor', label: 'গৃহশিক্ষক' },
   { key: 'row_gari', label: 'গাড়ি / অটো / CNG' },
@@ -123,7 +144,7 @@ export const HOMEPAGE_SECTIONS = [
   { key: 'row_donor', label: 'রক্তদাতা' },
   { key: 'row_kenabecha', label: 'WiFi ও কোচিং' },
   { key: 'row_news', label: 'স্থানীয় খবর ও ঘোষণা' },
-  { key: 'steps', label: 'কিভাবে কাজ করে' },
+  { key: 'steps', label: 'কিভাবে সেবা নেবো/দেবো' },
   { key: 'testimonials', label: 'টেস্টিমোনিয়াল' },
   { key: 'reviews', label: 'রিভিউ' },
   { key: 'why', label: 'কেন আমরা' },
@@ -182,7 +203,7 @@ export function mergeLaunchServices(
         ...service,
         nameBn: override.nameBn ?? service.nameBn,
         shortDesc: override.shortDesc ?? service.shortDesc,
-        coverImage: override.coverImage || service.coverImage,
+        coverImage: resolveServiceCoverImage(override.coverImage, service.coverImage),
         sortOrder:
           typeof override.sort_order === 'number' ? override.sort_order : service.sortOrder,
       };
@@ -193,6 +214,14 @@ export function mergeLaunchServices(
       const bOrder = b.sortOrder ?? Number.MAX_SAFE_INTEGER;
       return aOrder - bOrder;
     });
+}
+
+export function resolveServiceCoverImage(
+  coverImage: string | undefined,
+  fallback?: string
+): string | undefined {
+  const source = coverImage || fallback;
+  return source ? MIGRATED_SERVICE_IMAGES[source] ?? source : undefined;
 }
 
 export function mergeHomepageCategories(overrides?: SiteContentOverrides): {
@@ -233,7 +262,6 @@ export function mergeHomepageCategories(overrides?: SiteContentOverrides): {
     }
     return undefined;
   };
-
   const applyServiceOverrides = (category: HomepageCategory): HomepageCategory => ({
     ...category,
     items: category.items.map((item) => {
@@ -243,7 +271,9 @@ export function mergeHomepageCategories(overrides?: SiteContentOverrides): {
         ...item,
         name: override.nameBn || item.name,
         text: override.shortDesc || item.text,
-        image: override.coverImage || item.image,
+        image: override.coverImage
+          ? MIGRATED_SERVICE_IMAGES[override.coverImage] ?? override.coverImage
+          : item.image,
       };
     }),
   });

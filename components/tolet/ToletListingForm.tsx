@@ -408,7 +408,7 @@ export function ToletListingForm({
         event.preventDefault();
         submit(false);
       }}
-      className="space-y-4"
+      className="space-y-3 sm:space-y-4"
     >
       {formError && (
         <div
@@ -420,7 +420,7 @@ export function ToletListingForm({
         </div>
       )}
 
-      <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 sm:space-y-5 sm:rounded-2xl sm:p-5">
         {/* 1 — শিরোনাম */}
         <Field
           id="title"
@@ -449,7 +449,7 @@ export function ToletListingForm({
         >
           <textarea
             id="tolet-description"
-            rows={5}
+            rows={3}
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
             maxLength={2000}
@@ -526,7 +526,7 @@ export function ToletListingForm({
         </Field>
 
         {/* 6 — তলা ও শুরুর সময় */}
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-3 min-[420px]:grid-cols-2 sm:gap-4">
           <Field id="floor" label="কত তলায়" hint="ঐচ্ছিক">
             <input
               id="tolet-floor"
@@ -555,7 +555,7 @@ export function ToletListingForm({
           </Field>
         </div>
 
-        {/* 7 — মাসিক ভাড়া (কোনো প্ল্যাটফর্ম ফি এখানে দেখানো হয় না) */}
+        {/* 7 — মাসিক ভাড়া */}
         <Field
           id="rentPrice"
           label="মাসিক ভাড়া (৳)"
@@ -589,7 +589,7 @@ export function ToletListingForm({
           error={errors.bedrooms || errors.totalRooms}
           group
         >
-          <div className="grid gap-2 sm:grid-cols-3">
+          <div className="grid gap-2 min-[420px]:grid-cols-3">
             {isMessLike ? (
               <NumberField
                 id="totalRooms"
@@ -659,7 +659,7 @@ export function ToletListingForm({
         >
           <textarea
             id="tolet-facilitiesText"
-            rows={3}
+            rows={2}
             value={form.facilitiesText}
             onChange={(e) => set('facilitiesText', e.target.value)}
             maxLength={600}
@@ -676,7 +676,7 @@ export function ToletListingForm({
         >
           <textarea
             id="tolet-unavailableFacilitiesText"
-            rows={3}
+            rows={2}
             value={form.unavailableFacilitiesText}
             onChange={(e) => set('unavailableFacilitiesText', e.target.value)}
             maxLength={600}
@@ -691,7 +691,7 @@ export function ToletListingForm({
         <button
           type="submit"
           disabled={busy}
-          className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-5 py-3.5 text-sm font-bold text-white transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60"
+          className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:py-3.5"
         >
           {submitting ? (
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
@@ -712,7 +712,7 @@ export function ToletListingForm({
             type="button"
             onClick={() => submit(true)}
             disabled={busy}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-3 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3"
           >
             <Save className="h-3.5 w-3.5" aria-hidden="true" />
             জমা দেওয়া হয়নি হিসেবে সংরক্ষণ

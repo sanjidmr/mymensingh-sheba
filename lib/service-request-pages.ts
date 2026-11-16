@@ -111,6 +111,8 @@ export interface ServiceRequestPageConfig {
   /** The primary choice, stored in `service_requests.service_type`. */
   serviceTypesLabel: string;
   serviceTypes: { id: string; labelBn: string }[];
+  /** Concise categories displayed beneath the service photo. */
+  serviceHighlights?: string[];
   allowCustomServiceType?: boolean;
 
   /** One or more address blocks. */
@@ -250,7 +252,26 @@ const KAJER_BUA: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কাজের বিবরণ',
-  serviceTypes: [],
+  serviceTypes: [
+    { id: 'part_time', labelBn: 'ছুটা বুয়া' },
+    { id: 'full_time', labelBn: 'বাধা বুয়া' },
+    { id: 'baby_care', labelBn: 'বেবি কেয়ার' },
+    { id: 'patient_care', labelBn: 'পেশেন্ট কেয়ার' },
+    { id: 'cooking', labelBn: 'রান্নার কাজ' },
+    { id: 'bachelor_cooking', labelBn: 'ব্যাচেলর রান্নার বুয়া' },
+    { id: 'cleaning', labelBn: 'বাসা পরিষ্কার' },
+    { id: 'laundry', labelBn: 'কাপড় ধোয়া ও ঘর গোছানো' },
+  ],
+  serviceHighlights: [
+    'ছুটা বুয়া',
+    'বাধা বুয়া',
+    'বেবি কেয়ার',
+    'পেশেন্ট কেয়ার',
+    'রান্নার কাজ',
+    'ব্যাচেলর রান্নার বুয়া',
+    'বাসা পরিষ্কার',
+    'কাপড় ধোয়া ও ঘর গোছানো',
+  ],
   locations: [
     {
       key: 'work',
@@ -311,7 +332,22 @@ const ELECTRICIAN: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
-  serviceTypes: [],
+  serviceTypes: [
+    { id: 'home_repair', labelBn: 'বাসার বৈদ্যুতিক লাইন মেরামত' },
+    { id: 'fan_light', labelBn: 'ফ্যান ও লাইট ইনস্টলেশন' },
+    { id: 'switch_socket', labelBn: 'সুইচ ও সকেট মেরামত' },
+    { id: 'mcb', labelBn: 'MCB ও সার্কিট ব্রেকার' },
+    { id: 'wiring', labelBn: 'নতুন বৈদ্যুতিক ওয়্যারিং' },
+    { id: 'other', labelBn: 'অন্যান্য বৈদ্যুতিক কাজ' },
+  ],
+  serviceHighlights: [
+    'বাসার বৈদ্যুতিক লাইন মেরামত',
+    'ফ্যান ও লাইট ইনস্টলেশন',
+    'সুইচ ও সকেট মেরামত',
+    'MCB ও সার্কিট ব্রেকার',
+    'নতুন বৈদ্যুতিক ওয়্যারিং',
+    'অন্যান্য বৈদ্যুতিক কাজ',
+  ],
   allowCustomServiceType: true,
   locations: [
     {
@@ -401,7 +437,22 @@ const PLUMBER: ServiceRequestPageConfig = {
     REQUEST_INBOX_TRUST,
   ],
   serviceTypesLabel: 'কী ধরনের কাজ প্রয়োজন?',
-  serviceTypes: [],
+  serviceTypes: [
+    { id: 'leak_repair', labelBn: 'পানির পাইপ লিকেজ মেরামত' },
+    { id: 'bath_kitchen', labelBn: 'বাথরুম ও কিচেনের কাজ' },
+    { id: 'tap_repair', labelBn: 'পানির কল ও ট্যাপ মেরামত' },
+    { id: 'toilet_basin', labelBn: 'কমোড ও বেসিন ইনস্টলেশন' },
+    { id: 'motor_pump', labelBn: 'পানির মোটর ও পাম্প মেরামত' },
+    { id: 'new_water_line', labelBn: 'নতুন পানির লাইন স্থাপন' },
+  ],
+  serviceHighlights: [
+    'পানির পাইপ লিকেজ মেরামত',
+    'বাথরুম ও কিচেনের কাজ',
+    'পানির কল ও ট্যাপ মেরামত',
+    'কমোড ও বেসিন ইনস্টলেশন',
+    'পানির মোটর ও পাম্প মেরামত',
+    'নতুন পানির লাইন স্থাপন',
+  ],
   allowCustomServiceType: true,
   locations: [
     {
@@ -593,7 +644,7 @@ const AC_FRIDGE: ServiceRequestPageConfig = {
   metaDescription:
     'ময়মনসিংহে এসি সার্ভিসিং বা ফ্রিজ মেরামতের অনুরোধ পাঠান — এসি নাকি ফ্রিজ, ব্র্যান্ড, সমস্যার ধরন, কতদিন ধরে সমস্যা এবং ছবি সহ।',
   image: {
-    src: '/ac.png',
+    src: '/ac.webp',
     alt: 'ঘরের দেয়ালে বাঁধানো একটি এয়ার কন্ডিশনার',
     position: 'center',
   },

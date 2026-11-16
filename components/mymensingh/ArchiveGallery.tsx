@@ -29,7 +29,7 @@ const FRAMES: Frame[] = [
   },
   {
     id: 'zamindari-house',
-    src: '/muktagacha.jpg',
+    src: '/muktagacha.webp',
     title: 'জামিলা ধাঁচের বাড়ি',
     era: 'ঐতিহাসিক স্থাপত্য',
     alt: 'ঐতিহ্যবাহী জামিলা ভবনের চিত্র',

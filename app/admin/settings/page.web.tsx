@@ -4,33 +4,34 @@ import React, { useState, useEffect } from 'react';
 import {
   Loader2,
   Settings,
-  Coins,
-  ToggleLeft,
-  ToggleRight,
   Bell,
   Save,
   CheckCircle2,
   AlertCircle,
+  KeyRound,
+  Send,
 } from 'lucide-react';
 import { fetchPlatformSettings, savePlatformSettings, type PlatformSettings } from '@/lib/admin-service';
-import type { ToletFeeRules } from '@/lib/tolet-fees';
 import { PageHeader } from '@/components/admin/PageHeader';
 import { AdminError, AdminLoading } from '@/components/admin/States';
-
-const DEFAULT_TOLET_FEE_RULES: ToletFeeRules = {
-  messSeatFee: 50,
-  tier1Max10k: 100,
-  tier2Max20k: 200,
-  tier3Above20k: 400,
-};
+import { useAuth } from '@/lib/auth-context';
 
 export default function AdminSettingsPage() {
+  const { changePassword, hasPassword } = useAuth();
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [feeRules, setFeeRules] = useState<ToletFeeRules>(DEFAULT_TOLET_FEE_RULES);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordSaving, setPasswordSaving] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [telegramBusy, setTelegramBusy] = useState<'health' | 'suite' | null>(null);
+  const [telegramMessage, setTelegramMessage] = useState('');
+  const [telegramMessageIsError, setTelegramMessageIsError] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -38,7 +39,6 @@ export default function AdminSettingsPage() {
       .then((data) => {
         if (active) {
           setSettings(data);
-          setFeeRules(data.toletFeeRules);
         }
       })
       .catch((err: unknown) => {
@@ -51,10 +51,6 @@ export default function AdminSettingsPage() {
       });
     return () => { active = false; };
   }, []);
-
-  const handleFeeChange = (field: keyof ToletFeeRules, value: number) => {
-    setFeeRules((prev) => ({ ...prev, [field]: Math.max(0, value) }));
-  };
 
   const handleToggleService = (service: string, enabled: boolean) => {
     setSettings((prev) => ({
@@ -76,7 +72,6 @@ export default function AdminSettingsPage() {
     setError('');
     setSuccess('');
     const res = await savePlatformSettings({
-      toletFeeRules: feeRules,
       serviceAvailability: settings.serviceAvailability,
       notificationSettings: settings.notificationSettings,
     });
@@ -85,6 +80,97 @@ export default function AdminSettingsPage() {
       setSuccess('সেটিংস সফলভাবে সংরক্ষিত হয়েছে');
     } else {
       setError(res.error || 'সংরক্ষণ ব্যর্থ হয়েছে');
+    }
+  };
+
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    if (newPassword.length < 6) {
+      setPasswordError('নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('নতুন পাসওয়ার্ড দুটি মিলছে না।');
+      return;
+    }
+
+    setPasswordSaving(true);
+    try {
+      const result = await changePassword(newPassword, hasPassword ? currentPassword : undefined);
+      if (!result.success) {
+        setPasswordError(result.error || 'পাসওয়ার্ড পরিবর্তন করা যায়নি।');
+        return;
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setPasswordSuccess('অ্যাডমিনের পাসওয়ার্ড সফলভাবে পরিবর্তন হয়েছে।');
+    } catch (err) {
+      setPasswordError(err instanceof Error ? err.message : 'পাসওয়ার্ড পরিবর্তন করা যায়নি।');
+    } finally {
+      setPasswordSaving(false);
+    }
+  };
+
+  const runTelegramAction = async (action: 'health' | 'suite') => {
+    setTelegramBusy(action);
+    setTelegramMessage('');
+    setTelegramMessageIsError(false);
+    try {
+      const response = await fetch(
+        action === 'health'
+          ? '/api/admin-telegram-alerts/health'
+          : '/api/admin-telegram-alerts/test-suite',
+        { method: 'POST' }
+      );
+      const result: unknown = await response.json();
+      if (!result || typeof result !== 'object') {
+        const message =
+          result && typeof result === 'object' && 'error' in result && typeof result.error === 'string'
+            ? result.error
+            : 'Telegram পরীক্ষা সম্পন্ন হয়নি।';
+        throw new Error(message);
+      }
+      if (action === 'health') {
+        if (!response.ok) {
+          const message = 'error' in result && typeof result.error === 'string'
+            ? result.error
+            : 'Telegram health check failed.';
+          throw new Error(message);
+        }
+        const bot =
+          'bot' in result && typeof result.bot === 'string' ? ` (${result.bot})` : '';
+        setTelegramMessage(`Bot token ও chat ID যাচাই হয়েছে${bot}।`);
+      } else {
+        const sent = 'sent' in result && typeof result.sent === 'number' ? result.sent : 0;
+        const failed = 'failed' in result && typeof result.failed === 'number' ? result.failed : 0;
+        const failures =
+          'results' in result && Array.isArray(result.results)
+            ? result.results
+                .filter(
+                  (entry): entry is { type: string; ok: false } =>
+                    !!entry &&
+                    typeof entry === 'object' &&
+                    'type' in entry &&
+                    typeof entry.type === 'string' &&
+                    'ok' in entry &&
+                    entry.ok === false
+                )
+                .map((entry) => entry.type)
+            : [];
+        setTelegramMessage(
+          `${sent}টি test message পাঠানো হয়েছে; ${failed}টি ব্যর্থ.` +
+            (failures.length ? ` ব্যর্থ event: ${failures.join(', ')}` : '')
+        );
+        setTelegramMessageIsError(failed > 0 || !response.ok);
+      }
+    } catch (actionError) {
+      setTelegramMessage(actionError instanceof Error ? actionError.message : 'Telegram পরীক্ষা ব্যর্থ হয়েছে।');
+      setTelegramMessageIsError(true);
+    } finally {
+      setTelegramBusy(null);
     }
   };
 
@@ -142,62 +228,108 @@ export default function AdminSettingsPage() {
         )}
 
         <div className="space-y-5">
-          {/* To-Let Fee Rules */}
-          <section className="bg-white rounded-2xl border border-slate-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-700 flex items-center justify-center">
-                <Coins className="w-5 h-5" />
+          <section className="rounded-2xl border border-slate-200 bg-white p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-slate-100 text-slate-700">
+                <KeyRound className="h-5 w-5" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-slate-900">টু-লেট প্ল্যাটফর্ম ফি স্ল্যাব</h2>
-                <p className="text-xs text-slate-500">এই মানগুলো বাসা ভাড়া করার সময় প্ল্যাটফর্ম ফি হিসাবের জন্য ব্যবহৃত হয়।</p>
+                <h2 className="text-lg font-bold text-slate-900">অ্যাডমিন পাসওয়ার্ড পরিবর্তন</h2>
+                <p className="text-xs text-slate-500">নতুন পাসওয়ার্ড সেট করতে আপনার অ্যাকাউন্ট যাচাই করুন।</p>
               </div>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">মেস / হোস্টেল / সিট (৳)</label>
+            <form onSubmit={handleChangePassword} className="space-y-3">
+              {hasPassword && (
                 <input
-                  type="number"
-                  min="0"
-                  value={feeRules.messSeatFee}
-                  onChange={(e) => handleFeeChange('messSeatFee', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
+                  type="password"
+                  value={currentPassword}
+                  onChange={(event) => setCurrentPassword(event.target.value)}
+                  autoComplete="current-password"
+                  required
+                  placeholder="বর্তমান পাসওয়ার্ড"
+                  aria-label="বর্তমান পাসওয়ার্ড"
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
                 />
-                <p className="text-[11px] text-slate-500 mt-1">নির্দিষ্ট ফি</p>
+              )}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <input
+                  type="password"
+                  value={newPassword}
+                  onChange={(event) => setNewPassword(event.target.value)}
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                  placeholder="নতুন পাসওয়ার্ড"
+                  aria-label="নতুন পাসওয়ার্ড"
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
+                />
+                <input
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(event) => setConfirmPassword(event.target.value)}
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                  placeholder="নতুন পাসওয়ার্ড আবার লিখুন"
+                  aria-label="নতুন পাসওয়ার্ড আবার লিখুন"
+                  className="w-full rounded-xl border border-slate-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
+                />
+              </div>
+              {passwordError && (
+                <p role="alert" className="text-sm text-red-700">{passwordError}</p>
+              )}
+              {passwordSuccess && (
+                <p role="status" className="text-sm text-emerald-700">{passwordSuccess}</p>
+              )}
+              <div className="flex justify-end">
+                <button
+                  type="submit"
+                  disabled={passwordSaving}
+                  className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-slate-900 disabled:opacity-50"
+                >
+                  {passwordSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}
+                  {passwordSaving ? 'পরিবর্তন হচ্ছে...' : 'পাসওয়ার্ড পরিবর্তন করুন'}
+                </button>
+              </div>
+            </form>
+          </section>
+
+          <section className="rounded-2xl border border-slate-200 bg-white p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-50 text-sky-700">
+                <Send className="h-5 w-5" />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ভাড়া ১০,০০০ পর্যন্ত (৳)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={feeRules.tier1Max10k}
-                  onChange={(e) => handleFeeChange('tier1Max10k', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">টিয়ার ১</p>
+                <h2 className="text-lg font-bold text-slate-900">Telegram নোটিফিকেশন পরীক্ষা</h2>
+                <p className="text-xs text-slate-500">Bot token, chat ID এবং সব ধরনের নমুনা alert যাচাই করুন।</p>
               </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ভাড়া ১০,০০১ - ২০,০০০ (৳)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={feeRules.tier2Max20k}
-                  onChange={(e) => handleFeeChange('tier2Max20k', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">টিয়ার ২</p>
-              </div>
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">ভাড়া ২০,০০০ এর উপরে (৳)</label>
-                <input
-                  type="number"
-                  min="0"
-                  value={feeRules.tier3Above20k}
-                  onChange={(e) => handleFeeChange('tier3Above20k', parseInt(e.target.value) || 0)}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-slate-600"
-                />
-                <p className="text-[11px] text-slate-500 mt-1">টিয়ার ৩</p>
-              </div>
+            </div>
+            {telegramMessage && (
+              <p
+                role={telegramMessageIsError ? 'alert' : 'status'}
+                className={`mb-3 text-sm ${telegramMessageIsError ? 'text-red-700' : 'text-emerald-700'}`}
+              >
+                {telegramMessage}
+              </p>
+            )}
+            <div className="flex flex-wrap justify-end gap-3">
+              <button
+                type="button"
+                disabled={telegramBusy !== null}
+                onClick={() => void runTelegramAction('health')}
+                className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 disabled:opacity-50"
+              >
+                {telegramBusy === 'health' ? 'যাচাই হচ্ছে…' : 'Bot ও chat যাচাই'}
+              </button>
+              <button
+                type="button"
+                disabled={telegramBusy !== null}
+                onClick={() => void runTelegramAction('suite')}
+                className="inline-flex items-center gap-2 rounded-xl bg-slate-800 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {telegramBusy === 'suite' && <Loader2 className="h-4 w-4 animate-spin" />}
+                {telegramBusy === 'suite' ? 'নমুনা পাঠানো হচ্ছে…' : 'সব event-এর test পাঠান'}
+              </button>
             </div>
           </section>
 

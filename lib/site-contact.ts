@@ -7,8 +7,8 @@
  * "not published yet" state that still offers a working alternative action
  * (the message form) instead of a dead link or a made-up number/address.
  *
- * The phone number is intentionally server-only and is supplied to signed-in
- * visitors by the site-content endpoint. Never put a private contact value in
+ * The public hotline is supplied server-side by the site-content endpoint.
+ * Private email and social-contact values stay server-only; never put them in
  * this client-safe module.
  */
 

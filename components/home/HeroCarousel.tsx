@@ -8,6 +8,8 @@ import React, {
   useSyncExternalStore,
 } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Image from 'next/image';
+import { isImageOptimizationSupported } from '@/lib/optimized-image-source';
 import type { PublicHeroSlide } from '@/lib/hero-service';
 
 /**
@@ -23,14 +25,10 @@ import type { PublicHeroSlide } from '@/lib/hero-service';
  *  1. NEVER A BLANK / GREEN FRAME. The loop position is normalised by the
  *     `transitionend` handler *and* by a timeout that fires regardless, so a
  *     backgrounded tab (where transitions do not run) can never leave the
- *     track parked one slide past the end. Every frame also paints its own
- *     picture as a CSS background behind the `<img>`, and the frame itself is
- *     backed by the first slide, so an image that has not painted yet still
- *     shows a photo rather than a colour block.
- *  2. NEVER A MISSING 4th IMAGE. Slides live in a horizontally translated
- *     track, which is exactly where `loading="lazy"` is unreliable — every
- *     slide loads eagerly and is decoded asynchronously, and a slide whose URL
- *     fails falls back to the built-in `/sheba1.png` … `/sheba4.png` art.
+ *     track parked one slide past the end.
+ *  2. NEVER A MISSING 4th IMAGE. The active and next slides load eagerly; the
+ *     remaining carousel images load lazily. Failed slides use the built-in
+ *     WebP artwork as a fallback.
  *  3. NEVER STOPS. Autoplay is an interval keyed on the *current* position via
  *     a ref, so it keeps running for as long as the tab is open, without a
  *     refresh and without re-fetching an image.
@@ -45,11 +43,15 @@ import type { PublicHeroSlide } from '@/lib/hero-service';
  * has a hero and never a broken image.
  */
 const SLIDES: PublicHeroSlide[] = [
-  { image: '/sheba1.png', caption: 'প্রতিদিনের সেবা, এক জায়গায়' },
-  { image: '/sheba2.png', caption: 'বাসা থেকে মেরামত — সবই স্থানীয়' },
-  { image: '/sheba3.png', caption: 'ময়মনসিংহের মানুষের হাতেই গড়া' },
-  { image: '/sheba4.png', caption: 'জরুরি সেবা, সঠিক নম্বরে' },
+  { image: '/sheba1.webp', caption: 'প্রতিদিনের সেবা, এক জায়গায়' },
+  { image: '/sheba2.webp', caption: 'বাসা থেকে মেরামত — সবই স্থানীয়' },
+  { image: '/sheba3.webp', caption: 'ময়মনসিংহের মানুষের হাতেই গড়া' },
+  { image: '/sheba4.webp', caption: 'জরুরি সেবা, সঠিক নম্বরে' },
 ];
+
+function optimizeLegacyHeroPath(src: string): string {
+  return src.replace(/\/sheba([1-4])\.png(?=([?#]|$))/, '/sheba$1.webp');
+}
 
 const AUTOPLAY_MS = 5500;
 const EASE = 'transform 850ms cubic-bezier(0.22, 1, 0.36, 1)';
@@ -60,11 +62,6 @@ const EASE = 'transform 850ms cubic-bezier(0.22, 1, 0.36, 1)';
  * the track can never stay parked on a clone edge.
  */
 const SNAP_MS = 1000;
-
-/** `url("…")` with the quotes escaped for CSS, safe for any path. */
-function cssUrl(src: string): string {
-  return `url(${JSON.stringify(src)})`;
-}
 
 function usePrefersReducedMotion() {
   // Must start false on both server and client. Reading `matchMedia` in the
@@ -102,7 +99,9 @@ export default function HeroCarousel({
 }) {
   // A row without an image would punch a permanent hole in the band, so it is
   // dropped before anything else derives an index from the list.
-  const usable = (slides ?? []).filter((s) => typeof s?.image === 'string' && s.image.length > 0);
+  const usable = (slides ?? [])
+    .filter((s) => typeof s?.image === 'string' && s.image.length > 0)
+    .map((slide) => ({ ...slide, image: optimizeLegacyHeroPath(slide.image) }));
   const active = usable.length > 0 ? usable : SLIDES;
   const N = active.length;
   // Cloned track: [last, ...slides, first] — lets the loop wrap invisibly.
@@ -237,8 +236,6 @@ export default function HeroCarousel({
   };
 
   const displayIndex = pos === 0 ? N - 1 : pos === N + 1 ? 0 : pos - 1;
-  const frameStyle = { backgroundImage: cssUrl(active[0].image) };
-
   return (
     <section
       className="bg-mist-50"
@@ -249,7 +246,6 @@ export default function HeroCarousel({
       <div className="mx-auto w-full max-w-none px-0 pb-0 pt-0 sm:max-w-7xl sm:px-6 sm:pb-2 sm:pt-3 lg:px-8 lg:pb-3 lg:pt-4">
         <div
           className="group/carousel relative touch-pan-y overflow-hidden rounded-none bg-cover bg-center bg-mist-100 shadow-none ring-0 sm:rounded-2xl sm:shadow-xl sm:shadow-brand-900/15 sm:ring-1 sm:ring-brand-900/10 lg:rounded-3xl"
-          style={frameStyle}
           onMouseEnter={() => setPaused(true)}
           onMouseLeave={() => setPaused(false)}
           onTouchStart={onTouchStart}
@@ -271,24 +267,19 @@ export default function HeroCarousel({
               <div
                 key={`hero-${i}-${s.image}`}
                 className="relative aspect-[16/9] w-full shrink-0 bg-cover bg-center lg:max-h-[520px] xl:max-h-[560px]"
-                // The same picture painted behind the <img>: until the file
-                // has decoded, the frame shows a photo instead of a colour.
-                style={{ backgroundImage: cssUrl(s.image) }}
               >
                 {/* The four `/sheba*.png` files are 1672×941 (~16:9), and the
                     frame is locked to 16:9 at every breakpoint, so the picture
                     fills the box edge to edge — no side matting, and `cover`
                     trims at most a sub-pixel sliver. */}
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={s.image}
                   alt=""
-                  // Eager on purpose: these live in a translated track, which
-                  // is exactly where lazy images sit outside the viewport and
-                  // may never be asked to load — that is the "4th slide is
-                  // blank" bug. Four files, one request each, cached for the
-                  // life of the page: no refresh ever reloads them.
-                  loading="eager"
+                  fill
+                  sizes="100vw"
+                  priority={i === 1}
+                  loading={i === 1 ? undefined : i === 2 ? 'eager' : 'lazy'}
+                  unoptimized={!isImageOptimizationSupported(s.image)}
                   decoding="async"
                   onError={(event) => {
                     const el = event.currentTarget;

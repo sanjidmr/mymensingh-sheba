@@ -1,9 +1,11 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { MapPin, Star } from 'lucide-react';
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import type { HomePreviewCard } from '@/lib/home-preview';
+import { isImageOptimizationSupported } from '@/lib/optimized-image-source';
 
 interface ServiceCardProps {
   card: HomePreviewCard;
@@ -22,7 +24,7 @@ interface ServiceCardProps {
  * Photo tiles stay clean: no text, no status badge on top of the image.
  * `hideImage` (privacy for রক্তদাতা) drops the media block entirely.
  */
-export default function ServiceCard({
+function ServiceCard({
   card,
   className = '',
   imageless = false,
@@ -51,12 +53,13 @@ export default function ServiceCard({
       ) : !hideImage ? (
         <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-mist-100">
           {card.imageUrl && !imgError ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <Image
               src={card.imageUrl}
               alt={card.title}
-              loading="lazy"
-              className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-[1.05]"
+              fill
+              sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 20vw"
+              unoptimized={!isImageOptimizationSupported(card.imageUrl)}
+              className="object-cover transition-transform duration-300 group-hover:scale-[1.05]"
               onError={() => setImgError(true)}
             />
           ) : (
@@ -133,3 +136,5 @@ export default function ServiceCard({
     </Link>
   );
 }
+
+export default memo(ServiceCard);

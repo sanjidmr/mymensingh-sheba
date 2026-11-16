@@ -2,7 +2,6 @@ import { createClient as createSupabaseClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import { normalizeBdPhone } from '@/lib/contact-types';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { notifyOrder } from '@/lib/notify-order.server';
 
 export const runtime = 'nodejs';
 
@@ -10,10 +9,11 @@ interface BookingPayload {
   idempotencyKey?: unknown;
   passengerName?: unknown;
   mobileNumber?: unknown;
-  currentAddress?: unknown;
   pickupLocation?: unknown;
   destination?: unknown;
+  passengerCount?: unknown;
   requestedAt?: unknown;
+  vehiclePreference?: unknown;
   additionalInfo?: unknown;
 }
 
@@ -34,7 +34,7 @@ export async function POST(
   { params }: { params: Promise<{ service: string }> }
 ) {
   const { service } = await params;
-  const serviceType = service === 'auto' || service === 'cng' ? service : null;
+  const serviceType = service === 'car' || service === 'auto' || service === 'cng' ? service : null;
   if (!serviceType) return NextResponse.json({ error: 'সেবার ধরন সঠিক নয়।' }, { status: 404 });
 
   let body: BookingPayload;
@@ -50,18 +50,24 @@ export async function POST(
   const key = body.idempotencyKey;
   const name = typeof body.passengerName === 'string' ? body.passengerName.trim() : '';
   const phone = typeof body.mobileNumber === 'string' ? normalizeBdPhone(body.mobileNumber) : '';
-  const address = typeof body.currentAddress === 'string' ? body.currentAddress.trim() : '';
   const pickup = typeof body.pickupLocation === 'string' ? body.pickupLocation.trim() : '';
   const destination = typeof body.destination === 'string' ? body.destination.trim() : '';
+  const passengerCount = body.passengerCount;
+  const submittedVehiclePreference = typeof body.vehiclePreference === 'string' ? body.vehiclePreference.trim() : '';
+  const vehiclePreference = serviceType === 'car'
+    ? submittedVehiclePreference
+    : serviceType === 'auto' ? 'অটো' : 'CNG';
   const extra = typeof body.additionalInfo === 'string' ? body.additionalInfo.trim() : '';
 
   if (
     !isUuid(key) || name.length < 3 || name.length > 80 ||
     !/^01[3-9]\d{8}$/.test(phone) ||
-    address.length < 3 || address.length > 240 ||
     pickup.length < 2 || pickup.length > 160 ||
     destination.length < 2 || destination.length > 160 ||
+    typeof passengerCount !== 'number' || !Number.isInteger(passengerCount) ||
+    passengerCount < 1 || passengerCount > 50 ||
     !isDhakaDateTime(body.requestedAt) ||
+    (serviceType === 'car' && (vehiclePreference.length < 2 || vehiclePreference.length > 100)) ||
     extra.length > 1000
   ) {
     return NextResponse.json({ error: 'সব প্রয়োজনীয় তথ্য সঠিকভাবে পূরণ করুন। মোবাইল নম্বরটি যাচাই করুন।' }, { status: 400 });
@@ -116,10 +122,11 @@ export async function POST(
       service_type: serviceType,
       passenger_name: name,
       mobile_number: `+880${phone.slice(1)}`,
-      current_address: address,
       pickup_location: pickup,
       destination,
+      passenger_count: passengerCount,
       requested_at: requestedAt.toISOString(),
+      vehicle_preference: vehiclePreference,
       additional_info: extra || null,
       customer_id: customerId,
     })
@@ -129,15 +136,18 @@ export async function POST(
   if (error?.code === '23505') {
     const { data: existing, error: lookupError } = await submissionClient
       .from('vehicle_bookings')
-      .select('id, service_type')
-      .eq('idempotency_key', key)
-      .maybeSingle();
+        .select('id, service_type, reference_code')
+        .eq('idempotency_key', key)
+        .maybeSingle();
     if (lookupError) {
       console.error('Vehicle booking idempotency lookup failed.', { code: lookupError.code });
       return NextResponse.json({ error: 'অনুরোধের অবস্থা যাচাই করা যায়নি। আবার চেষ্টা করুন।' }, { status: 503 });
     }
     if (existing?.service_type === serviceType) {
-      return NextResponse.json({ success: true, bookingId: existing.id }, { status: 200 });
+      return NextResponse.json(
+        { success: true, bookingId: existing.id, referenceCode: existing.reference_code },
+        { status: 200 }
+      );
     }
     return NextResponse.json({ error: 'অনুরোধটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 409 });
   }
@@ -146,7 +156,8 @@ export async function POST(
     return NextResponse.json({ error: 'অনুরোধটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 500 });
   }
 
-  await notifyOrder(data as Record<string, unknown>, serviceType, `/admin/vehicle-bookings/${serviceType}`);
-
-  return NextResponse.json({ success: true, bookingId: data.id }, { status: 201 });
+  return NextResponse.json(
+    { success: true, bookingId: data.id, referenceCode: data.reference_code },
+    { status: 201 }
+  );
 }

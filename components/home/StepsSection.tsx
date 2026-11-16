@@ -26,7 +26,7 @@ const STEPS = [
 ];
 
 /**
- * Useful local information — কিভাবে কাজ করে।
+ * Useful local information — কিভাবে সেবা নেবো/দেবো।
  * Three clear steps with restrained accents and a connecting line on desktop.
  */
 export default function StepsSection() {

@@ -21,7 +21,6 @@ import type {
 } from './staff-types';
 import { STAFF_SERVICE_KEYS } from './staff-types';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
-import { requestAdminTelegramAlert } from './admin-telegram-alerts';
 import {
   mockFetchPublicStaffProfiles,
   mockFetchStaffProfileById,
@@ -197,7 +196,6 @@ export async function createStaffReport(input: {
     details: input.details || null,
   });
   if (error) return { success: false, error: `রিপোর্ট জমা ব্যর্থ: ${error.message}` };
-  void requestAdminTelegramAlert('staff_profile_reports', reportId);
   return { success: true };
 }
 

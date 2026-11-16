@@ -13,10 +13,8 @@ import {
   ShoppingBag,
   Wifi,
   BookOpen,
-  Stethoscope,
   ShieldCheck,
   Ambulance,
-  Flame,
   HeartHandshake,
 } from 'lucide-react';
 
@@ -121,7 +119,7 @@ export const DAILY_CATEGORY: HomepageCategory = {
       en: 'Ride & Rent',
       text: 'স্থানীয় গাড়ি, অটো ও সিএনজি ভাড়া — শহরের ভেতরে সাশ্রয়ী যাতায়াত।',
       href: '/gari-auto-cng',
-      image: '/carrent.png',
+      image: '/carrent.webp',
       chips: ['গাড়ি', 'অটো', 'CNG'],
       cta: 'সেবা দেখুন',
       pill: '৩টি সেবা',
@@ -166,7 +164,7 @@ export const DAILY_CATEGORY: HomepageCategory = {
       en: 'Cooling Repair',
       text: 'এসি সার্ভিসিং থেকে ফ্রিজ মেরামত — ঘরের শীতলতা নিয়ে থাকুন নিশ্চিত।',
       href: '/ac-fridge',
-      image: '/ac.png',
+      image: '/ac.webp',
       chips: ['এসি', 'ফ্রিজ'],
       cta: 'মেরামত দেখুন',
       icon: Wind,
@@ -266,34 +264,6 @@ export const SHOP_TRAVEL_CATEGORY: HomepageCategory = {
       cta: 'দেখুন',
       icon: BookOpen,
     },
-  ],
-};
-
-/* ------------------------------------------------------------------ */
-/* ক্যাটাগরি ০৩ — জরুরি ও জনসেবা                                         */
-/* ------------------------------------------------------------------ */
-export const EMERGENCY_CATEGORY: HomepageCategory = {
-  id: 'emergency',
-  title: 'ইমার্জেন্সি সেবা',
-  description:
-    'জরুরি মুহূর্তে সঠিক নম্বরটা খুঁজতে গিয়ে সময় নষ্ট নয় — এক ট্যাপে সরাসরি সেবায়।',
-  tone: 'white',
-  // Four compact tiles per row on phones and four equal columns from `lg`
-  // upwards, so the four emergency cards always sit in exactly one row.
-  grid: 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-4',
-  compact: true,
-  dense: true,
-  items: [
-    {
-      id: 'doctor',
-      name: 'ডাক্তার',
-      en: 'Health',
-      text: 'চিকিৎসা সহায়তা ও পরামর্শের জন্য।',
-      href: '/doctors',
-      image: '/doctor.jpg',
-      cta: 'কল করুন',
-      icon: Stethoscope,
-    },
     {
       id: 'police',
       name: 'পুলিশ',
@@ -316,15 +286,45 @@ export const EMERGENCY_CATEGORY: HomepageCategory = {
       cta: 'কল করুন',
       icon: Ambulance,
     },
+  ],
+};
+
+/* ------------------------------------------------------------------ */
+/* ক্যাটাগরি ০৩ — জরুরি ও জনসেবা                                         */
+/* ------------------------------------------------------------------ */
+export const EMERGENCY_CATEGORY: HomepageCategory = {
+  id: 'emergency',
+  title: 'ইমার্জেন্সি সেবা',
+  description:
+    'জরুরি মুহূর্তে সঠিক নম্বরটা খুঁজতে গিয়ে সময় নষ্ট নয় — এক ট্যাপে সরাসরি সেবায়।',
+  tone: 'white',
+  // Emergency data remains available for integrations, but this section is no
+  // longer rendered on the homepage.
+  grid: 'grid-cols-4 sm:grid-cols-4 lg:grid-cols-4',
+  compact: true,
+  dense: true,
+  items: [
     {
-      id: 'fire',
-      name: 'ফায়ার সার্ভিস',
-      en: 'Fire Service',
-      text: 'অগ্নিনির্বাপণ ও উদ্ধার কাজে সরাসরি।',
-      href: '/fireservice',
-      image: '/fireservice.jpg',
+      id: 'police',
+      name: 'পুলিশ',
+      en: 'Police',
+      text: 'যেকোনো জরুরি বা নিরাপত্তা প্রয়োজনে।',
+      href: '/police',
+      image: '/police.jpg',
+      objectPosition: 'center 70%',
       cta: 'কল করুন',
-      icon: Flame,
+      featured: true,
+      icon: ShieldCheck,
+    },
+    {
+      id: 'ambulance',
+      name: 'অ্যাম্বুলেন্স',
+      en: 'Ambulance',
+      text: 'জরুরি রোগী পরিবহনে দ্রুত সমন্বয়।',
+      href: '/ambulance',
+      image: '/ambulence.jpg',
+      cta: 'কল করুন',
+      icon: Ambulance,
     },
   ],
 };

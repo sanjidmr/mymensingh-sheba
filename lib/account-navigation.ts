@@ -14,7 +14,7 @@ export const ACCOUNT_LINKS = [
   { href: '/dashboard/posts', label: 'আমার পোস্ট', shortLabel: 'আমার পোস্ট', icon: FileText },
   {
     href: '/dashboard/profiles',
-    label: 'সেবা প্রোফাইল খুলুন',
+    label: 'সেবা প্রোফাইল',
     shortLabel: 'সেবা প্রোফাইল',
     icon: UserRound,
   },

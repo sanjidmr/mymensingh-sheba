@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import Image from 'next/image';
 import { ArrowUpRight, Plus } from 'lucide-react';
 import { AdminTable, type AdminColumn } from '@/components/admin/AdminTable';
 import { AdminError, AdminEmpty } from '@/components/admin/States';
@@ -8,11 +9,13 @@ import { PageHeader } from '@/components/admin/PageHeader';
 import PostActions from '@/components/admin/PostActions';
 import { FeaturedPill, StatCard, StatusPill } from '@/components/admin/StatCard';
 import { TablePager } from '@/components/admin/TablePager';
+import NewsAnalyticsPanel from '@/components/admin/NewsAnalyticsPanel';
 import { formatDateTime, lookupStatus, STATUS_OPTIONS } from '@/lib/admin/format';
+import { dhakaDateString, shiftAnalyticsDate } from '@/lib/admin/analytics-date';
+import { fetchNewsAnalytics, type NewsAnalyticsArticle } from '@/lib/admin/news-analytics';
 import {
   fetchPostCounts,
   fetchPosts,
-  getAdminDataClient,
   parseListParams,
   type AdminPostRow,
 } from '@/lib/admin/queries';
@@ -20,15 +23,22 @@ import { NEWS_CATEGORIES } from '@/lib/catalog-types';
 
 export const dynamic = 'force-dynamic';
 
-const columns: AdminColumn<AdminPostRow>[] = [
+type NewsPostWithAnalytics = AdminPostRow & {
+  newsAnalytics?: NewsAnalyticsArticle;
+};
+
+const columns: AdminColumn<NewsPostWithAnalytics>[] = [
   {
     key: 'headline',
     header: 'শিরোনাম',
     mobilePrimary: true,
     render: (post) => (
-      <span className="block min-w-0">
-        <span className="block break-words font-semibold text-admin-text">{post.title_bn}</span>
-        <span className="mt-1 block text-xs text-admin-muted">{post.author_name || 'লেখক উল্লেখ নেই'}</span>
+      <span className="flex min-w-0 items-center gap-2">
+        {post.cover_image_url && <Image src={post.cover_image_url} alt="" width={56} height={40} unoptimized className="h-10 w-14 shrink-0 rounded object-cover" />}
+        <span className="block min-w-0">
+          <span className="block break-words font-semibold text-admin-text">{post.title_bn}</span>
+          <span className="mt-1 block text-xs text-admin-muted">{post.author_name || 'লেখক উল্লেখ নেই'}</span>
+        </span>
       </span>
     ),
   },
@@ -57,8 +67,22 @@ const columns: AdminColumn<AdminPostRow>[] = [
   },
   {
     key: 'views',
-    header: 'দেখা',
-    render: (post) => <span className="tabular-nums text-xs text-admin-muted">{post.view_count ?? '—'}</span>,
+    header: 'মোট ভিউ',
+    render: (post) => <span className="tabular-nums text-xs text-admin-muted">{post.newsAnalytics?.totalViews.toLocaleString('bn-BD') ?? '—'}</span>,
+  },
+  {
+    key: 'unique',
+    header: 'ইউনিক',
+    render: (post) => <span className="tabular-nums text-xs text-admin-muted">{post.newsAnalytics?.totalVisitors.toLocaleString('bn-BD') ?? '—'}</span>,
+  },
+  {
+    key: 'recent',
+    header: 'আজ · ৭ দিন · ৩০ দিন',
+    render: (post) => post.newsAnalytics ? (
+      <span className="text-xs tabular-nums text-admin-muted">
+        {post.newsAnalytics.todayViews.toLocaleString('bn-BD')} · {post.newsAnalytics.weeklyViews.toLocaleString('bn-BD')} · {post.newsAnalytics.monthlyViews.toLocaleString('bn-BD')}
+      </span>
+    ) : '—',
   },
   {
     key: 'actions',
@@ -75,39 +99,37 @@ export default async function AdminNewsPage({
 }) {
   const resolved = await searchParams;
   const params = { ...parseListParams(resolved, { pageSize: 20 }), kind: 'news' };
-  const [result, summary, admin] = await Promise.all([
+  const rawRange = typeof resolved.range === 'string' ? resolved.range : '30d';
+  const range = (['today', '7d', '30d', 'all'].includes(rawRange) ? rawRange : '30d') as 'today' | '7d' | '30d' | 'all';
+  const today = dhakaDateString(new Date());
+  const from = range === 'all' ? null : range === 'today' ? today : shiftAnalyticsDate(today, range === '7d' ? -6 : -29);
+  const to = range === 'all' ? null : today;
+  const [result, summary, analytics] = await Promise.all([
     fetchPosts(params),
     fetchPostCounts('news'),
-    getAdminDataClient(),
+    fetchNewsAnalytics({ from, to }),
   ]);
 
-  if (result.unavailable || !admin) {
+  if (result.unavailable) {
     return (
       <>
-        <PageHeader title="সংবাদ ব্যবস্থাপনা" description="ময়মনসিংহের নিউজের সংবাদ ও প্রকাশনা পরিচালনা করুন।" />
+        <PageHeader title="সংবাদ ব্যবস্থাপনা" description="ময়মনসিংহের খবর ও প্রকাশনা পরিচালনা করুন।" />
         <AdminError title="সংবাদ লোড করা যায়নি" message={result.error ?? 'অ্যাডমিন অনুমতি যাচাই করা যায়নি।'} />
       </>
     );
   }
 
-  const { data: viewRows, error: viewError } = await admin.client.rpc('fn_news_post_views');
-  const viewCounts = new Map<string, number>();
-  if (!viewError && Array.isArray(viewRows)) {
-    for (const row of viewRows as { post_slug?: unknown; view_count?: unknown }[]) {
-      if (typeof row.post_slug === 'string') viewCounts.set(row.post_slug, Number(row.view_count ?? 0));
-    }
-  }
+  const articleMetrics = new Map((analytics.data?.articles ?? []).map((article) => [article.slug, article]));
   const rows = result.rows.map((post) => ({
     ...post,
-    view_count: viewCounts.get(post.slug),
+    newsAnalytics: articleMetrics.get(post.slug),
   }));
-  const tableColumns = columns as AdminColumn<(typeof rows)[number]>[];
 
   return (
     <>
       <PageHeader
         title="সংবাদ ব্যবস্থাপনা"
-        description="ময়মনসিংহের নিউজের সংবাদ, বিভাগ, ফিচার ও প্রকাশনা পরিচালনা করুন। ক্যাটাগরি নিবন্ধ সম্পাদনার সময় নির্ধারিত হয়।"
+        description="ময়মনসিংহের খবর, বিভাগ, ফিচার ও প্রকাশনা পরিচালনা করুন। ক্যাটাগরি নিবন্ধ সম্পাদনার সময় নির্ধারিত হয়।"
         count={`${result.total} টি সংবাদ`}
         actions={
           <Link
@@ -131,11 +153,9 @@ export default async function AdminNewsPage({
         </div>
       )}
 
-      {viewError && (
-        <p role="status" className="mb-4 rounded-md border border-status-warning/30 bg-status-warning/5 p-3 text-sm text-admin-muted">
-          নিবন্ধের দেখা-সংখ্যা লোড করা যায়নি। {viewError.message}
-        </p>
-      )}
+      <div className="mb-5">
+        <NewsAnalyticsPanel data={analytics.data} error={analytics.error} range={range} showArticleTable={false} searchParams={resolved} />
+      </div>
 
       <div className="mb-3">
         <AdminSearch placeholder="শিরোনাম, লেখক বা সংবাদ খুঁজুন…" />
@@ -163,7 +183,7 @@ export default async function AdminNewsPage({
       </div>
 
       <AdminTable
-        columns={tableColumns}
+        columns={columns}
         rows={rows}
         getKey={(post) => post.id}
         caption="সংবাদের তালিকা"

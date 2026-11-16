@@ -62,7 +62,7 @@ export default function AboutStory() {
         <Reveal delay={100} className="relative">
           <div className="relative aspect-[3/4] w-full overflow-hidden rounded-2xl bg-brand-100 sm:aspect-[4/5]">
             <Image
-              src="/amra.png"
+              src="/amra.webp"
               alt="Mymensingh Sheba-এর কাজ নিয়ে আমাদের দল"
               fill
               sizes="(max-width: 1023px) 92vw, 40vw"

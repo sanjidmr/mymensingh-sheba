@@ -8,7 +8,6 @@
  * first HTML response (important for a news homepage) instead of flashing an
  * empty shell while a browser request runs.
  */
-import { createServerSideClient } from '@/lib/supabase/server';
 import { isSupabaseConfigured } from '@/lib/supabase/client';
 import type { NewsStory } from './news-utils';
 
@@ -65,6 +64,7 @@ export async function loadPublishedNews(): Promise<NewsLoadResult> {
   if (!isSupabaseConfigured) return { stories: [], failed: false, now };
 
   try {
+    const { createServerSideClient } = await import('@/lib/supabase/server');
     const client = await createServerSideClient();
     if (!client) return { stories: [], failed: true, now };
 

@@ -2,7 +2,6 @@
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import Link from 'next/link';
 import {
   Droplet,
   Gauge,
@@ -32,7 +31,6 @@ import {
   PRAYER_METHOD_NAME,
 } from '@/lib/mymensingh-live';
 import { SITE_CONTACT } from '@/lib/site-contact';
-import { useAuth } from '@/lib/auth-context';
 import { fetchSiteContentOverrides } from '@/lib/site-content-client';
 
 interface PrayerState {
@@ -133,7 +131,6 @@ function BarModal({
 }
 
 export default function MymensinghLiveBar() {
-  const { user, isLoading: authLoading } = useAuth();
   const [prayers, setPrayers] = useState<PrayerState>({
     status: 'loading',
     prayers: null,
@@ -274,8 +271,7 @@ export default function MymensinghLiveBar() {
 
   const divider = <span className="h-4 w-px shrink-0 bg-white/15" aria-hidden="true" />;
 
-  // The contact endpoint releases the hotline only to signed-in visitors.
-  const hotline = sitePhone && user ? (
+  const hotline = sitePhone ? (
     <a
       href={`tel:${sitePhone}`}
       className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300 transition-colors hover:bg-accent-400/20 hover:text-accent-200"
@@ -283,104 +279,11 @@ export default function MymensinghLiveBar() {
       <Phone className="h-3.5 w-3.5" aria-hidden="true" />
       হটলাইন: {sitePhone}
     </a>
-  ) : !user && !authLoading ? (
-    <Link
-      href="/login"
-      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300 transition-colors hover:bg-accent-400/20"
-    >
-      <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-      যোগাযোগে লগইন করুন
-    </Link>
   ) : (
     <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
       <Phone className="h-3.5 w-3.5" aria-hidden="true" />
       {SITE_CONTACT.phonePendingBn}
     </span>
-  );
-
-  const mobileAnnouncement = (clone = false) => (
-    <div
-      aria-hidden={clone || undefined}
-      className="flex shrink-0 items-center gap-3 whitespace-nowrap pr-4"
-    >
-      <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-        <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-400 opacity-75" />
-        <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent-400" />
-      </span>
-      <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-accent-300">
-        <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-        লাইভ · ময়মনসিংহ
-      </span>
-      {divider}
-      <span className="text-[11px] text-brand-100/70">
-        {today ? formatBanglaDate(today) : ''}
-      </span>
-      {divider}
-      {clone && !user ? (
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
-          <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-          যোগাযোগে লগইন করুন
-        </span>
-      ) : clone && !sitePhone ? (
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
-          <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-          জরুরি সেবা
-        </span>
-      ) : clone && sitePhone ? (
-        <span className="inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
-          <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-          হটলাইন: {sitePhone}
-        </span>
-      ) : hotline}
-      {weather.value && (
-        <>
-          {divider}
-          <button
-            type="button"
-            onClick={() => setShowWeather(true)}
-            tabIndex={clone ? -1 : undefined}
-            aria-haspopup="dialog"
-            className="inline-flex items-center gap-1.5 whitespace-nowrap text-[11px] text-brand-100/70"
-          >
-            {weather.value.isDay ? (
-              <Sun className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
-            ) : (
-              <Moon className="h-3.5 w-3.5 text-brand-100/70" aria-hidden="true" />
-            )}
-            <span>আবহাওয়া</span>
-            <span className="font-bold text-white">{toBn(weather.value.temp)}°</span>
-          </button>
-        </>
-      )}
-      {divider}
-      <button
-        type="button"
-        onClick={() => setShowPrayers(true)}
-        tabIndex={clone ? -1 : undefined}
-        aria-haspopup="dialog"
-        title={`নামাজের সময়: ${PRAYER_METHOD_NAME} পদ্ধতি অনুযায়ী`}
-        className="flex items-center gap-2 whitespace-nowrap text-[11px]"
-      >
-        {PRAYER_ORDER.map((meta, i) => {
-          const prayer = prayers.prayers?.[i];
-          const isNext = nextPrayer !== null && prayer?.epoch === nextPrayer.epoch;
-          return (
-            <span key={meta.key} className={isNext ? 'font-bold text-accent-300' : 'text-brand-100/80'}>
-              {meta.nameBn} <span className="font-bold text-white">{prayer ? formatPrayerTime(prayer.epoch) : '–'}</span>
-            </span>
-          );
-        })}
-      </button>
-      {nextPrayer && (
-        <>
-          {divider}
-          <span className="whitespace-nowrap text-[11px] font-semibold text-accent-300">
-            পরবর্তী {nextPrayer.nameBn}
-            {nextIsTomorrow ? ' (কাল)' : ''} · {countdownText(nextEpoch, nowTick)}
-          </span>
-        </>
-      )}
-    </div>
   );
 
   return (
@@ -470,10 +373,63 @@ export default function MymensinghLiveBar() {
           </div>
 
         </div>
-        <div className="h-11 overflow-hidden lg:hidden">
-          <div className="mms-live-marquee-track flex h-full w-max items-center">
-            {mobileAnnouncement()}
-            {mobileAnnouncement(true)}
+        <div className="flex min-h-[4.5rem] flex-col justify-center gap-1.5 py-1.5 lg:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-accent-300">
+              <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
+              <span>ময়মনসিংহ</span>
+            </span>
+            <span className="truncate text-right text-[10px] text-brand-100/70">
+              {today ? formatBanglaDate(today) : ''}
+            </span>
+          </div>
+          <div className="flex items-center justify-between gap-1">
+            {sitePhone ? (
+              <a
+                href={`tel:${sitePhone}`}
+                aria-label={`হটলাইন ${sitePhone}`}
+                className="inline-flex min-h-9 min-w-0 items-center gap-1 rounded-lg border border-accent-400/40 bg-accent-400/10 px-2 text-[10px] font-bold text-accent-300"
+              >
+                <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="shrink-0">হটলাইন</span>
+                <span className="truncate text-white">{sitePhone}</span>
+              </a>
+            ) : (
+              <span className="inline-flex min-h-9 min-w-0 items-center gap-1 rounded-lg border border-accent-400/40 bg-accent-400/10 px-2 text-[10px] font-bold text-accent-300">
+                <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+                <span className="truncate">{SITE_CONTACT.phonePendingBn}</span>
+              </span>
+            )}
+            <div className="flex shrink-0 items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setShowWeather(true)}
+                aria-haspopup="dialog"
+                className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 text-[10px] font-semibold text-brand-100 transition-colors hover:bg-white/10"
+              >
+                {weather.value?.isDay ? (
+                  <Sun className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
+                ) : (
+                  <Moon className="h-3.5 w-3.5 text-brand-100/80" aria-hidden="true" />
+                )}
+                <span>আবহাওয়া</span>
+                {weather.value && <span className="font-bold text-white">{toBn(weather.value.temp)}°</span>}
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowPrayers(true)}
+                aria-haspopup="dialog"
+                title={`নামাজের সময়: ${PRAYER_METHOD_NAME} পদ্ধতি অনুযায়ী`}
+                className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 text-[10px] font-semibold text-brand-100 transition-colors hover:bg-white/10"
+              >
+                <span>নামাজ</span>
+                {nextPrayer && (
+                  <span className="font-bold text-accent-300">
+                    {formatPrayerTime(nextEpoch)}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>

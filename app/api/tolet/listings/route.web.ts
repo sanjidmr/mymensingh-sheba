@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
-import { notifyOrder } from '@/lib/notify-order.server';
 import { readBoundedRequestBody } from '@/lib/bounded-request-body';
 
 export const runtime = 'nodejs';
@@ -178,13 +177,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'বিজ্ঞাপনটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 500 });
   }
 
-  if (mode === 'submit') {
-    await notifyOrder(
-      { ...data, owner_name: profile.full_name, owner_phone: profile.phone },
-      'tolet_listing',
-      '/admin/tolet'
-    );
-  }
   return NextResponse.json({
     success: true,
     listing: withOwner(data as JsonRecord, profile),
@@ -240,17 +232,5 @@ export async function PATCH(request: Request) {
     return NextResponse.json({ error: 'বিজ্ঞাপনটি হালনাগাদ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 500 });
   }
 
-  if (shouldSubmit && data.status === 'pending_review') {
-    await notifyOrder(
-      {
-        ...data,
-        created_at: data.updated_at,
-        owner_name: profile.full_name,
-        owner_phone: profile.phone,
-      },
-      'tolet_listing',
-      '/admin/tolet'
-    );
-  }
   return NextResponse.json({ success: true, listing: withOwner(data as JsonRecord, profile) });
 }

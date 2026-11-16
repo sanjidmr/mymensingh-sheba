@@ -12,7 +12,6 @@ import { formatDate, lookupStatus, STATUS_OPTIONS } from '@/lib/admin/format';
 import type { AdminVehicleRequestRow } from '@/lib/admin/queries';
 import { fetchVehicleRequestCounts } from '@/lib/admin/queries';
 import VehicleRequestActions from '@/components/admin/VehicleRequestActions';
-import Link from 'next/link';
 import { DateRangeFilter } from '@/components/admin/DateRangeFilter';
 
 export const dynamic = 'force-dynamic';
@@ -156,14 +155,6 @@ export default async function AdminVehicleRequestsPage({
         title="গাড়ি ভাড়ার অনুরোধ"
         description="গাড়ি ভাড়ার অনুরোধ পর্যালোচনা করুন। অটো ও CNG-এর অনুরোধ আলাদা বুকিং তালিকায় পরিচালিত হয়।"
         count={`মোট ${result.total} টি রিকোয়েস্ট`}
-        actions={
-          <Link
-            href="/admin/directories/vehicle"
-            className="inline-flex min-h-11 items-center rounded-md border border-admin-border bg-white px-3 text-sm font-semibold"
-          >
-            গাড়ির তালিকা
-          </Link>
-        }
       />
 
       {summary.error ? (

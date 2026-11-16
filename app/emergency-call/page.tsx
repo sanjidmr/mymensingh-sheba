@@ -92,7 +92,7 @@ export default function EmergencyCallPage() {
           href="/how-it-works"
           className="mt-5 inline-flex min-h-[44px] w-full items-center justify-center gap-2 rounded-xl bg-white px-6 py-3 text-sm font-bold text-brand-900 transition-colors hover:bg-brand-50 sm:w-auto"
         >
-          কিভাবে কাজ করে দেখুন
+          কিভাবে সেবা নেবো/দেবো দেখুন
         </Link>
       </div>
     </RoutePlaceholderShell>

@@ -150,26 +150,14 @@ export default function ToletPreviewSection() {
                     </div>
                   </div>
 
-                  {/* Business Rule Price Presentation */}
+                  {/* Monthly rent only */}
                   <div className="mt-5 pt-3.5 border-t border-slate-100">
-                    <div className="flex items-baseline justify-between">
-                      <div>
-                        <div className="text-xs text-slate-500">মাসিক ভাড়া:</div>
-                        <div className="text-lg sm:text-xl font-bold text-emerald-800">
-                          ৳{listing.rentAmount.toLocaleString('bn-BD')}{' '}
-                          <span className="text-xs font-normal text-slate-500">/মাস</span>
-                        </div>
-                      </div>
-
-                      <div className="text-right">
-                        <div className="inline-flex items-center gap-1 text-[11px] text-slate-500">
-                          <span>প্ল্যাটফর্ম ফি:</span>
-                          <span className="font-semibold text-slate-700">৳{listing.platformFee}</span>
-                        </div>
-                        <div className="text-xs font-semibold text-slate-800">
-                          মোট: ৳{listing.totalAmount.toLocaleString('bn-BD')}
-                        </div>
-                      </div>
+                  <div>
+                    <div className="text-xs text-slate-500">মাসিক ভাড়া:</div>
+                    <div className="text-lg sm:text-xl font-bold text-slate-900">
+                      ৳{listing.rentAmount.toLocaleString('bn-BD')}{' '}
+                      <span className="text-xs font-normal text-slate-500">/মাস</span>
+                    </div>
                     </div>
 
                     {/* Privacy notice - phone not exposed */}

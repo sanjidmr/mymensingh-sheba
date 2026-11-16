@@ -2,6 +2,7 @@
 
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import CatalogDirectory, { providerGroup, rangeGroup, tagFacet } from '@/components/catalog/CatalogDirectory';
+import DirectoryShell from '@/components/directory/DirectoryShell';
 import { BannerCard } from '@/components/catalog/CatalogCards';
 import AdminListingLink from '@/components/catalog/AdminListingLink';
 import OwnerListingCta from '@/components/catalog/OwnerListingCta';
@@ -152,6 +153,47 @@ export default function CoachingDirectory() {
     );
   }, []);
 
+  if (!selectedCategory) {
+    return (
+      <DirectoryShell
+        title={ui.title}
+        subtitle="আপনার পড়াশোনার পর্যায় বেছে নিয়ে সংশ্লিষ্ট কোচিং সেন্টার দেখুন।"
+        breadcrumbs={[{ label: ui.title }]}
+        action={<AdminListingLink category="coaching" label="কোচিং যোগ করুন" />}
+      >
+        <section
+          aria-labelledby="coaching-category-selection"
+          className="rounded-2xl border border-brand-100 bg-white p-4 sm:p-6"
+        >
+          <h2 id="coaching-category-selection" className="text-lg font-extrabold text-ink-900">
+            কোন পর্যায়ের কোচিং খুঁজছেন?
+          </h2>
+          <p className="mt-1 text-sm text-ink-500">
+            একটি বিভাগ বেছে নিলে শুধু সেই বিভাগের কোচিং সেন্টার দেখানো হবে।
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {COACHING_CATEGORIES.map((category) => (
+              <button
+                key={category.id}
+                type="button"
+                onClick={() => setSelectedCategory(category.id)}
+                className="flex min-h-14 items-center justify-between gap-3 rounded-xl border border-brand-100 bg-mist-50 px-4 text-left text-sm font-bold text-ink-800 transition-colors hover:border-brand-300 hover:bg-brand-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-700"
+              >
+                <span>{category.labelBn}</span>
+                <span className="text-xs font-medium text-ink-500">
+                  {listings.filter((listing) => listing.coachingCategory === category.id).length}টি সেন্টার
+                </span>
+              </button>
+            ))}
+          </div>
+        </section>
+        <div className="mt-3">
+          <OwnerListingCta category="coaching" />
+        </div>
+      </DirectoryShell>
+    );
+  }
+
   return (
     <CatalogDirectory
       ui={ui}
@@ -164,9 +206,18 @@ export default function CoachingDirectory() {
       renderCard={renderCard}
       banner={
         <section aria-labelledby="coaching-categories-heading" className="rounded-2xl border border-brand-100 bg-white p-3 sm:p-3.5">
+          <div className="flex items-center justify-between gap-3">
             <h2 id="coaching-categories-heading" className="text-sm font-extrabold text-ink-900">
-              কোচিংয়ের ক্যাটাগরি
+              {COACHING_CATEGORIES.find((category) => category.id === selectedCategory)?.labelBn} — কোচিং সেন্টার
             </h2>
+            <button
+              type="button"
+              onClick={() => setSelectedCategory(null)}
+              className="min-h-9 shrink-0 rounded-lg border border-brand-200 px-3 text-xs font-bold text-brand-700 hover:bg-brand-50"
+            >
+              বিভাগ বেছে নিন
+            </button>
+          </div>
             <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-5">
               {COACHING_CATEGORIES.map((category) => {
                 const selected = selectedCategory === category.id;
@@ -175,7 +226,7 @@ export default function CoachingDirectory() {
                     key={category.id}
                     type="button"
                     aria-pressed={selected}
-                    onClick={() => setSelectedCategory(selected ? null : category.id)}
+                    onClick={() => setSelectedCategory(category.id)}
                     className={`min-h-9 rounded-lg border px-2 py-1.5 text-[11px] font-bold transition-colors sm:min-h-10 sm:px-3 sm:text-xs ${
                       selected
                         ? 'border-brand-700 bg-brand-700 text-white'

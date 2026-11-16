@@ -115,18 +115,6 @@ export async function setEmergencyContactActive(
   isActive: boolean
 ): Promise<ActionResult> {
   return runAdminAction(async (client) => {
-    if (isActive) {
-      const { data, error: readError } = await client
-        .from('emergency_contacts')
-        .select('source_note')
-        .eq('id', contactId)
-        .maybeSingle();
-      if (readError) return { ok: false, error: readError.message };
-      if (!data || !data.source_note?.trim()) {
-        return { ok: false, error: 'তথ্যসূত্র যোগ না করা পর্যন্ত এটি চালু করা যাবে না।' };
-      }
-    }
-
     const { data, error } = await client
       .from('emergency_contacts')
       .update({ is_active: isActive })

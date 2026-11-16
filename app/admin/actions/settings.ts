@@ -1,55 +1,59 @@
 'use server';
 
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { runAdminAction, type ActionResult } from '@/lib/admin/actions';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
+import type { ServiceSeoEntry } from '@/lib/site-content';
 
 /**
  * Platform settings.
  *
- * `platform_settings` is a key/value JSONB table that already holds the to-let
- * fee slabs, the per-service availability switches and the notification
- * preferences. New admin-editable site settings go in as new keys rather than
+ * `platform_settings` is a key/value JSONB table that holds the per-service
+ * availability switches and notification preferences. New admin-editable site settings go in as new keys rather than
  * as new tables — a second settings store would immediately disagree with the
  * first about what "the settings" are.
  *
  * The values are validated here as well as in the UI: this is the only writer
- * besides the SQL console, so a malformed fee object should be impossible to
- * save rather than merely unlikely.
+ * besides the SQL console, so malformed settings should be impossible to save.
  */
 
-export interface ToletFeeRulesInput {
-  messSeatFee: number;
-  tier1Max10k: number;
-  tier2Max20k: number;
-  tier3Above20k: number;
-}
-
-export async function saveToletFeeRules(rules: ToletFeeRulesInput): Promise<ActionResult> {
+export async function saveServiceSeoSettings(
+  seoBySlug: Record<string, Partial<ServiceSeoEntry>>
+): Promise<ActionResult> {
   return runAdminAction(async (client) => {
-    const values = [
-      rules.messSeatFee,
-      rules.tier1Max10k,
-      rules.tier2Max20k,
-      rules.tier3Above20k,
-    ];
-
-    if (values.some((v) => !Number.isFinite(v) || v < 0)) {
-      return { ok: false, error: 'সব ফি অবশ্যই অ-ঋণাত্মক সংখ্যা হতে হবে।' };
-    }
-    if (values.some((v) => v > 1_000_000)) {
-      return { ok: false, error: 'ফি এত বড় হতে পারে না।' };
+    const clean: Record<string, Partial<ServiceSeoEntry>> = {};
+    for (const [slug, value] of Object.entries(seoBySlug)) {
+      if (typeof slug !== 'string' || !/^[a-z0-9-]{2,60}$/.test(slug)) continue;
+      const item = value ?? {};
+      clean[slug] = {
+        seoTitle: typeof item.seoTitle === 'string' ? item.seoTitle.slice(0, 120) : undefined,
+        metaDescription: typeof item.metaDescription === 'string' ? item.metaDescription.slice(0, 320) : undefined,
+        focusKeyword: typeof item.focusKeyword === 'string' ? item.focusKeyword.slice(0, 80) : undefined,
+        secondaryKeywords: Array.isArray(item.secondaryKeywords)
+          ? item.secondaryKeywords.filter((keyword): keyword is string => typeof keyword === 'string').slice(0, 6).map((keyword) => keyword.slice(0, 50))
+          : undefined,
+        canonicalUrl: typeof item.canonicalUrl === 'string' ? item.canonicalUrl.slice(0, 200) : undefined,
+        customH1: typeof item.customH1 === 'string' ? item.customH1.slice(0, 120) : undefined,
+        seoDescription: typeof item.seoDescription === 'string' ? item.seoDescription.slice(0, 320) : undefined,
+        ogTitle: typeof item.ogTitle === 'string' ? item.ogTitle.slice(0, 120) : undefined,
+        ogDescription: typeof item.ogDescription === 'string' ? item.ogDescription.slice(0, 320) : undefined,
+        twitterTitle: typeof item.twitterTitle === 'string' ? item.twitterTitle.slice(0, 120) : undefined,
+        twitterDescription: typeof item.twitterDescription === 'string' ? item.twitterDescription.slice(0, 320) : undefined,
+        imageAlt: typeof item.imageAlt === 'string' ? item.imageAlt.slice(0, 160) : undefined,
+        schemaType: item.schemaType === 'Service' || item.schemaType === 'LocalBusiness' || item.schemaType === 'Organization' ? item.schemaType : undefined,
+        index: typeof item.index === 'boolean' ? item.index : undefined,
+      };
     }
 
     const { error } = await client
       .from('platform_settings')
-      .upsert({ key: 'tolet_fee_rules', value: rules as unknown as Record<string, unknown> });
+      .upsert({ key: 'service_seo', value: clean as unknown as Record<string, unknown> });
 
     if (error) return { ok: false, error: error.message };
 
-    revalidatePath('/admin/settings');
-    revalidatePath('/admin/tolet');
-    return { ok: true, message: 'ফি সংরক্ষিত হয়েছে।' };
+    revalidatePath('/admin/website');
+    revalidateTag('site-content');
+    return { ok: true, message: 'সার্ভিস SEO সেটিংস সংরক্ষিত হয়েছে।' };
   });
 }
 
@@ -293,6 +297,8 @@ export async function saveSiteContent(key: string, value: unknown): Promise<Acti
     revalidatePath('/services');
     revalidatePath('/about');
     revalidatePath('/help');
+    revalidatePath('/contact');
+    revalidateTag('site-content');
     return { ok: true, message: 'ওয়েবসাইটের তথ্য সংরক্ষিত হয়েছে।' };
   });
 }
@@ -310,6 +316,8 @@ export async function deleteSiteContent(key: string): Promise<ActionResult> {
     revalidatePath('/admin/website');
     revalidatePath('/');
     revalidatePath('/services');
+    revalidatePath('/contact');
+    revalidateTag('site-content');
     return { ok: true, message: 'মুছে ফেলা হয়েছে — এখন ওয়েবসাইটের আসল তথ্য দেখাচ্ছে।' };
   });
 }
