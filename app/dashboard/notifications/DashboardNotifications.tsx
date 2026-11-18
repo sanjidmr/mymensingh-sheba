@@ -5,7 +5,14 @@ import { useAuth } from '@/lib/auth-context';
 import { bnRelativeTime } from '@/lib/catalog-types';
 
 export default function DashboardNotifications() {
-  const { notifications, notificationsError, notificationsLoading, markNotificationRead, markNotificationsReadAll } = useAuth();
+  const {
+    notifications,
+    notificationsError,
+    notificationsLoading,
+    refreshNotifications,
+    markNotificationRead,
+    markNotificationsReadAll,
+  } = useAuth();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const unread = notifications.filter((n) => !n.isRead).length;
@@ -53,7 +60,14 @@ export default function DashboardNotifications() {
           </button>
         )}
       </div>
-      {notificationsError && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{notificationsError}</p>}
+      {notificationsError && (
+        <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">
+          {notificationsError}{' '}
+          <button type="button" onClick={() => void refreshNotifications()} className="font-bold underline">
+            আবার চেষ্টা করুন
+          </button>
+        </p>
+      )}
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800">{error}</p>}
       <div className="divide-y divide-brand-100/70 overflow-hidden rounded-2xl border border-brand-100 bg-white">
         {notificationsLoading ? (

@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 import Footer from '@/components/Footer';
+import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 
 export interface SubmissionConfirmationProps {
   type: 'post' | 'profile';
@@ -94,6 +95,8 @@ export default function SubmissionConfirmation({
               {notice}
             </p>
           )}
+
+          <FacebookUpdatesLink className="mx-auto mt-4 max-w-md justify-center rounded-xl border border-brand-100 bg-mist-50 px-3 py-2" />
 
           <nav aria-label="পরবর্তী পদক্ষেপ" className="mt-6 flex flex-col justify-center gap-2 sm:flex-row">
             <Link

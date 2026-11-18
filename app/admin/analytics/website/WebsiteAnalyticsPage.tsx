@@ -524,7 +524,7 @@ function WebsiteAnalyticsSections({ data }: { data: WebsiteAnalyticsData }) {
   );
 }
 
-export default async function WebsiteAnalyticsPage({ searchParams }: { searchParams: SearchParams }) {
+export default async function WebsiteAnalyticsPageContent({ searchParams }: { searchParams: SearchParams }) {
   const params = await searchParams;
   const { from, to, preset } = resolveAnalyticsDateRange(params);
   const category = params.category?.trim() || undefined;

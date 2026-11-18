@@ -1,8 +1,9 @@
-import { toletToPreviewCard, staffToPreviewCard, tutorToPreviewCard, donorToPreviewCard, vehicleToPreviewCard, postToPreviewCard } from '@/lib/home-preview';
+import { toletToPreviewCard, staffToPreviewCard, donorToPreviewCard, vehicleToPreviewCard, postToPreviewCard } from '@/lib/home-preview';
 import type { HomePreviewCard } from '@/lib/home-preview';
 import { fetchPublicListings } from '@/lib/tolet-service';
 import { fetchPublicStaffProfiles } from '@/lib/staff-service';
 import { fetchPublishedTutors } from '@/lib/home-tutor-service';
+import type { HomeTutorProfile } from '@/lib/supabase/types';
 import { fetchPublishedDonors } from '@/lib/blood-donor-service';
 import { fetchServiceListings, fetchApprovedPosts } from '@/lib/catalog-service';
 import type { StaffServiceKey } from '@/lib/staff-types';
@@ -28,8 +29,8 @@ export const loadRepairCards = (): Promise<HomePreviewCard[]> =>
     ...a,
   ]);
 
-export const loadTutorCards = (): Promise<HomePreviewCard[]> =>
-  fetchPublishedTutors().then((tutors) => tutors.map(tutorToPreviewCard));
+export const loadTutorProfiles = (): Promise<HomeTutorProfile[]> =>
+  fetchPublishedTutors();
 
 export const loadDonorCards = (): Promise<HomePreviewCard[]> =>
   fetchPublishedDonors().then((donors) => donors.map(donorToPreviewCard));

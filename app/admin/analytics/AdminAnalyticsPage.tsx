@@ -197,7 +197,7 @@ function AnalyticsSections({ data }: { data: AdminAnalytics }) {
   );
 }
 
-export default async function AdminAnalyticsPage({
+export default async function AdminAnalyticsPageContent({
   searchParams,
 }: {
   searchParams: SearchParams;

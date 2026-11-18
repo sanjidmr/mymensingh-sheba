@@ -9,6 +9,7 @@ import {
   SITE_CONTACT_PHONE,
   SITE_CONTACT_SOCIALS,
 } from './site-contact.server';
+import { isAbortError } from './fetch-with-timeout';
 
 const OVERRIDE_KEYS = new Set([
   'homepage_sections',
@@ -25,16 +26,29 @@ const OVERRIDE_KEYS = new Set([
 
 const SITE_CONTENT_TIMEOUT_MS = 3500;
 
-async function withSiteContentTimeout<T>(work: () => Promise<T>, fallback: T): Promise<T> {
+async function withSiteContentTimeout<T>(
+  work: (signal: AbortSignal) => Promise<T>,
+  fallback: T
+): Promise<T> {
+  const controller = new AbortController();
   let timeoutId: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
-      work(),
+      work(controller.signal),
       new Promise<T>((resolve) => {
-        timeoutId = setTimeout(() => resolve(fallback), SITE_CONTENT_TIMEOUT_MS);
+        timeoutId = setTimeout(() => {
+          controller.abort();
+          resolve(fallback);
+        }, SITE_CONTENT_TIMEOUT_MS);
       }),
     ]);
-  } catch {
+  } catch (error) {
+    if (!isAbortError(error)) {
+      console.warn(JSON.stringify({
+        event: 'site_content.override_lookup_failed',
+        reason: error instanceof Error ? error.message : String(error),
+      }));
+    }
     return fallback;
   } finally {
     if (timeoutId) clearTimeout(timeoutId);
@@ -56,13 +70,21 @@ const readSiteContentOverrides = unstable_cache(async (): Promise<SiteContentOve
   });
 
   const fallback: SiteContentOverrides = {};
-  const result = await withSiteContentTimeout(async () => {
+  const result = await withSiteContentTimeout(async (signal) => {
     const { data, error } = await client
       .from('platform_settings')
       .select('key, value')
-      .in('key', Array.from(OVERRIDE_KEYS));
+      .in('key', Array.from(OVERRIDE_KEYS))
+      .abortSignal(signal);
 
     if (error) {
+      if (!isAbortError(error)) {
+        console.warn(JSON.stringify({
+          event: 'site_content.override_lookup_failed',
+          code: error.code,
+          reason: error.message,
+        }));
+      }
       return fallback;
     }
     if (!Array.isArray(data)) {

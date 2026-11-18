@@ -1,16 +1,16 @@
 /**
  * Mymensingh Sheba — single source of truth for public contact details.
  *
- * Honesty contract (same policy the /about and /mymensingh pages follow):
- * nothing here is invented to fill a layout. Every optional channel is `null`
- * until a real, verified value exists, and the Contact page renders an honest
- * "not published yet" state that still offers a working alternative action
- * (the message form) instead of a dead link or a made-up number/address.
+ * The public phone and Facebook page are fixed site-wide. Other optional
+ * channels remain unpublished until a real, verified value exists.
  *
- * The public hotline is supplied server-side by the site-content endpoint.
  * Private email and social-contact values stay server-only; never put them in
  * this client-safe module.
  */
+
+export const PUBLIC_PHONE = '01408489418';
+export const PUBLIC_PHONE_TEL = '+8801408489418';
+export const FACEBOOK_PAGE_URL = 'https://facebook.com/mymensinghsheba';
 
 export interface SocialLink {
   /** lucide-react icon name, resolved by the consuming component. */
@@ -20,7 +20,7 @@ export interface SocialLink {
 }
 
 export interface SiteContact {
-  /** E.164 for the tel: link, e.g. '+8801XXXXXXXXX'. */
+  /** Public phone number in the local format shown to visitors. */
   phone: string | null;
   /** What to show when no number is published yet. */
   phonePendingBn: string;
@@ -41,7 +41,7 @@ export interface SiteContact {
 }
 
 export const SITE_CONTACT: SiteContact = {
-  phone: null,
+  phone: PUBLIC_PHONE,
   phonePendingBn: 'সরাসরি সেবা নম্বর এখনো প্রকাশ করা হয়নি।',
   email: '',
   socials: [],

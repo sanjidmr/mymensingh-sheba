@@ -14,14 +14,13 @@ import {
 } from '@/lib/site-content';
 import { useAuth } from '@/lib/auth-context';
 import { fetchSiteContentOverrides } from '@/lib/site-content-client';
+import { PUBLIC_PHONE_TEL } from '@/lib/site-contact';
 
 /**
  * The public footer.
  *
- * The admin's contact, footer and service-catalog overrides are read from the
- * existing public site-content endpoint. The published hotline is public;
- * until a real number exists, the footer links to the contact form instead of
- * rendering an invalid `tel:` link.
+ * The admin's footer and service-catalog overrides are read from the existing
+ * public site-content endpoint. The hotline is fixed in the site contact config.
  */
 export default function Footer() {
   const { user, isLoading } = useAuth();
@@ -106,7 +105,7 @@ export default function Footer() {
             <div className="mt-2 space-y-1 text-[13px]">
               {contact.phone ? (
                 <a
-                  href={`tel:${contact.phone.replace(/[^\d+]/g, '')}`}
+                  href={`tel:${PUBLIC_PHONE_TEL}`}
                   className="flex items-center gap-2.5 text-brand-100/70 transition-colors hover:text-white"
                 >
                   <Phone className="h-4 w-4 text-brand-300" />

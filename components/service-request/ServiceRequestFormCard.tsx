@@ -39,6 +39,7 @@ import {
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 import { trackFormSubmit } from '@/lib/site-analytics';
+import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 
 /* -------------------------------------------------------------------------- */
 /* Shared control chrome                                                      */
@@ -534,14 +535,14 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
         </div>
       )}
 
-      <div className="mt-5 space-y-5 sm:mt-6 sm:space-y-7">
+      <div className="mt-4 space-y-4 sm:mt-6 sm:space-y-7">
         {/* ---------------- 1. ব্যক্তিগত তথ্য ---------------- */}
         <fieldset className="min-w-0">
           <SectionTitle icon={<User className="h-4 w-4" aria-hidden="true" />}>
             ব্যক্তিগত তথ্য
           </SectionTitle>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-4">
+          <div className="mt-3 grid gap-2.5 min-[360px]:grid-cols-2 sm:gap-4">
             <Field
               id="service-name"
               label="আপনার নাম"
@@ -624,7 +625,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
             ঠিকানার তথ্য
           </SectionTitle>
 
-          <div className="mt-3 space-y-4">
+          <div className="mt-3 space-y-3 sm:space-y-4">
             {config.locations.map((block) => (
               <LocationBlock
                 key={block.key}
@@ -647,7 +648,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
             সেবার তথ্য
           </SectionTitle>
 
-          <div className="mt-3 space-y-4">
+          <div className="mt-3 space-y-3 sm:space-y-4">
             <Field
               id="service-type"
               label={config.serviceTypesLabel}
@@ -661,7 +662,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
                 aria-labelledby="service-type-label"
                 aria-invalid={Boolean(errors.serviceType)}
                 aria-describedby={errors.serviceType ? 'service-type-error' : undefined}
-                className="grid gap-2 sm:grid-cols-2"
+                className="grid gap-2 min-[360px]:grid-cols-2"
               >
                 {config.serviceTypes.map((type) => {
                   const active = form.serviceType === type.id;
@@ -756,7 +757,7 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
             কখন দরকার
           </SectionTitle>
 
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 sm:gap-4">
+          <div className="mt-3 grid gap-2.5 min-[360px]:grid-cols-2 sm:gap-4">
             <Field id="service-date" label={config.dateLabel}>
               <input
                 id="service-date"
@@ -1569,6 +1570,7 @@ function SuccessPanel({
           আরেকটি অনুরোধ পাঠান
         </button>
       </div>
+      <FacebookUpdatesLink className="mx-auto mt-4 max-w-md justify-center rounded-xl border border-brand-100 bg-mist-50 px-3 py-2" />
     </div>
   );
 }

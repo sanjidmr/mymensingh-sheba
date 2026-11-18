@@ -6,6 +6,7 @@ import { KeyRound, ArrowLeft, CheckCircle2, AlertCircle, Loader2 } from 'lucide-
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { getAuthErrorMessage } from '@/lib/auth-error-messages';
 
 /**
  * New-password landing page for the "পাসওয়ার্ড ভুলে গেছেন" email link.
@@ -56,17 +57,28 @@ export default function ResetPasswordPage() {
       setErrorMsg('দুটো পাসওয়ার্ড মিলছে না।');
       return;
     }
-    if (!isSupabaseConfigured) return;
-    const client = createClient();
-    if (!client) return;
-    setSaving(true);
-    const { error } = await client.auth.updateUser({ password });
-    setSaving(false);
-    if (error) {
-      setErrorMsg(error.message);
+    if (!isSupabaseConfigured) {
+      setErrorMsg('ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।');
       return;
     }
-    setDone(true);
+    const client = createClient();
+    if (!client) {
+      setErrorMsg('ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।');
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await client.auth.updateUser({ password });
+      if (error) {
+        setErrorMsg(getAuthErrorMessage(error, 'password'));
+        return;
+      }
+      setDone(true);
+    } catch (error) {
+      setErrorMsg(getAuthErrorMessage(error, 'password'));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (

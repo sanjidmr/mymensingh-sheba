@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Phone } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createListing, uploadListingPhotos } from '@/lib/tolet-service';
 import { getToletAreaById } from '@/lib/tolet-areas';
@@ -17,6 +17,7 @@ import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
+import SectionCard from '@/components/forms/SectionCard';
 
 export default function NewToletListingPage() {
   const router = useRouter();
@@ -129,8 +130,7 @@ export default function NewToletListingPage() {
           </p>
         </div>
 
-        <div className="mb-5 rounded-xl border border-brand-100 bg-white px-4 py-3 text-xs text-ink-600">
-          <p className="font-semibold text-ink-800">মালিকের পরিচিতি</p>
+        <SectionCard title="যোগাযোগ" icon={Phone} className="mb-4">
           <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-[11px] font-semibold text-ink-700 mb-1">মালিকের নাম</label>
@@ -153,15 +153,12 @@ export default function NewToletListingPage() {
               />
             </div>
           </div>
-          <p className="mt-2 text-[11px] leading-relaxed text-ink-500">
-            এই নাম ও ফোন বিজ্ঞাপনের মালিক হিসেবে সংযুক্ত থাকবে। ফোন নম্বর ওয়েবসাইটে লেখা হিসেবে দেখানো হবে না; অনুমোদিত বিজ্ঞাপনের “কল করুন” বোতাম থেকে সরাসরি ডায়াল করা যাবে।
-          </p>
           {!hasValidOwnerPhone && ownerPhoneInput && (
             <p className="mt-1 text-[11px] font-semibold text-rose-700">
               সঠিক ১১-ডিজিটের মোবাইল নম্বর দিন।
             </p>
           )}
-        </div>
+        </SectionCard>
 
         <ToletListingForm
           mode="owner"

@@ -13,6 +13,7 @@ import { SITE_CONTACT, CONTACT_FORM_ANCHOR } from '@/lib/site-contact';
 import type { mergeSiteContact } from '@/lib/site-content';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
+import { PUBLIC_PHONE, PUBLIC_PHONE_TEL } from '@/lib/site-contact';
 
 type ChannelState = 'ready' | 'pending';
 
@@ -68,6 +69,13 @@ export default function ContactChannels({
         <p className="mt-2 text-sm leading-relaxed text-ink-500">
           ফোন, চ্যাট বা বার্তা পাঠাতে লগইন করুন। জরুরি সেবার নম্বরগুলো আলাদা জরুরি সেবা পাতায় পাবেন।
         </p>
+        <a
+          href={`tel:${PUBLIC_PHONE_TEL}`}
+          className="mt-4 inline-flex min-h-11 items-center gap-2 rounded-lg border border-brand-200 bg-brand-50 px-4 text-sm font-bold text-brand-800"
+        >
+          <Phone className="h-4 w-4" aria-hidden="true" />
+          {PUBLIC_PHONE}
+        </a>
         {!isLoading && (
           <Link
             href={`/login?next=${encodeURIComponent('/contact')}`}
@@ -89,7 +97,7 @@ export default function ContactChannels({
       state: contact.phone ? 'ready' : 'pending',
       detail: contact.phone ?? SITE_CONTACT.phonePendingBn,
       actionLabel: contact.phone ? 'কল করুন' : 'বার্তা লিখুন',
-      href: contact.phone ? `tel:${contact.phone}` : undefined,
+      href: contact.phone ? `tel:${PUBLIC_PHONE_TEL}` : undefined,
       fallbackHref: `#${CONTACT_FORM_ANCHOR}`,
     },
     {

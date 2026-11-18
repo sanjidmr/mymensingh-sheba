@@ -3,6 +3,7 @@ import { processAdminTelegramQueue } from '@/lib/admin-telegram-alerts.server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 
 function isAuthorized(request: Request): boolean {
   const expected = process.env.ADMIN_TELEGRAM_WORKER_SECRET;

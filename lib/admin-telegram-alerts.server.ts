@@ -3,7 +3,13 @@ import 'server-only';
 import { randomUUID } from 'node:crypto';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import type { AdminTelegramAlertType } from './admin-telegram-alerts';
-import { sendTelegram, TelegramApiError } from './telegram';
+import {
+  assertTelegramConfigured,
+  escapeTelegramHtml,
+  sendTelegramMessage,
+  TelegramApiError,
+  type TelegramResponseSummary,
+} from './telegram';
 
 const MAX_DELIVERY_ATTEMPTS = 4;
 const MAX_WORKER_JOBS = 3;
@@ -66,31 +72,39 @@ function alertStyle(eventType: string): { emoji: string; label: string } {
   switch (eventType) {
     case 'community_post':
     case 'tolet_listing':
-      return { emoji: '🆕', label: 'New Post' };
+      return { emoji: '🆕', label: 'নতুন পোস্ট' };
     case 'account_created':
     case 'tolet_profile':
     case 'tutor_profile':
     case 'donor_profile':
     case 'service_listing':
-      return { emoji: '👤', label: 'New Account / Profile' };
+      return { emoji: '👤', label: 'নতুন প্রোফাইল' };
     case 'service_request':
     case 'vehicle_request':
     case 'vehicle_booking':
-      return { emoji: '🛠', label: 'New Service Request' };
+      return { emoji: '🛠️', label: 'নতুন সার্ভিস রিকোয়েস্ট' };
+    case 'blood_request':
+      return { emoji: '🩸', label: 'নতুন রক্তের অনুরোধ' };
+    case 'blood_donor_reports':
+    case 'listing_reports':
+    case 'tutor_reports':
+    case 'staff_profile_reports':
+    case 'community_post_reports':
+      return { emoji: '🚩', label: 'নতুন রিপোর্ট' };
     case 'tolet_listing_deleted':
     case 'account_deleted':
-      return { emoji: '🗑', label: 'Deletion' };
+      return { emoji: '🗑️', label: 'মুছে ফেলার ঘটনা' };
     case 'complaint':
-      return { emoji: '⚠️', label: 'Complaint' };
+      return { emoji: '⚠️', label: 'নতুন অভিযোগ' };
     case 'contact_message':
     case 'contact_message_reply':
-      return { emoji: '✉️', label: 'New Message' };
+      return { emoji: '✉️', label: 'নতুন বার্তা' };
     case 'critical_error':
-      return { emoji: '🚨', label: 'Critical Admin Error' };
+      return { emoji: '🚨', label: 'অ্যাডমিন কার্যক্রমে গুরুতর ত্রুটি' };
     case 'admin_test':
-      return { emoji: '🧪', label: 'Telegram Test' };
+      return { emoji: '🧪', label: 'টেলিগ্রাম পরীক্ষা' };
     default:
-      return { emoji: '🔔', label: 'Admin Notification' };
+      return { emoji: '🔔', label: 'অ্যাডমিন নোটিফিকেশন' };
   }
 }
 
@@ -112,31 +126,37 @@ function adminUrl(path: string): string {
 function formatAdminTelegramMessage(eventType: string, alert: Alert): string {
   const style = alertStyle(eventType);
   const payload = alert.payload;
-  const parts = [`${style.emoji} ${style.label}: ${alert.title}`];
+  const parts = [`<b>${style.emoji} ${escapeTelegramHtml(style.label)}: ${escapeTelegramHtml(alert.title)}</b>`];
   const name = text(payload.user_name) ?? text(payload.name);
   const phone = text(payload.user_phone) ?? text(payload.phone);
   const area = text(payload.area);
   const itemTitle = text(payload.item_title);
   const details = text(payload.details) ?? (!name && !phone && !area ? alert.summary : undefined);
 
-  if (name) parts.push(`👤 User: ${name}`);
-  if (phone) parts.push(`📞 Phone: ${phone}`);
-  if (area) parts.push(`📍 Area: ${area}`);
-  if (itemTitle && itemTitle !== alert.title) parts.push(`📝 Title: ${itemTitle}`);
-  if (details) parts.push(`📝 Details: ${details}`);
+  const price = text(payload.price) ?? text(payload.rent) ?? text(payload.budget);
+  const salary = text(payload.salary) ?? text(payload.salary_range);
+  if (name) parts.push(`👤 নাম: ${escapeTelegramHtml(name)}`);
+  if (phone) parts.push(`📞 যোগাযোগ: ${escapeTelegramHtml(phone)}`);
+  if (area) parts.push(`📍 এলাকা: ${escapeTelegramHtml(area)}`);
+  if (itemTitle && itemTitle !== alert.title) {
+    parts.push(`📝 শিরোনাম: ${escapeTelegramHtml(itemTitle)}`);
+  }
+  if (price) parts.push(`💰 মূল্য/ভাড়া: ${escapeTelegramHtml(price)}`);
+  if (salary) parts.push(`💵 বেতন: ${escapeTelegramHtml(salary)}`);
+  if (details) parts.push(`📝 বিস্তারিত: ${escapeTelegramHtml(details)}`);
 
   const date = new Date(alert.occurredAt);
   const occurredAt = Number.isFinite(date.getTime())
     ? date
     : new Date();
   parts.push(
-    `🕒 Time: ${occurredAt.toLocaleString('en-GB', {
+    `🕒 সময়: ${occurredAt.toLocaleString('bn-BD', {
       dateStyle: 'medium',
       timeStyle: 'short',
       timeZone: 'Asia/Dhaka',
-    })} (Asia/Dhaka)`
+    })} (বাংলাদেশ সময়)`
   );
-  parts.push(`🔗 Admin link: ${adminUrl(alert.adminPath)}`);
+  parts.push(`🔗 <a href="${escapeTelegramHtml(adminUrl(alert.adminPath))}">অ্যাডমিন প্যানেলে দেখুন</a>`);
   return parts.join('\n');
 }
 
@@ -144,16 +164,19 @@ export async function notifyAdmin(
   eventType: string,
   payload: Record<string, unknown>,
   options: { attempt?: number } = {}
-): Promise<void> {
+): Promise<TelegramResponseSummary[]> {
   const alert = getAlertFromPayload(payload, new Date().toISOString());
   if (!alert) throw new Error('Admin Telegram notification needs a title and summary.');
 
   try {
-    await sendTelegram(formatAdminTelegramMessage(eventType, alert));
+    const result = await sendTelegramMessage(formatAdminTelegramMessage(eventType, alert), {
+      html: true,
+    });
     console.info('Admin Telegram notification attempt succeeded.', {
       eventType,
       attempt: options.attempt ?? 1,
     });
+    return result;
   } catch (error) {
     console.error('Admin Telegram notification attempt failed.', {
       eventType,
@@ -284,8 +307,8 @@ export async function sendAdminTestTelegram(adminId: string): Promise<AlertDeliv
       related_type: 'admin_test',
       related_id: adminId,
       payload: {
-        title: 'Telegram notification test',
-        summary: 'Mymensingh Sheba admin Telegram alert test.',
+        title: 'টেলিগ্রাম নোটিফিকেশন পরীক্ষা',
+        summary: 'ময়মনসিংহ সেবা অ্যাডমিন টেলিগ্রাম অ্যালার্ট পরীক্ষা।',
         occurred_at: new Date().toISOString(),
         admin_path: '/admin',
       },
@@ -346,9 +369,7 @@ export async function processAdminTelegramQueue(
 ): Promise<{ claimed: number; sent: number; retryScheduled: number; failed: number; busy: boolean }> {
   const client = getServerClient();
   if (!client) throw new Error('supabase_server_configuration_missing');
-  if (!process.env.TELEGRAM_BOT_TOKEN || !process.env.TELEGRAM_CHAT_ID) {
-    throw new Error('telegram_server_configuration_missing');
-  }
+  assertTelegramConfigured();
 
   const { data: lockToken, error: lockError } = await client.rpc(
     'acquire_admin_telegram_worker_lock',
@@ -364,7 +385,7 @@ export async function processAdminTelegramQueue(
     for (let index = 0; index < batchSize; index += 1) {
       const { data, error } = await client.rpc('claim_admin_telegram_outbox_job', {
         p_lease_seconds: 180,
-            p_max_attempts: MAX_DELIVERY_ATTEMPTS,
+        p_max_attempts: MAX_DELIVERY_ATTEMPTS,
       });
       if (error) throw new Error('telegram_job_claim_failed');
       const job = (data as QueueJob[] | null)?.[0];

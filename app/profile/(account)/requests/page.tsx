@@ -46,7 +46,14 @@ const STATUS_CONFIGS = {
 };
 
 export default function RequestsPage() {
-  const { requests, user } = useAuth();
+  const {
+    requests,
+    requestsLoading,
+    requestsError,
+    hasMoreRequests,
+    loadMoreRequests,
+    user,
+  } = useAuth();
   const [toletRequests, setToletRequests] = useState<ToletRequest[]>([]);
   const [vehicleRequests, setVehicleRequests] = useState<VehicleRequest[]>([]);
   const [loadingTolet, setLoadingTolet] = useState(true);
@@ -108,7 +115,11 @@ export default function RequestsPage() {
     }
   };
 
-  const allEmpty = requests.length === 0 && toletRequests.length === 0 && vehicleRequests.length === 0;
+  const allEmpty =
+    !requestsError &&
+    requests.length === 0 &&
+    toletRequests.length === 0 &&
+    vehicleRequests.length === 0;
 
   return (
     <div className="space-y-5">
@@ -136,6 +147,14 @@ export default function RequestsPage() {
           {requestError && (
             <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-500">
               {requestError}
+            </p>
+          )}
+          {requestsError && (
+            <p role="alert" className="mb-4 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 text-xs text-rose-800">
+              {requestsError}{' '}
+              <button type="button" onClick={() => void loadMoreRequests()} className="font-bold underline">
+                আবার চেষ্টা করুন
+              </button>
             </p>
           )}
 
@@ -401,6 +420,20 @@ export default function RequestsPage() {
                 })}
               </>
             )}
+          </div>
+        )}
+        {requestsLoading && requests.length > 0 && (
+          <p role="status" className="text-center text-xs text-ink-500">রিকোয়েস্ট লোড হচ্ছে…</p>
+        )}
+        {!requestsError && hasMoreRequests && !requestsLoading && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => void loadMoreRequests()}
+              className="min-h-10 rounded-xl border border-brand-200 px-4 text-xs font-bold text-brand-800 hover:bg-brand-50"
+            >
+              আরও রিকোয়েস্ট দেখুন
+            </button>
           </div>
         )}
     </div>

@@ -4,6 +4,21 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 // ⚠️ DEV AUTH BYPASS — remove together with lib/dev-auth-bypass.ts.
 import { DEV_AUTH_BYPASS } from '@/lib/dev-auth-bypass';
 import { resolveDevAdminIdentity } from '@/lib/admin/dev-service-role';
+import { isConfirmedInvalidSessionError } from '@/lib/admin/auth-guard-errors';
+
+function logGuardFailure(operation: string, error: unknown): void {
+  const candidate =
+    error && typeof error === 'object'
+      ? (error as { code?: unknown; message?: unknown; status?: unknown })
+      : null;
+  console.error(JSON.stringify({
+    event: 'auth.guard_verification_failed',
+    operation,
+    status: typeof candidate?.status === 'number' ? candidate.status : undefined,
+    code: typeof candidate?.code === 'string' ? candidate.code : undefined,
+    message: typeof candidate?.message === 'string' ? candidate.message : String(error),
+  }));
+}
 
 /**
  * Server-side admin gate for every `/admin/*` route.
@@ -20,8 +35,9 @@ import { resolveDevAdminIdentity } from '@/lib/admin/dev-service-role';
  * because every admin policy is `USING (public.is_admin())` and `is_admin()`
  * itself is `SECURITY DEFINER` reading `profiles.role` server-side.
  *
- * Every function here FAILS CLOSED. If Supabase is unconfigured or the lookup
- * errors, the answer is "not an admin", never "probably fine".
+ * Authorization fails closed. A confirmed missing/invalid session is handled
+ * as signed out; infrastructure and database errors are logged and propagated
+ * so a temporary outage is never presented as a logout.
  */
 
 export interface AdminSession {
@@ -37,15 +53,27 @@ async function hasSupabaseSessionCookie(): Promise<boolean> {
     .some(({ name }) => /^sb-.+-auth-token(?:\.\d+)?$/.test(name));
 }
 
-/** The signed-in user id, or null. Never throws. */
+/** The signed-in user id, or null when no valid session exists. */
 export async function getAuthenticatedUserId(): Promise<string | null> {
   if (!(await hasSupabaseSessionCookie())) return null;
   const { createServerSideClient } = await import('@/lib/supabase/server');
   const supabase = await createServerSideClient();
   if (!supabase) return null;
 
-  const { data, error } = await supabase.auth.getUser();
-  if (error || !data?.user) return null;
+  let result: Awaited<ReturnType<typeof supabase.auth.getUser>>;
+  try {
+    result = await supabase.auth.getUser();
+  } catch (error) {
+    logGuardFailure('get_authenticated_user', error);
+    throw new Error('Could not verify the authenticated user with Supabase.', { cause: error });
+  }
+  const { data, error } = result;
+  if (error) {
+    if (isConfirmedInvalidSessionError(error)) return null;
+    logGuardFailure('get_authenticated_user', error);
+    throw new Error('Could not verify the authenticated user with Supabase.', { cause: error });
+  }
+  if (!data?.user) return null;
   return data.user.id;
 }
 
@@ -79,21 +107,50 @@ export async function getAdminSession(): Promise<AdminSession | null> {
   const supabase = await createServerSideClient();
   if (!supabase) return null;
 
+  let authResult: Awaited<ReturnType<typeof supabase.auth.getUser>>;
+  try {
+    authResult = await supabase.auth.getUser();
+  } catch (error) {
+    logGuardFailure('get_admin_session', error);
+    throw new Error('Could not verify the admin session with Supabase.', { cause: error });
+  }
   const {
     data: { user },
     error: authError,
-  } = await supabase.auth.getUser();
-  if (authError || !user) return null;
+  } = authResult;
+  if (authError) {
+    if (isConfirmedInvalidSessionError(authError)) return null;
+    logGuardFailure('get_admin_session', authError);
+    throw new Error('Could not verify the admin session with Supabase.', { cause: authError });
+  }
+  if (!user) return null;
 
   // RLS restricts this SELECT to the caller's own row, so this can only ever
   // return the signed-in user's profile — never someone else's.
-  const { data: profile, error: profileError } = await supabase
-    .from('profiles')
-    .select('full_name, role, status')
-    .eq('id', user.id)
-    .maybeSingle();
+  let profile: {
+    full_name: string | null;
+    role: string;
+    status: string | null;
+  } | null;
+  let profileError: { message: string } | null;
+  try {
+    const result = await supabase
+      .from('profiles')
+      .select('full_name, role, status')
+      .eq('id', user.id)
+      .maybeSingle();
+    profile = result.data;
+    profileError = result.error;
+  } catch (error) {
+    logGuardFailure('get_admin_profile', error);
+    throw new Error('Could not verify the admin profile with Supabase.', { cause: error });
+  }
 
-  if (profileError || !profile) return null;
+  if (profileError) {
+    logGuardFailure('get_admin_profile', profileError);
+    throw new Error('Could not verify the admin profile with Supabase.', { cause: profileError });
+  }
+  if (!profile) return null;
   if (profile.role !== 'admin') return null;
 
   // A suspended admin keeps a valid Supabase session, so the role check alone

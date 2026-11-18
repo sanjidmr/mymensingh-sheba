@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Check, CheckCircle2, Copy } from 'lucide-react';
 import type { ServiceRequestPageConfig } from '@/lib/service-request-pages';
+import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 
 export interface ServiceRequestSuccessData {
   reference: string | null;
@@ -65,6 +66,7 @@ export default function SubmissionSuccess({
           <p className="mt-4 text-lg font-extrabold text-ink-900 sm:text-xl">
             আপনার অনুরোধ সফলভাবে জমা হয়েছে!
           </p>
+          <FacebookUpdatesLink className="mx-auto mt-4 max-w-md justify-center rounded-xl border border-brand-100 bg-mist-50 px-3 py-2" />
         </div>
       </div>
     );
@@ -112,6 +114,8 @@ export default function SubmissionSuccess({
             </p>
           </div>
         )}
+
+        <FacebookUpdatesLink className="mx-auto mt-4 max-w-md justify-center rounded-xl border border-brand-100 bg-mist-50 px-3 py-2" />
 
         {(submission.summary.length > 0 || submission.areaName || submission.preferredDate || submission.details) && (
           <div className="mx-auto mt-5 max-w-md rounded-xl border border-brand-100 bg-mist-50 p-4 text-left">

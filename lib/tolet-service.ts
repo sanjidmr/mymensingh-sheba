@@ -196,7 +196,7 @@ export async function fetchPublicListings(): Promise<ToletListing[]> {
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   if (error) return [];
-  const real = (data || []).map((row) => mapListingRow(row as RawListingRow));
+  const real = (data || []).map((row: RawListingRow) => mapListingRow(row));
   real.forEach(rememberListingMeta);
   return real;
 }
@@ -290,7 +290,7 @@ export async function fetchMyListings(ownerId: string, strict = false): Promise<
     if (strict) throw new Error(`আপনার বাসাভাড়ার পোস্ট লোড করা যায়নি: ${error.message}`);
     return [];
   }
-  return (data || []).map((row) => mapListingRow(row as RawListingRow));
+  return (data || []).map((row: RawListingRow) => mapListingRow(row));
 }
 
 // ---------------------------------------------------------------------------
@@ -475,8 +475,10 @@ export async function permanentlyDeleteOwnListing(
     };
   }
   const stillUsed = new Set(
-    (remaining ?? []).flatMap((row) =>
-      Array.isArray(row.photos) ? row.photos.filter((photo): photo is string => typeof photo === 'string') : []
+    (remaining ?? []).flatMap((row: { photos: unknown }) =>
+      Array.isArray(row.photos)
+        ? row.photos.filter((photo: unknown): photo is string => typeof photo === 'string')
+        : []
     )
   );
   const unusedPaths = candidatePaths.filter((path) => {
@@ -521,7 +523,7 @@ export async function adminFetchListings(statusFilter?: string | null): Promise<
   if (statusFilter && statusFilter !== 'all') q.eq('status', statusFilter);
   const { data, error } = await q.order('created_at', { ascending: false });
   if (error) throw new Error(`বাসা ভাড়ার তালিকা লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => mapListingRow(row as RawListingRow));
+  return (data || []).map((row: RawListingRow) => mapListingRow(row));
 }
 
 export interface AdminToletListParams {
@@ -570,7 +572,9 @@ export async function adminFetchListingsPage(
       if (ownersError) {
         return { rows: [], total: 0, counts: {}, error: `মালিকের তথ্য খোঁজা যায়নি: ${ownersError.message}` };
       }
-      if (owners?.length) filters.push(`owner_id.in.(${owners.map(({ id }) => id).join(',')})`);
+      if (owners?.length) {
+        filters.push(`owner_id.in.(${owners.map(({ id }: { id: string }) => id).join(',')})`);
+      }
       // A Bangla area name ("সেনবাড়ি") never appears in `area_id` (which holds
       // kebab ids), so resolve the query through the To-Let area search and
       // match those ids directly. This keeps area search working in both
@@ -618,7 +622,7 @@ export async function adminFetchListingsPage(
     return { rows: [], total: 0, counts: {}, error: `স্ট্যাটাস গণনা ব্যর্থ হয়েছে: ${failedCount.error.message}` };
   }
   return {
-    rows: (result.data || []).map((row) => mapListingRow(row as RawListingRow)),
+    rows: (result.data || []).map((row: RawListingRow) => mapListingRow(row)),
     total: result.count ?? 0,
     counts: {
       all: statusResults.reduce((sum, result) => sum + (result.count ?? 0), 0),
@@ -655,7 +659,16 @@ export async function fetchRequestsForListing(listingId: string): Promise<ToletR
     .eq('listing_id', listingId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(`বাসা ভাড়ার অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => ({
+  return (data || []).map((row: {
+    id: string;
+    listing_id: string;
+    customer_id: string;
+    customer_name: string;
+    customer_phone: string;
+    message: string | null;
+    status: ToletRequest['status'];
+    created_at: string;
+  }) => ({
     id: row.id,
     listingId: row.listing_id,
     customerId: row.customer_id,
@@ -679,7 +692,16 @@ export async function fetchToletRequestsAsCustomer(customerId: string): Promise<
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(`আপনার বাসা দেখার অনুরোধ লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => ({
+  return (data || []).map((row: {
+    id: string;
+    listing_id: string;
+    customer_id: string;
+    customer_name: string;
+    customer_phone: string;
+    message: string | null;
+    status: ToletRequest['status'];
+    created_at: string;
+  }) => ({
     id: row.id,
     listingId: row.listing_id,
     customerId: row.customer_id,
@@ -788,10 +810,10 @@ export async function adminFetchReports(): Promise<ListingReport[]> {
     .select('*, reporter:reporter_id(full_name)')
     .order('created_at', { ascending: false });
   if (error) throw new Error(`বাসা ভাড়ার রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => {
-    const base = mapReportRow(row as Record<string, unknown>);
+  return (data || []).map((row: Record<string, unknown>) => {
+    const base = mapReportRow(row);
     base.reporterName =
-      ((row as Record<string, unknown>).reporter as { full_name?: string } | null)?.full_name || '';
+      (row.reporter as { full_name?: string } | null)?.full_name || '';
     return base;
   });
 }
@@ -827,10 +849,10 @@ export async function getReportsForListing(
     .eq('listing_id', listingId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(`বিজ্ঞাপনের রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => {
-    const base = mapReportRow(row as Record<string, unknown>);
+  return (data || []).map((row: Record<string, unknown>) => {
+    const base = mapReportRow(row);
     base.reporterName =
-      ((row as Record<string, unknown>).reporter as { full_name?: string } | null)?.full_name || '';
+      (row.reporter as { full_name?: string } | null)?.full_name || '';
     return base;
   });
 }

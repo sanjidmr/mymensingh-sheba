@@ -98,7 +98,7 @@ const columns: AdminColumn<AdminAuditEvent>[] = [
   },
 ];
 
-export default async function AdminActivityPage({
+export default async function AdminActivityPageContent({
   searchParams,
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;

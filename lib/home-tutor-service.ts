@@ -270,7 +270,7 @@ export async function fetchTutorReviews(tutorId: string): Promise<TutorReview[]>
     .eq('is_published', true)
     .order('created_at', { ascending: false });
   if (error) return [];
-  return (data || []).map((row) => mapReviewRow(row as Record<string, unknown>));
+  return (data || []).map((row: Record<string, unknown>) => mapReviewRow(row));
 }
 
 export type ReviewEligibility = {
@@ -464,8 +464,8 @@ export async function adminFetchTutorRequests(): Promise<AdminTutorRequest[]> {
     .order('created_at', { ascending: false });
   if (error) throw new Error(`টিউটর রিকোয়েস্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || [])
-    .map((row) => {
-      const c = toCamelObject(row as Record<string, unknown>) as Record<string, unknown>;
+    .map((row: Record<string, unknown>) => {
+      const c = toCamelObject(row) as Record<string, unknown>;
       return {
         id: (c.id as string) || '',
         customerId: (c.customerId as string) || '',
@@ -628,7 +628,7 @@ export async function adminFetchTutorReports(): Promise<TutorReport[]> {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw new Error(`টিউটর রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => toCamelObject(row as Record<string, unknown>) as unknown as TutorReport);
+  return (data || []).map((row: Record<string, unknown>) => toCamelObject(row) as unknown as TutorReport);
 }
 
 export async function adminUpdateTutorReportStatus(
@@ -657,8 +657,8 @@ export async function adminFetchTutorReviews(): Promise<(TutorReview & { tutorNa
     .order('created_at', { ascending: false });
   if (error) throw new Error(`টিউটর রিভিউ লোড ব্যর্থ হয়েছে: ${error.message}`);
   if (!data) return [];
-  return data.map((row) => {
-    const c = toCamelObject(row as Record<string, unknown>) as unknown as TutorReview;
+  return data.map((row: Record<string, unknown>) => {
+    const c = toCamelObject(row) as unknown as TutorReview;
     return c;
   });
 }

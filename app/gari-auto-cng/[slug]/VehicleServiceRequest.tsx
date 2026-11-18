@@ -205,7 +205,7 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
     <form
       onSubmit={handleSubmit}
       autoComplete="off"
-      className="rounded-2xl border border-mist-200 bg-white p-4 sm:p-5"
+      className="rounded-2xl border border-mist-200 bg-white p-3 sm:p-5"
     >
       <h2 className="flex items-center gap-2 text-[15px] font-extrabold text-ink-900">
         <Send className="h-4 w-4 text-brand-600" aria-hidden="true" />
@@ -215,57 +215,61 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
         আপনার অনুরোধ অ্যাডমিন টিমের কাছে যাবে; তারা যাচাই করে আপনার সঙ্গে যোগাযোগ করবেন।
       </p>
 
-      <div className="mt-4 space-y-3">
-        <Field labelBn="আপনার নাম" required>
-          <TextInput
-            name="contactName"
-            value={name}
-            onChange={setName}
-            placeholder="যেমন: রহিম উদ্দিন"
-            icon={User}
-            autoComplete="off"
-            required
-            minLength={3}
-            maxLength={80}
-          />
-        </Field>
+      <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
+        <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2 sm:gap-3">
+          <Field labelBn="আপনার নাম" required>
+            <TextInput
+              name="contactName"
+              value={name}
+              onChange={setName}
+              placeholder="যেমন: রহিম উদ্দিন"
+              icon={User}
+              autoComplete="off"
+              required
+              minLength={3}
+              maxLength={80}
+            />
+          </Field>
 
-        <Field labelBn="মোবাইল নম্বর" required errorBn={fieldError.phone}>
-          <TextInput
-            name="contactPhone"
-            value={phone}
-            onChange={setPhone}
-            placeholder="০১৭১২৩৪৫৬৭৮"
-            icon={Phone}
-            inputMode="tel"
-            autoComplete="off"
-            required
-          />
-        </Field>
+          <Field labelBn="মোবাইল নম্বর" required errorBn={fieldError.phone}>
+            <TextInput
+              name="contactPhone"
+              value={phone}
+              onChange={setPhone}
+              placeholder="০১৭১২৩৪৫৬৭৮"
+              icon={Phone}
+              inputMode="tel"
+              autoComplete="off"
+              required
+            />
+          </Field>
+        </div>
 
-        <Field labelBn="কোথা থেকে যাবেন" required>
-          <TextInput
-            value={pickup}
-            onChange={setPickup}
-            placeholder="যেমন: ময়মনসিংহ সদর"
-            icon={MapPin}
-            list="mms-vehicle-areas"
-            required
-            maxLength={120}
-          />
-        </Field>
+        <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2 sm:gap-3">
+          <Field labelBn="কোথা থেকে যাবেন" required>
+            <TextInput
+              value={pickup}
+              onChange={setPickup}
+              placeholder="যেমন: ময়মনসিংহ সদর"
+              icon={MapPin}
+              list="mms-vehicle-areas"
+              required
+              maxLength={120}
+            />
+          </Field>
 
-        <Field labelBn="কোথায় যাবেন" required errorBn={fieldError.destination}>
-          <TextInput
-            value={destination}
-            onChange={setDestination}
-            placeholder="যেমন: ঢাকা বিশ্ববিদ্যালয়"
-            icon={MapPin}
-            list="mms-vehicle-areas"
-            required
-            maxLength={120}
-          />
-        </Field>
+          <Field labelBn="কোথায় যাবেন" required errorBn={fieldError.destination}>
+            <TextInput
+              value={destination}
+              onChange={setDestination}
+              placeholder="যেমন: ঢাকা বিশ্ববিদ্যালয়"
+              icon={MapPin}
+              list="mms-vehicle-areas"
+              required
+              maxLength={120}
+            />
+          </Field>
+        </div>
 
         {/* One datalist shared by both place fields. The list is a convenience,
             not a constraint — typing "ঢাকা" and ignoring every suggestion is
@@ -311,7 +315,7 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
           <p className="mt-2 text-[11px] leading-relaxed text-ink-500">এটি প্রাথমিক অনুমান, চূড়ান্ত কোটেশন নয়। প্রকৃত রুট, দূরত্ব ও সম্মত অতিরিক্ত খরচে চূড়ান্ত ভাড়া বদলাতে পারে।</p>
         </section>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           <Field labelBn="যাওয়ার তারিখ">
             <TextInput
               value={date}
@@ -333,7 +337,7 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
           </Field>
         </div>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           <Field labelBn="যাত্রী সংখ্যা">
             <TextInput
               value={passengers}
@@ -392,7 +396,7 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
-            rows={5}
+            rows={3}
             maxLength={1000}
             placeholder="যেমন: সকালে শহর থেকে ঢাকা যাবে, পেছনে ২ জন বয়স্ক থাকবেন, গাড়ির ভেতরে এসি দরকার।"
             className="w-full rounded-xl border border-mist-200 bg-white px-3 py-2.5 text-[16px] leading-relaxed text-ink-900 outline-none transition-colors placeholder:text-ink-300 focus:border-brand-500 sm:text-[14px]"

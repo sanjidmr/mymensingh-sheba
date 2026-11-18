@@ -23,6 +23,7 @@ const EMERGENCY_PUBLIC_PATHS = new Set([
 ]);
 
 const PUBLIC_API_PATHS = new Set([
+  '/api/health',
   '/api/area-options',
   '/api/site-content',
   '/api/vehicle-route',
@@ -59,6 +60,20 @@ function copyAuthCookies(
   response.headers.set('Cache-Control', 'private, no-store, max-age=0');
   cookies.forEach((cookie) => response.cookies.set(cookie));
   return response;
+}
+
+function logAuthVerificationFailure(stage: string, error: unknown): void {
+  const candidate =
+    error && typeof error === 'object'
+      ? (error as { code?: unknown; message?: unknown; status?: unknown })
+      : null;
+  console.error(JSON.stringify({
+    event: 'auth.middleware_verification_failed',
+    stage,
+    status: typeof candidate?.status === 'number' ? candidate.status : undefined,
+    code: typeof candidate?.code === 'string' ? candidate.code : undefined,
+    reason: typeof candidate?.message === 'string' ? candidate.message : String(error),
+  }));
 }
 
 function loginRequiredResponse(
@@ -195,6 +210,7 @@ export async function middleware(request: NextRequest) {
   try {
     const { data, error } = await supabase.auth.getUser(bearerToken);
     if (error && error.status !== 401) {
+      logAuthVerificationFailure('get_user', error);
       const errorResponse = isApiRequest
         ? NextResponse.json({ error: 'Authentication is temporarily unavailable' }, { status: 503 })
         : new NextResponse('সার্ভার যাচাই করতে পারছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।', {
@@ -204,7 +220,8 @@ export async function middleware(request: NextRequest) {
       return copyAuthCookies(errorResponse, response.cookies.getAll());
     }
     user = data.user;
-  } catch {
+  } catch (error) {
+    logAuthVerificationFailure('get_user_exception', error);
     const errorResponse = isApiRequest
       ? NextResponse.json({ error: 'Authentication is temporarily unavailable' }, { status: 503 })
       : new NextResponse('সার্ভার যাচাই করতে পারছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।', {
@@ -236,7 +253,8 @@ export async function middleware(request: NextRequest) {
         .maybeSingle();
       profile = result.data;
       profileError = result.error;
-    } catch {
+    } catch (error) {
+      logAuthVerificationFailure('profile_lookup_exception', error);
       const errorResponse = isApiRequest
         ? NextResponse.json({ error: 'Profile verification is temporarily unavailable' }, { status: 503 })
         : new NextResponse('প্রোফাইল যাচাই করা যাচ্ছে না। কিছুক্ষণ পর আবার চেষ্টা করুন।', {
@@ -247,6 +265,7 @@ export async function middleware(request: NextRequest) {
     }
 
     if (profileError) {
+      logAuthVerificationFailure('profile_lookup', profileError);
       const errorResponse = isApiRequest
         ? NextResponse.json({ error: 'Profile verification failed' }, { status: 503 })
         : new NextResponse('প্রোফাইল যাচাই করা যায়নি। কিছুক্ষণ পর আবার চেষ্টা করুন।', {

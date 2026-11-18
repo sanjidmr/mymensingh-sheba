@@ -64,8 +64,8 @@ export default function NewsPageClient() {
           return;
         }
         setStories((data ?? [])
-          .map((row) => mapStory(row as Record<string, unknown>))
-          .filter((story): story is NewsStory => story !== null));
+          .map((row: Record<string, unknown>) => mapStory(row))
+          .filter((story: NewsStory | null): story is NewsStory => story !== null));
       } catch (error) {
         if (!active) return;
         console.error('[news] approved stories could not be loaded:', error);

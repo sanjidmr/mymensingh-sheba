@@ -30,6 +30,11 @@ const imageConfig: NonNullable<NextConfig['images']> = {
 };
 
 const nextConfig: NextConfig = {
+  distDir: process.env.NODE_ENV === 'development' ? '.next-dev' : '.next',
+  productionBrowserSourceMaps: true,
+  images: {
+    unoptimized: true,
+  },
   reactStrictMode: true,
   eslint: {
     ignoreDuringBuilds: true,
@@ -37,7 +42,7 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: false,
   },
-  images: imageConfig,
+  // images: imageConfig,
   output: 'standalone',
   transpilePackages: ['motion'],
   pageExtensions: isApp

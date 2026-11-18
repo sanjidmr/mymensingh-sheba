@@ -35,6 +35,7 @@ import { trackFormSubmit } from '@/lib/site-analytics';
 import { normalizeBdPhone } from '@/lib/contact-types';
 import { getAreaById } from '@/lib/locations';
 import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
+import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 
 const TIME_SLOTS = [
   'সকাল (৯টা – ১২টা)',
@@ -46,7 +47,7 @@ const TIME_SLOTS = [
 ];
 
 const SELECT_CLASS =
-  'w-full min-h-11 rounded-xl border border-mist-200 bg-white px-3.5 py-2.5 text-[16px] text-ink-900 outline-none transition-colors focus:border-brand-500 sm:min-h-0 sm:text-[13.5px]';
+  'w-full min-h-11 rounded-xl border border-mist-200 bg-white px-3 py-2 text-[16px] text-ink-900 outline-none transition-colors focus:border-brand-500 sm:px-3.5 sm:py-2.5 sm:text-[13.5px]';
 
 const LABEL_CLASS = 'mb-1.5 block text-[13px] font-bold text-ink-800 sm:text-[12.5px]';
 
@@ -120,6 +121,7 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
           </Link>{' '}
           পাতায় দেখতে পারবেন।
         </p>
+        <FacebookUpdatesLink className="mx-auto mt-4 max-w-xs justify-center rounded-xl border border-brand-100 bg-mist-50 px-2 py-2" />
       </section>
     );
   }
@@ -208,7 +210,7 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
   };
 
   return (
-    <section className="rounded-2xl border border-mist-200 bg-white p-4 sm:p-5">
+    <section className="rounded-2xl border border-mist-200 bg-white p-3 sm:p-5">
       <div className="flex items-center gap-2">
         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-700">
           <Send className="h-4 w-4" aria-hidden="true" />
@@ -220,36 +222,37 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
         প্রকাশ করা হয় না।
       </p>
 
-      <form onSubmit={handleSubmit} className="mt-4 space-y-3.5" noValidate autoComplete="off">
-        <div>
-          <label htmlFor="tutor-request-name" className={LABEL_CLASS}>আপনার নাম *</label>
-          <input
-            id="tutor-request-name"
-            name="contactName"
-            value={contactName}
-            onChange={(event) => { setContactName(event.target.value); setError(''); }}
-            autoComplete="off"
-            minLength={3}
-            maxLength={80}
-            required
-            className={SELECT_CLASS}
-          />
-        </div>
-
-        <div>
-          <label htmlFor="tutor-request-phone" className={LABEL_CLASS}>যোগাযোগের নম্বর *</label>
-          <input
-            id="tutor-request-phone"
-            name="contactPhone"
-            type="tel"
-            inputMode="tel"
-            value={contactPhone}
-            onChange={(event) => { setContactPhone(event.target.value); setError(''); }}
-            autoComplete="off"
-            placeholder="০১৭১২৩৪৫৬৭৮"
-            required
-            className={SELECT_CLASS}
-          />
+      <form onSubmit={handleSubmit} className="mt-3 space-y-3 sm:mt-4 sm:space-y-3.5" noValidate autoComplete="off">
+        <div className="grid grid-cols-1 gap-3 min-[360px]:grid-cols-2">
+          <div>
+            <label htmlFor="tutor-request-name" className={LABEL_CLASS}>আপনার নাম *</label>
+            <input
+              id="tutor-request-name"
+              name="contactName"
+              value={contactName}
+              onChange={(event) => { setContactName(event.target.value); setError(''); }}
+              autoComplete="off"
+              minLength={3}
+              maxLength={80}
+              required
+              className={SELECT_CLASS}
+            />
+          </div>
+          <div>
+            <label htmlFor="tutor-request-phone" className={LABEL_CLASS}>যোগাযোগের নম্বর *</label>
+            <input
+              id="tutor-request-phone"
+              name="contactPhone"
+              type="tel"
+              inputMode="tel"
+              value={contactPhone}
+              onChange={(event) => { setContactPhone(event.target.value); setError(''); }}
+              autoComplete="off"
+              placeholder="০১৭১২৩৪৫৬৭৮"
+              required
+              className={SELECT_CLASS}
+            />
+          </div>
         </div>
 
         <div>
@@ -262,7 +265,7 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
           />
         </div>
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
           <div>
             <label htmlFor="tutor-req-class" className={LABEL_CLASS}>
               শিক্ষার্থীর শ্রেণি
@@ -299,7 +302,7 @@ export default function TutorRequestForm({ tutor, onSubmitted }: TutorRequestFor
           </div>
         </div>
 
-        <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3.5">
           <div>
             <label htmlFor="tutor-req-mode" className={LABEL_CLASS}>
               পড়ানোর মাধ্যম

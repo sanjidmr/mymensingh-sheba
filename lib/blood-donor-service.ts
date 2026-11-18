@@ -311,7 +311,7 @@ export async function adminFetchDonorReports(donorId?: string): Promise<BloodDon
   if (donorId) query = query.eq('donor_profile_id', donorId);
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw new Error(`রক্তদাতার রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => mapReportRow(row as Record<string, unknown>));
+  return (data || []).map((row: Record<string, unknown>) => mapReportRow(row));
 }
 
 export async function adminUpdateDonorReport(
@@ -384,9 +384,9 @@ export async function fetchDonorModuleStats() {
   const rows = donors.data || [];
   const reqs = requests.data || [];
   return {
-    publishing: rows.filter((r) => r.status === 'approved').length,
-    pending: rows.filter((r) => r.status === 'pending_approval').length,
-    openReqs: reqs.filter((r) =>
+    publishing: rows.filter((r: { status: string }) => r.status === 'approved').length,
+    pending: rows.filter((r: { status: string }) => r.status === 'pending_approval').length,
+    openReqs: reqs.filter((r: { status: string }) =>
       ['pending_review', 'approved', 'donor_contacted', 'in_progress'].includes(r.status as string)
     ).length,
   };

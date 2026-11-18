@@ -4,9 +4,10 @@ import { useContext } from 'react';
 import Link from 'next/link';
 import { useQuery } from '@tanstack/react-query';
 import ServiceCard from '@/components/home/ServiceCard';
+import TutorCard from '@/components/home-tutor/TutorCard';
 import {
   loadToletCards,
-  loadTutorCards,
+  loadTutorProfiles,
   loadDonorCards,
   loadVehicleCards,
   loadMarketCards,
@@ -32,13 +33,12 @@ export type ServiceRowSource =
 
 const ROW_LOADERS = {
   tolet: loadToletCards,
-  tutor: loadTutorCards,
   donor: loadDonorCards,
   vehicle: loadVehicleCards,
   market: loadMarketCards,
   news: loadNewsCards,
   posts: loadCommunityPostCards,
-} satisfies Record<ServiceRowSource, () => Promise<HomePreviewCard[]>>;
+} satisfies Record<Exclude<ServiceRowSource, 'tutor'>, () => Promise<HomePreviewCard[]>>;
 
 interface ServiceRowSectionProps {
   kicker: string;
@@ -85,27 +85,35 @@ export default function ServiceRowSection({
   const { ref, isNearViewport } = useNearViewport<HTMLElement>();
   const imageMode = withImage && !hideImage;
 
-  /** Stable module-level reference, so this dep never churns between renders. */
-  const load = source ? ROW_LOADERS[source] : undefined;
+  const isTutor = source === 'tutor';
+  const load = source && !isTutor ? ROW_LOADERS[source] : undefined;
   const query = useQuery({
     queryKey: ['home-preview', source],
     queryFn: () => {
       if (!load) throw new Error('A home preview source is required.');
       return load();
     },
-    enabled: source !== 'vehicle' && Boolean(load) && !isRestoring && isNearViewport,
+    enabled: source !== 'vehicle' && !isTutor && Boolean(load) && !isRestoring && isNearViewport,
+    meta: { persist: true },
+  });
+  const tutorQuery = useQuery({
+    queryKey: ['home-preview', 'tutor-profiles'],
+    queryFn: loadTutorProfiles,
+    enabled: isTutor && !isRestoring && isNearViewport,
     meta: { persist: true },
   });
   const isVehicleRental = source === 'vehicle';
-  const items = isVehicleRental ? [] : cards ?? query.data ?? null;
-  const error = query.error
-    ? query.error instanceof Error
-      ? query.error.message
+  const items = isVehicleRental || isTutor ? [] : cards ?? query.data ?? null;
+  const tutors = isTutor ? tutorQuery.data ?? null : null;
+  const activeError = isTutor ? tutorQuery.error : query.error;
+  const error = activeError
+    ? activeError instanceof Error
+      ? activeError.message
       : 'তথ্য লোড করা যায়নি।'
     : '';
 
   const shown = (items ?? []).slice(0, count);
-  const loading = items === null && !error;
+  const loading = (isTutor ? tutors === null : items === null) && !error;
 
   /**
    * How many of the fetched cards each breakpoint shows.
@@ -163,23 +171,31 @@ export default function ServiceRowSection({
               </div>
             ))}
           </div>
-        ) : shown.length > 0 ? (
+        ) : (isTutor ? (tutors?.length ?? 0) > 0 : shown.length > 0) ? (
           <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-5 lg:gap-3">
-            {shown.map((card, index) => (
-              <ServiceCard
-                key={card.id}
-                card={
-                  imageMode && demoImages.length > 0 && !card.imageUrl
-                    ? { ...card, imageUrl: demoImages[index % demoImages.length] }
-                    : card
-                }
-                imageless={!imageMode}
-                compact
-                hideImage={imageMode ? false : hideImage}
-                tone={cardTone}
-                className={visibilityAt(index)}
-              />
-            ))}
+            {isTutor
+              ? (tutors ?? []).slice(0, count).map((tutor, index) => (
+                  <TutorCard
+                    key={tutor.id}
+                    tutor={tutor}
+                    className={visibilityAt(index)}
+                  />
+                ))
+              : shown.map((card, index) => (
+                  <ServiceCard
+                    key={card.id}
+                    card={
+                      imageMode && demoImages.length > 0 && !card.imageUrl
+                        ? { ...card, imageUrl: demoImages[index % demoImages.length] }
+                        : card
+                    }
+                    imageless={!imageMode}
+                    compact
+                    hideImage={imageMode ? false : hideImage}
+                    tone={cardTone}
+                    className={visibilityAt(index)}
+                  />
+                ))}
           </div>
         ) : (
           <div className="mt-4 rounded-xl border border-dashed border-brand-200 bg-white px-6 py-10 text-center">

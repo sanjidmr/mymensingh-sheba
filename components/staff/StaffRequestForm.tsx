@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import { Lock, Send, CheckCircle2, Loader2, Camera } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
+import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 import { KAJER_BUA_WORK_TYPES, ELECTRICIAN_SERVICE_TYPES, PLUMBING_SERVICE_TYPES } from '@/lib/filter-definitions';
 import { STAFF_PREFERRED_TIMES } from '@/lib/staff-types';
 import type { StaffProfile, StaffServiceUiConfig } from '@/lib/staff-types';
@@ -115,6 +116,7 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
           <Link href="/profile/requests" className="underline font-semibold text-xs inline-block mt-2">
             আমার অনুরোধ দেখুন
           </Link>
+          <FacebookUpdatesLink className="mt-3 justify-center rounded-lg border border-brand-100 bg-white/80 px-2 py-2" />
         </div>
       ) : !user ? (
         <div className="p-4 rounded-xl bg-slate-50 border border-slate-200 text-center">
@@ -132,8 +134,8 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
           </div>
         </div>
       ) : (
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
+          <div className="grid grid-cols-1 gap-2.5 min-[360px]:grid-cols-2 sm:gap-3">
             <div>
               <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">আপনার নাম:</label>
               <input
@@ -201,7 +203,7 @@ export function StaffRequestForm({ profile, serviceUi }: StaffRequestFormProps) 
             </select>
           </div>
 
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
             <div>
               <label className="block text-[13px] sm:text-xs font-semibold text-slate-700 mb-1.5">
                 {profile.serviceSlug === 'kajer-bua' ? 'কোন তারিখ থেকে (ঐচ্ছিক):' : 'পছন্দের তারিখ (ঐচ্ছিক):'}

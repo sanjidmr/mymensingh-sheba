@@ -17,16 +17,17 @@ import {
   ImagePlus,
   Loader2,
   X,
+  Wallet,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { getAreaById } from '@/lib/locations';
 import { uploadTutorProfilePhoto } from '@/lib/home-tutor-service';
 import { TUTOR_TEACHING_MODE_LABELS } from '@/lib/home-tutor-types';
 import type { TutorTeachingMode } from '@/lib/supabase/types';
-import LocationSelectInput from '@/components/LocationSelectInput';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
+import SectionCard from '@/components/forms/SectionCard';
 
 const AVAILABLE_CLASSES = [
   '১ম - ৫ম শ্রেণি',
@@ -68,10 +69,14 @@ export default function HomeTutorSetupPage() {
       ? initialEducationStatus
       : ''
   );
-  const [experienceYears, setExperienceYears] = useState(homeTutorProfile?.experienceYears || 2);
-  const [selectedAreas, setSelectedAreas] = useState<string[]>(() => {
-    return homeTutorProfile?.preferredAreas || [];
-  });
+  const [experienceYears, setExperienceYears] = useState(
+    homeTutorProfile?.experienceYears != null ? String(homeTutorProfile.experienceYears) : ''
+  );
+  const [preferredAreasText, setPreferredAreasText] = useState(
+    homeTutorProfile?.preferredAreas
+      ?.map((areaId) => getAreaById(areaId)?.nameBn ?? areaId)
+      .join(', ') || ''
+  );
   const [selectedClasses, setSelectedClasses] = useState<string[]>(
     homeTutorProfile?.preferredClasses || []
   );
@@ -80,10 +85,12 @@ export default function HomeTutorSetupPage() {
   );
   const [newClass, setNewClass] = useState('');
   const [newSubject, setNewSubject] = useState('');
-  const [customAreaName, setCustomAreaName] = useState('');
-  const [areaDraft, setAreaDraft] = useState('');
-  const [salary, setSalary] = useState(homeTutorProfile?.expectedSalary ?? 3000);
-  const [daysPerWeek, setDaysPerWeek] = useState(homeTutorProfile?.daysPerWeek || 3);
+  const [salary, setSalary] = useState(
+    homeTutorProfile?.expectedSalary != null ? String(homeTutorProfile.expectedSalary) : ''
+  );
+  const [daysPerWeek, setDaysPerWeek] = useState(
+    homeTutorProfile?.daysPerWeek != null ? String(homeTutorProfile.daysPerWeek) : ''
+  );
   const [bio, setBio] = useState(homeTutorProfile?.bio || '');
   const [privatePhone, setPrivatePhone] = useState(
     homeTutorProfile?.privatePhone || user?.phone || ''
@@ -127,22 +134,6 @@ export default function HomeTutorSetupPage() {
     setError('');
   };
 
-  const addCustomArea = () => {
-    const value = customAreaName.trim() || areaDraft.trim();
-    if (!value) {
-      setError('এলাকার নাম লিখুন।');
-      return;
-    }
-    if (selectedAreas.some((areaId) => areaId.toLocaleLowerCase() === value.toLocaleLowerCase())) {
-      setError('এই এলাকা আগে থেকেই যোগ করা হয়েছে।');
-      return;
-    }
-    setSelectedAreas((prev) => [...prev, value]);
-    setCustomAreaName('');
-    setAreaDraft('');
-    setError('');
-  };
-
   const addCustomSubject = () => {
     const value = newSubject.trim();
     if (!value || value.length > 60 || selectedSubjects.length >= 30 ||
@@ -179,6 +170,10 @@ export default function HomeTutorSetupPage() {
   };
 
   const saveProfile = async (mode: 'draft' | 'submit') => {
+    const preferredAreas = preferredAreasText
+      .split(/[,\n،]+/)
+      .map((area) => area.trim())
+      .filter(Boolean);
     const validChoices = (items: string[]) =>
       items.length <= 30 &&
       items.every((item) => item.trim().length > 0 && item.trim().length <= 60) &&
@@ -187,17 +182,27 @@ export default function HomeTutorSetupPage() {
       setError('প্রতিটি শ্রেণি ও বিষয় সঠিকভাবে লিখুন (সর্বোচ্চ ৩০টি, প্রতিটি ৬০ অক্ষরের মধ্যে)।');
       return;
     }
-    if (mode === 'submit' && (!fullName || !department || selectedAreas.length === 0 ||
+    if (mode === 'submit' && (!fullName || !department ||
       selectedClasses.length === 0 || selectedSubjects.length === 0)) {
-      setError('নাম, বিভাগ, অন্তত একটি এলাকা, শ্রেণি ও বিষয় নির্বাচন করুন।');
+      setError('নাম, বিভাগ, শ্রেণি ও বিষয় নির্বাচন করুন।');
       return;
     }
     if (mode === 'submit' && !educationStatus) {
       setError('আপনার পড়াশোনার বর্তমান অবস্থা নির্বাচন করুন।');
       return;
     }
-    if (!Number.isInteger(Number(salary)) || Number(salary) < 0) {
+    if (!salary.trim() || !Number.isInteger(Number(salary)) || Number(salary) < 0) {
       setError('প্রত্যাশিত মাসিক বেতন সঠিকভাবে লিখুন।');
+      return;
+    }
+    if (!experienceYears.trim() || !Number.isInteger(Number(experienceYears)) ||
+      Number(experienceYears) < 0 || Number(experienceYears) > 30) {
+      setError('শিক্ষকতার অভিজ্ঞতা সঠিকভাবে লিখুন।');
+      return;
+    }
+    if (!daysPerWeek || !Number.isInteger(Number(daysPerWeek)) ||
+      Number(daysPerWeek) < 1 || Number(daysPerWeek) > 7) {
+      setError('সপ্তাহে পড়ানোর দিনের সংখ্যা নির্বাচন করুন।');
       return;
     }
 
@@ -222,7 +227,7 @@ export default function HomeTutorSetupPage() {
             ]
           : homeTutorProfile?.educations ?? [],
         experienceYears: Number(experienceYears),
-        preferredAreas: selectedAreas,
+        preferredAreas,
         preferredClasses: selectedClasses.map((item) => item.trim()),
         preferredSubjects: selectedSubjects.map((item) => item.trim()),
         expectedSalary: Number(salary),
@@ -243,8 +248,8 @@ export default function HomeTutorSetupPage() {
             `প্রতিষ্ঠান: ${institution.trim()}`,
             `বিভাগ / বিষয়: ${department.trim()}`,
             `শিক্ষাগত যোগ্যতা: ${qualification.trim()}`,
-            selectedAreas.length
-              ? `পছন্দের এলাকা: ${selectedAreas.map((id) => getAreaById(id)?.nameBn ?? id).join(' · ')}`
+            preferredAreas.length
+              ? `পছন্দের এলাকা: ${preferredAreas.join(' · ')}`
               : '',
             selectedClasses.length ? `শ্রেণি: ${selectedClasses.join(' · ')}` : '',
             selectedSubjects.length ? `বিষয়: ${selectedSubjects.join(' · ')}` : '',
@@ -332,7 +337,8 @@ export default function HomeTutorSetupPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <SectionCard title="পরিচিতি ও শিক্ষা" icon={GraduationCap}>
             {/* Profile photo (optional) */}
             <div>
               <label className="block text-xs font-semibold text-ink-800 mb-1.5">
@@ -373,7 +379,7 @@ export default function HomeTutorSetupPage() {
               </p>
             </div>
 
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষকের পুরো নাম
@@ -417,7 +423,7 @@ export default function HomeTutorSetupPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   শিক্ষা প্রতিষ্ঠান
@@ -498,10 +504,12 @@ export default function HomeTutorSetupPage() {
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   max="30"
                   value={experienceYears}
-                  onChange={(e) => setExperienceYears(Number(e.target.value))}
+                  onChange={(e) => setExperienceYears(e.target.value)}
+                  placeholder="যেমন: ২"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
@@ -513,9 +521,10 @@ export default function HomeTutorSetupPage() {
                 </label>
                 <select
                   value={daysPerWeek}
-                  onChange={(e) => setDaysPerWeek(Number(e.target.value))}
+                  onChange={(e) => setDaysPerWeek(e.target.value)}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand-500"
                 >
+                  <option value="">দিন নির্বাচন করুন</option>
                   <option value={1}>১ দিন</option>
                   <option value={2}>২ দিন</option>
                   <option value={3}>৩ দিন</option>
@@ -527,6 +536,9 @@ export default function HomeTutorSetupPage() {
               </div>
             </div>
 
+            </SectionCard>
+
+            <SectionCard title="পড়ানোর শ্রেণি ও বিষয়" icon={BookOpen}>
             {/* Preferred Classes */}
             <div>
               <label className="block text-xs font-semibold text-ink-800 mb-1.5">
@@ -617,69 +629,24 @@ export default function HomeTutorSetupPage() {
               </div>
             </div>
 
-            {/* Preferred Areas within MCC */}
-            <div>
-              <label className="block text-xs font-semibold text-ink-800 mb-1.5">
-                পছন্দের এলাকা (শুধুমাত্র ময়মনসিংহ সিটি কর্পোরেশন)
-              </label>
-              <LocationSelectInput
-                value={null}
-                allowClear={false}
-                placeholder="এলাকা খুঁজে নির্বাচন করুন"
-                onChange={(areaName) => {
-                  setAreaDraft(areaName ?? '');
-                }}
-              />
-              <div className="mt-3 space-y-2">
-                <div className="flex flex-col gap-2 sm:flex-row">
-                  <input
-                    value={customAreaName || areaDraft}
-                    onChange={(event) => {
-                      setCustomAreaName(event.target.value);
-                      setAreaDraft(event.target.value);
-                    }}
-                    maxLength={80}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Enter') {
-                        event.preventDefault();
-                        addCustomArea();
-                      }
-                    }}
-                    placeholder="এলাকার নাম লিখে এখানে যোগ করুন"
-                    className="min-w-0 flex-1 rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomArea}
-                    className="rounded-xl border border-brand-200 px-4 py-2.5 text-xs font-semibold text-brand-800 hover:bg-brand-50"
-                  >
-                    যোগ করুন
-                  </button>
-                </div>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {selectedAreas.map((areaId) => {
-                  const area = getAreaById(areaId);
-                  return (
-                    <span
-                      key={areaId}
-                      className="inline-flex items-center gap-1 rounded-full border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs text-brand-900"
-                    >
-                      {area?.nameBn || areaId}
-                      <button
-                        type="button"
-                        onClick={() => setSelectedAreas((prev) => prev.filter((id) => id !== areaId))}
-                        aria-label={`${area?.nameBn || areaId} এলাকা সরান`}
-                        className="rounded-full p-0.5 text-brand-700 hover:bg-brand-100"
-                      >
-                        <X className="h-3.5 w-3.5" />
-                      </button>
-                    </span>
-                  );
-                })}
-              </div>
-            </div>
+            </SectionCard>
 
+            <SectionCard
+              title="আপনি কোন এলাকায় পড়াতে ইচ্ছুক?"
+              icon={MapPin}
+              description="ঐচ্ছিক — একাধিক এলাকার নাম কমা দিয়ে লিখুন। এই তথ্য না দিলেও প্রোফাইল জমা হবে।"
+            >
+              <textarea
+                rows={2}
+                maxLength={500}
+                value={preferredAreasText}
+                onChange={(event) => setPreferredAreasText(event.target.value)}
+                placeholder="যেমন: চরপাড়া, কাঁচিঝুলি, মাসকান্দা"
+                className="min-h-20 w-full rounded-xl border border-brand-200 px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            </SectionCard>
+
+            <SectionCard title="পারিশ্রমিক ও পড়ানোর ধরন" icon={Wallet}>
             {/* Expected Salary */}
             <div>
               <div>
@@ -688,10 +655,12 @@ export default function HomeTutorSetupPage() {
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   step="100"
                   value={salary}
-                  onChange={(e) => setSalary(Number(e.target.value))}
+                  onChange={(e) => setSalary(e.target.value)}
+                  placeholder="যেমন: ৫০০০"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
@@ -740,6 +709,9 @@ export default function HomeTutorSetupPage() {
               />
             </div>
 
+            </SectionCard>
+
+            <SectionCard title="যোগাযোগ" icon={Phone}>
             {/* Private contact */}
             <div>
               <label className="block text-xs font-semibold text-ink-800 mb-1.5">
@@ -757,8 +729,9 @@ export default function HomeTutorSetupPage() {
                 এই নম্বরে শুধুমাত্র ময়মনসিংহ সেবা অ্যাডমিন টিম টিউশন রিকোয়েস্ট সমন্বয় করতে যোগাযোগ করবে।
               </p>
             </div>
+            </SectionCard>
 
-            <div className="pt-3 flex items-center justify-end gap-3">
+            <div className="form-sticky-submit flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
               {homeTutorProfile?.status !== 'approved' && (
                 <button
                   type="button"

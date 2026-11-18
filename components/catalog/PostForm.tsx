@@ -15,7 +15,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Eye, Loader2, Save, Trash2, X } from 'lucide-react';
+import { Briefcase, Eye, FileText, ImagePlus, Loader2, MapPin, Phone, ShoppingBag, Save, Trash2, X } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
@@ -23,7 +23,6 @@ import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
 import {
   createCommunityPost,
-  currentUserId,
   deleteCommunityPostDraft,
   deleteCommunityPost,
   loadCommunityPostDraft,
@@ -34,7 +33,9 @@ import {
 } from '@/lib/catalog-service';
 import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
 import LocationSelectInput from '@/components/LocationSelectInput';
+import SectionCard from '@/components/forms/SectionCard';
 import { normalizeBangladeshMobile } from '@/lib/bangladesh-phone';
+import { isAbortError, isTimeoutError, REQUEST_TIMEOUT_MESSAGE } from '@/lib/fetch-with-timeout';
 import {
   JOB_EXPERIENCE,
   JOB_TYPES,
@@ -256,6 +257,7 @@ export default function PostForm({
   const userId = user?.id;
   const hasInteractedRef = useRef(false);
   const submittedRef = useRef(false);
+  const submittingRef = useRef(false);
   const autosavingRef = useRef(false);
   const lastSavedDraftRef = useRef<string | null>(null);
   const latestDraftRef = useRef({ values, tags, photos });
@@ -274,7 +276,7 @@ export default function PostForm({
     onUploaded?: () => void
   ): Promise<PhotoSlot[]> {
     const hasPending = slots.some((photo) => photo.file);
-    const authorId = hasPending ? await currentUserId() : null;
+    const authorId = hasPending ? userId ?? null : null;
     if (hasPending && !authorId) {
       throw new Error('ছবি সংরক্ষণ করতে লগইন করুন।');
     }
@@ -327,12 +329,13 @@ export default function PostForm({
   useEffect(() => {
     if (editing) return;
     let active = true;
-    void Promise.resolve().then(async () => {
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => void (async () => {
       try {
         let parsed: unknown = null;
         let savedAt: string | null = null;
         if (userId) {
-          const result = await loadCommunityPostDraft(kind);
+          const result = await loadCommunityPostDraft(kind, controller.signal);
           // A missing or unreadable draft is not the member's problem; the form
           // simply opens empty. Draft storage is a convenience and must never
           // block posting.
@@ -373,8 +376,12 @@ export default function PostForm({
       } finally {
         if (active) setDraftLoadedFor(draftKey);
       }
-    });
-    return () => { active = false; };
+    })(), 0);
+    return () => {
+      active = false;
+      controller.abort();
+      window.clearTimeout(timer);
+    };
   }, [draftKey, editing, kind, userId]);
 
   useEffect(() => {
@@ -541,6 +548,7 @@ export default function PostForm({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (submittingRef.current) return;
     setFormError('');
     hasInteractedRef.current = true;
 
@@ -554,6 +562,7 @@ export default function PostForm({
       return;
     }
 
+    submittingRef.current = true;
     setSubmitting(true);
     try {
       setUploadedCount(0);
@@ -610,16 +619,22 @@ export default function PostForm({
       if (editing) {
         const result = await updateCommunityPost(editing.id, content);
         if (!result.success) {
+          if (isAbortError(result.error)) return;
           console.error('Post update failed', result.error);
-          setFormError(result.error || 'পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+          setFormError(isTimeoutError(result.error)
+            ? REQUEST_TIMEOUT_MESSAGE
+            : result.error || 'পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
           return;
         }
         router.push(`${KIND_ROUTE[editing.kind]}/${result.data.slug}`);
       } else {
         const result = await createCommunityPost(content);
         if (!result.success) {
+          if (isAbortError(result.error)) return;
           console.error('Post creation failed', result.error);
-          setFormError(result.error || 'পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
+          setFormError(isTimeoutError(result.error)
+            ? REQUEST_TIMEOUT_MESSAGE
+            : result.error || 'পোস্টটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।');
           return;
         }
         submittedRef.current = true;
@@ -679,9 +694,14 @@ export default function PostForm({
         }
       }
     } catch (error) {
-      console.error('Post submission failed', error);
-      setFormError('পোস্টটি পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      if (!isAbortError(error)) {
+        console.error('Post submission failed', error);
+        setFormError(isTimeoutError(error)
+          ? REQUEST_TIMEOUT_MESSAGE
+          : 'পোস্টটি পাঠানো যায়নি। আবার চেষ্টা করুন।');
+      }
     } finally {
+      submittingRef.current = false;
       setSubmitting(false);
     }
   }
@@ -949,6 +969,7 @@ export default function PostForm({
         )}
 
         <form onSubmit={handleSubmit} className="mt-4 space-y-3" noValidate>
+          <SectionCard title="মূল তথ্য" icon={FileText}>
           <Field
             id="title"
             label="শিরোনাম"
@@ -1067,7 +1088,10 @@ export default function PostForm({
             )}
           </Field>
 
+          </SectionCard>
+
           {kind === 'job' && (
+            <SectionCard title="চাকরির তথ্য" icon={Briefcase}>
             <>
               <Field
                 id="organization"
@@ -1111,7 +1135,9 @@ export default function PostForm({
                     id="field-salaryMin"
                     value={values.salaryMin}
                     onChange={(e) => set('salaryMin', e.target.value)}
+                    type="number"
                     inputMode="numeric"
+                    placeholder="যেমন: ১০০০০"
                     aria-invalid={Boolean(errors.salaryMin)}
                     className={inputClass(Boolean(errors.salaryMin))}
                   />
@@ -1121,7 +1147,9 @@ export default function PostForm({
                     id="field-salaryMax"
                     value={values.salaryMax}
                     onChange={(e) => set('salaryMax', e.target.value)}
+                    type="number"
                     inputMode="numeric"
+                    placeholder="যেমন: ৩০০০০"
                     aria-invalid={Boolean(errors.salaryMax)}
                     className={inputClass(Boolean(errors.salaryMax))}
                   />
@@ -1167,16 +1195,20 @@ export default function PostForm({
                 />
               </Field>
             </>
+            </SectionCard>
           )}
 
           {kind === 'buy_sell' && (
+            <SectionCard title="পণ্য ও দাম" icon={ShoppingBag}>
             <>
               <Field id="price" label="দাম (টাকা)" required error={errors.price}>
                 <input
                   id="field-price"
                   value={values.price}
                   onChange={(e) => set('price', e.target.value)}
+                  type="number"
                   inputMode="numeric"
+                  placeholder="যেমন: ৫০০০"
                   required
                   aria-invalid={Boolean(errors.price)}
                   className={inputClass(Boolean(errors.price))}
@@ -1247,8 +1279,10 @@ export default function PostForm({
                 </div>
               </fieldset>
             </>
+            </SectionCard>
           )}
 
+          <SectionCard title="এলাকা" icon={MapPin}>
           <Field id="areaId" label="এলাকা">
             <LocationSelectInput
               id="field-areaId"
@@ -1258,10 +1292,12 @@ export default function PostForm({
               source={createAreaSource(areas)}
             />
           </Field>
+          </SectionCard>
 
           {/* Photos. The first one is the cover the card grid shows; the rest form the
             gallery on the detail page. buy_sell needs at least one — see the
             note in `validate`. */}
+          <SectionCard title="ছবি" icon={ImagePlus}>
           <div
             id="field-photos"
             tabIndex={-1}
@@ -1346,8 +1382,10 @@ export default function PostForm({
               </p>
             )}
           </div>
+          </SectionCard>
 
           {/* Free-text tags */}
+          <SectionCard title="অতিরিক্ত তথ্য ও যোগাযোগ" icon={Phone}>
           <TagEditor
             tags={tags}
             onChange={(next) => {
@@ -1377,6 +1415,7 @@ export default function PostForm({
               />
             </Field>
           )}
+          </SectionCard>
 
           {formError && (
             <p
@@ -1417,7 +1456,7 @@ export default function PostForm({
             </section>
           )}
 
-          <div className="flex flex-wrap gap-2 pt-1">
+          <div className="form-sticky-submit flex flex-col gap-2 pt-1 sm:flex-row sm:flex-wrap">
             {!editing && (
               <button
                 type="button"
@@ -1448,7 +1487,9 @@ export default function PostForm({
                 ? photos.some((slot) => slot.file)
                   ? `ছবি আপলোড হচ্ছে… (${uploadedCount}/${photos.filter((slot) => slot.file).length})`
                   : 'পাঠানো হচ্ছে…'
-                : editing
+                : formError === REQUEST_TIMEOUT_MESSAGE
+                  ? 'আবার চেষ্টা করুন'
+                  : editing
                   ? 'পরিবর্তন জমা দিন'
                   : kind === 'buy_sell'
                     ? 'বিজ্ঞাপন পাঠান'

@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   CheckCircle2,
   Lock,
+  ShieldCheck,
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { BloodGroup } from '@/lib/supabase/types';
@@ -18,6 +19,7 @@ import LocationSelectInput from '@/components/LocationSelectInput';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
 import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
+import SectionCard from '@/components/forms/SectionCard';
 
 const BLOOD_GROUPS: BloodGroup[] = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'];
 
@@ -46,7 +48,9 @@ export default function BloodDonorSetupPage() {
   const [lastDonationDate, setLastDonationDate] = useState(
     bloodDonorProfile?.lastDonationDate || ''
   );
-  const [donationCount, setDonationCount] = useState(bloodDonorProfile?.donationCount || 1);
+  const [donationCount, setDonationCount] = useState(
+    bloodDonorProfile?.donationCount != null ? String(bloodDonorProfile.donationCount) : ''
+  );
   const [privatePhone, setPrivatePhone] = useState(
     bloodDonorProfile?.privatePhone || user?.phone || ''
   );
@@ -71,6 +75,11 @@ export default function BloodDonorSetupPage() {
     const parsedWeightKg = weightKg === '' ? undefined : Number(weightKg);
     if (parsedWeightKg !== undefined && (!Number.isFinite(parsedWeightKg) || parsedWeightKg < 45 || parsedWeightKg > 140)) {
       setError('ওজন ৪৫ থেকে ১৪০ কেজির মধ্যে লিখুন।');
+      return;
+    }
+    if (!donationCount.trim() || !Number.isInteger(Number(donationCount)) ||
+      Number(donationCount) < 0 || Number(donationCount) > 100) {
+      setError('এ পর্যন্ত মোট রক্তদানের সংখ্যা সঠিকভাবে লিখুন।');
       return;
     }
 
@@ -186,7 +195,8 @@ export default function BloodDonorSetupPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <SectionCard title="রক্তদাতা পরিচিতি" icon={Heart}>
             {/* Blood Group Selection */}
             <div>
               <label className="block text-xs font-semibold text-ink-800 mb-2">
@@ -213,7 +223,7 @@ export default function BloodDonorSetupPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   রক্তদাতার পুরো নাম
@@ -269,8 +279,10 @@ export default function BloodDonorSetupPage() {
                 </select>
               </div>
             </div>
+            </SectionCard>
 
-            <div className="grid grid-cols-1 min-[420px]:grid-cols-2 gap-3 sm:gap-4">
+            <SectionCard title="রক্তদানের তথ্য" icon={ShieldCheck}>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               <div>
                 <label className="block text-xs font-semibold text-ink-800 mb-1.5">
                   সর্বশেষ রক্তদানের তারিখ (যদি দিয়ে থাকেন)
@@ -289,10 +301,12 @@ export default function BloodDonorSetupPage() {
                 </label>
                 <input
                   type="number"
+                  inputMode="numeric"
                   min="0"
                   max="100"
                   value={donationCount}
-                  onChange={(e) => setDonationCount(Number(e.target.value))}
+                  onChange={(e) => setDonationCount(e.target.value)}
+                  placeholder="যেমন: ৫"
                   className="w-full px-3.5 py-2.5 rounded-xl border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
                   required
                 />
@@ -319,7 +333,9 @@ export default function BloodDonorSetupPage() {
                 <div className="w-11 h-6 bg-brand-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-brand-200 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-rose-500"></div>
               </label>
             </div>
+            </SectionCard>
 
+            <SectionCard title="যোগাযোগ ও সম্মতি" icon={Phone}>
             {/* Private Phone */}
             <div>
               <label className="block text-xs font-semibold text-ink-800 mb-1.5">
@@ -353,7 +369,7 @@ export default function BloodDonorSetupPage() {
               </label>
             </div>
 
-            <div className="pt-3 flex items-center justify-end gap-3">
+            <div className="form-sticky-submit flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
               {bloodDonorProfile?.status !== 'approved' && (
                 <button
                   type="button"
@@ -384,6 +400,7 @@ export default function BloodDonorSetupPage() {
                 </span>
               </button>
             </div>
+            </SectionCard>
           </form>
         </div>
       </main>

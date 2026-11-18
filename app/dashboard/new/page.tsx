@@ -10,7 +10,7 @@ export const metadata: Metadata = {
 
 const SERVICES = [
   { href: '/profile/tolet/new', icon: Home, label: 'বাসা ভাড়া', hint: 'ফ্ল্যাট, রুম, সাবলেট, মেস' },
-  { href: '/buy-sell/create', icon: ShoppingBag, label: 'কেনাবেচা', hint: 'পুরনো বা নতুন পণ্য' },
+  { href: '/buy-sell/create', icon: ShoppingBag, label: 'কেনা-বেচা', hint: 'পুরনো বা নতুন পণ্য' },
   { href: '/jobs/create', icon: Briefcase, label: 'চাকরি', hint: 'নিয়োগ বিজ্ঞপ্তি দিন' },
 ];
 
@@ -22,17 +22,17 @@ export default function Page() {
         <p className="mt-1 text-[12.5px] leading-relaxed text-ink-500">কোন ধরনের পোস্ট করতে চান বেছে নিন। প্রতিটি পোস্ট অ্যাডমিন অনুমোদনের পর প্রকাশিত হবে।</p>
       </div>
       <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        {SERVICES.map((s) => {
+        {SERVICES.map((s, index) => {
           const Icon = s.icon;
           return (
             <li key={s.href}>
-              <Link href={s.href} className={`group flex min-h-[72px] items-center gap-3 rounded-2xl border border-brand-100 bg-white p-3.5 transition-colors hover:border-brand-300 ${LIGHT_FOCUS}`}>
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
-                  <Icon className="h-5 w-5" />
+              <Link href={s.href} className={`group flex min-h-[92px] items-center gap-3 rounded-2xl border bg-white p-4 transition-all hover:-translate-y-0.5 hover:shadow-md ${index === 0 ? 'border-brand-300 bg-brand-50/60 ring-1 ring-brand-100' : 'border-brand-100 hover:border-brand-300'} ${LIGHT_FOCUS}`}>
+                <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${index === 0 ? 'bg-brand-700 text-white' : 'bg-brand-50 text-brand-700'}`}>
+                  <Icon className="h-5 w-5" aria-hidden="true" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block text-[14px] font-extrabold text-ink-900">{s.label}</span>
-                  <span className="mt-0.5 block truncate text-[11.5px] text-ink-400">{s.hint}</span>
+                  <span className={`block text-base font-extrabold ${index === 0 ? 'text-brand-800' : 'text-ink-900'}`}>{s.label}</span>
+                  <span className="mt-1 block truncate text-xs text-ink-500">{s.hint}</span>
                 </span>
               </Link>
             </li>

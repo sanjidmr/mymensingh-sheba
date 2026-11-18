@@ -23,6 +23,7 @@ import { Star } from 'lucide-react';
 import type { HomeTutorProfile } from '@/lib/supabase/types';
 import {
   sortTutorClasses,
+  formatTutorFee,
 } from '@/lib/home-tutor-types';
 import { resolveTutorPhotoUrl } from '@/lib/home-tutor-service';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
@@ -60,7 +61,13 @@ export function TutorRatingBadge({ tutor }: { tutor: HomeTutorProfile }) {
   );
 }
 
-export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
+export default function TutorCard({
+  tutor,
+  className = '',
+}: {
+  tutor: HomeTutorProfile;
+  className?: string;
+}) {
   const subjects = tutor.preferredSubjects.filter(Boolean);
   const classes = sortTutorClasses(tutor.preferredClasses);
   const photo = resolveTutorPhotoUrl(tutor.profilePhotoUrl);
@@ -68,9 +75,9 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
   return (
     <Link
       href={`/home-tutor/${tutor.id}`}
-      className="group flex min-w-0 items-stretch overflow-hidden rounded-2xl border border-brand-100 bg-white p-2 shadow-[0_2px_10px_rgba(7,39,31,0.04)] no-underline transition duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_10px_24px_rgba(7,39,31,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:p-2.5"
+      className={`group flex min-w-0 flex-col items-stretch overflow-hidden rounded-2xl border border-brand-100 bg-white p-2 shadow-[0_2px_10px_rgba(7,39,31,0.04)] no-underline transition duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-[0_10px_24px_rgba(7,39,31,0.10)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-600 focus-visible:ring-offset-2 sm:flex-row sm:p-2.5 ${className}`}
     >
-      <div className="relative h-[100px] w-[84px] shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-brand-50 to-mist-100 sm:h-[112px] sm:w-24">
+      <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-brand-50 to-mist-100 sm:aspect-auto sm:h-[112px] sm:w-24">
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
@@ -88,48 +95,53 @@ export default function TutorCard({ tutor }: { tutor: HomeTutorProfile }) {
         )}
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col justify-center px-3 py-1 sm:px-4">
+      <div className="flex min-w-0 flex-1 flex-col justify-center px-1 py-2 sm:px-4 sm:py-1">
         <div className="flex min-w-0 items-center gap-1.5">
-          <h3 className="min-w-0 flex-1 truncate text-[14px] font-extrabold leading-snug text-ink-900 sm:text-base">
+          <h3 className="min-w-0 flex-1 truncate text-[12px] font-extrabold leading-snug text-ink-900 sm:text-base">
             {tutor.fullName}
           </h3>
         </div>
 
         {classes.length > 0 && (
-          <ul className="mt-2 flex flex-wrap gap-1">
-            {classes.slice(0, 3).map((c) => (
+          <ul className="mt-1 flex flex-wrap gap-1 sm:mt-2">
+            <li className="self-center text-[9px] font-bold text-ink-500 sm:text-[10px]">শ্রেণি:</li>
+            {classes.slice(0, 2).map((c) => (
               <li
                 key={c}
-                className="max-w-full truncate rounded-md border border-mist-200 bg-mist-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-ink-700 sm:text-[11px]"
+                className="max-w-full truncate rounded-md border border-mist-200 bg-mist-50 px-1.5 py-0.5 text-[9px] font-semibold leading-snug text-ink-700 sm:px-2 sm:text-[11px]"
               >
                 {c}
               </li>
             ))}
-            {classes.length > 3 && (
-              <li className="rounded-md bg-mist-50 px-1.5 py-0.5 text-[10px] font-bold text-ink-500">
-                +{toBengaliDigits(classes.length - 3)}
+            {classes.length > 2 && (
+              <li className="rounded-md bg-mist-50 px-1.5 py-0.5 text-[9px] font-bold text-ink-500 sm:text-[10px]">
+                +{toBengaliDigits(classes.length - 2)}
               </li>
             )}
           </ul>
         )}
 
         {subjects.length > 0 && (
-          <ul className="mt-1.5 flex flex-wrap gap-1">
+          <ul className="mt-1 flex flex-wrap gap-1 sm:mt-1.5">
+            <li className="self-center text-[9px] font-bold text-ink-500 sm:text-[10px]">বিষয়:</li>
             {subjects.slice(0, 2).map((s) => (
               <li
                 key={s}
-                className="max-w-full truncate rounded-md border border-brand-100 bg-brand-50 px-2 py-0.5 text-[10px] font-semibold leading-snug text-brand-800 sm:text-[11px]"
+                className="max-w-full truncate rounded-md border border-brand-100 bg-brand-50 px-1.5 py-0.5 text-[9px] font-semibold leading-snug text-brand-800 sm:px-2 sm:text-[11px]"
               >
                 {s}
               </li>
             ))}
             {subjects.length > 2 && (
-              <li className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[10px] font-bold text-brand-700">
+              <li className="rounded-md bg-brand-50 px-1.5 py-0.5 text-[9px] font-bold text-brand-700 sm:text-[10px]">
                 +{toBengaliDigits(subjects.length - 2)}
               </li>
             )}
           </ul>
         )}
+        <p className="mt-1.5 truncate text-[10px] font-bold leading-snug text-brand-800 sm:text-xs">
+          প্রত্যাশিত বেতন: {formatTutorFee(tutor.expectedSalary)}
+        </p>
       </div>
     </Link>
   );

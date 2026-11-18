@@ -22,6 +22,7 @@ import { createAreaSource, getAllMCCAreas, getAreaById } from '@/lib/locations';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import { submitServiceRequest, type ServiceRequestDraft } from '@/lib/service-request-service';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 
 export interface ServiceRequestFormProps {
   serviceSlug: string;
@@ -172,7 +173,7 @@ export default function ServiceRequestForm({
 
   if (done) {
     return (
-      <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-5 py-8 text-center">
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 px-3 py-5 text-center sm:px-5 sm:py-8">
         <span
           aria-hidden="true"
           className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-600 text-white"
@@ -186,6 +187,7 @@ export default function ServiceRequestForm({
           অ্যাডমিন আপনার অনুরোধটি দেখে যত দ্রুত সম্ভব ফোনে যোগাযোগ করবেন। অনুরোধের অবস্থা
           “যোগাযোগ হয়েছে”, “কাজ চলছে” ও “সম্পন্ন” — এই ধাপগুলোতে আপডেট হবে।
         </p>
+        <FacebookUpdatesLink className="mx-auto mt-4 max-w-md justify-center rounded-xl border border-brand-100 bg-white/80 px-3 py-2" />
         <button
           type="button"
           onClick={() => {
@@ -240,7 +242,7 @@ export default function ServiceRequestForm({
     <form
       onSubmit={handleSubmit}
       noValidate
-      className="rounded-xl border border-brand-100 bg-white p-4 sm:p-5"
+      className="rounded-xl border border-brand-100 bg-white p-3 sm:p-5"
     >
       <div className="flex items-baseline justify-between gap-2">
         <h2 className="text-[15px] font-extrabold text-ink-900 sm:text-base">
@@ -259,7 +261,7 @@ export default function ServiceRequestForm({
         </p>
       )}
 
-      <div className="mt-4 space-y-3.5">
+      <div className="mt-3 space-y-3">
         {serviceTypes.length > 0 && (
           <Field
             id={`${serviceSlug}-type`}
@@ -285,7 +287,7 @@ export default function ServiceRequestForm({
           </Field>
         )}
 
-        <div className="grid gap-3.5 sm:grid-cols-2">
+        <div className="grid gap-2.5 min-[360px]:grid-cols-2 sm:gap-3.5">
           <Field
             id={`${serviceSlug}-name`}
             label="আপনার নাম"
@@ -381,7 +383,7 @@ export default function ServiceRequestForm({
         </Field>
 
         {showSchedule && (
-          <div className="grid gap-3.5 sm:grid-cols-2">
+          <div className="grid gap-2.5 min-[360px]:grid-cols-2 sm:gap-3.5">
             <Field
               id={`${serviceSlug}-date`}
               label="সম্ভাব্য তারিখ"
@@ -499,7 +501,7 @@ export default function ServiceRequestForm({
 }
 
 function inputClass(error?: string): string {
-  return `w-full rounded-lg border bg-white px-3 py-2.5 text-[13.5px] text-ink-900 placeholder:text-ink-300 transition-colors focus:border-brand-500 focus:outline-none ${
+  return `min-h-11 w-full rounded-lg border bg-white px-3 py-2 text-[14px] text-ink-900 placeholder:text-ink-300 transition-colors focus:border-brand-500 focus:outline-none sm:py-2.5 sm:text-[13.5px] ${
     error ? 'border-rose-300 bg-rose-50/40' : 'border-brand-200'
   }`;
 }

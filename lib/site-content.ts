@@ -172,7 +172,7 @@ export function mergeSiteContact(overrides?: SiteContentOverrides): {
   if (!override) return defaultContact;
 
   return {
-    phone: override.phone ?? defaultContact.phone,
+    phone: defaultContact.phone,
     email: override.email ?? defaultContact.email,
     officeAddress: override.officeAddress ?? defaultContact.officeAddress,
     serviceAreaBn: override.serviceAreaBn ?? defaultContact.serviceAreaBn,

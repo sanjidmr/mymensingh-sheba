@@ -180,7 +180,7 @@ export async function fetchAdminSiteReviews(): Promise<SiteReview[]> {
     }
     throw new Error(`সাইট রিভিউ লোড হয়নি (কোড: ${error.code || 'unknown'})।`);
   }
-  return (data ?? []).map((row) => mapRow(row as RawReviewRow));
+  return (data ?? []).map((row: RawReviewRow) => mapRow(row));
 }
 
 /** Publish or hide a homepage review. RLS permits this only for admins. */

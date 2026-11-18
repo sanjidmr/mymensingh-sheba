@@ -5,9 +5,7 @@ import { createPortal } from 'react-dom';
 import {
   Droplet,
   Gauge,
-  MapPin,
   Moon,
-  Phone,
   RefreshCw,
   Sun,
   Thermometer,
@@ -25,14 +23,11 @@ import {
   dhakaTodayParts,
   isSameDhakaDay,
   formatPrayerTime,
-  countdownText,
   formatBanglaDate,
   LIVE_FRESHNESS_MS,
   PRAYER_METHOD_NAME,
 } from '@/lib/mymensingh-live';
-import { SITE_CONTACT } from '@/lib/site-contact';
-import { fetchSiteContentOverrides } from '@/lib/site-content-client';
-
+import { PUBLIC_PHONE, PUBLIC_PHONE_TEL } from '@/lib/site-contact';
 interface PrayerState {
   status: 'loading' | 'ok' | 'error';
   prayers: PrayerTime[] | null;
@@ -147,7 +142,6 @@ export default function MymensinghLiveBar() {
   const [nowTick, setNowTick] = useState<number>(0);
   const [showWeather, setShowWeather] = useState(false);
   const [showPrayers, setShowPrayers] = useState(false);
-  const [sitePhone, setSitePhone] = useState<string | null>(null);
 
   const prayerStampRef = useRef(0);
   const prayerDateRef = useRef<DhakaDateParts | null>(null);
@@ -155,19 +149,6 @@ export default function MymensinghLiveBar() {
 
   const closeWeather = useCallback(() => setShowWeather(false), []);
   const closePrayers = useCallback(() => setShowPrayers(false), []);
-
-  useEffect(() => {
-    let active = true;
-    fetchSiteContentOverrides()
-      .then((payload) => {
-        const phone = payload?.site_contact?.phone;
-        if (active && typeof phone === 'string') setSitePhone(phone);
-      })
-      .catch(() => undefined);
-    return () => {
-      active = false;
-    };
-  }, []);
 
   const loadPrayers = useCallback(async () => {
     const stamp = Date.now();
@@ -271,42 +252,14 @@ export default function MymensinghLiveBar() {
 
   const divider = <span className="h-4 w-px shrink-0 bg-white/15" aria-hidden="true" />;
 
-  const hotline = sitePhone ? (
-    <a
-      href={`tel:${sitePhone}`}
-      className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300 transition-colors hover:bg-accent-400/20 hover:text-accent-200"
-    >
-      <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-      হটলাইন: {sitePhone}
-    </a>
-  ) : (
-    <span className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-bold text-accent-300">
-      <Phone className="h-3.5 w-3.5" aria-hidden="true" />
-      {SITE_CONTACT.phonePendingBn}
-    </span>
-  );
-
   return (
     <div className="relative z-40 border-b border-brand-900 bg-brand-950 text-brand-100/90">
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="hidden h-12 items-center justify-center gap-4 lg:flex">
-          {/* Live dot + location / date (desktop only) */}
           <div className="hidden shrink-0 items-center gap-2 lg:flex">
-            <span className="relative flex h-1.5 w-1.5" aria-hidden="true">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-accent-400" />
-            </span>
-            <span className="flex items-center gap-1.5 text-[11px] font-bold tracking-wide text-accent-300">
-              <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-              লাইভ · ময়মনসিংহ
-            </span>
             <span className="hidden whitespace-nowrap text-[11px] text-brand-100/70 lg:inline">
               {today ? formatBanglaDate(today) : ''}
             </span>
-            {divider}
-
-            {/* Hotline */}
-            {hotline}
             {/* Weather — current temperature only */}
             {weather.value && (
               <>
@@ -328,7 +281,7 @@ export default function MymensinghLiveBar() {
                   )}
                   <span className="text-[11px] text-brand-100/70">আবহাওয়া</span>
                   <span className="text-[11px] font-bold text-white">
-                    {toBn(weather.value.temp)}°
+                    {toBn(weather.value.temp)}°C
                   </span>
                 </span>
               </>
@@ -367,71 +320,63 @@ export default function MymensinghLiveBar() {
             {nextPrayer && (
               <span className="ml-1 inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border border-accent-400/40 bg-accent-400/10 px-2.5 py-1 text-[11px] font-semibold text-accent-300">
                 পরবর্তী {nextPrayer.nameBn}
-                {nextIsTomorrow ? ' (কাল)' : ''} · {countdownText(nextEpoch, nowTick)}
+                {nextIsTomorrow ? ' (কাল)' : ''} · {formatPrayerTime(nextEpoch)}
               </span>
             )}
           </div>
-
+          <span className="h-4 w-px shrink-0 bg-white/15" aria-hidden="true" />
+          <a
+            href={`tel:${PUBLIC_PHONE_TEL}`}
+            aria-label={`ফোন ${PUBLIC_PHONE}`}
+            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-[11px] font-bold text-accent-300 transition-colors hover:text-accent-200"
+          >
+            {PUBLIC_PHONE}
+          </a>
         </div>
-        <div className="flex min-h-[4.5rem] flex-col justify-center gap-1.5 py-1.5 lg:hidden">
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex shrink-0 items-center gap-1 text-[10px] font-bold text-accent-300">
-              <MapPin className="h-3.5 w-3.5" aria-hidden="true" />
-              <span>ময়মনসিংহ</span>
-            </span>
-            <span className="truncate text-right text-[10px] text-brand-100/70">
-              {today ? formatBanglaDate(today) : ''}
-            </span>
-          </div>
-          <div className="flex items-center justify-between gap-1">
-            {sitePhone ? (
-              <a
-                href={`tel:${sitePhone}`}
-                aria-label={`হটলাইন ${sitePhone}`}
-                className="inline-flex min-h-9 min-w-0 items-center gap-1 rounded-lg border border-accent-400/40 bg-accent-400/10 px-2 text-[10px] font-bold text-accent-300"
-              >
-                <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="shrink-0">হটলাইন</span>
-                <span className="truncate text-white">{sitePhone}</span>
-              </a>
+        <div className="flex h-12 items-center gap-2 overflow-x-auto whitespace-nowrap py-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden lg:hidden">
+          <span className="hidden shrink-0 text-[10px] text-brand-100/70 min-[390px]:inline">
+            {today ? formatBanglaDate(today) : ''}
+          </span>
+          <button
+            type="button"
+            onClick={() => setShowWeather(true)}
+            aria-haspopup="dialog"
+            className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 text-[10px] font-semibold text-brand-100 transition-colors hover:bg-white/10"
+          >
+            {weather.value?.isDay ? (
+              <Sun className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
             ) : (
-              <span className="inline-flex min-h-9 min-w-0 items-center gap-1 rounded-lg border border-accent-400/40 bg-accent-400/10 px-2 text-[10px] font-bold text-accent-300">
-                <Phone className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
-                <span className="truncate">{SITE_CONTACT.phonePendingBn}</span>
-              </span>
+              <Moon className="h-3.5 w-3.5 text-brand-100/80" aria-hidden="true" />
             )}
-            <div className="flex shrink-0 items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setShowWeather(true)}
-                aria-haspopup="dialog"
-                className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 text-[10px] font-semibold text-brand-100 transition-colors hover:bg-white/10"
-              >
-                {weather.value?.isDay ? (
-                  <Sun className="h-3.5 w-3.5 text-accent-300" aria-hidden="true" />
-                ) : (
-                  <Moon className="h-3.5 w-3.5 text-brand-100/80" aria-hidden="true" />
-                )}
-                <span>আবহাওয়া</span>
-                {weather.value && <span className="font-bold text-white">{toBn(weather.value.temp)}°</span>}
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowPrayers(true)}
-                aria-haspopup="dialog"
-                title={`নামাজের সময়: ${PRAYER_METHOD_NAME} পদ্ধতি অনুযায়ী`}
-                className="inline-flex min-h-9 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 text-[10px] font-semibold text-brand-100 transition-colors hover:bg-white/10"
-              >
-                <span>নামাজ</span>
-                {nextPrayer && (
-                  <span className="font-bold text-accent-300">
-                    {formatPrayerTime(nextEpoch)}
-                  </span>
-                )}
-              </button>
-            </div>
+            <span>আবহাওয়া</span>
+            <span className="font-bold text-white">
+              {weather.value ? `${toBn(weather.value.temp)}°C` : weather.status === 'loading' ? '…°C' : '—°C'}
+            </span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowPrayers(true)}
+            aria-haspopup="dialog"
+            title={`নামাজের সময়: ${PRAYER_METHOD_NAME} পদ্ধতি অনুযায়ী`}
+            className="inline-flex min-h-9 shrink-0 items-center gap-1 rounded-lg border border-white/15 bg-white/5 px-2 text-[10px] font-semibold text-brand-100 transition-colors hover:bg-white/10"
+          >
+            <span>{nextPrayer ? `পরবর্তী ${nextPrayer.nameBn}` : 'নামাজ'}</span>
+            {nextPrayer ? (
+              <span className="font-bold text-accent-300">
+                {formatPrayerTime(nextEpoch)}
+              </span>
+            ) : (
+              <span className="font-bold text-accent-300">—</span>
+            )}
+          </button>
+          <a
+            href={`tel:${PUBLIC_PHONE_TEL}`}
+            aria-label={`ফোন ${PUBLIC_PHONE}`}
+            className="inline-flex min-h-9 shrink-0 items-center rounded-lg border border-accent-400/40 bg-accent-400/10 px-2 text-[10px] font-bold text-accent-300"
+          >
+            {PUBLIC_PHONE}
+          </a>
           </div>
-        </div>
       </div>
 
       {/* Weather modal (mobile) */}

@@ -9,6 +9,7 @@ import AuthShell, { AuthSwitch } from '@/components/auth/AuthShell';
 import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { useAuth } from '@/lib/auth-context';
+import { getAuthErrorMessage } from '@/lib/auth-error-messages';
 import { isSafeInternalPath, resolveAuthRedirect } from '@/lib/auth-routes';
 import { isOnboardingComplete } from '@/lib/onboarding';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
@@ -67,12 +68,12 @@ function RegisterForm() {
         next: requestedTarget,
       });
       if (!result.success) {
-        setFormError(result.error || 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।');
+        setFormError(getAuthErrorMessage(result.error, 'register'));
       } else if (result.needsConfirmation) {
         setWelcomeState('setup');
       }
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।');
+      setFormError(getAuthErrorMessage(error, 'register'));
     } finally {
       setLoading(false);
     }
@@ -83,9 +84,9 @@ function RegisterForm() {
     setGoogleLoading(true);
     try {
       const result = await signInWithGoogle(requestedTarget);
-      if (!result.success) setFormError(result.error || 'Google দিয়ে চালিয়ে যাওয়া যায়নি।');
+      if (!result.success) setFormError(getAuthErrorMessage(result.error, 'google'));
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Google দিয়ে চালিয়ে যাওয়া যায়নি।');
+      setFormError(getAuthErrorMessage(error, 'google'));
     } finally {
       setGoogleLoading(false);
     }

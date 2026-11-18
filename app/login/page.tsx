@@ -1,6 +1,6 @@
 'use client';
 
-import React, { Suspense, useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Lock, Mail, AlertCircle } from 'lucide-react';
 import Navbar from '@/components/Navbar';
@@ -9,9 +9,11 @@ import AuthField, { AuthSubmit } from '@/components/auth/AuthField';
 import GoogleSignInButton from '@/components/auth/GoogleSignInButton';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { useAuth } from '@/lib/auth-context';
+import { getAuthErrorMessage } from '@/lib/auth-error-messages';
 import { isSafeInternalPath, resolveAuthRedirect, roleHome } from '@/lib/auth-routes';
 import { isOnboardingComplete } from '@/lib/onboarding';
 import SplashScreen from '@/components/site/SplashScreen';
+import { isAbortError, isTimeoutError, REQUEST_TIMEOUT_MESSAGE } from '@/lib/fetch-with-timeout';
 
 const AUTH_CALLBACK_ERROR =
   'লগইন যাচাই করা যায়নি। লিংকটি মেয়াদোত্তীর্ণ হতে পারে—আবার চেষ্টা করুন।';
@@ -22,7 +24,13 @@ function LoginForm() {
   // the legacy `redirect=` parameter. Only a safe internal path is ever honoured.
   const rawTarget = searchParams.get('next') ?? searchParams.get('redirect');
   const requestedTarget = isSafeInternalPath(rawTarget) ? rawTarget : null;
-  const { login, signInWithGoogle, user, isLoading: authLoading } = useAuth();
+  const {
+    login,
+    signInWithGoogle,
+    user,
+    isLoading: authLoading,
+    authRestoreError,
+  } = useAuth();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,6 +40,8 @@ function LoginForm() {
   );
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const submittingRef = useRef(false);
+  const displayedError = formError || authRestoreError;
 
   // An authenticated visitor has no business on this page. The destination is
   // derived from their *verified* role, so an admin goes straight to the admin
@@ -59,6 +69,7 @@ function LoginForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submittingRef.current) return;
     setFormError('');
 
     const errors: typeof fieldErrors = {};
@@ -74,6 +85,7 @@ function LoginForm() {
     setFieldErrors(errors);
     if (Object.keys(errors).length > 0) return;
 
+    submittingRef.current = true;
     setLoading(true);
     try {
       const res = await login(normalizedEmail, password);
@@ -82,26 +94,43 @@ function LoginForm() {
         // until the browser leaves this page).
         return;
       }
+      if (!res.error) return;
       setFormError(
-        res.error || 'এই ইমেইল দিয়ে কোনো অ্যাকাউন্ট পাওয়া যায়নি। ইমেইল ও পাসওয়ার্ড দেখে আবার চেষ্টা করুন।'
+        isTimeoutError(res.error) ? REQUEST_TIMEOUT_MESSAGE : res.error
       );
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'লগইন করা যায়নি। আবার চেষ্টা করুন।');
+      if (!isAbortError(error)) {
+        setFormError(isTimeoutError(error)
+          ? REQUEST_TIMEOUT_MESSAGE
+          : getAuthErrorMessage(error, 'login'));
+      }
     } finally {
+      submittingRef.current = false;
       setLoading(false);
     }
   };
 
   const handleGoogleSignIn = async () => {
+    if (submittingRef.current) return;
+    submittingRef.current = true;
     setFormError('');
     setGoogleLoading(true);
     try {
       const result = await signInWithGoogle(requestedTarget);
-      if (!result.success) setFormError(result.error || 'Google দিয়ে লগইন করা যায়নি।');
+      if (!result.success && result.error && !isAbortError(result.error)) {
+        setFormError(isTimeoutError(result.error)
+          ? REQUEST_TIMEOUT_MESSAGE
+          : getAuthErrorMessage(result.error, 'google'));
+      }
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Google দিয়ে লগইন করা যায়নি।');
+      if (!isAbortError(error)) {
+        setFormError(isTimeoutError(error)
+          ? REQUEST_TIMEOUT_MESSAGE
+          : getAuthErrorMessage(error, 'google'));
+      }
     } finally {
       setGoogleLoading(false);
+      submittingRef.current = false;
     }
   };
 
@@ -128,13 +157,13 @@ function LoginForm() {
       }
     >
       <form onSubmit={handleSubmit} noValidate className="space-y-1">
-        {formError && (
+        {displayedError && (
           <p
             role="alert"
             className="mb-3 flex items-start gap-2 rounded-lg border border-rose-200 bg-rose-50 px-3 py-2.5 text-[13px] leading-relaxed text-rose-900"
           >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-rose-600" aria-hidden="true" />
-            {formError}
+            {displayedError}
           </p>
         )}
 
@@ -171,9 +200,9 @@ function LoginForm() {
 
         <div className="pt-2">
           <AuthSubmit
-            loading={loading || authLoading}
-            loadingLabel="লগইন হচ্ছে…"
-            label="লগইন করুন"
+            loading={loading || googleLoading || authLoading}
+            loadingLabel={googleLoading ? 'Google দিয়ে লগইন হচ্ছে…' : 'লগইন হচ্ছে…'}
+            label={displayedError === REQUEST_TIMEOUT_MESSAGE ? 'আবার চেষ্টা করুন' : 'লগইন করুন'}
           />
         </div>
       </form>
@@ -182,7 +211,7 @@ function LoginForm() {
         অথবা
         <span className="h-px flex-1 bg-brand-100" />
       </div>
-      <GoogleSignInButton onClick={handleGoogleSignIn} loading={googleLoading} />
+      <GoogleSignInButton onClick={handleGoogleSignIn} loading={googleLoading || loading} />
     </AuthShell>
   );
 }

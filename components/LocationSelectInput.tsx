@@ -58,7 +58,6 @@ export default function LocationSelectInput({
   const inputId = id || generatedId;
   const listId = `${inputId}-area-options`;
   const [areas, setAreas] = useState<string[]>([]);
-  const [optionsError, setOptionsError] = useState('');
   const selectedArea = value ? source.byId(value) ?? getAreaById(value) : undefined;
   const displayValue = selectedArea?.nameBn ?? value ?? '';
 
@@ -70,8 +69,9 @@ export default function LocationSelectInput({
       })
       .catch((fetchError: unknown) => {
         if (active) {
-          setOptionsError(
-            fetchError instanceof Error ? fetchError.message : 'এলাকার তালিকা লোড করা যায়নি।'
+          console.warn(
+            'Area suggestions failed to load:',
+            fetchError instanceof Error ? fetchError.message : fetchError
           );
         }
       });
@@ -118,7 +118,7 @@ export default function LocationSelectInput({
           maxLength={100}
           className={inputClasses}
           aria-invalid={Boolean(error)}
-          aria-describedby={error ? `${inputId}-error` : optionsError ? `${inputId}-options-error` : undefined}
+          aria-describedby={error ? `${inputId}-error` : undefined}
         />
         {allowClear && value && (
           <button
@@ -137,11 +137,6 @@ export default function LocationSelectInput({
         </datalist>
       </div>
       {error && <p id={`${inputId}-error`} className="mt-1 text-xs text-rose-600">{error}</p>}
-      {optionsError && (
-        <p id={`${inputId}-options-error`} className="mt-1 text-xs text-amber-700">
-          সংরক্ষিত এলাকার পরামর্শ লোড হয়নি; এলাকার নাম নিজে লিখতে পারবেন।
-        </p>
-      )}
     </div>
   );
 }

@@ -6,7 +6,14 @@ import { Bookmark, ArrowLeft, Trash2, ExternalLink, Home, GraduationCap, Briefca
 import { useAuth } from '@/lib/auth-context';
 
 export default function SavedPage() {
-  const { savedListings, savedListingsLoading, savedListingsError, toggleSaveItem } = useAuth();
+  const {
+    savedListings,
+    savedListingsLoading,
+    savedListingsError,
+    hasMoreSavedListings,
+    loadMoreSavedListings,
+    toggleSaveItem,
+  } = useAuth();
   const [removingId, setRemovingId] = useState('');
   const [actionError, setActionError] = useState('');
 
@@ -55,11 +62,7 @@ export default function SavedPage() {
           <div role="status" className="rounded-2xl border border-brand-100 bg-white p-10 text-center text-sm font-semibold text-ink-600">
             সংরক্ষিত পোস্ট লোড হচ্ছে...
           </div>
-        ) : savedListingsError ? (
-          <div role="alert" className="rounded-2xl border border-rose-200 bg-rose-50 p-5 text-sm font-semibold text-rose-800">
-            {savedListingsError}
-          </div>
-        ) : savedListings.length === 0 ? (
+        ) : savedListings.length === 0 && !savedListingsError ? (
           <div className="bg-white rounded-2xl border border-brand-100 p-12 text-center">
             <Bookmark className="w-12 h-12 text-brand-200 mx-auto mb-3" />
             <h3 className="text-base font-bold text-ink-900">
@@ -148,6 +151,25 @@ export default function SavedPage() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+        {savedListingsError && (
+          <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-sm font-semibold text-rose-800">
+            {savedListingsError}{' '}
+            <button type="button" onClick={() => void loadMoreSavedListings()} className="underline">
+              আবার চেষ্টা করুন
+            </button>
+          </p>
+        )}
+        {!savedListingsLoading && !savedListingsError && hasMoreSavedListings && (
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => void loadMoreSavedListings()}
+              className="min-h-10 rounded-xl border border-brand-200 px-4 text-xs font-bold text-brand-800 hover:bg-brand-50"
+            >
+              আরও সংরক্ষিত পোস্ট দেখুন
+            </button>
           </div>
         )}
         {actionError && <p role="alert" className="mt-4 rounded-xl bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-800">{actionError}</p>}

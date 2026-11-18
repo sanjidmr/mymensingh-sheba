@@ -89,8 +89,15 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
   const lastScrollY = useRef(0);
   const pathname = usePathname();
   const router = useRouter();
-  const { user, toletProfile, homeTutorProfile, bloodDonorProfile, isAdmin, isLoading: authLoading } =
-    useAuth();
+  const {
+    user,
+    toletProfile,
+    homeTutorProfile,
+    bloodDonorProfile,
+    isAdmin,
+    isLoading: authLoading,
+    authRestoreError,
+  } = useAuth();
 
   // The homepage navbar is transparent at the top and adapts to a soft cream
   // blur after scrolling so content never collides with the links.
@@ -258,6 +265,14 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
                 aria-hidden="true"
                 className="h-10 w-32 animate-pulse rounded-xl bg-brand-100/60 motion-reduce:animate-none xl:h-11 xl:w-[260px]"
               />
+            ) : authRestoreError ? (
+              <Link
+                href="/login"
+                title={authRestoreError}
+                className="inline-flex min-h-10 items-center rounded-lg border border-amber-300 bg-amber-50 px-2.5 text-[11px] font-bold text-amber-900"
+              >
+                সেশন যাচাই
+              </Link>
             ) : (
               <>
                 <Link
@@ -303,6 +318,14 @@ export default function Navbar({ hideOnScroll = false }: { hideOnScroll?: boolea
               </Link>
             ) : authLoading ? (
               <span aria-hidden="true" className="h-10 w-20 animate-pulse rounded-lg bg-brand-100/60" />
+            ) : authRestoreError ? (
+              <Link
+                href="/login"
+                title={authRestoreError}
+                className="inline-flex min-h-10 items-center rounded-lg border border-amber-300 bg-amber-50 px-2.5 text-[11px] font-bold text-amber-900"
+              >
+                সেশন যাচাই
+              </Link>
             ) : (
               <div className="flex items-center gap-1.5">
                 <Link

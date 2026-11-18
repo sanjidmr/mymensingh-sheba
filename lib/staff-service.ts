@@ -151,7 +151,7 @@ export async function fetchPublicStaffProfiles(slug: StaffServiceKey): Promise<S
     .eq('is_active', true)
     .order('created_at', { ascending: false });
   if (error) return [];
-  return (data || []).map((row) => mapProfileRow(row as Record<string, unknown>));
+  return (data || []).map((row: Record<string, unknown>) => mapProfileRow(row));
 }
 
 export async function fetchStaffProfileById(id: string): Promise<StaffProfile | null> {
@@ -304,8 +304,8 @@ export async function adminFetchStaffRequests(
   const { data, error } = await query.order('created_at', { ascending: false });
   if (error) throw new Error(`সার্ভিস রিকোয়েস্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
   return (data || [])
-    .filter((r) => STAFF_SERVICE_KEYS.includes(r.service_slug as StaffServiceKey))
-    .map((row) => mapRequestRow(row as Record<string, unknown>));
+    .filter((r: { service_slug: string }) => STAFF_SERVICE_KEYS.includes(r.service_slug as StaffServiceKey))
+    .map((row: Record<string, unknown>) => mapRequestRow(row));
 }
 
 export async function adminFetchStaffRequestById(id: string): Promise<StaffRequest | null> {
@@ -385,7 +385,7 @@ export async function adminFetchStaffReports(): Promise<StaffReport[]> {
     .select('*')
     .order('created_at', { ascending: false });
   if (error) throw new Error(`কর্মী প্রোফাইলের রিপোর্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => mapReportRow(row as Record<string, unknown>));
+  return (data || []).map((row: Record<string, unknown>) => mapReportRow(row));
 }
 
 export async function adminUpdateStaffReportStatus(

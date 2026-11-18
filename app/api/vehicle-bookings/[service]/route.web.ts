@@ -152,7 +152,27 @@ export async function POST(
     return NextResponse.json({ error: 'অনুরোধটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 409 });
   }
   if (error || !data) {
-    console.error('Vehicle booking could not be saved.', { code: error?.code });
+    console.error('Vehicle booking could not be saved.', {
+      code: error?.code,
+      reason: error?.message,
+    });
+    const schemaOutOfDate = [
+      'PGRST204',
+      'PGRST205',
+      '42703',
+      '42P01',
+      '23502',
+      '23514',
+    ].includes(error?.code ?? '');
+    if (schemaOutOfDate) {
+      return NextResponse.json(
+        {
+          error:
+            'বুকিং ডেটাবেস আপডেট করা নেই। অ্যাডমিনকে 20261114020000_vehicle_booking_redesign.sql migration প্রয়োগ করতে বলুন।',
+        },
+        { status: 503 }
+      );
+    }
     return NextResponse.json({ error: 'অনুরোধটি সংরক্ষণ করা যায়নি। আবার চেষ্টা করুন।' }, { status: 500 });
   }
 

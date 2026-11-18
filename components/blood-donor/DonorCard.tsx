@@ -109,25 +109,16 @@ export default function DonorCard({ donor }: DonorCardProps) {
 
   const body = (
     <div className="min-w-0 flex-1">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0">
-          <h3 className="line-clamp-2 break-words text-[14px] font-bold leading-[1.5] text-red-700 sm:text-[15px]">
-              {donor.fullName}
-          </h3>
-          <p className="mt-1 line-clamp-1 text-[13px] leading-relaxed text-red-700 sm:text-sm">
-            {donor.bloodGroup} রক্তের গ্রুপ
-          </p>
-        </div>
-        <span className={`shrink-0 rounded-md border px-1.5 py-0.5 text-[10px] font-bold ${
-          donor.isAvailable
-            ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
-            : 'border-mist-200 bg-mist-100 text-ink-600'
-        }`}>
-          {donor.isAvailable ? 'প্রস্তুত' : 'প্রস্তুত নন'}
-        </span>
+      <div className="min-w-0">
+        <h3 className="line-clamp-2 break-words text-base font-bold leading-[1.5] text-red-700 sm:text-[17px]">
+          {donor.fullName}
+        </h3>
+        <p className="mt-1 line-clamp-2 break-words text-sm leading-relaxed text-red-700">
+          {donor.bloodGroup} রক্তের গ্রুপ
+        </p>
       </div>
 
-      <p className="mt-1.5 flex items-center gap-1 truncate text-xs text-red-700 sm:text-sm">
+      <p className="mt-1.5 flex min-w-0 items-center gap-1 text-sm text-red-700">
         <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
         <span className="truncate">{area?.nameBn || 'এলাকা জানা নেই'}</span>
       </p>
@@ -136,26 +127,26 @@ export default function DonorCard({ donor }: DonorCardProps) {
         {donationDetails.map((detail) => (
           <span
             key={detail}
-            className="rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-800"
+            className="rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800"
           >
             {detail}
           </span>
         ))}
         {donor.isVerified && (
-          <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2 py-1 text-[11px] font-medium text-red-800">
+          <span className="inline-flex items-center gap-1 rounded-md border border-red-200 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-800">
             <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
             যাচাইকৃত
           </span>
         )}
         {donor.isDemo && (
-          <span className="rounded-md border border-accent-200 bg-accent-100/70 px-2 py-1 text-[11px] font-bold text-accent-700">
+          <span className="rounded-md border border-accent-200 bg-accent-100/70 px-2.5 py-1 text-xs font-bold text-accent-700">
             নমুনা
           </span>
         )}
       </div>
 
       {donor.intro && (
-        <p className="mt-2 line-clamp-2 text-xs leading-relaxed text-ink-600">{donor.intro}</p>
+        <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-ink-600">{donor.intro}</p>
       )}
       {donor.publicId && (
         <p className="mt-1 font-mono text-[10px] font-bold tracking-wide text-brand-700">
@@ -166,15 +157,15 @@ export default function DonorCard({ donor }: DonorCardProps) {
   );
 
   const callAction = isLoading ? (
-    <span aria-hidden="true" className="mt-2.5 h-11 animate-pulse rounded-xl bg-mist-100" />
+    <span aria-hidden="true" className="h-11 w-full animate-pulse rounded-xl bg-mist-100" />
   ) : !donor.isAvailable ? (
-    <span className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-mist-200 bg-mist-50 px-4 text-sm font-bold text-ink-500">
+    <span className="inline-flex min-h-11 w-full items-center justify-center rounded-xl border border-mist-200 bg-mist-50 px-4 text-sm font-bold text-ink-500">
       বর্তমানে কলের জন্য প্রস্তুত নন
     </span>
   ) : !user ? (
     <Link
       href={`/login?next=${encodeURIComponent('/blood-donor')}`}
-      className="mt-2.5 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800"
+      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-brand-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-brand-800"
     >
       <Phone className="h-4 w-4 shrink-0" aria-hidden="true" />
       লগইন করে নম্বর দেখুন
@@ -193,13 +184,13 @@ export default function DonorCard({ donor }: DonorCardProps) {
           });
         }
       }}
-      className="mt-2.5 flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"
+      className="flex min-h-11 items-center justify-center gap-2 rounded-xl bg-rose-700 px-4 text-sm font-extrabold text-white transition-colors hover:bg-rose-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 focus-visible:ring-offset-2"
     >
       <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden="true" />
       <span>📞 কল করুন</span>
     </a>
   ) : (
-    <span className="mt-2.5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-mist-200 bg-mist-100 px-4 text-sm font-extrabold text-ink-400">
+    <span className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-mist-200 bg-mist-100 px-4 text-sm font-extrabold text-ink-400">
       <Phone className="h-4 w-4 shrink-0" strokeWidth={2.25} aria-hidden="true" />
       <span>নম্বর শীঘ্রই যুক্ত হবে</span>
     </span>
@@ -208,10 +199,14 @@ export default function DonorCard({ donor }: DonorCardProps) {
   return (
     <article
       ref={cardRef}
-      className="flex h-full flex-col overflow-hidden rounded-lg border border-brand-100/90 bg-white p-2.5 transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/8 sm:rounded-xl sm:p-3"
+      className="group flex h-full flex-col overflow-hidden rounded-lg border border-brand-100/90 bg-white transition-all duration-300 hover:-translate-y-1 hover:border-bronze-300/70 hover:shadow-lg hover:shadow-brand-900/8 sm:rounded-xl"
     >
-      {body}
-      {callAction}
+      <div className="flex flex-1 flex-col gap-2.5 p-4 sm:p-5">
+        {body}
+        <div className="mt-auto flex items-center border-t border-brand-100 pt-3">
+          <div className="w-full">{callAction}</div>
+        </div>
+      </div>
     </article>
   );
 }

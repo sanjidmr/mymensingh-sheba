@@ -9,12 +9,19 @@ export const isSupabaseConfigured = Boolean(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== ''
 );
 
+type BrowserClient = ReturnType<typeof createBrowserClient>;
+let browserClient: BrowserClient | null = null;
+
 export function createClient() {
   if (!isSupabaseConfigured) {
     return null;
   }
 
-  return createBrowserClient(
+  if (typeof window !== 'undefined' && browserClient) {
+    return browserClient;
+  }
+
+  const client = createBrowserClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -27,4 +34,8 @@ export function createClient() {
       global: { fetch: fetchWithTimeout },
     }
   );
+  if (typeof window !== 'undefined') {
+    browserClient = client;
+  }
+  return client;
 }

@@ -1,1 +1,3 @@
-export { default } from './page.web';
+export const dynamic = 'force-dynamic';
+
+export { default } from './AdminAnalyticsPage';

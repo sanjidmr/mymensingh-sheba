@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { createClient as createServerClient } from '@supabase/supabase-js'
 import { createServerSideClient } from '@/lib/supabase/server'
 import { getSiteUrl } from '@/lib/site-url'
+import { getAuthErrorMessage } from '@/lib/auth-error-messages'
 
 export async function registerUser(data: {
   fullName: string
@@ -17,7 +18,7 @@ export async function registerUser(data: {
   const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    return { success: false, error: 'Supabase not configured' }
+    return { success: false, error: 'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।' }
   }
 
   const email = (data.email?.trim() || '').toLowerCase() || `${data.phone}@mymensinghsheba.internal`
@@ -28,7 +29,7 @@ export async function registerUser(data: {
 
   const supabase = await createServerSideClient()
   if (!supabase) {
-    return { success: false, error: 'Supabase not configured' }
+    return { success: false, error: 'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।' }
   }
 
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -46,11 +47,11 @@ export async function registerUser(data: {
   })
 
   if (signUpError) {
-    return { success: false, error: signUpError.message }
+    return { success: false, error: getAuthErrorMessage(signUpError, 'register') }
   }
 
   if (!signUpData.user) {
-    return { success: false, error: 'Registration failed' }
+    return { success: false, error: 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।' }
   }
 
   const userId = signUpData.user.id
@@ -105,7 +106,7 @@ export async function registerUser(data: {
   }
 
   if (signInError) {
-    return { success: false, error: signInError.message }
+    return { success: false, error: getAuthErrorMessage(signInError, 'login') }
   }
 
   revalidatePath('/profile')

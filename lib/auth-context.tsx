@@ -20,9 +20,104 @@ import { apiFetch } from './api-fetch';
 import { Browser } from '@capacitor/browser';
 import { isNative } from './platform';
 import { removeDeviceToken } from './native-push';
+import { getRecentAuthRefreshFailure, isAbortError } from './fetch-with-timeout';
+import { getTransientSessionRestoreMessage } from './auth/session-restore';
+import { getAuthErrorMessage } from './auth-error-messages';
+import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
 
 const NOT_CONFIGURED_MESSAGE =
   'ডেটাবেজ সংযোগ নেই। Supabase কনফিগারেশন যাচাই করে আবার চেষ্টা করুন।';
+const ACCOUNT_DATA_PAGE_SIZE = 50;
+const SERVICE_REQUEST_COLUMNS =
+  'id, reference_code, customer_id, service_slug, status, area_id, address_line, contact_name, contact_phone, preferred_date, details, profile_id, profile_title, service_type, preferred_time, attachment_url, admin_notes, updated_at, created_at, pickup_area_id, destination_area_id, pickup_address, destination_address, pickup_floor, destination_floor, has_lift, parking_info, moving_items, photo_urls, quotation';
+const SAVED_ITEM_COLUMNS = 'id, user_id, item_type, item_id, created_at';
+const NOTIFICATION_COLUMNS =
+  'id, user_id, target_role, title, body, type, related_type, related_id, is_read, created_at';
+
+function describeDataError(error: unknown): string {
+  if (!error || typeof error !== 'object') return String(error);
+  const candidate = error as { code?: unknown; message?: unknown; status?: unknown };
+  const details = [
+    typeof candidate.status === 'number' ? `HTTP ${candidate.status}` : '',
+    typeof candidate.code === 'string' ? candidate.code : '',
+    typeof candidate.message === 'string' ? candidate.message : '',
+  ].filter(Boolean);
+  return details.join(': ') || 'Unknown database error';
+}
+
+function logAuthEvent(
+  name: string,
+  details: Record<string, string | number | undefined> = {},
+  level: 'info' | 'warn' | 'error' = 'info'
+): void {
+  console[level](JSON.stringify({ event: `auth.${name}`, ...details }));
+}
+
+function authErrorLogDetails(error: unknown): Record<string, string | number | undefined> {
+  if (!error || typeof error !== 'object') {
+    return { reason: typeof error === 'string' ? error : 'Unknown auth error' };
+  }
+  const candidate = error as { code?: unknown; message?: unknown; status?: unknown };
+  return {
+    status: typeof candidate.status === 'number' ? candidate.status : undefined,
+    code: typeof candidate.code === 'string' ? candidate.code : undefined,
+    reason: typeof candidate.message === 'string' ? candidate.message : 'Unknown auth error',
+  };
+}
+
+function mapServiceRequestRows(rows: Array<Record<string, unknown>>): ServiceRequestItem[] {
+  return rows.map((row) => {
+    const camel = toCamelObject(row) as unknown as ServiceRequestItem;
+    camel.movingItems = normalizeJsonArray(camel.movingItems).filter(
+      (item): item is NonNullable<ServiceRequestItem['movingItems']>[number] =>
+        Boolean(item) &&
+        typeof item === 'object' &&
+        typeof (item as Record<string, unknown>).id === 'string' &&
+        typeof (item as Record<string, unknown>).labelBn === 'string'
+    );
+    camel.photoUrls = normalizeJsonArray(camel.photoUrls).filter(
+      (url): url is string => typeof url === 'string'
+    );
+    const service = LAUNCH_SERVICES.find((s) => s.slug === camel.serviceSlug);
+    camel.serviceTitleBn = service?.nameBn || camel.serviceSlug;
+    if (!camel.profileTitleBn) {
+      camel.profileTitleBn =
+        ((camel as unknown as Record<string, unknown>).profileTitle as string) || undefined;
+    }
+    return camel;
+  });
+}
+
+function mapSavedItemRows(rows: Array<Record<string, unknown>>): SavedListingItem[] {
+  return rows.flatMap((row) => {
+    const camel = toCamelObject(row);
+    const itemType = camel.itemType;
+    const itemId = String(camel.itemId ?? '');
+    if (
+      (itemType !== 'tolet' && itemType !== 'tutor' && itemType !== 'market' && itemType !== 'service') ||
+      !itemId
+    ) {
+      return [];
+    }
+    return [{
+      id: String(camel.id),
+      userId: String(camel.userId),
+      itemType,
+      itemId,
+      title: '',
+      areaName: '',
+      linkHref:
+        itemType === 'tolet'
+          ? `/tolet/${itemId}`
+          : itemType === 'tutor'
+            ? `/home-tutor/${itemId}`
+            : itemType === 'market'
+              ? `/buy-sell/${itemId}`
+              : '/services',
+      savedAt: String(camel.createdAt),
+    }];
+  });
+}
 
 function toCamelObject(row: Record<string, unknown>): Record<string, unknown> {
   const out: Record<string, unknown> = {};
@@ -86,13 +181,21 @@ interface AuthContextType {
   homeTutorProfile: HomeTutorProfile | null;
   bloodDonorProfile: BloodDonorProfile | null;
   requests: ServiceRequestItem[];
+  requestsLoading: boolean;
+  requestsError: string;
+  hasMoreRequests: boolean;
+  loadMoreRequests: () => Promise<void>;
   savedListings: SavedListingItem[];
   savedListingsLoading: boolean;
   savedListingsError: string;
+  hasMoreSavedListings: boolean;
+  loadMoreSavedListings: () => Promise<void>;
+  refreshNotifications: () => Promise<void>;
   notifications: NotificationItem[];
   notificationsError: string;
   notificationsLoading: boolean;
   isLoading: boolean;
+  authRestoreError: string;
   isAdmin: boolean;
   isConfiguredWithSupabase: boolean;
   hasPassword: boolean;
@@ -131,6 +234,20 @@ interface AuthContextType {
   ) => Promise<{ success: boolean; error?: string; referenceCode?: string; requestId?: string }>;
 }
 
+interface UserRefreshResult {
+  ok: boolean;
+  blocked?: boolean;
+  profileMissing?: boolean;
+  retryable?: boolean;
+  error?: string;
+  role?: AppRole;
+}
+
+interface AccountDataCursor {
+  created_at: string;
+  id: string;
+}
+
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -139,31 +256,208 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [homeTutorProfile, setHomeTutorProfile] = useState<HomeTutorProfile | null>(null);
   const [bloodDonorProfile, setBloodDonorProfile] = useState<BloodDonorProfile | null>(null);
   const [requests, setRequests] = useState<ServiceRequestItem[]>([]);
+  const [requestsLoading, setRequestsLoading] = useState(true);
+  const [requestsError, setRequestsError] = useState('');
+  const [hasMoreRequests, setHasMoreRequests] = useState(false);
+  const requestCursorRef = React.useRef<AccountDataCursor | null>(null);
+  const requestLoadInFlightRef = React.useRef(false);
   const [savedListings, setSavedListings] = useState<SavedListingItem[]>([]);
   const [savedListingsLoading, setSavedListingsLoading] = useState(true);
   const [savedListingsError, setSavedListingsError] = useState('');
+  const [hasMoreSavedListings, setHasMoreSavedListings] = useState(false);
+  const savedCursorRef = React.useRef<AccountDataCursor | null>(null);
+  const savedLoadInFlightRef = React.useRef(false);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
   const [notificationsError, setNotificationsError] = useState('');
   const [notificationsLoading, setNotificationsLoading] = useState(true);
+  const notificationLoadInFlightRef = React.useRef(false);
   const [hasPassword, setHasPassword] = useState(false);
+  const [authRestoreError, setAuthRestoreError] = useState('');
   // Keep the server render and the browser's first render identical. Whether
   // Supabase is configured is resolved after hydration in the effect below.
   const [isLoading, setIsLoading] = useState(true);
+  const activeUserIdRef = React.useRef<string | null>(null);
 
   const clearSessionState = useCallback(() => {
+    activeUserIdRef.current = null;
+    setAuthRestoreError('');
     setUser(null);
     setHasPassword(false);
     setToletProfile(null);
     setHomeTutorProfile(null);
     setBloodDonorProfile(null);
     setRequests([]);
+    setRequestsLoading(false);
+    setRequestsError('');
+    setHasMoreRequests(false);
+    requestCursorRef.current = null;
+    requestLoadInFlightRef.current = false;
     setSavedListings([]);
     setSavedListingsError('');
     setSavedListingsLoading(false);
+    setHasMoreSavedListings(false);
+    savedCursorRef.current = null;
+    savedLoadInFlightRef.current = false;
     setNotifications([]);
     setNotificationsError('');
     setNotificationsLoading(false);
+    notificationLoadInFlightRef.current = false;
   }, []);
+
+  const loadMoreRequests = useCallback(async () => {
+    if (!user?.id || requestLoadInFlightRef.current) return;
+    const client = createClient();
+    if (!client) {
+      setRequestsError(NOT_CONFIGURED_MESSAGE);
+      return;
+    }
+
+    requestLoadInFlightRef.current = true;
+    setRequestsLoading(true);
+    setRequestsError('');
+    try {
+      let query = client
+        .from('service_requests')
+        .select(SERVICE_REQUEST_COLUMNS)
+        .eq('customer_id', user.id)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
+      const cursor = requestCursorRef.current;
+      if (cursor) {
+        query = query.or(
+          `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`
+        );
+      }
+      const { data, error } = await query.limit(ACCOUNT_DATA_PAGE_SIZE + 1);
+      if (activeUserIdRef.current !== user.id) return;
+      if (error) throw error;
+
+      const page = (data ?? []).slice(0, ACCOUNT_DATA_PAGE_SIZE);
+      const last = page[page.length - 1] as Record<string, unknown> | undefined;
+      requestCursorRef.current = last
+        ? { created_at: String(last.created_at), id: String(last.id) }
+        : requestCursorRef.current;
+      setHasMoreRequests((data?.length ?? 0) > ACCOUNT_DATA_PAGE_SIZE);
+      setRequests((previous) => [...previous, ...mapServiceRequestRows(page)]);
+    } catch (error) {
+      if (!isAbortError(error)) {
+        console.error('Signed-in service request page load failed:', error);
+        setRequestsError(`রিকোয়েস্ট লোড করা যায়নি: ${describeDataError(error)}`);
+      }
+    } finally {
+      if (activeUserIdRef.current === user.id) {
+        requestLoadInFlightRef.current = false;
+        setRequestsLoading(false);
+      }
+    }
+  }, [user]);
+
+  const loadMoreSavedListings = useCallback(async () => {
+    if (!user?.id || savedLoadInFlightRef.current) return;
+    const client = createClient();
+    if (!client) {
+      setSavedListingsError(NOT_CONFIGURED_MESSAGE);
+      return;
+    }
+
+    savedLoadInFlightRef.current = true;
+    setSavedListingsLoading(true);
+    setSavedListingsError('');
+    try {
+      let query = client
+        .from('saved_items')
+        .select(SAVED_ITEM_COLUMNS)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
+      const cursor = savedCursorRef.current;
+      if (cursor) {
+        query = query.or(
+          `created_at.lt.${cursor.created_at},and(created_at.eq.${cursor.created_at},id.lt.${cursor.id})`
+        );
+      }
+      const { data, error } = await query.limit(ACCOUNT_DATA_PAGE_SIZE + 1);
+      if (activeUserIdRef.current !== user.id) return;
+      if (error) throw error;
+
+      const page = (data ?? []).slice(0, ACCOUNT_DATA_PAGE_SIZE);
+      const last = page[page.length - 1] as Record<string, unknown> | undefined;
+      savedCursorRef.current = last
+        ? { created_at: String(last.created_at), id: String(last.id) }
+        : savedCursorRef.current;
+      setHasMoreSavedListings((data?.length ?? 0) > ACCOUNT_DATA_PAGE_SIZE);
+      setSavedListings((previous) => [...previous, ...mapSavedItemRows(page)]);
+    } catch (error) {
+      if (!isAbortError(error)) {
+        console.error('Saved listing page load failed:', error);
+        setSavedListingsError(`সংরক্ষিত পোস্ট লোড করা যায়নি: ${describeDataError(error)}`);
+      }
+    } finally {
+      if (activeUserIdRef.current === user.id) {
+        savedLoadInFlightRef.current = false;
+        setSavedListingsLoading(false);
+      }
+    }
+  }, [user]);
+
+  const refreshNotifications = useCallback(async () => {
+    if (!user?.id || notificationLoadInFlightRef.current) return;
+    const client = createClient();
+    if (!client) {
+      setNotificationsError(NOT_CONFIGURED_MESSAGE);
+      return;
+    }
+
+    notificationLoadInFlightRef.current = true;
+    setNotificationsLoading(true);
+    setNotificationsError('');
+    try {
+      const personalPromise = client
+        .from('notifications')
+        .select(NOTIFICATION_COLUMNS)
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      const adminPromise = user.role === 'admin'
+        ? client
+            .from('notifications')
+            .select(NOTIFICATION_COLUMNS)
+            .eq('target_role', 'admin')
+            .order('created_at', { ascending: false })
+            .limit(50)
+        : Promise.resolve({ data: [], error: null });
+      const [personalResult, adminResult] = await Promise.all([personalPromise, adminPromise]);
+      if (activeUserIdRef.current !== user.id) return;
+      if (personalResult.error || adminResult.error) {
+        const error = personalResult.error ?? adminResult.error;
+        if (error && !isAbortError(error)) {
+          console.error('Notification retry failed:', error);
+          setNotificationsError(`নোটিফিকেশন লোড করা যায়নি: ${describeDataError(error)}`);
+        }
+        return;
+      }
+
+      const merged: NotificationItem[] = [...personalResult.data, ...adminResult.data]
+        .map((row) => {
+          const item = toCamelObject(row as Record<string, unknown>) as unknown as NotificationItem;
+          item.linkHref = notificationLink(item);
+          return item;
+        })
+        .sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''))
+        .slice(0, 50);
+      setNotifications(merged);
+    } catch (error) {
+      if (!isAbortError(error) && activeUserIdRef.current === user.id) {
+        console.error('Notification retry failed:', error);
+        setNotificationsError(`নোটিফিকেশন লোড করা যায়নি: ${describeDataError(error)}`);
+      }
+    } finally {
+      if (activeUserIdRef.current === user.id) {
+        notificationLoadInFlightRef.current = false;
+        setNotificationsLoading(false);
+      }
+    }
+  }, [user]);
 
   const refreshUserData = useCallback(
     async (
@@ -174,19 +468,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         email?: string | null;
         identities?: Array<{ provider: string }> | null;
         app_metadata?: { provider?: string; providers?: string[] };
+      },
+      signal?: AbortSignal
+    ): Promise<UserRefreshResult> => {
+      const requestSignal = signal ?? new AbortController().signal;
+      if (activeUserIdRef.current !== userId) {
+        requestLoadInFlightRef.current = false;
+        savedLoadInFlightRef.current = false;
       }
-    ): Promise<{ ok: boolean; blocked?: boolean; role?: AppRole }> => {
+      activeUserIdRef.current = userId;
       setHasPassword(
         authUser?.id === userId ? authUserHasPassword(authUser) : false
       );
-      const { data: profileData } = await client
+      const { data: profileData, error: profileError } = await client
         .from('profiles')
         .select('id, public_id, full_name, phone, email, avatar_url, primary_area_id, onboarding_completed_at, role, status, is_verified, emergency_contact, bio, notification_preferences, created_at, updated_at')
         .eq('id', userId)
-        .single();
+        .maybeSingle()
+        .abortSignal(requestSignal);
+      if (activeUserIdRef.current !== userId) return { ok: false, retryable: true };
+      if (profileError) {
+        if (isAbortError(profileError)) return { ok: false, retryable: true };
+        console.error('Signed-in profile lookup failed:', profileError);
+        return { ok: false, retryable: true, error: describeDataError(profileError) };
+      }
       if (!profileData) {
         clearSessionState();
-        return { ok: false };
+        return { ok: false, profileMissing: true };
       }
       const profile = toCamelObject(profileData) as unknown as UserProfile;
       profile.phone = profile.phone || '';
@@ -212,108 +520,142 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ? 'news_editor'
             : 'customer';
       setUser({ ...profile, status: profile.status || 'active' });
+      setRequests([]);
+      setRequestsLoading(true);
+      setRequestsError('');
+      setHasMoreRequests(false);
+      requestCursorRef.current = null;
+      setSavedListings([]);
+      setSavedListingsLoading(true);
+      setSavedListingsError('');
+      setHasMoreSavedListings(false);
+      savedCursorRef.current = null;
+      setNotifications([]);
+      setNotificationsLoading(true);
+      setNotificationsError('');
+      notificationLoadInFlightRef.current = false;
 
-      const { data: toletRow } = await client.rpc('fn_my_tolet_profile').maybeSingle();
+      const isAdminUser = profile.role === 'admin';
+      const [
+        toletResult,
+        tutorResult,
+        donorResult,
+        requestResult,
+        savedResult,
+        personalNotificationResult,
+        adminNotificationResult,
+      ] = await Promise.all([
+        client.rpc('fn_my_tolet_profile').abortSignal(requestSignal).maybeSingle(),
+        client.rpc('fn_my_tutor_profile').abortSignal(requestSignal).maybeSingle(),
+        client.rpc('fn_my_donor_profile').abortSignal(requestSignal).maybeSingle(),
+        client
+          .from('service_requests')
+          .select(SERVICE_REQUEST_COLUMNS)
+          .eq('customer_id', userId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+          .limit(ACCOUNT_DATA_PAGE_SIZE + 1)
+          .abortSignal(requestSignal),
+        client
+          .from('saved_items')
+          .select(SAVED_ITEM_COLUMNS)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+          .limit(ACCOUNT_DATA_PAGE_SIZE + 1)
+          .abortSignal(requestSignal),
+        client
+          .from('notifications')
+          .select(NOTIFICATION_COLUMNS)
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(50)
+          .abortSignal(requestSignal),
+        isAdminUser
+          ? client
+              .from('notifications')
+              .select(NOTIFICATION_COLUMNS)
+              .eq('target_role', 'admin')
+              .order('created_at', { ascending: false })
+              .limit(50)
+              .abortSignal(requestSignal)
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+      if (activeUserIdRef.current !== userId) return { ok: false, retryable: true };
+
+      for (const [operation, error] of [
+        ['tolet profile', toletResult.error],
+        ['tutor profile', tutorResult.error],
+        ['blood donor profile', donorResult.error],
+      ] as const) {
+        if (error && !isAbortError(error)) {
+          console.error(`Signed-in ${operation} lookup failed:`, error);
+        }
+      }
+
+      const { data: toletRow } = toletResult;
       setToletProfile(toletRow ? (toCamelObject(toletRow as Record<string, unknown>) as unknown as ToletProfile) : null);
-
-      const { data: tutorRow } = await client.rpc('fn_my_tutor_profile').maybeSingle();
+      const { data: tutorRow } = tutorResult;
       setHomeTutorProfile(tutorRow ? (toCamelObject(tutorRow as Record<string, unknown>) as unknown as HomeTutorProfile) : null);
-
-      const { data: donorRow } = await client.rpc('fn_my_donor_profile').maybeSingle();
+      const { data: donorRow } = donorResult;
       setBloodDonorProfile(donorRow ? (toCamelObject(donorRow as Record<string, unknown>) as unknown as BloodDonorProfile) : null);
 
-      const { data: requestRows } = await client
-        .from('service_requests')
-        .select('id, reference_code, customer_id, service_slug, status, area_id, address_line, contact_name, contact_phone, preferred_date, details, profile_id, profile_title, service_type, preferred_time, attachment_url, admin_notes, updated_at, created_at, pickup_area_id, destination_area_id, pickup_address, destination_address, pickup_floor, destination_floor, has_lift, parking_info, moving_items, photo_urls, quotation')
-        .eq('customer_id', userId)
-        .order('created_at', { ascending: false });
-      const mappedRequests = (requestRows ?? []).map((row: Record<string, unknown>) => {
-        const camel = toCamelObject(row) as unknown as ServiceRequestItem;
-        camel.movingItems = normalizeJsonArray(camel.movingItems).filter(
-          (item): item is NonNullable<ServiceRequestItem['movingItems']>[number] =>
-            Boolean(item) &&
-            typeof item === 'object' &&
-            typeof (item as Record<string, unknown>).id === 'string' &&
-            typeof (item as Record<string, unknown>).labelBn === 'string'
-        );
-        camel.photoUrls = normalizeJsonArray(camel.photoUrls).filter(
-          (url): url is string => typeof url === 'string'
-        );
-        const service = LAUNCH_SERVICES.find((s) => s.slug === camel.serviceSlug);
-        camel.serviceTitleBn = service?.nameBn || camel.serviceSlug;
-        if (!camel.profileTitleBn) {
-          camel.profileTitleBn =
-            ((camel as unknown as Record<string, unknown>).profileTitle as string) || undefined;
+      if (requestResult.error) {
+        if (!isAbortError(requestResult.error)) {
+          console.error('Signed-in service request lookup failed:', requestResult.error);
+          setRequestsError(`রিকোয়েস্ট লোড করা যায়নি: ${describeDataError(requestResult.error)}`);
         }
-        return camel;
-      });
-      setRequests(mappedRequests);
-
-      setSavedListingsLoading(true);
-      const { data: savedRows, error: savedError } = await client
-        .from('saved_items')
-        .select('id, user_id, item_type, item_id, created_at')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false });
-      if (savedError) {
-        setSavedListings([]);
-        setSavedListingsError(`সংরক্ষিত পোস্ট লোড করা যায়নি: ${savedError.message}`);
+        setRequests([]);
+        setHasMoreRequests(false);
       } else {
-        setSavedListingsError('');
-        setSavedListings(
-          (savedRows ?? []).flatMap((row: Record<string, unknown>) => {
-            const camel = toCamelObject(row) as Record<string, unknown>;
-            const itemType = camel.itemType;
-            const itemId = String(camel.itemId ?? '');
-            if (
-              (itemType !== 'tolet' && itemType !== 'tutor' && itemType !== 'market' && itemType !== 'service') ||
-              !itemId
-            ) {
-              return [];
-            }
-            return [{
-              id: String(camel.id),
-              userId: String(camel.userId),
-              itemType,
-              itemId,
-              title: '',
-              areaName: '',
-              linkHref:
-                itemType === 'tolet'
-                  ? `/tolet/${itemId}`
-                  : itemType === 'tutor'
-                    ? `/home-tutor/${itemId}`
-                    : itemType === 'market'
-                      ? `/buy-sell/${itemId}`
-                      : '/services',
-              savedAt: String(camel.createdAt),
-            }];
-          })
-        );
+        const requestRows = requestResult.data ?? [];
+        const firstPage = requestRows.slice(0, ACCOUNT_DATA_PAGE_SIZE);
+        const lastRequest = firstPage[firstPage.length - 1];
+        requestCursorRef.current = lastRequest
+          ? { created_at: lastRequest.created_at, id: lastRequest.id }
+          : null;
+        setHasMoreRequests(requestRows.length > ACCOUNT_DATA_PAGE_SIZE);
+        setRequests(mapServiceRequestRows(firstPage));
+      }
+      setRequestsLoading(false);
+
+      if (savedResult.error) {
+        if (!isAbortError(savedResult.error)) {
+          console.error('Signed-in saved listing lookup failed:', savedResult.error);
+          setSavedListingsError(`সংরক্ষিত পোস্ট লোড করা যায়নি: ${describeDataError(savedResult.error)}`);
+        }
+        setSavedListings([]);
+        setHasMoreSavedListings(false);
+      } else {
+        const savedRows = savedResult.data ?? [];
+        const firstPage = savedRows.slice(0, ACCOUNT_DATA_PAGE_SIZE);
+        const lastSaved = firstPage[firstPage.length - 1];
+        savedCursorRef.current = lastSaved
+          ? { created_at: lastSaved.created_at, id: lastSaved.id }
+          : null;
+        setHasMoreSavedListings(savedRows.length > ACCOUNT_DATA_PAGE_SIZE);
+        setSavedListings(mapSavedItemRows(firstPage));
       }
       setSavedListingsLoading(false);
 
-      // Notifications: personal ones plus (for admins) the admin hub rows.
-      setNotificationsLoading(true);
-      const isAdminUser = profile.role === 'admin';
-      const { data: personalNotifs, error: personalNotifError } = await client
-        .from('notifications')
-        .select('*')
-        .eq('user_id', userId)
-        .order('created_at', { ascending: false })
-        .limit(50);
-      const { data: adminNotifs, error: adminNotifError } = isAdminUser
-        ? await client
-            .from('notifications')
-            .select('*')
-            .eq('target_role', 'admin')
-            .order('created_at', { ascending: false })
-            .limit(50)
-        : { data: [], error: null };
+      const { data: personalNotifs, error: personalNotifError } = personalNotificationResult;
+      const { data: adminNotifs, error: adminNotifError } = adminNotificationResult;
       if (personalNotifError || adminNotifError) {
+        if (personalNotifError && !isAbortError(personalNotifError)) {
+          console.error(
+            'Personal notification lookup failed:',
+            describeDataError(personalNotifError)
+          );
+        }
+        if (adminNotifError && !isAbortError(adminNotifError)) {
+          console.error(
+            'Admin notification lookup failed:',
+            describeDataError(adminNotifError)
+          );
+        }
         setNotifications([]);
         setNotificationsError(
-          `নোটিফিকেশন লোড করা যায়নি: ${personalNotifError?.message ?? adminNotifError?.message}`
+          `নোটিফিকেশন লোড করা যায়নি: ${describeDataError(personalNotifError ?? adminNotifError)}`
         );
         setNotificationsLoading(false);
         // The profile itself loaded fine — a transient notifications failure must
@@ -345,51 +687,104 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!client) {
       return;
     }
-    let cancelled = false;
-    let retryTimer: number | undefined;
+    let active = true;
+    const controller = new AbortController();
+    const pendingTimers = new Set<number>();
+    const schedule = (callback: () => void, delay = 0) => {
+      const timer = window.setTimeout(() => {
+        pendingTimers.delete(timer);
+        if (active) callback();
+      }, delay);
+      pendingTimers.add(timer);
+    };
 
-    const restoreSession = async (attempt = 0): Promise<void> => {
+    const restoreInitialSession = async (
+      user: NonNullable<Parameters<typeof refreshUserData>[2]>,
+      signal: AbortSignal
+    ): Promise<void> => {
+      if (!active || activeUserIdRef.current !== user.id) return;
       try {
-        const { data, error } = await client.auth.getSession();
-        if (error) throw error;
-        if (data.session?.user) {
-          const res = await refreshUserData(client, data.session.user.id, data.session.user);
-          if (res && !res.ok) {
-            await client.auth.signOut();
-          }
+        const result = await refreshUserData(client, user.id, user, signal);
+        if (!active) return;
+        if (result.ok) setAuthRestoreError('');
+        if (result.retryable) {
+          console.error('Auth session restore could not verify the profile:', result.error);
         }
-        if (!cancelled) setIsLoading(false);
-      } catch {
-        if (cancelled) return;
-        clearSessionState();
-        setIsLoading(false);
-        if (attempt < 2) {
-          retryTimer = window.setTimeout(
-            () => void restoreSession(attempt + 1),
-            1000 * 2 ** attempt
-          );
+        if (!result.ok && !result.retryable) {
+          await client.auth.signOut();
         }
+      } catch (error) {
+        if (!active) return;
+        if (!isAbortError(error)) {
+          console.error('Auth session restore failed:', error);
+        }
+      } finally {
+        if (active) setIsLoading(false);
       }
     };
 
-    void restoreSession();
-    const { data: subscription } = client.auth.onAuthStateChange((_event, session) => {
-      if (session?.user) {
-        void refreshUserData(client, session.user.id, session.user).catch(() => {
+    const { data: subscription } = client.auth.onAuthStateChange((
+      event: AuthChangeEvent,
+      session: Session | null
+    ) => {
+      schedule(() => {
+        if (event === 'SIGNED_OUT') {
+          logAuthEvent('session_signed_out', { reason: event });
           clearSessionState();
-        });
-      } else {
-        clearSessionState();
-      }
+          setIsLoading(false);
+          return;
+        }
+        if (!session?.user) {
+          if (event === 'INITIAL_SESSION') {
+            const refreshFailure = getRecentAuthRefreshFailure();
+            const restoreError = getTransientSessionRestoreMessage(
+              event,
+              false,
+              refreshFailure
+            );
+            if (restoreError) {
+              logAuthEvent(
+                'session_restore_temporarily_unavailable',
+                { status: refreshFailure?.status, reason: refreshFailure?.kind },
+                'warn'
+              );
+              setAuthRestoreError(restoreError);
+              setIsLoading(false);
+              return;
+            }
+          }
+          clearSessionState();
+          setIsLoading(false);
+          return;
+        }
+        setAuthRestoreError('');
+        if (event === 'TOKEN_REFRESHED') {
+          logAuthEvent('token_refreshed');
+        }
+        if (
+          event === 'INITIAL_SESSION' ||
+          (event === 'SIGNED_IN' && activeUserIdRef.current !== session.user.id)
+        ) {
+          if (activeUserIdRef.current && activeUserIdRef.current !== session.user.id) {
+            clearSessionState();
+          }
+          activeUserIdRef.current = session.user.id;
+          setIsLoading(true);
+          void restoreInitialSession(session.user, controller.signal);
+        }
+      });
     });
     return () => {
-      cancelled = true;
-      if (retryTimer !== undefined) window.clearTimeout(retryTimer);
+      active = false;
+      controller.abort();
+      pendingTimers.forEach((timer) => window.clearTimeout(timer));
+      pendingTimers.clear();
       subscription.subscription.unsubscribe();
     };
   }, [refreshUserData, clearSessionState]);
 
   const login = async (email: string, pass: string) => {
+    setAuthRestoreError('');
     setIsLoading(true);
     try {
       if (!isSupabaseConfigured) {
@@ -404,24 +799,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         password: pass,
       });
       if (error) {
-        return { success: false, error: error.message };
+        logAuthEvent('login_failed', authErrorLogDetails(error), 'warn');
+        if (isAbortError(error)) return { success: false };
+        return { success: false, error: getAuthErrorMessage(error, 'login') };
       }
       if (data.user) {
         const res = await refreshUserData(client, data.user.id, data.user);
-        if (res && !res.ok) {
-          await client.auth.signOut();
+        if (!res.ok) {
+          logAuthEvent(
+            res.blocked ? 'login_blocked' : 'login_profile_verification_failed',
+            { reason: res.error ?? (res.blocked ? 'Account is suspended' : 'Profile unavailable') },
+            'warn'
+          );
+          if (!res.retryable) await client.auth.signOut();
           return {
             success: false,
             error: res.blocked
               ? 'আপনার অ্যাকাউন্টটি স্থগিত বা বন্ধ। সহায়তার জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।'
-              : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
+              : res.retryable
+                ? `অ্যাকাউন্ট যাচাই করতে সাময়িক সমস্যা হয়েছে: ${res.error || 'আবার চেষ্টা করুন।'}`
+                : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
+        logAuthEvent('login_succeeded', { role: res.role ?? 'customer' });
         return { success: true, role: res?.role ?? 'customer' };
       }
+      logAuthEvent('login_failed', { reason: 'Supabase returned no user or error' }, 'warn');
       return { success: false, error: 'লগইন সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।' };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'লগইন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' };
+      logAuthEvent('login_failed', authErrorLogDetails(err), 'error');
+      if (isAbortError(err)) return { success: false };
+      return { success: false, error: getAuthErrorMessage(err, 'login') };
     } finally {
       setIsLoading(false);
     }
@@ -457,7 +865,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
     return error
-      ? { success: false, error: error.message }
+      ? { success: false, error: getAuthErrorMessage(error, 'google') }
       : { success: true };
   };
 
@@ -543,13 +951,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       if (data.user) {
         const res = await refreshUserData(client, data.user.id, data.user);
-        if (res && !res.ok) {
-          await client.auth.signOut();
+        if (!res.ok) {
+          if (!res.retryable) await client.auth.signOut();
           return {
             success: false,
             error: res.blocked
               ? 'আপনার অ্যাকাউন্টটি স্থগিত বা বন্ধ। সহায়তার জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।'
-              : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
+              : res.retryable
+                ? `অ্যাকাউন্ট যাচাই করতে সাময়িক সমস্যা হয়েছে: ${res.error || 'আবার চেষ্টা করুন।'}`
+                : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
         return { success: true, role: res?.role ?? 'customer' };
@@ -588,7 +998,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
       });
       if (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: getAuthErrorMessage(error, 'register') };
       }
       if (!signUpData.user) {
         return { success: false, error: 'অ্যাকাউন্ট তৈরি করা যায়নি। আবার চেষ্টা করুন।' };
@@ -596,13 +1006,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (signUpData.session) {
         const res = await refreshUserData(client, signUpData.user.id, signUpData.user);
-        if (!res?.ok) {
-          await client.auth.signOut();
+        if (!res.ok) {
+          if (!res.retryable) await client.auth.signOut();
           return {
             success: false,
             error: res?.blocked
               ? 'আপনার অ্যাকাউন্টটি স্থগিত বা বন্ধ। সহায়তার জন্য প্রশাসকের সঙ্গে যোগাযোগ করুন।'
-              : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
+              : res.retryable
+                ? `অ্যাকাউন্ট যাচাই করতে সাময়িক সমস্যা হয়েছে: ${res.error || 'আবার চেষ্টা করুন।'}`
+                : 'প্রোফাইল তথ্য লোড করা যায়নি। আবার চেষ্টা করুন।',
           };
         }
         return { success: true };
@@ -620,7 +1032,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         error: 'এই ইমেইল দিয়ে অ্যাকাউন্ট তৈরি করা যায়নি। ইমেইলটি আগে ব্যবহার হয়ে থাকলে পাসওয়ার্ড পুনরুদ্ধার করুন।',
       };
     } catch (err: unknown) {
-      return { success: false, error: err instanceof Error ? err.message : 'নিবন্ধন ব্যর্থ হয়েছে। আবার চেষ্টা করুন।' };
+      return { success: false, error: getAuthErrorMessage(err, 'register') };
     } finally {
       setIsLoading(false);
     }
@@ -644,7 +1056,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         : new URL('/auth/callback?next=/reset-password', window.location.origin).toString();
       const { error } = await client.auth.resetPasswordForEmail(email, { redirectTo });
       if (error) {
-        return { success: false, error: error.message };
+        return { success: false, error: getAuthErrorMessage(error, 'recovery') };
       }
       return { success: true };
     } finally {
@@ -663,6 +1075,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw new Error(`লগআউট করা যায়নি: ${error.message}`);
       }
       clearSessionState();
+      logAuthEvent('logout_succeeded', { reason: 'user_initiated' });
+    } catch (error) {
+      logAuthEvent('logout_failed', authErrorLogDetails(error), 'error');
+      throw error;
     } finally {
       setIsLoading(false);
     }
@@ -1196,13 +1612,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         homeTutorProfile,
         bloodDonorProfile,
         requests,
+        requestsLoading,
+        requestsError,
+        hasMoreRequests,
+        loadMoreRequests,
         savedListings,
         savedListingsLoading,
         savedListingsError,
+        hasMoreSavedListings,
+        loadMoreSavedListings,
+        refreshNotifications,
         notifications,
         notificationsError,
         notificationsLoading,
         isLoading,
+        authRestoreError,
         isAdmin: user?.role === 'admin',
         isConfiguredWithSupabase: isSupabaseConfigured,
         hasPassword,

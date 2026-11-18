@@ -106,14 +106,14 @@ export default function ProfileManager() {
       key: 'tutor',
       href: '/profile/home-tutor/setup',
       icon: GraduationCap,
-      title: 'গৃহ শিক্ষক প্রোফাইল খুলুন',
+      title: 'গৃহশিক্ষক প্রোফাইল খুলুন',
       description: 'শিক্ষাগত যোগ্যতা, পড়ানোর বিষয় ও পছন্দের এলাকা দিয়ে শিক্ষক প্রোফাইল পরিচালনা করুন।',
     },
     {
       key: 'donor',
       href: '/profile/blood-donor/setup',
       icon: Heart,
-      title: 'রক্তদাতা অ্যাকাউন্ট খুলুন',
+      title: 'রক্তদাতা প্রোফাইল খুলুন',
       description: 'রক্তের গ্রুপ ও এলাকা দিয়ে রক্তদাতা প্রোফাইল পরিচালনা করুন; ব্যক্তিগত নম্বর গোপন থাকে।',
     },
     {
@@ -297,8 +297,10 @@ export default function ProfileManager() {
                     : null;
               const displayTitle = hasProfile
                 ? card.key === 'tutor'
-                  ? 'গৃহ শিক্ষক প্রোফাইল'
-                  : card.title.replace(' অ্যাকাউন্ট খুলুন', ' অ্যাকাউন্ট')
+                  ? 'গৃহশিক্ষক প্রোফাইল'
+                  : card.key === 'donor'
+                    ? 'রক্তদাতা প্রোফাইল'
+                    : card.title.replace(' অ্যাকাউন্ট খুলুন', ' অ্যাকাউন্ট')
                 : card.title;
 
               return (
@@ -316,7 +318,7 @@ export default function ProfileManager() {
                           </span>
                           {latestStatus && <StatusBadge label={latestStatus.label} tone={latestStatus.tone} />}
                         </div>
-                        <h3 className="mt-3 break-words text-[14px] font-bold text-ink-900">{displayTitle}</h3>
+                        <h3 className="mt-3 break-words border-l-[3px] border-brand-500 pl-2.5 text-[16px] font-extrabold text-brand-800">{displayTitle}</h3>
                         <p className="mt-1 text-[12px] leading-relaxed text-ink-500">{card.description}</p>
                       </>
                     )}
@@ -451,16 +453,16 @@ export default function ProfileManager() {
                       <Link
                         href={card.href}
                         className={cn(
-                          'group flex min-h-[72px] items-center gap-3 rounded-2xl border border-brand-100 bg-white p-3.5 text-left transition-colors hover:border-brand-300',
+                          'group flex min-h-[92px] items-center gap-3 rounded-2xl border border-brand-200 bg-brand-50/50 p-4 text-left transition-all hover:-translate-y-0.5 hover:border-brand-400 hover:shadow-md',
                           LIGHT_FOCUS
                         )}
                       >
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-700">
+                        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl ${card.key === 'tutor' ? 'bg-brand-700 text-white' : card.key === 'donor' ? 'bg-rose-100 text-rose-700' : 'bg-brand-50 text-brand-700'}`}>
                           <Icon className="h-5 w-5" aria-hidden="true" />
                         </span>
                         <span className="min-w-0 flex-1">
-                          <span className="block text-[14px] font-extrabold text-ink-900">{card.title}</span>
-                          <span className="mt-0.5 block truncate text-[11.5px] text-ink-500">{card.description}</span>
+                          <span className={`block text-[16px] font-extrabold ${card.key === 'donor' ? 'text-rose-800' : 'text-brand-800'}`}>{card.title}</span>
+                          <span className="mt-1 block text-xs leading-relaxed text-ink-500">{card.description}</span>
                         </span>
                         <Plus className="h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
                       </Link>

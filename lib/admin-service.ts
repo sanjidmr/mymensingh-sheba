@@ -136,7 +136,7 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
       const profiles = profilesRes.data ?? [];
       if (profiles.length === 0) break;
 
-      const ids = profiles.map((profile) => profile.id);
+      const ids = profiles.map((profile: { id: string }) => profile.id);
       const [toletRes, tutorsRes, donorsRes] = await Promise.all([
         client.from('tolet_profiles').select('user_id, status').in('user_id', ids),
         client.from('home_tutor_profiles').select('user_id, status').in('user_id', ids),
@@ -148,8 +148,8 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
       const tutors = tutorsRes.data ?? [];
       const donors = donorsRes.data ?? [];
 
-      rows.push(...profiles.map((profile) => {
-        const base = toCamelObject(profile as Record<string, unknown>) as unknown as UserProfile;
+      rows.push(...profiles.map((profile: Record<string, unknown> & { id: string }) => {
+        const base = toCamelObject(profile) as unknown as UserProfile;
         const role = base.role === 'customer' || base.role === 'admin' || base.role === 'news_editor'
           ? base.role
           : 'customer';
@@ -163,9 +163,9 @@ export async function adminFetchUsers(): Promise<AdminUserRow[]> {
           status: base.status,
           isVerified: base.isVerified,
           createdAt: base.createdAt,
-          toletStatus: tolet.find((row) => row.user_id === profile.id)?.status ?? null,
-          tutorStatus: tutors.find((row) => row.user_id === profile.id)?.status ?? null,
-          donorStatus: donors.find((row) => row.user_id === profile.id)?.status ?? null,
+          toletStatus: tolet.find((row: { user_id: string; status: string }) => row.user_id === profile.id)?.status ?? null,
+          tutorStatus: tutors.find((row: { user_id: string; status: string }) => row.user_id === profile.id)?.status ?? null,
+          donorStatus: donors.find((row: { user_id: string; status: string }) => row.user_id === profile.id)?.status ?? null,
         };
       }));
       if (profiles.length < pageSize) break;
@@ -275,7 +275,7 @@ export async function adminFetchTutorReviews(): Promise<(TutorReview & { tutorNa
     .order('created_at', { ascending: false });
   if (error) throw new Error(`রিভিউ লোড ব্যর্থ হয়েছে: ${error.message}`);
   if (!data) throw new Error('রিভিউ ডেটা পাওয়া যায়নি।');
-  return data.map((row) => toCamelObject(row as Record<string, unknown>) as unknown as TutorReview);
+  return data.map((row: Record<string, unknown>) => toCamelObject(row) as unknown as TutorReview);
 }
 
 export async function adminUpdateTutorReview(
@@ -313,7 +313,7 @@ export async function fetchPlatformSettings(): Promise<PlatformSettings> {
   ]);
   if (error) throw new Error(`প্ল্যাটফর্ম সেটিংস লোড ব্যর্থ হয়েছে: ${error.message}`);
   const parse = (key: string, fallback: unknown) => {
-    const row = (data || []).find((r) => (r as Record<string, unknown>).key === key);
+    const row = (data || []).find((r: Record<string, unknown>) => r.key === key);
     if (!row) return fallback;
     const v = (row as Record<string, unknown>).value;
     return typeof v === 'object' && v !== null ? v : fallback;
@@ -381,8 +381,8 @@ export async function adminFetchNotifications(): Promise<NotificationItem[]> {
     .limit(100);
   if (error) throw new Error(`নোটিফিকেশন লোড ব্যর্থ হয়েছে: ${error.message}`);
 
-  return (data ?? []).map((row) => {
-    const notification = toCamelObject(row as Record<string, unknown>) as unknown as NotificationItem;
+  return (data ?? []).map((row: Record<string, unknown>) => {
+    const notification = toCamelObject(row) as unknown as NotificationItem;
     const id = notification.relatedId;
     const links: Record<string, string> = {
       service_request: id ? `/admin/requests/${id}` : '/admin/requests',

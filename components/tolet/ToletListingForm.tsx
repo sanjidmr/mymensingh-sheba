@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { AlertTriangle, Loader2, Save, Send } from 'lucide-react';
+import { AlertTriangle, Building2, Camera, FileText, Loader2, MapPin, Save, Send, Wallet } from 'lucide-react';
 import { TOLET_AREA_SOURCE } from '@/lib/tolet-areas';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import { TOLET_FACILITY_OPTIONS } from '@/lib/filter-definitions';
+import SectionCard from '@/components/forms/SectionCard';
 import {
   TOLET_PROPERTY_TYPE_INFO,
   type ToletListing,
@@ -43,13 +44,13 @@ interface FormState {
   specificAddress: string;
   floor: string;
   availableFrom: string;
-  rentPrice: number;
-  bedrooms: number;
-  bathrooms: number;
-  balconies: number;
+  rentPrice: string;
+  bedrooms: string;
+  bathrooms: string;
+  balconies: string;
   hasDrawingRoom: boolean;
   hasDiningRoom: boolean;
-  totalRooms?: number;
+  totalRooms?: string;
   facilitiesText: string;
   unavailableFacilitiesText: string;
 }
@@ -63,10 +64,10 @@ const defaultForm: FormState = {
   specificAddress: '',
   floor: '',
   availableFrom: '',
-  rentPrice: 0,
-  bedrooms: 1,
-  bathrooms: 1,
-  balconies: 0,
+  rentPrice: '',
+  bedrooms: '',
+  bathrooms: '',
+  balconies: '',
   hasDrawingRoom: false,
   hasDiningRoom: false,
   totalRooms: undefined,
@@ -144,13 +145,13 @@ function fromListing(listing: ToletListing): FormState {
     specificAddress: listing.specificAddress,
     floor: listing.floor || '',
     availableFrom: listing.availableFrom || '',
-    rentPrice: listing.rentPrice,
-    bedrooms: listing.bedrooms || 1,
-    bathrooms: listing.bathrooms || 1,
-    balconies: listing.balconies || 0,
+    rentPrice: String(listing.rentPrice),
+    bedrooms: listing.bedrooms ? String(listing.bedrooms) : '',
+    bathrooms: listing.bathrooms ? String(listing.bathrooms) : '',
+    balconies: listing.balconies ? String(listing.balconies) : '',
     hasDrawingRoom: listing.hasDrawingRoom ?? false,
     hasDiningRoom: listing.hasDiningRoom ?? false,
-    totalRooms: listing.totalRooms,
+    totalRooms: listing.totalRooms == null ? '' : String(listing.totalRooms),
     facilitiesText: facilitiesToText(listing.facilities),
     unavailableFacilitiesText: facilitiesToText(listing.unavailableFacilities),
   };
@@ -222,41 +223,40 @@ function NumberField({
   onChange,
   min = 0,
   max = 20,
+  required = false,
+  error,
 }: {
   id: string;
   label: string;
-  value: number;
-  onChange: (v: number) => void;
+  value: string;
+  onChange: (v: string) => void;
   min?: number;
   max?: number;
+  required?: boolean;
+  error?: string;
 }) {
   return (
-    <div
-      id={`tolet-field-${id}`}
-      className="flex min-h-12 items-center justify-between gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-1.5"
-    >
-      <span className="text-[13px] font-semibold text-slate-700">{label}</span>
-      <div className="flex items-center gap-1.5">
-        <button
-          type="button"
-          aria-label={`${label} কমান`}
-          onClick={() => onChange(Math.max(min, value - 1))}
-          disabled={value <= min}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold text-slate-700 transition-colors active:scale-95 disabled:opacity-40"
-        >
-          −
-        </button>
-        <span className="w-7 text-center text-sm font-bold tabular-nums text-slate-900">{value}</span>
-        <button
-          type="button"
-          aria-label={`${label} বাড়ান`}
-          onClick={() => onChange(Math.min(max, value + 1))}
-          disabled={value >= max}
-          className="flex h-9 w-9 items-center justify-center rounded-lg border border-slate-200 bg-white text-lg font-bold text-emerald-800 transition-colors active:scale-95 disabled:opacity-40"
-        >
-          +
-        </button>
-      </div>
+    <div id={`tolet-field-${id}`}>
+      <label htmlFor={`tolet-${id}`} className="mb-1.5 block text-[13px] font-semibold text-slate-700">{label}</label>
+      <input
+        id={`tolet-${id}`}
+        type="number"
+        inputMode="numeric"
+        min={min}
+        max={max}
+        step={1}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={(event) => {
+          if (!event.target.value) return;
+          const parsed = Number(event.target.value);
+          if (Number.isFinite(parsed)) onChange(String(Math.min(max, Math.max(min, parsed))));
+        }}
+        placeholder="যেমন: ২"
+        required={required}
+        className={controlClass()}
+      />
+      {error && <p role="alert" className="mt-1 text-[11px] font-medium text-rose-600">{error}</p>}
     </div>
   );
 }
@@ -318,7 +318,10 @@ export function ToletListingForm({
     if (form.specificAddress.trim().length < 5) {
       return { field: 'specificAddress', message: 'সুনির্দিষ্ট ঠিকানা অন্তত ৫ অক্ষর লিখুন।' };
     }
-    const rent = Number(form.rentPrice) || 0;
+    const rent = Number(form.rentPrice);
+    if (!form.rentPrice.trim() || !Number.isFinite(rent)) {
+      return { field: 'rentPrice', message: 'মাসিক ভাড়া লিখুন।' };
+    }
     if (rent < 100) {
       return { field: 'rentPrice', message: 'মাসিক ভাড়া ১০০ টাকার কম হতে পারবে না।' };
     }
@@ -326,11 +329,19 @@ export function ToletListingForm({
       return { field: 'rentPrice', message: 'ভাড়া খুব বেশি মনে হচ্ছে (সর্বোচ্চ ৫,০০,০০০ টাকা)।' };
     }
     if (isMessLike) {
-      if (!(form.totalRooms && form.totalRooms >= 1)) {
+      if (!(Number(form.totalRooms) >= 1) || Number(form.totalRooms) > 100) {
         return { field: 'totalRooms', message: 'মোট সিট/শয্যা সংখ্যা দিন।' };
       }
-    } else if (form.bedrooms < 1) {
-      return { field: 'bedrooms', message: 'বেডরুম সংখ্যা কমপক্ষে ১ হতে হবে।' };
+    } else {
+      if (Number(form.bedrooms) < 1 || Number(form.bedrooms) > 10) {
+        return { field: 'bedrooms', message: 'বেডরুম সংখ্যা ১ থেকে ১০-এর মধ্যে লিখুন।' };
+      }
+      if (form.bathrooms && (Number(form.bathrooms) < 1 || Number(form.bathrooms) > 10)) {
+        return { field: 'bathrooms', message: 'বাথরুম সংখ্যা ১ থেকে ১০-এর মধ্যে লিখুন।' };
+      }
+      if (form.balconies && (Number(form.balconies) < 0 || Number(form.balconies) > 5)) {
+        return { field: 'balconies', message: 'বারান্দার সংখ্যা ০ থেকে ৫-এর মধ্যে লিখুন।' };
+      }
     }
     return null;
   };
@@ -349,12 +360,12 @@ export function ToletListingForm({
     areaId: form.areaId,
     specificAddress: form.specificAddress.trim(),
     rentPrice: Number(form.rentPrice) || 0,
-    bedrooms: form.bedrooms,
-    bathrooms: form.bathrooms,
-    balconies: form.balconies,
+    bedrooms: Number(form.bedrooms) || 0,
+    bathrooms: Number(form.bathrooms) || 0,
+    balconies: Number(form.balconies) || 0,
     hasDrawingRoom: form.hasDrawingRoom,
     hasDiningRoom: form.hasDiningRoom,
-    totalRooms: isMessLike ? form.totalRooms : undefined,
+    totalRooms: isMessLike ? Number(form.totalRooms) || undefined : undefined,
     floor: form.floor.trim() || undefined,
     availableFrom: form.availableFrom.trim() || undefined,
     facilities: textToFacilities(form.facilitiesText),
@@ -420,7 +431,7 @@ export function ToletListingForm({
         </div>
       )}
 
-      <div className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 sm:space-y-5 sm:rounded-2xl sm:p-5">
+      <SectionCard title="মূল তথ্য" icon={FileText} description="বিজ্ঞাপনের পরিচিতি ও বাসার ধরন দিন।">
         {/* 1 — শিরোনাম */}
         <Field
           id="title"
@@ -458,18 +469,6 @@ export function ToletListingForm({
           />
         </Field>
 
-        {/* 3 — ছবি */}
-        <div id="tolet-field-photos">
-          <PhotoUploader
-            photos={form.photos}
-            onChange={(photos) => set('photos', photos)}
-            onUpload={onUploadFile}
-            onBusyChange={setUploadingPhotos}
-            label="বাসার ছবি আপলোড"
-          />
-        </div>
-
-        {/* 4 — বাসার ধরন */}
         <Field id="propertyType" label="বাসার ধরন নির্বাচন করুন" required group>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(Object.keys(TOLET_PROPERTY_TYPE_INFO) as ToletPropertyType[]).map((pt) => {
@@ -494,8 +493,22 @@ export function ToletListingForm({
             })}
           </div>
         </Field>
+      </SectionCard>
 
-        {/* 5 — এলাকা ও ঠিকানা */}
+      <SectionCard title="ছবি" icon={Camera} description="বাসার পরিষ্কার ও সাম্প্রতিক ছবি যোগ করুন।">
+        <div id="tolet-field-photos">
+          <PhotoUploader
+            photos={form.photos}
+            onChange={(photos) => set('photos', photos)}
+            onUpload={onUploadFile}
+            onBusyChange={setUploadingPhotos}
+            label="বাসার ছবি আপলোড"
+          />
+        </div>
+
+      </SectionCard>
+
+      <SectionCard title="ঠিকানা / এলাকা" icon={MapPin} description="ভাড়াটিয়ারা যেন সহজে বাসাটি খুঁজে পান।">
         <Field id="areaId" label="এলাকা" required error={errors.areaId}>
           <LocationSelectInput
             id="areaId"
@@ -525,8 +538,7 @@ export function ToletListingForm({
           />
         </Field>
 
-        {/* 6 — তলা ও শুরুর সময় */}
-        <div className="grid gap-3 min-[420px]:grid-cols-2 sm:gap-4">
+        <div className="grid gap-3 sm:grid-cols-2">
           <Field id="floor" label="কত তলায়" hint="ঐচ্ছিক">
             <input
               id="tolet-floor"
@@ -554,8 +566,9 @@ export function ToletListingForm({
             </datalist>
           </Field>
         </div>
+      </SectionCard>
 
-        {/* 7 — মাসিক ভাড়া */}
+      <SectionCard title="ভাড়া ও ঘরের সংখ্যা" icon={Wallet} description="সব টাকার পরিমাণ নিজে লিখুন।">
         <Field
           id="rentPrice"
           label="মাসিক ভাড়া (৳)"
@@ -575,8 +588,8 @@ export function ToletListingForm({
               max={500000}
               step={100}
               value={form.rentPrice || ''}
-              onChange={(e) => set('rentPrice', Number(e.target.value))}
-              placeholder="12000"
+              onChange={(e) => set('rentPrice', e.target.value)}
+              placeholder="যেমন: ৫০০০"
               className={cn(controlClass(Boolean(errors.rentPrice)), 'pl-8 font-bold tabular-nums')}
             />
           </div>
@@ -586,18 +599,19 @@ export function ToletListingForm({
         <Field
           id="rooms"
           label={isMessLike ? 'মোট সিট / শয্যা সংখ্যা' : 'বেডরুম, বাথরুম ও বারান্দার সংখ্যা'}
-          error={errors.bedrooms || errors.totalRooms}
           group
         >
-          <div className="grid gap-2 min-[420px]:grid-cols-3">
+          <div className="grid grid-cols-2 gap-2">
             {isMessLike ? (
               <NumberField
                 id="totalRooms"
                 label="সিট / শয্যা"
-                value={form.totalRooms ?? 0}
+                value={form.totalRooms ?? ''}
                 onChange={(v) => set('totalRooms', v)}
                 min={1}
                 max={100}
+                required
+                error={errors.totalRooms}
               />
             ) : (
               <>
@@ -608,6 +622,8 @@ export function ToletListingForm({
                   onChange={(v) => set('bedrooms', v)}
                   min={1}
                   max={10}
+                  required
+                  error={errors.bedrooms}
                 />
                 <NumberField
                   id="bathrooms"
@@ -616,6 +632,7 @@ export function ToletListingForm({
                   onChange={(v) => set('bathrooms', v)}
                   min={1}
                   max={10}
+                  error={errors.bathrooms}
                 />
                 <NumberField
                   id="balconies"
@@ -624,6 +641,7 @@ export function ToletListingForm({
                   onChange={(v) => set('balconies', v)}
                   min={0}
                   max={5}
+                  error={errors.balconies}
                 />
               </>
             )}
@@ -651,7 +669,9 @@ export function ToletListingForm({
           )}
         </Field>
 
-        {/* 9 — যেসব সুবিধা আছে */}
+      </SectionCard>
+
+      <SectionCard title="সুবিধাসমূহ">
         <Field
           id="facilitiesText"
           label="যেসব সুবিধা আছে"
@@ -684,10 +704,10 @@ export function ToletListingForm({
             className={cn(controlClass(), 'resize-y')}
           />
         </Field>
-      </div>
+      </SectionCard>
 
       {/* 11 — বিজ্ঞাপন প্রকাশ করুন */}
-      <div className="space-y-2.5">
+      <div className="form-sticky-submit space-y-2.5">
         <button
           type="submit"
           disabled={busy}

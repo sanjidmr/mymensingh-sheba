@@ -13,6 +13,7 @@ import {
   BookOpen,
 } from 'lucide-react';
 import Reveal from '@/components/home/Reveal';
+import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 
 const BENEFITS = [
   { icon: Megaphone, label: 'শহরের মানুষের কাছে সরাসরি' },
@@ -78,6 +79,12 @@ export default function CommunityInviteSection() {
             প্রয়োজনের সেবাটি খুঁজে নিন, আর আপনার নিজের সেবা বা তথ্য সহজেই সবার সামনে
             তুলে ধরুন — ছোট-বড় সব প্রয়োজনে আমরা পাশে।
           </p>
+
+          <FacebookUpdatesLink
+            tone="dark"
+            labelClassName="text-xs"
+            className="mx-auto mt-3 justify-center"
+          />
 
           {/* উপকারিতা */}
           <ul className="mt-5 flex flex-wrap items-center justify-center gap-2 max-sm:mt-3 max-sm:gap-1.5 sm:gap-2.5">

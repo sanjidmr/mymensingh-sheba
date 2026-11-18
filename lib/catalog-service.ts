@@ -540,7 +540,8 @@ export interface CommunityPostDraft {
 }
 
 export async function loadCommunityPostDraft(
-  kind: PostKind
+  kind: PostKind,
+  signal?: AbortSignal
 ): Promise<WriteResult<{ draft: unknown; updatedAt: string | null }>> {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
   const userId = await currentUserId();
@@ -553,7 +554,8 @@ export async function loadCommunityPostDraft(
     .select('draft, updated_at')
     .eq('user_id', userId)
     .eq('kind', kind)
-    .maybeSingle();
+    .maybeSingle()
+    .abortSignal(signal ?? new AbortController().signal);
   if (error) return { success: false, error: error.message };
   return {
     success: true,
@@ -3131,7 +3133,7 @@ export async function fetchVehicleRequestsForCustomer(customerId: string): Promi
     .eq('customer_id', customerId)
     .order('created_at', { ascending: false });
   if (error) throw new Error(`যানবাহন অনুরোধ লোড করা যায়নি: ${error.message}`);
-  return (data ?? []).map((row) => mapVehicleRequest(row as Record<string, unknown>));
+  return (data ?? []).map((row: Record<string, unknown>) => mapVehicleRequest(row));
 }
 
 export async function adminSetVehicleRequestStatus(

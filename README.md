@@ -59,6 +59,9 @@
    npm run dev
    ```
 
+   Development uses `.next-dev` so it can run alongside a production build
+   without overwriting the build's route chunks.
+
 ## Database
 
 The deployable schema, RLS policies, storage buckets, and triggers are in
@@ -97,15 +100,40 @@ enable full old-row data for To-Let update webhooks. Apply
 `supabase/migrations/20261113010000_public_event_telegram_notifications.sql`
 after it to queue detailed notifications for submitted community posts,
 To-Let listings and profiles, user-owned service listings, contact messages,
-customer support replies, and complaints. Then apply
+customer support replies, and complaints. Apply
+`supabase/migrations/20261114020000_vehicle_booking_redesign.sql` to align the
+vehicle booking table with the current car/auto/CNG form and remove the legacy
+required current-address column. Then apply
 `supabase/migrations/20261114040000_admin_telegram_complete_event_coverage.sql`
 to queue every requested event, including account creation/deletion, all
 service request tables, any community-post type, and rental-listing deletion.
 Apply subsequent migrations in timestamp order, including
 `supabase/migrations/20261116020000_admin_telegram_all_service_request_statuses.sql`,
 which adds coverage for service requests inserted with statuses other than
-`new`.
+`new`, and
+`supabase/migrations/20261118000000_customer_account_pagination_indexes.sql`,
+which supports bounded, cursor-paginated reads of customer requests and saved
+items.
 Do not edit or delete migrations that have already been applied.
+
+### Reliability checks
+
+- `GET https://mymensinghsheba.com/api/health` checks that the Supabase
+  PostgREST/database endpoint is reachable. It returns HTTP 200 when healthy
+  and HTTP 503 when unavailable; it does not expose credentials or database
+  contents.
+- On cPanel, open **Setup Node.js App**, select the deployed Nexus application,
+  and inspect its application/error logs. Depending on the hosting provider's
+  cPanel integration, these may also be available under **Metrics → Errors**.
+  The structured server-side `upstream.request_*`,
+  `auth.guard_verification_failed`, and `health.database_check_failed` events
+  include status/reason and duration but never tokens or request query strings.
+- Login/password and refresh-token events are issued directly between the
+  browser and Supabase Auth. Check those in the Supabase Dashboard under
+  **Logs → Auth**; they do not pass through the cPanel application process.
+  The browser also emits structured `auth.login_*`, `auth.token_refreshed`, and
+  `auth.logout_*` events in its developer console; these do not include email,
+  user ID, or token values.
 
 Database triggers enqueue admin Telegram alerts transactionally for reports,
 all contact messages, customer support replies and complaints, community posts,
@@ -135,9 +163,10 @@ deployment configuration; the project startup script is
 1. Add `TELEGRAM_BOT_TOKEN`, `TELEGRAM_CHAT_ID`, and a separate random
    `ADMIN_TELEGRAM_WORKER_SECRET` to the server environment. Restart the
    application after changing environment variables. Never expose these values
-   with `NEXT_PUBLIC_` names. For Vercel Cron, set `CRON_SECRET` to the same
-   value as `ADMIN_TELEGRAM_WORKER_SECRET`; the worker accepts authenticated
-   GET requests as well as POST.
+   with `NEXT_PUBLIC_` names. `TELEGRAM_CHAT_ID` may contain multiple
+   comma-separated numeric chat IDs or `@channel` usernames. For Vercel Cron,
+   set `CRON_SECRET` to the same value as `ADMIN_TELEGRAM_WORKER_SECRET`; the
+   worker accepts authenticated GET requests as well as POST.
 2. In cPanel → **Cron Jobs**, run this once every minute:
 
    ```cron
@@ -147,12 +176,23 @@ deployment configuration; the project startup script is
       Replace the domain and secret with production values. The worker handles up
       to 3 queued notifications per run and makes up to 3 retries (4 attempts
       total) for transient failures. Telegram `retry_after` is honored for
-      rate-limited requests. On Vercel, add a Cron Job for
-      `/api/admin-telegram-alerts/worker`; Vercel calls it with GET.
+      rate-limited requests. On Vercel Pro, configure a Cron Job for
+      `/api/admin-telegram-alerts/worker` every minute; on Vercel Hobby, use an
+      external scheduler because its Cron minimum interval is once per day.
+      Configure an equivalent once-per-minute scheduler on other hosts.
 3. Sign in as an admin and open **Admin → Settings → Telegram notification
-   test**. Use **Bot ও chat যাচাই** to call Telegram `getMe` and send a
-   verification message, or **সব event-এর test পাঠান** to send sample messages
-   for each requested event type. The test suite sends multiple messages.
+   test**. Use **Bot ও chat যাচাই** to call Telegram `getMe`, verify each
+   configured chat with `getChat`, and send a verification message, or
+   **সব event-এর test পাঠান** to send sample messages for each event type. The
+   test endpoint returns Telegram's `ok`, `error_code`, and `description`.
+
+To check a token and discover chats that have sent the bot an update locally,
+run `node --env-file=.env.local scripts/check-telegram.mjs`. Start the bot in
+a private chat or add it to a group/channel and generate an update first.
+Group and channel IDs are usually negative; the script prints only chat
+metadata, not message contents or the bot token. `getUpdates` is unavailable
+while a webhook is configured; in that case inspect the webhook's incoming
+updates instead.
 
 In staging, inspect recent jobs in `admin_telegram_outbox`. The worker lock
 serializes invocations and `SKIP LOCKED` claims jobs atomically:

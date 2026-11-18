@@ -132,7 +132,7 @@ export async function adminFetchHomeMovingRequests(): Promise<HomeMovingRequest[
     .eq('service_slug', 'home-moving')
     .order('created_at', { ascending: false });
   if (error) throw new Error(`বাসা পাল্টানোর রিকোয়েস্ট লোড ব্যর্থ হয়েছে: ${error.message}`);
-  return (data || []).map((row) => mapHomeMovingRow(row as Record<string, unknown>));
+  return (data || []).map((row: Record<string, unknown>) => mapHomeMovingRow(row));
 }
 
 export async function adminFetchHomeMovingRequestById(

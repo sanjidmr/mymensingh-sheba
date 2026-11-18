@@ -1,5 +1,6 @@
 import { createClient } from './supabase/client';
 import { isNative } from './platform';
+import { fetchWithTimeout } from './fetch-with-timeout';
 
 type ProxyResponse = {
   status: number;
@@ -7,11 +8,21 @@ type ProxyResponse = {
   contentType: string | null;
 };
 
+function isProxyResponse(value: unknown): value is ProxyResponse {
+  if (!value || typeof value !== 'object') return false;
+  const response = value as Record<string, unknown>;
+  return (
+    Number.isInteger(response.status) &&
+    typeof response.body === 'string' &&
+    (response.contentType === null || typeof response.contentType === 'string')
+  );
+}
+
 export async function apiFetch(
   input: string | URL,
   init: RequestInit = {}
 ): Promise<Response> {
-  if (!isNative()) return fetch(input, init);
+  if (!isNative()) return fetchWithTimeout(input, init);
 
   const requestUrl = new URL(String(input), window.location.origin);
   if (requestUrl.origin !== window.location.origin || !requestUrl.pathname.startsWith('/api/')) {
@@ -32,7 +43,7 @@ export async function apiFetch(
     throw new Error('Native API requests only support JSON bodies.');
   }
 
-  const { data, error } = await client.functions.invoke<ProxyResponse>('marketplace-api', {
+  const { data, error } = await client.functions.invoke('marketplace-api', {
     body: {
       path: `${requestUrl.pathname}${requestUrl.search}`,
       method: (init.method ?? 'GET').toUpperCase(),
@@ -42,11 +53,7 @@ export async function apiFetch(
   if (error) {
     throw new Error(`Marketplace API request failed: ${error.message}`, { cause: error });
   }
-  if (
-    !data ||
-    !Number.isInteger(data.status) ||
-    typeof data.body !== 'string'
-  ) {
+  if (!isProxyResponse(data)) {
     throw new Error('Marketplace API returned an invalid response.');
   }
 
