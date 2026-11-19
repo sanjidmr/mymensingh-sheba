@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowLeft, Loader2, Phone } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createListing, uploadListingPhotos } from '@/lib/tolet-service';
 import { getToletAreaById } from '@/lib/tolet-areas';
@@ -12,25 +12,15 @@ import {
   type ToletListing,
   type ToletListingInput,
 } from '@/lib/tolet-types';
-import { normalizeBdPhone } from '@/lib/contact-types';
 import { ToletListingForm } from '@/components/tolet/ToletListingForm';
 import SubmissionConfirmation from '@/components/submissions/SubmissionConfirmation';
 import Navbar from '@/components/Navbar';
 import Footer from '@/components/Footer';
-import SectionCard from '@/components/forms/SectionCard';
 
 export default function NewToletListingPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
   const [createdPost, setCreatedPost] = React.useState<ToletListing | null>(null);
-  const [ownerPhoneInput, setOwnerPhoneInput] = React.useState(
-    (user?.phone || '').replace(/[০-৯]/g, (digit) =>
-      String('০১২৩৪৫৬৭৮৯'.indexOf(digit))
-    )
-  );
-  const ownerPhone = normalizeBdPhone(ownerPhoneInput);
-  const hasValidOwnerPhone = /^01[3-9]\d{8}$/.test(ownerPhone);
-
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex flex-col bg-mist-50">
@@ -53,18 +43,12 @@ export default function NewToletListingPage() {
   };
 
   const handleSubmit = async (input: ToletListingInput, draft: boolean) => {
-    if (!hasValidOwnerPhone) {
-      const message = 'সঠিক মোবাইল নম্বর দিন।';
-      window.alert(message);
-      return { success: false, error: message };
-    }
-
     try {
       const result = await createListing(
         user.id,
         user.fullName,
         user.isVerified,
-        { ...input, ownerPhone } as ToletListingInput,
+        input,
         draft ? 'draft' : 'submit'
       );
       if (!result.success || !result.listing) {
@@ -130,38 +114,9 @@ export default function NewToletListingPage() {
           </p>
         </div>
 
-        <SectionCard title="যোগাযোগ" icon={Phone} className="mb-4">
-          <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-[11px] font-semibold text-ink-700 mb-1">মালিকের নাম</label>
-              <input
-                type="text"
-                defaultValue={user.fullName || ''}
-                placeholder="মালিকের নাম লিখুন"
-                className="w-full px-3 py-2 rounded-lg border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-            <div>
-              <label className="block text-[11px] font-semibold text-ink-700 mb-1">মোবাইল নম্বর</label>
-              <input
-                type="tel"
-                inputMode="tel"
-                value={ownerPhoneInput}
-                onChange={(e) => setOwnerPhoneInput(e.target.value.replace(/[^\d০-৯]/g, ''))}
-                placeholder="01XXXXXXXXX"
-                className="w-full px-3 py-2 rounded-lg border border-brand-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-            </div>
-          </div>
-          {!hasValidOwnerPhone && ownerPhoneInput && (
-            <p className="mt-1 text-[11px] font-semibold text-rose-700">
-              সঠিক ১১-ডিজিটের মোবাইল নম্বর দিন।
-            </p>
-          )}
-        </SectionCard>
-
         <ToletListingForm
           mode="owner"
+          initialPhone={user.phone ?? ''}
           onUploadFile={handleUploadFile}
           onSubmit={handleSubmit}
           onDone={(action) => {

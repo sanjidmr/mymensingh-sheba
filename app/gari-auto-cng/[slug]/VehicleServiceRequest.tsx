@@ -66,6 +66,14 @@ const TRIP_DURATIONS = [
   'প্রতিদিন (মাসিক চাঁদা)',
 ];
 
+const TRAVEL_TIME_OPTIONS = [
+  'সকাল (৬টা–দুপুর ১২টা)',
+  'দুপুর (১২টা–বিকেল ৪টা)',
+  'বিকেল (৪টা–রাত ৮টা)',
+  'রাত ৮টার পর',
+  'যেকোনো সময়',
+];
+
 interface Props {
   listing: ServiceListing;
   /** The kind implied by the listing this request was opened from. */
@@ -326,14 +334,16 @@ export default function VehicleServiceRequest({ listing, defaultKind, onSuccess 
             />
           </Field>
           <Field labelBn="যাওয়ার সময়">
-            <TextInput
+            <select
               value={time}
-              onChange={setTime}
-              type="time"
-              icon={Clock}
-              maxLength={60}
-              required
-            />
+              onChange={(event) => setTime(event.target.value)}
+              className="min-h-11 w-full rounded-xl border border-mist-200 bg-white px-3 py-2 text-[16px] text-ink-900 outline-none transition-colors focus:border-brand-500 sm:text-[14px]"
+            >
+              <option value="">সময় বেছে নিন (ঐচ্ছিক)</option>
+              {TRAVEL_TIME_OPTIONS.map((option) => (
+                <option key={option} value={option}>{option}</option>
+              ))}
+            </select>
           </Field>
         </div>
 

@@ -62,7 +62,7 @@ export default async function AboutPage() {
         <AboutFinalCta />
       </main>
 
-      <Footer />
+      <Footer highlightFacebook />
     </div>
   );
 }

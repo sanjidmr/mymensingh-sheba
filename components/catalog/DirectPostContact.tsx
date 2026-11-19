@@ -2,7 +2,7 @@
 
 import { Loader2, MessageCircle, Phone } from 'lucide-react';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
-import { resolveBangladeshContact } from '@/lib/bangladesh-phone';
+import { formatPhone, resolveBangladeshContact } from '@/lib/bangladesh-phone';
 import { trackCtaClick } from '@/lib/site-analytics';
 
 export default function DirectPostContact({
@@ -21,6 +21,7 @@ export default function DirectPostContact({
   category: 'job' | 'buy_sell';
 }) {
   const { callHref, whatsappHref: whatsappUrl } = resolveBangladeshContact(phone, whatsapp);
+  const visiblePhone = phone?.trim();
 
   return (
     <section className="rounded-xl border border-brand-100 bg-white p-3.5 sm:p-4">
@@ -34,6 +35,11 @@ export default function DirectPostContact({
         <p role="alert" className="mt-2 text-sm text-rose-700">{error}</p>
       ) : callHref || whatsappUrl ? (
         <>
+          {visiblePhone && (
+            <p className="mt-2 text-base font-extrabold tabular-nums text-ink-900">
+              {formatPhone(visiblePhone) || visiblePhone}
+            </p>
+          )}
           <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {callHref && (
               <a

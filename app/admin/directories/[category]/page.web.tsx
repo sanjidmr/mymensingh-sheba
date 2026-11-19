@@ -110,7 +110,7 @@ export default async function AdminServiceListingsByCategoryPage({
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
   const { category: rawCategory } = await routeParams;
-  if (!Object.hasOwn(LABELS, rawCategory)) notFound();
+  if (!Object.prototype.hasOwnProperty.call(LABELS, rawCategory)) notFound();
   const category = rawCategory as keyof typeof LABELS;
   const resolvedSearchParams = await searchParams;
   const params = parseListParams(resolvedSearchParams, { pageSize: 20 });

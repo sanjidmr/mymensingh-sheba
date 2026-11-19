@@ -3,6 +3,7 @@ import { Geolocation } from '@capacitor/geolocation';
 import { Haptics, ImpactStyle } from '@capacitor/haptics';
 import { Share } from '@capacitor/share';
 import { isNative } from '@/lib/platform';
+import { safeCopy } from '@/lib/safe';
 
 export async function shareContent(input: {
   title: string;
@@ -28,15 +29,7 @@ export async function shareContent(input: {
     }
   }
 
-  if (typeof navigator !== 'undefined' && navigator.clipboard && url) {
-    try {
-      await navigator.clipboard.writeText(url);
-      return true;
-    } catch {
-      return false;
-    }
-  }
-  return false;
+  return url ? safeCopy(url) : false;
 }
 
 export async function openExternalUrl(href: string): Promise<boolean> {

@@ -224,10 +224,10 @@ export default function MovingRequestWizard({
   }
 
   return (
-    <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-3 rounded-xl border border-slate-200 bg-white p-3 sm:space-y-5 sm:rounded-2xl sm:p-6">
+    <form onSubmit={handleSubmit} noValidate autoComplete="off" className="space-y-4 rounded-xl border border-slate-200 bg-white p-3.5 sm:space-y-5 sm:rounded-2xl sm:p-6">
       {error && <p role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-800">{error}</p>}
 
-      <fieldset className="grid gap-2.5 rounded-xl border border-slate-100 p-3 min-[360px]:grid-cols-2 sm:gap-4 sm:p-5">
+      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-3.5 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">১. পিকআপ ও গন্তব্য</legend>
         <div className="space-y-3">
           <LocationSelectInput value={pickupAreaId} onChange={(value) => { setPickupAreaId(value); clearFieldError('pickupArea'); }} placeholder="পিকআপ এলাকা বেছে নিন" label="পিকআপ এলাকা *" />
@@ -249,7 +249,7 @@ export default function MovingRequestWizard({
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-2.5 rounded-xl border border-slate-100 p-3 min-[360px]:grid-cols-2 sm:gap-4 sm:p-5">
+      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-3.5 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">২. তারিখ, সময় ও মালামাল</legend>
         <div>
           <label htmlFor="moving-date" className={LABEL_CLASS}>শিফটিংয়ের সম্ভাব্য তারিখ *</label>
@@ -271,7 +271,7 @@ export default function MovingRequestWizard({
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-2.5 rounded-xl border border-slate-100 p-3 min-[360px]:grid-cols-2 sm:gap-4 sm:p-5">
+      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-3.5 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">৩. বাসা ও প্রবেশপথের তথ্য</legend>
         <div>
           <label htmlFor="moving-pickup-floor" className={LABEL_CLASS}>পিকআপ বাসার তলা *</label>
@@ -299,7 +299,7 @@ export default function MovingRequestWizard({
         </div>
       </fieldset>
 
-      <fieldset className="grid gap-2.5 rounded-xl border border-slate-100 p-3 min-[360px]:grid-cols-2 sm:gap-4 sm:p-5">
+      <fieldset className="grid gap-4 rounded-xl border border-slate-100 p-3.5 sm:grid-cols-2 sm:gap-4 sm:p-5">
         <legend className="px-2 text-sm font-extrabold text-slate-900">৪. যোগাযোগ ও অতিরিক্ত তথ্য</legend>
         <div>
           <label htmlFor="moving-contact-name" className={LABEL_CLASS}>আপনার নাম *</label>

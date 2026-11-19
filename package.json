@@ -11,6 +11,8 @@
     "postbuild": "node scripts/prepare-standalone.cjs",
     "start": "node .next/standalone/server.js",
     "lint": "eslint .",
+    "test:safe": "node --test lib/safe.test.mjs",
+    "test:phone": "node --test lib/phone.test.mjs",
     "clean": "next clean"
   },
   "dependencies": {
@@ -36,13 +38,20 @@
     "clsx": "^2.1.1",
     "lucide-react": "^0.553.0",
     "motion": "^12.23.24",
-    "next": "^15.4.9",
+    "next": "15.5.28",
     "postcss": "^8.5.6",
     "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "tailwind-merge": "^3.3.1",
     "tus-js-client": "^4.3.1"
   },
+  "browserslist": [
+    "Android >= 7",
+    "iOS >= 12",
+    "Chrome >= 55",
+    "Safari >= 12",
+    "last 2 versions"
+  ],
   "devDependencies": {
     "@capacitor/assets": "^4.0.0",
     "@capacitor/cli": "^8.6.0",

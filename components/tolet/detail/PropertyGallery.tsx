@@ -138,8 +138,9 @@ export function PropertyGallery({ listing, isFavorite, onToggleFavorite }: Prope
               priority={activeIndex === 0}
               loading={activeIndex === 0 ? 'eager' : 'lazy'}
               fetchPriority={activeIndex === 0 ? 'high' : 'auto'}
+              decoding="async"
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 66vw, 620px"
-              className="animate-[mms-fade-in_150ms_ease-out] object-cover"
+              className="animate-[mms-fade-in_150ms_ease-out] bg-white object-contain"
               referrerPolicy="no-referrer"
               onError={() => setFailed((prev) => ({ ...prev, [activeIndex]: true }))}
             />
@@ -249,6 +250,8 @@ export function PropertyGallery({ listing, isFavorite, onToggleFavorite }: Prope
                   fill
                   sizes="80px"
                   className="object-cover"
+                  loading="lazy"
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   onError={() => setFailed((prev) => ({ ...prev, [i]: true }))}
                 />

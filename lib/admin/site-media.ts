@@ -1,3 +1,5 @@
+import { safeUUID } from '@/lib/safe';
+
 export const SITE_IMAGE_TYPES = [
   'image/jpeg',
   'image/png',
@@ -23,7 +25,7 @@ export function siteMediaPath(folder: string, file: File): string {
   }
   const extension = FILE_EXTENSION_BY_TYPE[file.type as (typeof SITE_IMAGE_TYPES)[number]];
   if (!extension) throw new Error('শুধুমাত্র JPG, PNG, WebP বা AVIF ছবি আপলোড করা যাবে।');
-  return `${safeFolder}/${crypto.randomUUID()}.${extension}`;
+  return `${safeFolder}/${safeUUID()}.${extension}`;
 }
 
 export function validateSiteImage(file: File): string | null {

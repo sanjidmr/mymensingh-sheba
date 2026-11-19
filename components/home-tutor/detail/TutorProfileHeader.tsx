@@ -58,7 +58,7 @@ export function TutorProfileHeader({ tutor }: { tutor: HomeTutorProfile }) {
       <div className="overflow-hidden rounded-2xl border border-mist-200 bg-white">
         {/* Portrait — 4:3 on a phone so it does not eat the whole screen, and
             never taller than 22rem so the name stays above the fold. */}
-        <div className="relative aspect-[4/3] w-full overflow-hidden bg-mist-100 sm:aspect-[21/9]">
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-t-2xl bg-white sm:aspect-[21/9]">
           {tutor.profilePhotoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img

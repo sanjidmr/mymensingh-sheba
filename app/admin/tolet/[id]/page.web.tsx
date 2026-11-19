@@ -457,10 +457,10 @@ export default function AdminToletDetailPage({ params }: AdminToletDetailProps) 
                       <BadgeCheck className="w-4 h-4 text-emerald-600" />
                     )}
                   </p>
-                  {listing.ownerPhone && (
+                  {listing.phone && (
                     <p className="text-xs text-slate-500 flex items-center gap-1 mt-0.5">
                       <Phone className="w-3.5 h-3.5" />
-                      {listing.ownerPhone}
+                      {listing.phone}
                     </p>
                   )}
                 </div>

@@ -8,14 +8,15 @@ import { trackToletEvent } from '@/lib/tolet-tracking';
 import { getToletAreaById } from '@/lib/tolet-areas';
 import { cn } from '@/lib/utils';
 import { shareContent } from '@/lib/native-actions';
+import { formatPhone, normalizePhone } from '@/lib/phone';
 
 /**
  * Contact actions for a listing: WhatsApp + direct call.
  *
  * Two contact modes
  * -----------------
- * `direct`  — the signed-in visitor may use the owner's saved number for
- *             WhatsApp or a direct call. The number itself is never rendered.
+ * `direct`  — the signed-in visitor may use the published number for
+ *             WhatsApp or a direct call.
  * `unavailable` — no phone is published. Contact actions are omitted rather
  *                 than rendered as dead links or invented numbers.
  *
@@ -45,17 +46,8 @@ export interface ContactHandlers {
 
 /** Normalises a Bangladeshi phone number to E.164 for `tel:` / `wa.me`. */
 export function normalizeBdPhone(phone: string): string | null {
-  const digits = phone.replace(/[^\d+]/g, '');
-  if (!digits) return null;
-  // 01XXXXXXXXX (11 digits, local) -> +8801XXXXXXXXX
-  if (/^01\d{9}$/.test(digits)) return `+880${digits.slice(1)}`;
-  if (/^8801\d{9}$/.test(digits)) return `+${digits}`;
-  if (/^\+8801\d{9}$/.test(digits)) return digits;
-  if (/^880\d{9,10}$/.test(digits)) return `+${digits}`;
-  if (/^\+?880\d{9,10}$/.test(digits)) return digits.startsWith('+') ? digits : `+${digits}`;
-  // International numbers that are not Bangladeshi are passed through as-is.
-  if (digits.startsWith('+') && digits.length >= 9) return digits;
-  return null;
+  const local = normalizePhone(phone);
+  return local ? `+880${local.slice(1)}` : null;
 }
 
 /** Pre-fills the WhatsApp composer so the tenant does not retype the listing. */
@@ -82,8 +74,8 @@ export function useListingContact({
   source: ToletEventSource;
 }): ContactHandlers {
   const phone = useMemo(
-    () => (listing.ownerPhone ? normalizeBdPhone(listing.ownerPhone) : null),
-    [listing.ownerPhone]
+    () => (listing.phone ? normalizeBdPhone(listing.phone) : null),
+    [listing.phone]
   );
 
   const track = useCallback(
@@ -192,8 +184,7 @@ function ContactButton({
  * ContactActionsPanel — the sidebar contact block on the detail page.
  *
  * Guests receive only a login prompt. The number and both contact actions are
- * rendered only for a signed-in visitor. The saved number is never shown as
- * page text.
+ * rendered only for a signed-in visitor.
  */
 export function ContactActionsPanel({
   listing,
@@ -235,6 +226,9 @@ export function ContactActionsPanel({
         <LoginGateNote listingId={listing.id} className="mt-3" />
       ) : contact.mode === 'direct' ? (
         <div className="mt-3 space-y-2">
+          <p className="text-center text-base font-extrabold tabular-nums text-ink-900">
+            {formatPhone(listing.phone)}
+          </p>
           <ContactButton
             tone="whatsapp"
             icon={MessageCircle}

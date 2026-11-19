@@ -12,6 +12,8 @@
 
 ## Run Locally
 
+Never use browser-only or secure-context APIs directly; use `lib/safe.ts`.
+
 **Prerequisites:** Node.js 20+
 
 1. Install dependencies:

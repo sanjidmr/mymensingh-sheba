@@ -11,6 +11,8 @@ import {
 import { AuthProvider } from '@/lib/auth-context';
 import { QueryCacheRestoringContext } from '@/lib/query-cache-context';
 import { NativeInit } from '@/components/NativeInit';
+import { ClientErrorListeners } from '@/components/ClientErrorListeners';
+import { safeStorage } from '@/lib/safe';
 
 const CACHE_KEY = 'mymensingh-sheba-query-cache-v1';
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
@@ -49,7 +51,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
     const restorationTimer = window.setTimeout(() => setIsRestoring(false), 0);
 
     try {
-      const saved = window.localStorage.getItem(CACHE_KEY);
+      const saved = safeStorage.get(CACHE_KEY);
       if (saved && cacheSizeBytes(saved) <= MAX_CACHE_BYTES) {
         const persisted = JSON.parse(saved) as PersistedQueryCache;
         if (
@@ -65,7 +67,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
           };
           hydrate(queryClient, publicState);
         } else {
-          window.localStorage.removeItem(CACHE_KEY);
+          safeStorage.remove(CACHE_KEY);
         }
       }
     } catch (error) {
@@ -98,7 +100,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
               state,
             } satisfies PersistedQueryCache);
           }
-          window.localStorage.setItem(CACHE_KEY, serialized);
+          safeStorage.set(CACHE_KEY, serialized);
         } catch (error) {
           console.warn('Public query cache could not be saved.', error);
         }
@@ -118,6 +120,7 @@ export function ClientProviders({ children }: { children: React.ReactNode }) {
         <AuthProvider>
           {children}
           <NativeInit />
+          <ClientErrorListeners />
         </AuthProvider>
       </QueryCacheRestoringContext.Provider>
     </QueryClientProvider>

@@ -1,6 +1,7 @@
 import { PushNotifications } from '@capacitor/push-notifications';
 import { createClient } from '@/lib/supabase/client';
 import { isNative } from '@/lib/platform';
+import { safeStorage } from '@/lib/safe';
 
 const DEVICE_TOKEN_KEY = 'mms-native-device-token-v1';
 
@@ -14,7 +15,7 @@ export async function saveDeviceToken(userId: string, token: string): Promise<bo
       { onConflict: 'token' }
     );
     if (error) return false;
-    window.localStorage.setItem(DEVICE_TOKEN_KEY, token);
+    safeStorage.set(DEVICE_TOKEN_KEY, token);
     return true;
   } catch {
     return false;
@@ -26,11 +27,11 @@ export async function removeDeviceToken(userId: string): Promise<void> {
   const client = createClient();
   let token = '';
   try {
-    token = window.localStorage.getItem(DEVICE_TOKEN_KEY) ?? '';
+    token = safeStorage.get(DEVICE_TOKEN_KEY) ?? '';
     if (token && client) {
       await client.from('device_tokens').delete().eq('user_id', userId).eq('token', token);
     }
-    window.localStorage.removeItem(DEVICE_TOKEN_KEY);
+    safeStorage.remove(DEVICE_TOKEN_KEY);
     await PushNotifications.unregister();
   } catch {
     // Removing a token is best-effort so an offline logout can still complete.

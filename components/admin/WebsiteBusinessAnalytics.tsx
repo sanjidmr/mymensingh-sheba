@@ -40,7 +40,7 @@ const LABELS: Record<string, string> = {
 };
 
 function businessKeyLabel(key: string): string {
-  return key.split(':').map((part) => LABELS[part] ?? part.replaceAll('_', ' ')).join(' · ');
+  return key.split(':').map((part) => LABELS[part] ?? part.replace(/_/g, ' ')).join(' · ');
 }
 
 function BusinessMetricList({
@@ -160,7 +160,7 @@ export default function WebsiteBusinessAnalytics({
               <tbody>
                 {data.finance.byService.map((row) => (
                   <tr key={row.key} className="border-b border-admin-border last:border-0">
-                    <td className="py-2.5 pr-3">{LABELS[row.key] ?? row.key.replaceAll('_', ' ')}</td>
+                    <td className="py-2.5 pr-3">{LABELS[row.key] ?? row.key.replace(/_/g, ' ')}</td>
                     <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.income)}</td>
                     <td className="py-2.5 pr-3 text-right tabular-nums">{money(row.due)}</td>
                     <td className="py-2.5 text-right tabular-nums">

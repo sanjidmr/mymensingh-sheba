@@ -5,6 +5,7 @@
 'use client';
 
 import { isSupabaseConfigured, createClient } from './supabase/client';
+import { safeUUID } from './safe';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import type {
   ToletListing,
@@ -34,6 +35,7 @@ import { mockTrackListingMeta } from './tolet-tracking';
 import { DEMO_TOLET_LISTINGS, getDemoListing } from './tolet-demo-data';
 import { searchToletAreas } from './tolet-areas';
 import { apiFetch } from './api-fetch';
+import { normalizePhone } from './phone';
 
 export const toletStorageConfigured = isSupabaseConfigured;
 const LISTING_UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -64,7 +66,8 @@ function mapListingRow(row: RawListingRow): ToletListing {
     ownerName:
       (owner?.full_name as string) || (isDemo ? 'নমুনা মালিক' : '') || (c.ownerName as string) || '',
     ownerVerified: Boolean(owner?.is_verified ?? c.ownerVerified ?? false),
-    ownerPhone: (owner?.phone as string) || (c.ownerPhone as string) || undefined,
+    phone: (c.contactPhone as string) || (owner?.phone as string) || undefined,
+    needsPhone: Boolean(c.needsPhone),
     title: (c.title as string) || '',
     propertyType: (c.propertyType as ToletListing['propertyType']) || 'flat',
     areaId: (c.areaId as string) || '',
@@ -108,8 +111,13 @@ async function attachApprovedListingPhones(
   client: NonNullable<ReturnType<typeof createClient>>,
   listings: ToletListing[]
 ): Promise<ToletListing[]> {
+  const { data: authData } = await client.auth.getUser();
+  const viewerId = authData.user?.id;
   const ids = listings
-    .filter((listing) => listing.status === 'approved' && LISTING_UUID_PATTERN.test(listing.id))
+    .filter((listing) =>
+      (listing.status === 'approved' || listing.ownerId === viewerId) &&
+      LISTING_UUID_PATTERN.test(listing.id)
+    )
     .map((listing) => listing.id);
   if (ids.length === 0) return listings;
 
@@ -129,9 +137,14 @@ async function attachApprovedListingPhones(
       (row: { listing_id: string; phone: string }): [string, string] => [row.listing_id, row.phone]
     )
   );
+  for (const listing of listings) {
+    if (listing.status === 'approved' && !listing.needsPhone && !phoneByListing.has(listing.id)) {
+      console.error('Published To-Let listing has no valid contact phone.', { listingId: listing.id });
+    }
+  }
   return listings.map((listing) => ({
     ...listing,
-    ownerPhone: phoneByListing.get(listing.id) || undefined,
+    phone: phoneByListing.get(listing.id) || listing.phone,
   }));
 }
 
@@ -192,7 +205,7 @@ export async function fetchPublicListings(): Promise<ToletListing[]> {
   if (!client) return [];
   const { data, error } = await client
     .from('tolet_listings')
-    .select('*, owner:profiles!tolet_listings_owner_id_fkey(full_name, is_verified)')
+    .select('id, owner_id, title, property_type, area_id, specific_address, rent_price, bedrooms, bathrooms, balconies, has_drawing_room, has_dining_room, total_rooms, floor, available_from, facilities, unavailable_facilities, description, photos, status, rejection_reason, is_verified, created_at, updated_at, published_at, service_code, needs_phone, owner:profiles!tolet_listings_owner_id_fkey(full_name, is_verified)')
     .eq('status', 'approved')
     .order('created_at', { ascending: false });
   if (error) return [];
@@ -217,20 +230,12 @@ export async function fetchListingById(
   if (!client) return null;
   const { data, error } = await client
     .from('tolet_listings')
-    .select('*, owner:profiles!tolet_listings_owner_id_fkey(full_name, is_verified)')
+    .select('id, owner_id, title, property_type, area_id, specific_address, rent_price, bedrooms, bathrooms, balconies, has_drawing_room, has_dining_room, total_rooms, floor, available_from, facilities, unavailable_facilities, description, photos, status, rejection_reason, is_verified, created_at, updated_at, published_at, service_code, needs_phone, owner:profiles!tolet_listings_owner_id_fkey(full_name, is_verified)')
     .eq('id', id)
     .maybeSingle();
   if (error || !data) return null;
   let listing = mapListingRow(data as RawListingRow);
-  if (
-    options.includeContact &&
-    listing.status === 'approved' &&
-    LISTING_UUID_PATTERN.test(listing.id)
-  ) {
-    const { data: authData, error: authError } = await client.auth.getUser();
-    if (authError || !authData.user) {
-      return listing;
-    }
+  if (options.includeContact && LISTING_UUID_PATTERN.test(listing.id)) {
     [listing] = await attachApprovedListingPhones(client, [listing]);
   }
   rememberListingMeta(listing);
@@ -722,7 +727,11 @@ export async function adminUpdateListing(
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
+  if (patch.phone !== undefined && !normalizePhone(patch.phone)) {
+    return { success: false, error: 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি মোবাইল নম্বর দিন।' };
+  }
   const payload = toSnakeObject({
+    ...(patch.phone !== undefined ? { contactPhone: normalizePhone(patch.phone) } : {}),
     ...(patch.title !== undefined ? { title: patch.title } : {}),
     ...(patch.propertyType !== undefined ? { propertyType: patch.propertyType } : {}),
     ...(patch.areaId !== undefined ? { areaId: patch.areaId } : {}),
@@ -730,6 +739,9 @@ export async function adminUpdateListing(
     ...(patch.rentPrice !== undefined ? { rentPrice: patch.rentPrice } : {}),
     ...(patch.description !== undefined ? { description: patch.description } : {}),
     ...(patch.photos !== undefined ? { photos: patch.photos } : {}),
+    ...(patch.phone !== undefined
+      ? { contact_phone: normalizePhone(patch.phone) }
+      : {}),
     ...(patch.facilities !== undefined ? { facilities: patch.facilities } : {}),
     ...(patch.unavailableFacilities !== undefined
       ? { unavailableFacilities: patch.unavailableFacilities }
@@ -786,7 +798,7 @@ export async function createListingReport(input: {
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const reportId = crypto.randomUUID();
+  const reportId = safeUUID();
   const { error } = await client.from('listing_reports').insert({
     id: reportId,
     listing_id: input.listingId,

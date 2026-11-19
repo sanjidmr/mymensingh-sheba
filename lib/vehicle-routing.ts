@@ -1,3 +1,5 @@
+import { withTimeoutSignal } from './safe';
+
 export interface VehicleRouteEstimate {
   distanceKm: number;
   pickupResolved: string;
@@ -22,14 +24,14 @@ async function geocode(place: string): Promise<GeocodeResult> {
   url.searchParams.set('limit', '1');
   url.searchParams.set('countrycodes', 'bd');
   url.searchParams.set('q', place);
-  const response = await fetch(url, {
+  const response = await withTimeoutSignal(8000, (signal) => fetch(url, {
     headers: {
       'Accept-Language': 'bn,en',
       'User-Agent': 'MymensinghSheba/1.0 (https://mymensinghsheba.com/)',
     },
-    signal: AbortSignal.timeout(8000),
+    signal,
     cache: 'no-store',
-  });
+  }));
   if (!response.ok) throw new Error('স্থান খোঁজার সেবা এখন সাড়া দিচ্ছে না। পরে চেষ্টা করুন।');
   const results = await response.json() as GeocodeResult[];
   const result = results[0];
@@ -62,11 +64,11 @@ export async function calculateVehicleRoute(
   routeUrl.searchParams.set('overview', 'false');
   routeUrl.searchParams.set('alternatives', 'false');
   routeUrl.searchParams.set('steps', 'false');
-  const response = await fetch(routeUrl, {
+  const response = await withTimeoutSignal(10000, (signal) => fetch(routeUrl, {
     headers: { 'User-Agent': 'MymensinghSheba/1.0 (https://mymensinghsheba.com/)' },
-    signal: AbortSignal.timeout(10000),
+    signal,
     cache: 'no-store',
-  });
+  }));
   if (!response.ok) throw new Error('সড়কপথের দূরত্ব সেবা এখন সাড়া দিচ্ছে না। আবার চেষ্টা করুন বা ম্যানুয়াল দূরত্ব দিন।');
   const result = await response.json() as OsrmRouteResponse;
   const meters = result.routes?.[0]?.distance;

@@ -308,7 +308,7 @@ export default function HomeTutorSetupPage() {
           <span className="text-ink-800 font-semibold">গৃহ শিক্ষক (Home Tutor) প্রোফাইল সেটআপ</span>
         </div>
 
-        <div className="rounded-xl border border-brand-100 bg-white p-3 sm:rounded-2xl sm:p-5">
+        <div className="tutor-profile-setup rounded-xl border border-brand-100 bg-white p-3 sm:rounded-2xl sm:p-5">
           <div className="mb-4 flex items-center gap-3 border-b border-brand-100 pb-4 sm:mb-5 sm:pb-5">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-100 text-brand-700">
               <GraduationCap className="h-5 w-5" />
@@ -731,27 +731,27 @@ export default function HomeTutorSetupPage() {
             </div>
             </SectionCard>
 
-            <div className="form-sticky-submit flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <div className="form-sticky-submit flex flex-col-reverse items-stretch gap-2.5 sm:flex-row sm:items-center sm:justify-end">
               {homeTutorProfile?.status !== 'approved' && (
                 <button
                   type="button"
                   onClick={() => void saveProfile('draft')}
                   disabled={loading || photoUploading}
-                  className="px-4 py-2.5 rounded-xl border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-50 disabled:opacity-50"
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-brand-200 px-5 py-3 text-sm font-semibold text-brand-800 transition-colors hover:bg-brand-50 disabled:opacity-50 sm:w-auto"
                 >
                   {loading ? 'সংরক্ষণ হচ্ছে...' : 'জমা দেওয়া হয়নি সংরক্ষণ'}
                 </button>
               )}
               <Link
                 href="/profile"
-                className="px-4 py-2.5 rounded-xl border border-brand-100 text-ink-700 text-xs font-medium hover:bg-mist-50"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-brand-200 px-5 py-3 text-sm font-semibold text-ink-700 transition-colors hover:bg-mist-50 sm:w-auto"
               >
                 বাতিল করুন
               </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="px-6 py-2.5 rounded-xl bg-brand-700 hover:bg-brand-800 text-white text-xs font-semibold  flex items-center gap-1.5 cursor-pointer"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-brand-700 px-5 py-3 text-center text-sm font-bold leading-snug text-white transition-colors hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 <span>
                   {loading

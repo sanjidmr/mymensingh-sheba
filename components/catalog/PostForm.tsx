@@ -12,7 +12,7 @@
  * Validation is done here rather than by the database alone, because the error
  * has to be shown against the field the reader got wrong.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Briefcase, Eye, FileText, ImagePlus, Loader2, MapPin, Phone, ShoppingBag, Save, Trash2, X } from 'lucide-react';
@@ -32,9 +32,10 @@ import {
   type CommunityPostDraft,
 } from '@/lib/catalog-service';
 import { createAreaSource, getAllMCCAreas } from '@/lib/locations';
+import { safeStorage, safeUUID } from '@/lib/safe';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import SectionCard from '@/components/forms/SectionCard';
-import { normalizeBangladeshMobile } from '@/lib/bangladesh-phone';
+import { isValidBDPhone, normalizePhone } from '@/lib/phone';
 import { isAbortError, isTimeoutError, REQUEST_TIMEOUT_MESSAGE } from '@/lib/fetch-with-timeout';
 import {
   JOB_EXPERIENCE,
@@ -190,8 +191,8 @@ function seedFrom(post: CommunityPost) {
       experience: '',
       deadline: post.deadline ?? '',
       condition: post.conditionLabel ?? '',
-      phone: post.kind === 'job' ? post.authorPhone ?? '' : '',
-      sellerPhone: post.kind === 'buy_sell' ? post.authorPhone ?? '' : '',
+      phone: post.kind === 'job' ? post.phone ?? '' : '',
+      sellerPhone: post.kind === 'buy_sell' ? post.phone ?? '' : '',
       whatsapp: post.whatsappNumber ?? '',
     },
     tags: post.tags ?? [],
@@ -271,10 +272,11 @@ export default function PostForm({
     latestDraftRef.current = { values, tags, photos };
   }, [photos, tags, values]);
 
-  async function uploadPendingPhotos(
+  const uploadPendingPhotos = useCallback(async (
     slots: PhotoSlot[],
-    onUploaded?: () => void
-  ): Promise<PhotoSlot[]> {
+    onUploaded?: () => void,
+    continueOnFailure = false
+  ): Promise<PhotoSlot[]> => {
     const hasPending = slots.some((photo) => photo.file);
     const authorId = hasPending ? userId ?? null : null;
     if (hasPending && !authorId) {
@@ -288,8 +290,15 @@ export default function PostForm({
         continue;
       }
       if (!authorId) throw new Error('ছবি সংরক্ষণ করতে লগইন করুন।');
-      const result = await uploadPostImage(authorId, photo.file);
-      if (!result.success) throw new Error('ছবি সংরক্ষণ করা যায়নি।');
+      let result: Awaited<ReturnType<typeof uploadPostImage>>;
+      try {
+        result = await uploadPostImage(authorId, photo.file);
+        if (!result.success) throw new Error('ছবি সংরক্ষণ করা যায়নি।');
+      } catch (error) {
+        if (!continueOnFailure) throw error;
+        console.error('Job photo upload failed; submitting the post without this photo.', error);
+        continue;
+      }
       persisted.push({ ...photo, file: null, url: result.data });
       onUploaded?.();
       setPhotos((current) => current.map((item) =>
@@ -297,7 +306,7 @@ export default function PostForm({
       ));
     }
     return persisted;
-  }
+  }, [userId]);
 
   /**
    * Object URLs are released only once nothing points at them any more.
@@ -344,7 +353,7 @@ export default function PostForm({
             savedAt = result.data.updatedAt;
           }
         } else {
-          const raw = window.localStorage.getItem(draftKey);
+          const raw = safeStorage.get(draftKey);
           if (raw) parsed = JSON.parse(raw);
         }
         if (parsed !== null && isPostDraft(parsed)) {
@@ -404,7 +413,7 @@ export default function PostForm({
           if (userId) {
             await deleteCommunityPostDraft(kind);
           } else {
-            window.localStorage.removeItem(draftKey);
+            safeStorage.remove(draftKey);
           }
           setDraftSavedAt(null);
           lastSavedDraftRef.current = signature;
@@ -431,7 +440,7 @@ export default function PostForm({
             console.warn('Post draft autosave skipped', result.error);
           }
         } else {
-          window.localStorage.setItem(draftKey, JSON.stringify(draft));
+          safeStorage.set(draftKey, JSON.stringify(draft));
           setDraftSavedAt(savedAt);
         }
         lastSavedDraftRef.current = draftSignature(
@@ -458,11 +467,12 @@ export default function PostForm({
       }
     }, 700);
     return () => window.clearTimeout(timeout);
-  }, [autosaveRevision, draftBusy, draftKey, draftReady, editing, kind, photos, submitting, tags, userId, values]);
+  }, [autosaveRevision, draftBusy, draftKey, draftReady, editing, kind, photos, submitting, tags, uploadPendingPhotos, userId, values]);
 
   function set<K extends keyof FormValues>(key: K, value: FormValues[K]) {
     hasInteractedRef.current = true;
     setValues((prev) => ({ ...prev, [key]: value }));
+    setFormError('');
     setErrors((prev) => ({ ...prev, [key]: undefined }));
   }
 
@@ -505,12 +515,12 @@ export default function PostForm({
       // The seller's number is required here for the same reason: a listing a
       // buyer cannot call is not a listing. The shared normalizer validates
       // local and international Bangladeshi mobile formats.
-      const seller = normalizeBangladeshMobile(values.sellerPhone);
+      const seller = normalizePhone(values.sellerPhone);
       if (!seller) {
-        next.sellerPhone = 'সঠিক মোবাইল নম্বর দিন (যেমন ০১৭১২৩৪৫৬৭৮)।';
+        next.sellerPhone = 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি নম্বর দিন।';
       }
       if (values.whatsapp.trim()) {
-        const wa = normalizeBangladeshMobile(values.whatsapp);
+        const wa = normalizePhone(values.whatsapp);
         if (!wa) {
           next.whatsapp = 'হোয়াটসঅ্যাপ নম্বরটি সঠিক নয়।';
         }
@@ -537,9 +547,9 @@ export default function PostForm({
     }
 
     if (phoneRequired) {
-      const phone = normalizeBangladeshMobile(values.phone);
+      const phone = normalizePhone(values.phone);
       if (!phone) {
-        next.phone = 'সঠিক মোবাইল নম্বর দিন (যেমন ০১৭১২৩৪৫৬৭৮)।';
+        next.phone = 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি নম্বর দিন।';
       }
     }
 
@@ -555,6 +565,7 @@ export default function PostForm({
     const found = validate();
     setErrors(found);
     if (Object.keys(found).length > 0) {
+      if (found.phone) setFormError(found.phone);
       // Move focus to the first problem so a keyboard user is not left hunting.
       const firstKey = Object.keys(found)[0];
       const el = document.getElementById(`field-${firstKey}`);
@@ -567,16 +578,20 @@ export default function PostForm({
     try {
       setUploadedCount(0);
       const pendingCount = photos.filter((slot) => slot.file).length;
-      const persistedPhotos = await uploadPendingPhotos(photos, () => setUploadedCount((n) => n + 1));
+      const persistedPhotos = await uploadPendingPhotos(
+        photos,
+        () => setUploadedCount((n) => n + 1),
+        kind === 'job'
+      );
       const urls = persistedPhotos.map((photo) => photo.url);
       if (pendingCount === 0) setUploadedCount(0);
       const contactPhone = kind === 'buy_sell'
-        ? normalizeBangladeshMobile(values.sellerPhone)
+        ? normalizePhone(values.sellerPhone)
         : kind === 'job'
-          ? normalizeBangladeshMobile(values.phone)
+          ? normalizePhone(values.phone)
           : null;
       const whatsappPhone = kind === 'buy_sell' && values.whatsapp.trim()
-        ? normalizeBangladeshMobile(values.whatsapp)
+        ? normalizePhone(values.whatsapp)
         : contactPhone;
 
       const allTags: string[] = [];
@@ -600,7 +615,7 @@ export default function PostForm({
         areaId: values.areaId || undefined,
         tags: allTags,
         authorName: editing?.authorName,
-        authorPhone: contactPhone ?? (kind === 'news' ? editing?.authorPhone : undefined),
+        phone: contactPhone ?? (kind === 'news' ? editing?.phone : undefined),
         whatsappNumber:
           kind === 'buy_sell' || kind === 'job' ? whatsappPhone : undefined,
         status: 'pending' as const,
@@ -644,7 +659,7 @@ export default function PostForm({
           draftCleanupFailed = !cleanup.success;
         } else {
           try {
-            window.localStorage.removeItem(draftKey);
+            safeStorage.remove(draftKey);
           } catch {
             draftCleanupFailed = true;
           }
@@ -739,7 +754,7 @@ export default function PostForm({
       const previewUrl = URL.createObjectURL(file);
       objectUrlsRef.current.add(previewUrl);
       accepted.push({
-        key: `local-${file.name}-${file.size}-${crypto.randomUUID()}`,
+        key: `local-${file.name}-${file.size}-${safeUUID()}`,
         file,
         url: previewUrl,
       });
@@ -809,7 +824,7 @@ export default function PostForm({
         setDraftSavedAt(result.data);
         setDraftNotice('জমা দেওয়া হয়নি হিসেবে ছবিসহ সংরক্ষিত হয়েছে।');
       } else {
-        window.localStorage.setItem(draftKey, JSON.stringify(draft));
+        safeStorage.set(draftKey, JSON.stringify(draft));
         setDraftSavedAt(savedAt);
         setDraftNotice(
           photos.some((photo) => photo.file)
@@ -872,7 +887,7 @@ export default function PostForm({
       if (userId) {
         await deleteCommunityPostDraft(kind);
       } else {
-        window.localStorage.removeItem(draftKey);
+        safeStorage.remove(draftKey);
       }
     } catch {
       // The draft is gone from this screen either way; a retry is not useful to
@@ -1233,7 +1248,8 @@ export default function PostForm({
 
               {/* Seller contact. Required, because a marketplace listing whose
                   buyer cannot call the seller is not a listing. The number goes
-                  to `author_phone`, which the public page reads back only
+                  to the shared `contact_phone` field (`author_phone` remains a
+                  synchronized legacy column), which the public page reads back only
                   through the approved-post contact RPC — see
                   `lib/catalog-service.ts`. This field is separate from the
                   required applicant contact on job posts. */}
@@ -1399,7 +1415,6 @@ export default function PostForm({
               id="phone"
               label={kind === 'job' ? 'যোগাযোগের মোবাইল নম্বর' : 'আপনার মোবাইল নম্বর'}
               required
-              error={errors.phone}
               hint={kind === 'job'
                 ? 'অনুমোদনের পর চাকরিপ্রার্থীরা সরাসরি যোগাযোগ করতে পারবেন'
                 : 'অ্যাডমিন যোগাযোগ করতে ব্যবহার করবেন, প্রকাশ করা হবে না'}
@@ -1410,8 +1425,8 @@ export default function PostForm({
                 onChange={(e) => set('phone', e.target.value)}
                 inputMode="tel"
                 required
-                aria-invalid={Boolean(errors.phone)}
-                className={inputClass(Boolean(errors.phone))}
+                aria-invalid={Boolean(errors.phone || !isValidBDPhone(values.phone))}
+                className={inputClass(Boolean(errors.phone || !isValidBDPhone(values.phone)))}
               />
             </Field>
           )}
@@ -1479,7 +1494,11 @@ export default function PostForm({
             </button>
             <button
               type="submit"
-              disabled={submitting || deleting || draftBusy || autosaving}
+              disabled={
+                submitting || deleting || draftBusy || autosaving ||
+                (phoneRequired && !isValidBDPhone(values.phone)) ||
+                (kind === 'buy_sell' && !isValidBDPhone(values.sellerPhone))
+              }
               className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-lg bg-brand-700 px-5 text-sm font-extrabold text-white transition-colors hover:bg-brand-800 disabled:opacity-60 ${LIGHT_FOCUS}`}
             >
               {submitting && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

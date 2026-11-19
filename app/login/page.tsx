@@ -14,6 +14,7 @@ import { isSafeInternalPath, resolveAuthRedirect, roleHome } from '@/lib/auth-ro
 import { isOnboardingComplete } from '@/lib/onboarding';
 import SplashScreen from '@/components/site/SplashScreen';
 import { isAbortError, isTimeoutError, REQUEST_TIMEOUT_MESSAGE } from '@/lib/fetch-with-timeout';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const AUTH_CALLBACK_ERROR =
   'লগইন যাচাই করা যায়নি। লিংকটি মেয়াদোত্তীর্ণ হতে পারে—আবার চেষ্টা করুন।';
@@ -218,11 +219,13 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-mist-50">
-      <Navbar />
-      <Suspense fallback={<SplashScreen />}>
-        <LoginForm />
-      </Suspense>
-    </div>
+    <ErrorBoundary>
+      <div className="flex min-h-screen flex-col bg-mist-50">
+        <Navbar />
+        <Suspense fallback={<SplashScreen />}>
+          <LoginForm />
+        </Suspense>
+      </div>
+    </ErrorBoundary>
   );
 }

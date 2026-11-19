@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import type { Metadata } from 'next';
 import VehicleBookingPageClient from '@/components/vehicle-booking/VehicleBookingPageClient';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 type BookingService = 'car' | 'auto' | 'cng';
 
@@ -22,5 +23,9 @@ export default async function VehicleBookingPage({
   const { service } = await params;
   if (service !== 'car' && service !== 'auto' && service !== 'cng') notFound();
 
-  return <VehicleBookingPageClient service={service} />;
+  return (
+    <ErrorBoundary>
+      <VehicleBookingPageClient service={service} />
+    </ErrorBoundary>
+  );
 }

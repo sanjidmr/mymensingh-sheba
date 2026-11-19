@@ -488,7 +488,7 @@ export const DEMO_TOLET_LISTINGS: ToletDemoListing[] = SEEDS.map((seed, idx) => 
     id: seed.id,
     ownerId: seed.ownerId,
     ownerName: seed.ownerMeta.roleLabelBn,
-    ownerPhone: undefined,
+    phone: undefined,
     ownerVerified: false,
     ownerMeta: seed.ownerMeta,
     title: seed.title,

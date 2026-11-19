@@ -40,7 +40,7 @@ export default function CitySectionNav() {
     const nodes = SECTIONS.map((section) => document.getElementById(section.id)).filter(
       (node): node is HTMLElement => Boolean(node),
     );
-    if (!nodes.length) return;
+    if (!nodes.length || typeof window.IntersectionObserver !== 'function') return;
 
     const visible = new Map<string, number>();
     const observer = new IntersectionObserver(

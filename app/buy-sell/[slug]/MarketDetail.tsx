@@ -57,8 +57,10 @@ import {
   type CommunityPost,
 } from '@/lib/catalog-types';
 import { getAreaById } from '@/lib/locations';
+import { safeCopy } from '@/lib/safe';
+import { useClientNow } from '@/hooks/use-client-now';
 
-type Contact = { authorName?: string; authorPhone?: string; whatsappNumber?: string } | null;
+type Contact = { authorName?: string; phone?: string; whatsappNumber?: string } | null;
 type Phase = 'idle' | 'loading' | 'ready' | 'none';
 
 /** The condition band, resolved back to Bangla. The label wins when present. */
@@ -81,7 +83,7 @@ export default function MarketDetail({ slug }: { slug: string }) {
   const [guestFavorite, setGuestFavorite] = useState(false);
   const [favoriteError, setFavoriteError] = useState('');
   const [shareState, setShareState] = useState<'idle' | 'copied'>('idle');
-  const [now] = useState(() => Date.now());
+  const now = useClientNow(0);
 
   useEffect(() => {
     let active = true;
@@ -93,11 +95,11 @@ export default function MarketDetail({ slug }: { slug: string }) {
         setContact(data
           ? {
               authorName: data.authorName,
-              authorPhone: data.authorPhone,
+              phone: data.phone,
               whatsappNumber: data.whatsappNumber,
             }
           : null);
-        setPhase(data?.authorPhone || data?.whatsappNumber ? 'ready' : 'none');
+        setPhase(data?.phone || data?.whatsappNumber ? 'ready' : 'none');
       } catch (cause) {
         if (active) {
           setLoadError(cause instanceof Error ? cause.message : 'বিজ্ঞাপন লোড করা যায়নি।');
@@ -187,11 +189,10 @@ export default function MarketDetail({ slug }: { slug: string }) {
         // Dismissed, or the OS sheet failed. Fall through to the clipboard.
       }
     }
-    try {
-      await navigator.clipboard.writeText(`${text}\n${url}`);
+    if (await safeCopy(`${text}\n${url}`)) {
       setShareState('copied');
       window.setTimeout(() => setShareState('idle'), 2000);
-    } catch {
+    } else {
       setShareState('idle');
     }
   }, [post]);

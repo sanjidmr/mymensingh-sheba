@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createServerSideClient } from '@/lib/supabase/server';
 import { readBoundedRequestBody } from '@/lib/bounded-request-body';
+import { normalizePhone } from '@/lib/phone';
 
 export const runtime = 'nodejs';
 
@@ -44,6 +45,7 @@ function normalizeListingInput(value: unknown, mode: 'draft' | 'submit'): JsonRe
   const facilities = stringArray(value.facilities ?? [], 100, 120);
   const unavailableFacilities = stringArray(value.unavailableFacilities ?? [], 100, 120);
   const photos = stringArray(value.photos ?? [], 20, 2_000);
+  const phone = typeof value.phone === 'string' ? normalizePhone(value.phone) : null;
   const rentPrice = value.rentPrice;
   const bedrooms = value.bedrooms;
   const bathrooms = value.bathrooms;
@@ -58,7 +60,7 @@ function normalizeListingInput(value: unknown, mode: 'draft' | 'submit'): JsonRe
     areaId === null || specificAddress === null || description === null ||
     floor === null && value.floor !== undefined ||
     availableFrom === null && value.availableFrom !== undefined ||
-    !facilities || !unavailableFacilities || !photos ||
+    !facilities || !unavailableFacilities || !photos || !phone ||
     !Number.isInteger(rentPrice) || Number(rentPrice) < 0 || Number(rentPrice) > 500_000 ||
     !Number.isInteger(bedrooms) || Number(bedrooms) < 0 || Number(bedrooms) > 100 ||
     !Number.isInteger(bathrooms) || Number(bathrooms) < 0 || Number(bathrooms) > 100 ||
@@ -82,6 +84,8 @@ function normalizeListingInput(value: unknown, mode: 'draft' | 'submit'): JsonRe
   }
 
   return {
+    contact_phone: phone,
+    needs_phone: false,
     title,
     property_type: propertyType,
     area_id: areaId,
@@ -155,6 +159,15 @@ export async function POST(request: Request) {
   if (payload instanceof NextResponse) return payload;
   const ownerId = typeof payload.owner_id === 'string' ? payload.owner_id : '';
   const mode = payload.mode === 'draft' ? 'draft' : payload.mode === 'submit' ? 'submit' : null;
+  const phone = isRecord(payload.input) && typeof payload.input.phone === 'string'
+    ? normalizePhone(payload.input.phone)
+    : null;
+  if (!phone) {
+    return NextResponse.json(
+      { error: 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি মোবাইল নম্বর দিন।' },
+      { status: 400 }
+    );
+  }
   const input = normalizeListingInput(payload.input, mode ?? 'submit');
   if (!ownerId || !mode || !input) {
     return NextResponse.json({ error: 'বিজ্ঞাপনের তথ্য সঠিকভাবে পূরণ করুন।' }, { status: 400 });
@@ -189,6 +202,15 @@ export async function PATCH(request: Request) {
   const ownerId = typeof payload.owner_id === 'string' ? payload.owner_id : '';
   const listingId = typeof payload.listing_id === 'string' ? payload.listing_id : '';
   const mode = payload.mode === 'draft' ? 'draft' : payload.mode === 'submit' ? 'submit' : null;
+  const phone = isRecord(payload.input) && typeof payload.input.phone === 'string'
+    ? normalizePhone(payload.input.phone)
+    : null;
+  if (!phone) {
+    return NextResponse.json(
+      { error: 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি মোবাইল নম্বর দিন।' },
+      { status: 400 }
+    );
+  }
   const input = normalizeListingInput(payload.input, mode ?? 'submit');
   if (
     !ownerId ||

@@ -32,7 +32,7 @@ export default function EditToletListingPage({ params }: EditToletListingPagePro
     if (!user) return;
     let active = true;
     (async () => {
-      const data = await fetchListingById(id);
+      const data = await fetchListingById(id, { includeContact: true });
       if (!active) return;
       if (!data || data.ownerId !== user.id) {
         setError('এই বিজ্ঞাপনটি সম্পাদনার অনুমতি নেই বা পাওয়া যায়নি।');

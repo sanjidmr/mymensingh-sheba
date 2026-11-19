@@ -369,27 +369,27 @@ export default function BloodDonorSetupPage() {
               </label>
             </div>
 
-            <div className="form-sticky-submit flex flex-col-reverse items-stretch gap-2 sm:flex-row sm:items-center sm:justify-end">
+            <div className="form-sticky-submit flex flex-col-reverse items-stretch gap-2.5 sm:flex-row sm:items-center sm:justify-end">
               {bloodDonorProfile?.status !== 'approved' && (
                 <button
                   type="button"
                   onClick={() => void saveProfile('draft')}
                   disabled={loading}
-                  className="px-4 py-2.5 rounded-xl border border-brand-200 text-brand-800 text-xs font-semibold hover:bg-brand-50 disabled:opacity-50"
+                  className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-brand-200 px-5 py-3 text-sm font-semibold text-brand-800 transition-colors hover:bg-brand-50 disabled:opacity-50 sm:w-auto"
                 >
                   {loading ? 'সংরক্ষণ হচ্ছে...' : 'জমা দেওয়া হয়নি সংরক্ষণ'}
                 </button>
               )}
               <Link
                 href="/profile"
-                className="px-4 py-2.5 rounded-xl border border-brand-100 text-ink-700 text-xs font-medium hover:bg-mist-50"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-xl border border-brand-200 px-5 py-3 text-sm font-semibold text-ink-700 transition-colors hover:bg-mist-50 sm:w-auto"
               >
                 বাতিল করুন
               </Link>
               <button
                 type="submit"
                 disabled={loading || !agreePolicy}
-                className="px-6 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-500 text-white text-xs font-semibold  flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+                className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-rose-600 px-5 py-3 text-center text-sm font-bold leading-snug text-white transition-colors hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
               >
                 <span>
                   {loading

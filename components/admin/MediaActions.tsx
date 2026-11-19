@@ -8,6 +8,7 @@ import { deleteMedia, renameMedia } from '@/app/admin/actions/media';
 import { uploadSiteImage } from '@/lib/admin/upload-site-image';
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog';
 import { useToast } from '@/components/admin/ToastProvider';
+import { safeCopy } from '@/lib/safe';
 
 export default function MediaActions({ item }: { item: AdminMediaItem }) {
   const router = useRouter();
@@ -20,14 +21,13 @@ export default function MediaActions({ item }: { item: AdminMediaItem }) {
   const [name, setName] = useState(item.display_name);
 
   const copyUrl = async () => {
-    try {
-      await navigator.clipboard.writeText(item.public_url);
+    if (await safeCopy(item.public_url)) {
       notify('success', 'Public URL কপি হয়েছে');
-    } catch (error) {
+    } else {
       notify(
         'error',
         'URL কপি করা যায়নি',
-        error instanceof Error ? error.message : 'ব্রাউজার ক্লিপবোর্ড অনুমতি দেয়নি।'
+        'ব্রাউজার ক্লিপবোর্ড অনুমতি দেয়নি।'
       );
     }
   };

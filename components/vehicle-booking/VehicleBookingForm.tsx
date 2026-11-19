@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Loader2, MapPin, ShieldCheck } from 'lucide-react';
 import { normalizeBdPhone } from '@/lib/contact-types';
 import { apiFetch } from '@/lib/api-fetch';
 import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
+import { safeUUID } from '@/lib/safe';
 
 type BookingService = 'car' | 'auto' | 'cng';
 type BookingFields = {
@@ -67,10 +68,15 @@ export default function VehicleBookingForm({
   const config = SERVICE_CONFIG[service];
   const accentText = service === 'car' ? 'text-brand-800' : service === 'auto' ? 'text-orange-800' : 'text-emerald-800';
   const [values, setValues] = useState(EMPTY_FIELDS);
-  const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
+  const [idempotencyKey, setIdempotencyKey] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [requiresLogin, setRequiresLogin] = useState(false);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setIdempotencyKey(safeUUID()), 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const update = (field: keyof BookingFields, value: string) => {
     setValues((current) => ({ ...current, [field]: value }));
@@ -102,6 +108,8 @@ export default function VehicleBookingForm({
       setError('গাড়ির ধরন বেছে নিন অথবা নিজের পছন্দ লিখুন।');
       return;
     }
+    const requestIdempotencyKey = idempotencyKey || safeUUID();
+    if (!idempotencyKey) setIdempotencyKey(requestIdempotencyKey);
     const requestedAt = `${values.travelDate}T${values.travelTime}`;
     if (!values.travelDate || !values.travelTime || new Date(`${requestedAt}:00+06:00`).getTime() <= Date.now()) {
       setError('ভবিষ্যতের যাত্রার তারিখ ও সময় বেছে নিন।');
@@ -122,7 +130,7 @@ export default function VehicleBookingForm({
           requestedAt,
           ...(service === 'car' ? { vehiclePreference } : {}),
           additionalInfo: values.additionalInfo,
-          idempotencyKey,
+          idempotencyKey: requestIdempotencyKey,
         }),
       });
       const payload = await response.json() as { success?: boolean; error?: string; referenceCode?: string; bookingId?: string };
@@ -150,7 +158,7 @@ export default function VehicleBookingForm({
         preferredTime: values.travelTime,
         details: values.additionalInfo.trim(),
       });
-      setIdempotencyKey(crypto.randomUUID());
+      setIdempotencyKey(safeUUID());
     } catch {
       setError('ইন্টারনেট সংযোগে সমস্যা হয়েছে। সংযোগ যাচাই করে আবার চেষ্টা করুন।');
     } finally {

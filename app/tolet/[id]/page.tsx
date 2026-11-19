@@ -29,6 +29,7 @@ import { useAuth } from '@/lib/auth-context';
 import { trackListingView, trackToletEvent } from '@/lib/tolet-tracking';
 import { getToletAreaById } from '@/lib/tolet-areas';
 import { toBengaliDigits } from '@/lib/bengali-numerals';
+import { useClientNow } from '@/hooks/use-client-now';
 
 /**
  * To-Let listing detail page.
@@ -84,6 +85,7 @@ type ListingLoad =
 const NO_SIMILAR: ToletListing[] = [];
 
 export default function ToletDetailPage({ params }: ToletDetailPageProps) {
+  const now = useClientNow();
   const { id } = use(params);
   const { user, savedListings, toggleSaveItem } = useAuth();
   const signedInUserId = user?.id ?? null;
@@ -246,6 +248,20 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
           className="mb-3"
         />
 
+        {listing.needsPhone && user?.id === listing.ownerId && (
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-900">
+              এই বিজ্ঞাপনে ফোন নম্বর নেই। সম্পাদনা করে একটি নম্বর যোগ করুন।
+            </p>
+            <Link
+              href={`/profile/tolet/${listing.id}/edit`}
+              className="inline-flex min-h-10 items-center rounded-lg bg-amber-800 px-3 text-xs font-bold text-white"
+            >
+              নম্বর যোগ করুন
+            </Link>
+          </div>
+        )}
+
         <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_360px] lg:items-start lg:gap-6">
           {/* ---------------- Left column: the property itself ---------------- */}
           <div className="min-w-0 space-y-5 sm:space-y-6">
@@ -293,7 +309,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
               <p className="flex items-center gap-1.5 text-[11px] text-ink-400">
                 <Info className="h-3.5 w-3.5 shrink-0 text-brand-400" aria-hidden="true" />
                 বিজ্ঞাপনটি প্রকাশিত হয়েছে{' '}
-                {formatPostedBn(listing.publishedAt)}
+                {formatPostedBn(listing.publishedAt, now)}
               </p>
             )}
 
@@ -333,7 +349,7 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
               <RentSummaryCard listing={listing} />
             </div>
 
-            {listing.status === 'approved' && (
+            {listing.status === 'approved' && !listing.needsPhone && (
               <ContactActionsPanel
                 listing={listing}
                 userId={user?.id ?? null}
@@ -407,10 +423,10 @@ export default function ToletDetailPage({ params }: ToletDetailPageProps) {
 }
 
 /** "২ দিন আগে" / "১ মাস আগে" — never an ambiguous "২/১০"-style timestamp. */
-function formatPostedBn(iso: string): string {
+function formatPostedBn(iso: string, now?: number): string {
   const then = new Date(iso);
-  if (Number.isNaN(then.getTime())) return 'একটি সময় আগে';
-  const diffMs = Date.now() - then.getTime();
+  if (Number.isNaN(then.getTime()) || now == null) return '';
+  const diffMs = now - then.getTime();
   const days = Math.floor(diffMs / 86_400_000);
 
   if (days <= 0) {

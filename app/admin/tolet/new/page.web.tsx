@@ -51,6 +51,7 @@ export default function AdminCreateToletListingPage() {
       {error && <div role="alert" className="mb-4 flex gap-2 rounded-xl border border-status-danger/20 bg-status-danger-bg p-3 text-sm text-status-danger"><AlertTriangle className="h-4 w-4 shrink-0" />{error}</div>}
       <ToletListingForm
         mode="admin"
+        initialPhone={user.phone ?? ''}
         onUploadFile={handleUpload}
         onSubmit={handleSubmit}
         onDone={() => router.replace(createdId.current ? `/admin/tolet/${createdId.current}` : '/admin/tolet')}

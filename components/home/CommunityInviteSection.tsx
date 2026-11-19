@@ -82,8 +82,8 @@ export default function CommunityInviteSection() {
 
           <FacebookUpdatesLink
             tone="dark"
-            labelClassName="text-xs"
-            className="mx-auto mt-3 justify-center"
+            labelClassName="text-sm font-semibold sm:text-base"
+            className="mx-auto mt-3 justify-center [&>a]:min-h-10 [&>a]:px-3 [&>a]:text-sm [&>a_svg]:h-4 [&>a_svg]:w-4"
           />
 
           {/* উপকারিতা */}

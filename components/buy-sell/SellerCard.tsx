@@ -19,7 +19,7 @@ import type { CommunityPost } from '@/lib/catalog-types';
 
 type Contact = {
   authorName?: string;
-  authorPhone?: string;
+  phone?: string;
   whatsappNumber?: string;
 } | null;
 
@@ -39,7 +39,7 @@ export function SellerCard({
   isAuthor,
 }: SellerCardProps) {
   const { callHref, whatsappHref: whatsappUrl } = resolveBangladeshContact(
-    contact?.authorPhone,
+    contact?.phone,
     contact?.whatsappNumber
   );
   const sellerName = contact?.authorName || post.authorName;

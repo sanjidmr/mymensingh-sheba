@@ -26,9 +26,10 @@
  * could mislead a customer into submitting a real booking request.
  */
 import { createClient, isSupabaseConfigured } from './supabase/client';
+import { safeUUID } from './safe';
 import { apiFetch } from './api-fetch';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
-import { normalizeBangladeshMobile } from './bangladesh-phone';
+import { normalizePhone as normalizeBangladeshMobile } from './phone';
 import { DEMO_MARKET_POSTS, getDemoMarketPost } from './market-demo-data';
 import {
   COACHING_WEEKDAYS,
@@ -108,9 +109,9 @@ function communityPostWriteError(
     if (input.salaryMin != null && input.salaryMax != null && input.salaryMax < input.salaryMin) {
       return 'সর্বোচ্চ বেতন সর্বনিম্ন বেতনের চেয়ে কম হতে পারবে না।';
     }
-    if ((requireComplete || input.authorPhone !== undefined) &&
-      !normalizeBangladeshMobile(input.authorPhone)) {
-      return 'সঠিক যোগাযোগের মোবাইল নম্বর দিন।';
+    if ((requireComplete || input.phone !== undefined) &&
+      !normalizeBangladeshMobile(input.phone)) {
+      return 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি মোবাইল নম্বর দিন।';
     }
     if (input.whatsappNumber?.trim() &&
       !normalizeBangladeshMobile(input.whatsappNumber)) {
@@ -133,9 +134,9 @@ function communityPostWriteError(
       (!input.conditionLabel || !MARKET_CONDITIONS.some((item) => item.id === input.conditionLabel))) {
       return 'পণ্যের অবস্থা বেছে নিন।';
     }
-    if ((requireComplete || input.authorPhone !== undefined) &&
-      !normalizeBangladeshMobile(input.authorPhone)) {
-      return 'সঠিক বিক্রেতার মোবাইল নম্বর দিন।';
+    if ((requireComplete || input.phone !== undefined) &&
+      !normalizeBangladeshMobile(input.phone)) {
+      return 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি মোবাইল নম্বর দিন।';
     }
     if (input.whatsappNumber?.trim() &&
       !normalizeBangladeshMobile(input.whatsappNumber)) {
@@ -296,9 +297,10 @@ function mapPost(row: Record<string, unknown>, includeAuthorContact = false): Co
     authorName: optStr(c.authorName),
     // Public reads only attach contact through the approved-post RPC. The
     // owner's edit RPC is the only direct mapping path that may include these.
-    authorPhone: includeAuthorContact
-      ? normalizeBangladeshMobile(optStr(c.authorPhone)) ?? undefined
+    phone: includeAuthorContact
+      ? normalizeBangladeshMobile(optStr(c.contactPhone) || optStr(c.authorPhone)) ?? undefined
       : undefined,
+    needsPhone: Boolean(c.needsPhone),
     whatsappNumber: includeAuthorContact
       ? normalizeBangladeshMobile(optStr(c.whatsappNumber)) ?? undefined
       : undefined,
@@ -359,12 +361,18 @@ async function attachPublicPostContacts(posts: CommunityPost[]): Promise<Communi
       whatsapp: normalizeBangladeshMobile(optStr(contact.whatsappNumber)) ?? undefined,
     });
   }
-  return posts.map((post) => {
+  const attached = posts.map((post) => {
     const contact = contacts.get(post.slug);
     return contact
-      ? { ...post, authorPhone: contact.phone, whatsappNumber: contact.whatsapp }
+      ? { ...post, phone: contact.phone, whatsappNumber: contact.whatsapp }
       : post;
   });
+  for (const post of attached) {
+    if (post.kind === 'job' && post.status === 'approved' && !post.phone) {
+      console.error('Published job post has no valid contact phone.', { slug: post.slug });
+    }
+  }
+  return attached;
 }
 
 function mapContact(row: Record<string, unknown>): EmergencyContact {
@@ -2464,7 +2472,7 @@ export async function fetchApprovedPostBySlug(
  */
 export async function fetchMarketContact(
   slug: string
-): Promise<{ authorName?: string; authorPhone?: string; whatsappNumber?: string } | null> {
+): Promise<{ authorName?: string; phone?: string; whatsappNumber?: string } | null> {
   if (!isSupabaseConfigured) return null;
   const client = createClient();
   if (!client) throw new Error(NOT_CONFIGURED);
@@ -2473,13 +2481,13 @@ export async function fetchMarketContact(
   if (!Array.isArray(data) || data.length === 0) return null;
   const row = (data[0] as Record<string, unknown>) ?? {};
   const c = toCamelObject(row) as Record<string, unknown>;
-  const authorPhone = normalizeBangladeshMobile(optStr(c.authorPhone)) ?? undefined;
+  const phone = normalizeBangladeshMobile(optStr(c.authorPhone)) ?? undefined;
   const whatsappNumber = normalizeBangladeshMobile(optStr(c.whatsappNumber)) ?? undefined;
   const authorName = optStr(c.authorName);
   // A row with no number in it is not a contact. Returning null here is what
   // makes the detail page show "number নেই" instead of a dead call button.
-  if (!authorPhone && !whatsappNumber) return null;
-  return { authorName, authorPhone, whatsappNumber };
+  if (!phone && !whatsappNumber) return null;
+  return { authorName, phone, whatsappNumber };
 }
 
 /**
@@ -2506,7 +2514,7 @@ export async function createCommunityPostReport(input: {
   if (!isSupabaseConfigured) return { success: false, error: NOT_CONFIGURED };
   const client = createClient();
   if (!client) return { success: false, error: NOT_CONFIGURED };
-  const reportId = crypto.randomUUID();
+  const reportId = safeUUID();
   const { error } = await client.from('community_post_reports').insert({
     id: reportId,
     post_id: input.postId,
@@ -2711,6 +2719,7 @@ export async function createCommunityPost(
     isFeatured: _ignoredFeature,
     authorId: _ignoredAuthor,
     authorName: _ignoredAuthorName,
+    phone: _ignoredPhone,
     rejectionReason: _ignoredReason,
     ...rest
   } = input;
@@ -2719,10 +2728,12 @@ export async function createCommunityPost(
     ...toSnakeObject(rest as Record<string, unknown>),
     ...(input.kind === 'job' || input.kind === 'buy_sell'
       ? {
-          author_phone: normalizeBangladeshMobile(input.authorPhone),
+          contact_phone: normalizeBangladeshMobile(input.phone),
+          author_phone: normalizeBangladeshMobile(input.phone),
           whatsapp_number:
             normalizeBangladeshMobile(input.whatsappNumber) ??
-            normalizeBangladeshMobile(input.authorPhone),
+            normalizeBangladeshMobile(input.phone),
+          needs_phone: false,
         }
       : {}),
     author_id: userId,
@@ -2755,10 +2766,7 @@ export async function updateCommunityPost(
   if (!client) return { success: false, error: NOT_CONFIGURED };
 
   const { data: current, error: currentError } = await client
-    .from('community_posts')
-    .select('kind, category')
-    .eq('id', id)
-    .eq('author_id', userId)
+    .rpc('fn_my_post_by_id', { p_id: id })
     .maybeSingle();
   if (currentError) return { success: false, error: currentError.message };
   if (!current) return { success: false, error: 'পোস্টটি পাওয়া যায়নি অথবা এটি আপনার নয়।' };
@@ -2773,7 +2781,14 @@ export async function updateCommunityPost(
     }
   }
   const validationError = communityPostWriteError(
-    { ...patch, kind: current.kind as PostKind },
+    {
+      ...patch,
+      kind: current.kind as PostKind,
+      phone:
+        (current.kind === 'job' || current.kind === 'buy_sell') && patch.phone === undefined
+          ? normalizeBangladeshMobile(current.contact_phone)
+          : patch.phone,
+    },
     false,
     current.category
   );
@@ -2799,6 +2814,7 @@ export async function updateCommunityPost(
     authorId: _a,
     authorName: _authorName,
     slug: _slug,
+    phone: _phone,
     rejectionReason: _r,
     ...rest
   } = patch;
@@ -2806,8 +2822,12 @@ export async function updateCommunityPost(
     ...toSnakeObject(rest as Record<string, unknown>),
     ...(current.kind === 'job' || current.kind === 'buy_sell'
       ? {
-          ...(patch.authorPhone !== undefined
-            ? { author_phone: normalizeBangladeshMobile(patch.authorPhone) }
+          ...(patch.phone !== undefined
+            ? {
+                contact_phone: normalizeBangladeshMobile(patch.phone),
+                author_phone: normalizeBangladeshMobile(patch.phone),
+                needs_phone: false,
+              }
             : {}),
           ...(patch.whatsappNumber !== undefined
             ? { whatsapp_number: normalizeBangladeshMobile(patch.whatsappNumber) }

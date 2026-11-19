@@ -846,7 +846,7 @@ function RankedRows({
             {renderLabel
               ? renderLabel(row)
               : labelMap
-                ? labelMap[row.key] ?? row.key.replaceAll('_', ' ')
+                ? labelMap[row.key] ?? row.key.replace(/_/g, ' ')
                 : row.key}
           </span>
           <span className="shrink-0 text-right text-sm font-semibold tabular-nums text-admin-navy">
@@ -1010,7 +1010,7 @@ function servicePerformanceRows(data: WebsiteAnalyticsData): BarChartRow[] {
   return [...new Set([...clicks.keys(), ...requests.keys()])]
     .map((key) => ({
       key,
-      label: SERVICE_LABELS[key] ?? key.replaceAll('_', ' '),
+      label: SERVICE_LABELS[key] ?? key.replace(/_/g, ' '),
       primary: clicks.get(key) ?? 0,
       secondary: requests.get(key) ?? 0,
       total: (clicks.get(key) ?? 0) + (requests.get(key) ?? 0),
@@ -1035,7 +1035,7 @@ function deviceSlices(data: WebsiteAnalyticsData): DonutSlice[] {
   return data.devices
     .filter((row) => row.count > 0)
     .map((row) => ({
-      label: DEVICE_LABELS[row.key] ?? row.key.replaceAll('_', ' '),
+      label: DEVICE_LABELS[row.key] ?? row.key.replace(/_/g, ' '),
       value: row.count,
     }));
 }

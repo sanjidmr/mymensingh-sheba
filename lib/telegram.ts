@@ -1,4 +1,5 @@
 import 'server-only';
+import { withTimeoutSignal } from './safe';
 
 export type TelegramResponseSummary = {
   ok: boolean;
@@ -164,16 +165,18 @@ async function requestTelegram(
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt += 1) {
     let response: Response;
     try {
-      response = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
-        ...(payload
-          ? {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify(payload),
-            }
-          : { method: 'GET' }),
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
+      response = await withTimeoutSignal(REQUEST_TIMEOUT_MS, (signal) =>
+        fetch(`https://api.telegram.org/bot${token}/${method}`, {
+          ...(payload
+            ? {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload),
+              }
+            : { method: 'GET' }),
+          signal,
+        })
+      );
     } catch (error) {
       const description = error instanceof Error && error.name === 'TimeoutError'
         ? 'Telegram request timed out.'
@@ -358,7 +361,6 @@ export async function getTelegramBotInfo(): Promise<{
       : undefined,
   };
 }
-
 export async function getTelegramChatInfo(chatId: string): Promise<{
   id: number;
   type: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { AlertTriangle, Building2, Camera, FileText, Loader2, MapPin, Save, Send, Wallet } from 'lucide-react';
+import { AlertTriangle, Building2, Camera, FileText, Loader2, MapPin, Phone, Save, Send, Wallet } from 'lucide-react';
 import { TOLET_AREA_SOURCE } from '@/lib/tolet-areas';
 import LocationSelectInput from '@/components/LocationSelectInput';
 import { TOLET_FACILITY_OPTIONS } from '@/lib/filter-definitions';
@@ -14,6 +14,7 @@ import {
 } from '@/lib/tolet-types';
 import { PhotoUploader } from '@/components/tolet/PhotoUploader';
 import { cn } from '@/lib/utils';
+import { isValidBDPhone, normalizePhone } from '@/lib/phone';
 
 /**
  * One-page To-Let listing form.
@@ -36,6 +37,7 @@ import { cn } from '@/lib/utils';
 type FieldKey = keyof FormState;
 
 interface FormState {
+  phone: string;
   title: string;
   description: string;
   photos: string[];
@@ -56,6 +58,7 @@ interface FormState {
 }
 
 const defaultForm: FormState = {
+  phone: '',
   title: '',
   description: '',
   photos: [],
@@ -137,6 +140,7 @@ function textToFacilities(text: string): string[] {
 
 function fromListing(listing: ToletListing): FormState {
   return {
+    phone: listing.phone ?? '',
     title: listing.title,
     description: listing.description,
     photos: listing.photos,
@@ -263,6 +267,7 @@ function NumberField({
 
 export interface ToletListingFormProps {
   mode: 'owner' | 'admin';
+  initialPhone?: string;
   initialListing?: ToletListing;
   onUploadFile: (file: File) => Promise<string>;
   onSubmit: (
@@ -274,13 +279,16 @@ export interface ToletListingFormProps {
 
 export function ToletListingForm({
   mode,
+  initialPhone = '',
   initialListing,
   onUploadFile,
   onSubmit,
   onDone,
 }: ToletListingFormProps) {
   const [form, setForm] = useState<FormState>(() =>
-    initialListing ? fromListing(initialListing) : { ...defaultForm }
+    initialListing
+      ? fromListing(initialListing)
+      : { ...defaultForm, phone: initialPhone }
   );
   const [errors, setErrors] = useState<Partial<Record<FieldKey, string>>>({});
   const [formError, setFormError] = useState('');
@@ -311,6 +319,9 @@ export function ToletListingForm({
   const validate = (forDraft: boolean): { field: FieldKey; message: string } | null => {
     if (form.title.trim().length < 8) {
       return { field: 'title', message: 'বিজ্ঞাপনের শিরোনাম অন্তত ৮ অক্ষর লিখুন।' };
+    }
+    if (!isValidBDPhone(form.phone)) {
+      return { field: 'phone', message: 'ফোন নম্বর দেওয়া বাধ্যতামূলক। সঠিক বাংলাদেশি মোবাইল নম্বর দিন।' };
     }
     // A draft only needs to be identifiable; the rest can wait.
     if (forDraft) return null;
@@ -355,6 +366,7 @@ export function ToletListingForm({
   };
 
   const buildInput = (): ToletListingInput => ({
+    phone: normalizePhone(form.phone) ?? '',
     title: form.title.trim(),
     propertyType: form.propertyType,
     areaId: form.areaId,
@@ -492,6 +504,27 @@ export function ToletListingForm({
               );
             })}
           </div>
+        </Field>
+      </SectionCard>
+
+      <SectionCard title="যোগাযোগ" icon={Phone}>
+        <Field
+          id="phone"
+          label="মোবাইল নম্বর"
+          required
+          hint="এই নম্বরটি বাসা ভাড়ার বিজ্ঞাপনে কল ও WhatsApp যোগাযোগের জন্য দেখানো হবে।"
+        >
+          <input
+            id="tolet-phone"
+            type="tel"
+            inputMode="tel"
+            autoComplete="tel"
+            value={form.phone}
+            onChange={(event) => set('phone', event.target.value)}
+            required
+            aria-invalid={!isValidBDPhone(form.phone)}
+            className={controlClass(!isValidBDPhone(form.phone))}
+          />
         </Field>
       </SectionCard>
 
@@ -710,7 +743,7 @@ export function ToletListingForm({
       <div className="form-sticky-submit space-y-2.5">
         <button
           type="submit"
-          disabled={busy}
+          disabled={busy || !isValidBDPhone(form.phone)}
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-emerald-800 px-5 py-2.5 text-sm font-bold text-white transition-colors hover:bg-emerald-900 disabled:cursor-not-allowed disabled:opacity-60 sm:py-3.5"
         >
           {submitting ? (
@@ -731,7 +764,7 @@ export function ToletListingForm({
           <button
             type="button"
             onClick={() => submit(true)}
-            disabled={busy}
+            disabled={busy || !isValidBDPhone(form.phone)}
             className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-5 py-2.5 text-[13px] font-semibold text-slate-700 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 sm:py-3"
           >
             <Save className="h-3.5 w-3.5" aria-hidden="true" />

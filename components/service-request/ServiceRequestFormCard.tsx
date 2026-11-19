@@ -39,6 +39,7 @@ import {
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import type { ServiceRequestSuccessData } from '@/components/service-request/SubmissionSuccess';
 import { trackFormSubmit } from '@/lib/site-analytics';
+import { safeCopy } from '@/lib/safe';
 import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
 
 /* -------------------------------------------------------------------------- */
@@ -457,11 +458,10 @@ export default function ServiceRequestFormCard({ config, onSubmitted }: ServiceR
         copied={copied}
         onCopy={async () => {
           if (!reference) return;
-          try {
-            await navigator.clipboard.writeText(reference);
+          if (await safeCopy(reference)) {
             setCopied(true);
             window.setTimeout(() => setCopied(false), 2000);
-          } catch {
+          } else {
             setCopied(false);
           }
         }}

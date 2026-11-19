@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Check, CheckCircle2, Copy } from 'lucide-react';
 import type { ServiceRequestPageConfig } from '@/lib/service-request-pages';
 import FacebookUpdatesLink from '@/components/site/FacebookUpdatesLink';
+import { safeCopy } from '@/lib/safe';
 
 export interface ServiceRequestSuccessData {
   reference: string | null;
@@ -43,11 +44,10 @@ export default function SubmissionSuccess({
 
   const copyReference = async () => {
     if (!submission?.reference) return;
-    try {
-      await navigator.clipboard.writeText(submission.reference);
+    if (await safeCopy(submission.reference)) {
       setCopied(true);
       window.setTimeout(() => setCopied(false), 2000);
-    } catch {
+    } else {
       setCopied(false);
     }
   };

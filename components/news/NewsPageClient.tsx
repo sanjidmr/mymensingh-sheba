@@ -6,6 +6,7 @@ import NewsHome from '@/components/news/NewsHome';
 import { isSupabaseConfigured, createClient } from '@/lib/supabase/client';
 import { formatLongBnDate } from '@/lib/news/news-utils';
 import type { NewsStory } from '@/lib/news/news-utils';
+import { useClientNow } from '@/hooks/use-client-now';
 
 const NEWS_COLUMNS =
   'id, slug, author_name, title_bn, summary_bn, body_bn, cover_image_url, category, area_id, tags, is_featured, published_at, created_at';
@@ -37,7 +38,7 @@ function mapStory(row: Record<string, unknown>): NewsStory | null {
 
 export default function NewsPageClient() {
   const searchParams = useSearchParams();
-  const [now] = useState(() => Date.now());
+  const now = useClientNow(0);
   const [stories, setStories] = useState<NewsStory[]>([]);
   const [failed, setFailed] = useState(false);
 
@@ -83,7 +84,7 @@ export default function NewsPageClient() {
       stories={stories}
       failed={failed}
       now={now}
-      todayLabel={formatLongBnDate(new Date(now))}
+      todayLabel={now ? formatLongBnDate(new Date(now)) : ''}
       selectedCategory={searchParams.get('category') || undefined}
       query={searchParams.get('q') || undefined}
     />

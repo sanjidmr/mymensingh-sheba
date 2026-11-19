@@ -64,7 +64,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
   const [related, setRelated] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
-  const [contact, setContact] = useState<{ authorPhone?: string; whatsappNumber?: string } | null>(null);
+  const [contact, setContact] = useState<{ phone?: string; whatsappNumber?: string } | null>(null);
   const [contactLoading, setContactLoading] = useState(false);
   const [contactError, setContactError] = useState('');
 
@@ -77,8 +77,8 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
         setContactError('');
         setPost(data);
         const postContact =
-          data?.authorPhone || data?.whatsappNumber
-            ? { authorPhone: data.authorPhone, whatsappNumber: data.whatsappNumber }
+          data?.phone || data?.whatsappNumber
+            ? { phone: data.phone, whatsappNumber: data.whatsappNumber }
             : null;
         setContact(postContact);
         if (kind === 'job' && data?.status === 'approved') {
@@ -246,6 +246,20 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
                   ? `অনুমোদিত হয়নি। কারণ: ${post.rejectionReason} — কারণটি ঠিক করে সম্পাদনা করে আবার পাঠান।`
                   : 'এই পোস্টটি অনুমোদিত হয়নি। কারণ জানতে চাইলে সম্পাদনা করে আবার পাঠাতে পারেন।'}
             </p>
+          </div>
+        )}
+
+        {isAuthor && post.needsPhone && (
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+            <p className="text-[12.5px] font-semibold text-amber-900">
+              এই পোস্টে ফোন নম্বর নেই। সম্পাদনা করে একটি নম্বর যোগ করুন।
+            </p>
+            <Link
+              href={`/profile/posts/${kind}/${post.id}/edit`}
+              className={`inline-flex min-h-10 items-center rounded-lg bg-amber-800 px-3 text-xs font-bold text-white ${LIGHT_FOCUS}`}
+            >
+              নম্বর যোগ করুন
+            </Link>
           </div>
         )}
 
@@ -438,7 +452,7 @@ export function PostDetail({ kind, slug }: { kind: PostKind; slug: string }) {
         {kind === 'job' && post.status === 'approved' && (
           <div className="mt-3">
             <DirectPostContact
-              phone={contact?.authorPhone}
+              phone={contact?.phone}
               whatsapp={contact?.whatsappNumber}
               loading={contactLoading}
               error={contactError}

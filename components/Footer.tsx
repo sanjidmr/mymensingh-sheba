@@ -5,7 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { MapPin, Phone, Mail, ShieldCheck, Facebook, MessageCircle } from 'lucide-react';
 import { LAUNCH_SERVICES } from '@/lib/services-data';
-import { CONTACT_FORM_ANCHOR, SITE_CONTACT } from '@/lib/site-contact';
+import { CONTACT_FORM_ANCHOR, FACEBOOK_PAGE_URL, SITE_CONTACT } from '@/lib/site-contact';
 import {
   DEFAULT_FOOTER_CONTENT,
   mergeSiteContact,
@@ -22,7 +22,7 @@ import { PUBLIC_PHONE_TEL } from '@/lib/site-contact';
  * The admin's footer and service-catalog overrides are read from the existing
  * public site-content endpoint. The hotline is fixed in the site contact config.
  */
-export default function Footer() {
+export default function Footer({ highlightFacebook = false }: { highlightFacebook?: boolean } = {}) {
   const { user, isLoading } = useAuth();
   const currentYear = 2026;
   const [overrides, setOverrides] = useState<SiteContentOverrides>();
@@ -213,6 +213,28 @@ export default function Footer() {
           </div>
 
         </div>
+
+        {highlightFacebook && (
+          <div className="mt-5 flex flex-col items-center justify-between gap-3 rounded-2xl border border-accent-300/30 bg-brand-900/70 px-4 py-4 sm:flex-row sm:px-5">
+            <div className="flex items-center gap-3 text-center sm:text-left">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/10 text-accent-300">
+                <Facebook className="h-5 w-5" aria-hidden="true" />
+              </span>
+              <p className="text-sm font-bold text-white sm:text-base">
+                আমাদের আপডেট পেতে Facebook-এ যুক্ত হন
+              </p>
+            </div>
+            <a
+              href={FACEBOOK_PAGE_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-accent-400 px-5 text-sm font-extrabold text-brand-950 transition-colors hover:bg-accent-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-brand-900 sm:w-auto"
+            >
+              <Facebook className="h-4 w-4" aria-hidden="true" />
+              Facebook পেজে যুক্ত হোন
+            </a>
+          </div>
+        )}
 
         <div className="mt-4 flex flex-col items-center justify-between gap-2 border-t border-white/10 pt-3 text-xs text-brand-100/60 max-sm:mt-3 max-sm:pt-2 sm:flex-row">
           <p>© {currentYear} Mymensingh Sheba (ময়মনসিংহ সেবা)। সর্বস্বত্ব সংরক্ষিত।</p>

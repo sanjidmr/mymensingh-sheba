@@ -28,7 +28,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Clock, MapPin, MessageCircle, Package, Phone, User } from 'lucide-react';
+import { Clock, MapPin, Package, User } from 'lucide-react';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import {
   bnRelativeTime,
@@ -36,8 +36,6 @@ import {
   type CommunityPost,
 } from '@/lib/catalog-types';
 import { getAreaById } from '@/lib/locations';
-import { resolveBangladeshContact } from '@/lib/bangladesh-phone';
-import { trackCtaClick } from '@/lib/site-analytics';
 
 interface ProductCardProps {
   post: CommunityPost;
@@ -54,10 +52,6 @@ interface ProductCardProps {
 export function ProductCard({ post, now }: ProductCardProps) {
   const area = post.areaId ? getAreaById(post.areaId)?.nameBn : undefined;
   const posted = bnRelativeTime(post.publishedAt ?? post.createdAt, now);
-  const { callHref, whatsappHref: whatsappUrl } = resolveBangladeshContact(
-    post.authorPhone,
-    post.whatsappNumber
-  );
   // Anything in `tags` that is neither the category nor the condition is the
   // seller's own extra note ("ফোন চার্জার সহ", "নিজস্ব লাইসেনসহ").
   const extras = post.tags.filter((t) => t !== post.category && !isConditionId(t));
@@ -118,34 +112,6 @@ export function ProductCard({ post, now }: ProductCardProps) {
           )}
         </div>
         </Link>
-        {(callHref || whatsappUrl) && post.status === 'approved' && post.marketplaceStatus === 'available' ? (
-          <div className="mt-2 border-t border-mist-200 pt-2">
-            <div className="mt-1.5 grid grid-cols-2 gap-1.5">
-              {callHref && (
-                <a
-                  href={callHref}
-                  onClick={() => trackCtaClick({ ctaType: 'call', category: 'buy_sell', contentId: post.slug, routeKind: 'post' })}
-                  className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg bg-brand-700 px-1.5 text-[11px] font-bold text-white hover:bg-brand-800"
-                >
-                  <Phone className="h-3.5 w-3.5" aria-hidden="true" /> কল করুন
-                </a>
-              )}
-              {whatsappUrl && (
-                <a
-                  href={whatsappUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  onClick={() => trackCtaClick({ ctaType: 'whatsapp', category: 'buy_sell', contentId: post.slug, routeKind: 'post' })}
-                  className="inline-flex min-h-9 items-center justify-center gap-1 rounded-lg border border-brand-200 px-1.5 text-[11px] font-bold text-brand-800 hover:bg-brand-50"
-                >
-                  <MessageCircle className="h-3.5 w-3.5" aria-hidden="true" /> WhatsApp-এ মেসেজ দিন
-                </a>
-              )}
-            </div>
-          </div>
-        ) : post.status === 'approved' && post.marketplaceStatus === 'available' ? (
-          <p className="mt-2 border-t border-mist-200 pt-2 text-xs text-ink-500">যোগাযোগের নম্বর দেওয়া হয়নি</p>
-        ) : null}
       </div>
     </article>
   );

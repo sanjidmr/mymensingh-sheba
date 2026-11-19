@@ -21,6 +21,10 @@ export default function Reveal({
   useEffect(() => {
     const node = ref.current;
     if (!node) return;
+    if (typeof window.IntersectionObserver !== 'function') {
+      const fallbackTimer = window.setTimeout(() => setVisible(true), 0);
+      return () => window.clearTimeout(fallbackTimer);
+    }
     const observer = new IntersectionObserver(
       (entries) => {
         for (const entry of entries) {

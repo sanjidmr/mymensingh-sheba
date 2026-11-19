@@ -11,6 +11,7 @@ import {
   NotificationItem,
 } from './supabase/types';
 import { createClient, isSupabaseConfigured } from './supabase/client';
+import { safeUUID } from './safe';
 import { normalizeJsonArray } from './request-data';
 import { LAUNCH_SERVICES } from './services-data';
 import { isSafeInternalPath, type AppRole } from './auth-routes';
@@ -1169,10 +1170,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const client = createClient();
     if (!client) return { success: false, error: NOT_CONFIGURED_MESSAGE };
 
-    const uniqueId =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const uniqueId = safeUUID();
     const path = `${user.id}/avatar-${uniqueId}.${extension}`;
     const { error } = await client.storage.from('avatars').upload(path, file, {
       contentType: file.type,

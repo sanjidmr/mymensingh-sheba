@@ -139,7 +139,7 @@ export function NewsListRow({ post }: { post: CommunityPost }) {
 
 export function JobCard({ post }: { post: CommunityPost }) {
   const { callHref, whatsappHref: whatsappUrl } = resolveBangladeshContact(
-    post.authorPhone,
+    post.phone,
     post.whatsappNumber
   );
   const salary =

@@ -54,6 +54,7 @@ import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
 import { rangeGroup, tagFacet } from '@/components/catalog/CatalogDirectory';
 import { areaFilterGroupMulti, type FilterGroup, type MatchableRecord } from '@/lib/directory-filters';
 import { useDirectoryController } from '@/lib/use-directory-controller';
+import { useClientNow } from '@/hooks/use-client-now';
 import { useAuth } from '@/lib/auth-context';
 import { fetchApprovedPosts, fetchMyPosts } from '@/lib/catalog-service';
 import {
@@ -114,7 +115,7 @@ export default function MarketplaceBrowser() {
   // Pinned once per mount so every card in one render pass agrees about "৩ দিন
   // আগে". Read on the client only; this whole view is client-fetched, so there
   // is no server render to disagree with.
-  const [now] = useState(() => Date.now());
+  const now = useClientNow(0);
   // Categories stay collapsed by default so the hero + listings own the first
   // screen. The "ক্যাটাগরি দেখুন" button is the explicit way to open the rail.
   const [categoriesOpen, setCategoriesOpen] = useState(false);

@@ -26,8 +26,8 @@
  * placeholder posts.
  *
  * The shell (header, chips, skeleton) renders on the server; the feed arrives
- * after hydration, which is also why the relative timestamps are safe to
- * compute during render without a hydration mismatch.
+ * after hydration. Relative timestamps wait for the client clock so the first
+ * server and client render stays identical.
  */
 import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
@@ -47,6 +47,7 @@ import {
   type PostKind,
 } from '@/lib/catalog-types';
 import { getAreaById } from '@/lib/locations';
+import { useClientNow } from '@/hooks/use-client-now';
 
 // ---------------------------------------------------------------------------
 // Category filter
@@ -98,13 +99,13 @@ const KIND_BADGE: Record<PostKind, string> = {
 // One feed card
 // ---------------------------------------------------------------------------
 
-function FeedCard({ post }: { post: CommunityPost }) {
+function FeedCard({ post, now }: { post: CommunityPost; now?: number }) {
   const href = `${POST_ROUTE[post.kind]}/${post.slug}`;
   const excerpt = post.summaryBn || post.bodyBn;
   const author = post.authorName?.trim() || 'সদস্য';
   const category = post.category ? tagLabel(post.category) : undefined;
   const area = post.areaId ? getAreaById(post.areaId)?.nameBn : undefined;
-  const time = bnRelativeTime(post.publishedAt || post.createdAt);
+  const time = bnRelativeTime(post.publishedAt || post.createdAt, now);
 
   const priceLine =
     post.kind === 'buy_sell'
@@ -229,6 +230,7 @@ function CardSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function PostsFeed() {
+  const now = useClientNow();
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
@@ -393,7 +395,7 @@ export default function PostsFeed() {
             </p>
             <div className="flex flex-col gap-3">
               {visible.map((post) => (
-                <FeedCard key={post.id} post={post} />
+                <FeedCard key={post.id} post={post} now={now} />
               ))}
             </div>
           </>

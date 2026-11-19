@@ -3,8 +3,10 @@ import React, { useState } from 'react';
 import { Bell, CheckCircle2, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { bnRelativeTime } from '@/lib/catalog-types';
+import { useClientNow } from '@/hooks/use-client-now';
 
 export default function DashboardNotifications() {
+  const now = useClientNow();
   const {
     notifications,
     notificationsError,
@@ -89,7 +91,7 @@ export default function DashboardNotifications() {
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between gap-2">
                   <h4 className="truncate text-[13px] font-bold text-ink-900">{n.title}</h4>
-                  <span className="shrink-0 text-[10.5px] text-ink-400">{bnRelativeTime(n.createdAt) ?? ''}</span>
+                  <span className="shrink-0 text-[10.5px] text-ink-400">{bnRelativeTime(n.createdAt, now) ?? ''}</span>
                 </div>
                 <p className="mt-0.5 text-[12px] leading-relaxed text-ink-500">{n.body}</p>
                 {!n.isRead && (

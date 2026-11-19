@@ -90,16 +90,19 @@ export function fetchWithTimeout(
   timeoutMs = 20_000
 ): Promise<Response> {
   const startedAt = Date.now();
-  const controller = new AbortController();
+  const controller = typeof AbortController === 'function' ? new AbortController() : null;
   const sourceSignal =
     init?.signal ??
     (typeof Request !== 'undefined' && input instanceof Request ? input.signal : undefined);
-  const abortFromSource = () => controller.abort(sourceSignal?.reason);
+  const abortFromSource = () => controller?.abort(sourceSignal?.reason);
   let timedOut = false;
-  const timeoutId = setTimeout(() => {
-    timedOut = true;
-    controller.abort();
-  }, timeoutMs);
+  const timeoutId = controller
+    ? setTimeout(() => {
+        timedOut = true;
+        controller.abort();
+      }, timeoutMs)
+    : undefined;
+  const requestSignal = controller?.signal ?? sourceSignal;
 
   if (sourceSignal?.aborted) {
     abortFromSource();
@@ -113,7 +116,7 @@ export function fetchWithTimeout(
   return (async () => {
     for (let attempt = 0; ; attempt += 1) {
       try {
-        const response = await fetch(input, { ...init, signal: controller.signal });
+        const response = await fetch(input, { ...init, signal: requestSignal });
         if (isAuthRefresh) {
           if (response.status === 429) {
             lastAuthRefreshFailure = {
@@ -186,7 +189,7 @@ export function fetchWithTimeout(
     }
   })()
     .finally(() => {
-      clearTimeout(timeoutId);
+      if (timeoutId !== undefined) clearTimeout(timeoutId);
       sourceSignal?.removeEventListener('abort', abortFromSource);
     });
 }

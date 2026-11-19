@@ -40,6 +40,7 @@
 'use client';
 
 import { isSupabaseConfigured, createClient } from './supabase/client';
+import { safeStorage, safeUUID } from './safe';
 import { apiFetch } from './api-fetch';
 import { isNative } from './platform';
 import type {
@@ -72,23 +73,19 @@ let memoryVisitorId: string | null = null;
 let persistentVisitorId = false;
 
 function randomId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `v-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  return safeUUID();
 }
 
 export function getVisitorId(): string {
   if (typeof window === 'undefined') return 'server';
   try {
-    const existing = window.localStorage.getItem(VISITOR_KEY);
+    const existing = safeStorage.get(VISITOR_KEY);
     if (existing) {
-      persistentVisitorId = true;
+      persistentVisitorId = safeStorage.set(VISITOR_KEY, existing);
       return existing;
     }
     const created = randomId();
-    window.localStorage.setItem(VISITOR_KEY, created);
-    persistentVisitorId = true;
+    persistentVisitorId = safeStorage.set(VISITOR_KEY, created);
     return created;
   } catch {
     persistentVisitorId = false;
@@ -155,13 +152,7 @@ export function trackToletEvent(
 }
 
 function createEventId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (digit) => {
-    const value = Math.floor(Math.random() * 16);
-    return (digit === 'x' ? value : (value & 0x3) | 0x8).toString(16);
-  });
+  return safeUUID();
 }
 
 /**
@@ -180,12 +171,12 @@ export function trackListingView(params: {
   const viewKey = `${VIEWED_KEY}:${params.listingId}`;
   if (viewsSeenInMemory.has(viewKey)) return;
   try {
-    const seen = window.sessionStorage.getItem(viewKey);
+    const seen = safeStorage.get(viewKey, 'session');
     if (seen) {
       viewsSeenInMemory.add(viewKey);
       return;
     }
-    window.sessionStorage.setItem(viewKey, '1');
+    safeStorage.set(viewKey, '1', 'session');
   } catch {
     // The in-memory guard still limits this tab to one view if storage is blocked.
   }

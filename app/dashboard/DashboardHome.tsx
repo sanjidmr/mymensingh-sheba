@@ -53,6 +53,7 @@ import type { ServiceRequestStatus } from '@/lib/supabase/types';
 import { mergeRows, type DashboardRow } from '@/lib/dashboard';
 import { ListingMedia } from '@/components/catalog/CatalogCards';
 import { LIGHT_FOCUS } from '@/components/about/AboutSectionBits';
+import { useClientNow } from '@/hooks/use-client-now';
 import { getAreaById } from '@/lib/locations';
 import { cn } from '@/lib/utils';
 import {
@@ -119,6 +120,7 @@ function firstError(reason: unknown, fallback: string) {
 }
 
 export default function DashboardHome() {
+  const now = useClientNow();
   const {
     user,
     requests,
@@ -769,7 +771,7 @@ export default function DashboardHome() {
                             {row.title}
                           </span>
                           <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11.5px] text-ink-500">
-                            <span>{bnRelativeTime(row.date) ?? 'তারিখ নেই'}</span>
+                            <span>{bnRelativeTime(row.date, now) ?? 'তারিখ নেই'}</span>
                             {typeof views === 'number' && (
                               <span className="inline-flex items-center gap-1">
                                 <Eye className="h-3 w-3" aria-hidden="true" />
@@ -896,7 +898,7 @@ export default function DashboardHome() {
                               <span>ভিউ গণনা নেই</span>
                             ) : null}
                             {row.meta && <span className="break-words">{row.meta}</span>}
-                            <span>{bnRelativeTime(row.date) ?? ''}</span>
+                            <span>{bnRelativeTime(row.date, now) ?? ''}</span>
                           </span>
                         </span>
                         <Pencil className="mt-1 h-3.5 w-3.5 shrink-0 text-ink-300" aria-hidden="true" />
@@ -996,7 +998,7 @@ export default function DashboardHome() {
                           dateTime={item.date}
                           className="mt-1 block text-[11.5px] text-ink-500"
                         >
-                          {bnRelativeTime(item.date) ?? ''}
+                          {bnRelativeTime(item.date, now) ?? ''}
                         </time>
                       </span>
                     </Link>

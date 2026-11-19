@@ -82,14 +82,14 @@ export default function DonorCard({ donor }: DonorCardProps) {
   const href = user ? telHref(donor.contactPhone) : undefined;
   const donationDetails = [
     `${donor.donationCount} বার রক্তদান`,
-    formatLastDonation(donor.lastDonationDate),
-  ].filter(Boolean);
+    donor.lastDonationDate ? formatLastDonation(donor.lastDonationDate) : null,
+  ].filter((detail): detail is string => Boolean(detail));
 
   useEffect(() => {
     if (donor.isDemo) return;
     const card = cardRef.current;
     if (!card) return;
-    if (!('IntersectionObserver' in window)) {
+    if (typeof window.IntersectionObserver !== 'function') {
       trackProfileView(donor.id, 'blood-donor');
       return;
     }

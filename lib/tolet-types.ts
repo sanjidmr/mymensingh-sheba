@@ -70,7 +70,8 @@ export interface ToletListing {
   publicId?: string;
   ownerId: string;
   ownerName: string;
-  ownerPhone?: string;
+  phone?: string;
+  needsPhone?: boolean;
   ownerVerified: boolean;
   ownerMeta?: ToletOwnerMeta;
   title: string;
@@ -104,6 +105,7 @@ export interface ToletListing {
 }
 
 export interface ToletListingInput {
+  phone: string;
   title: string;
   propertyType: ToletPropertyType;
   areaId: string;

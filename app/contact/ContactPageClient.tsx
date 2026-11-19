@@ -67,7 +67,7 @@ export default function ContactPageClient() {
         <ContactLocation contact={contact} />
         <ContactClosing />
       </main>
-      <Footer />
+      <Footer highlightFacebook />
     </div>
   );
 }

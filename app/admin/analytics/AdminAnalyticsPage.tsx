@@ -62,7 +62,7 @@ function displayLabel(key: string): string {
     'update': 'সম্পাদনা',
     'delete': 'মুছে ফেলা',
   };
-  return directLabels[key] ?? key.replaceAll('_', ' ');
+  return directLabels[key] ?? key.replace(/_/g, ' ');
 }
 
 function formatRowLabel(key: string): string {

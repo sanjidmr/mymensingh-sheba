@@ -31,6 +31,7 @@ import {
   updateMyDirectoryReview,
 } from '@/lib/catalog-service';
 import { bnRelativeTime, toBn, type DirectoryReview, type DirectoryReviewCategory } from '@/lib/catalog-types';
+import { useClientNow } from '@/hooks/use-client-now';
 
 const LIGHT_FOCUS = 'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-600';
 
@@ -87,6 +88,7 @@ export default function DirectoryReviews({
   ratingAvg?: number;
   ratingCount?: number;
 }) {
+  const now = useClientNow();
   const { user, isLoading: authLoading } = useAuth();
   const pathname = usePathname();
   const [reviews, setReviews] = useState<DirectoryReview[]>([]);
@@ -230,7 +232,7 @@ export default function DirectoryReviews({
               <div className="mt-1 flex items-center gap-2">
                 <Stars value={mine.rating} size="sm" />
                 <span className="text-[11.5px] text-ink-400">
-                  {bnRelativeTime(mine.createdAt) ?? ''}
+                  {bnRelativeTime(mine.createdAt, now) ?? ''}
                 </span>
               </div>
               {mine.commentBn && (
@@ -326,7 +328,7 @@ export default function DirectoryReviews({
                     {r.authorId === mine?.authorId ? 'আপনি' : 'সদস্য'}
                   </span>
                 </span>
-                <span className="text-[11px] text-ink-400">{bnRelativeTime(r.createdAt) ?? ''}</span>
+                <span className="text-[11px] text-ink-400">{bnRelativeTime(r.createdAt, now) ?? ''}</span>
               </div>
               {r.commentBn && (
                 <p className="mt-1.5 text-[12.5px] leading-relaxed text-ink-600">{r.commentBn}</p>

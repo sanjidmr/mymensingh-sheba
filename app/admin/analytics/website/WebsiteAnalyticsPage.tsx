@@ -62,7 +62,7 @@ function percent(numerator: number, denominator: number): string | null {
 
 /** A label for a vocabulary value, falling back to the raw key, never guessed. */
 function labelFor(key: string, map: Record<string, string>): string {
-  return map[key] ?? key.replaceAll('_', ' ');
+  return map[key] ?? key.replace(/_/g, ' ');
 }
 
 function StatTile({

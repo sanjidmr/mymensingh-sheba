@@ -9,6 +9,7 @@
 'use client';
 
 import { isSupabaseConfigured, createClient } from './supabase/client';
+import { safeUUID } from './safe';
 import { toCamelObject, toSnakeObject } from './supabase/transform';
 import type { ServiceRequestStatus } from '@/lib/supabase/types';
 import type {
@@ -185,7 +186,7 @@ export async function createStaffReport(input: {
   }
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const reportId = crypto.randomUUID();
+  const reportId = safeUUID();
   const { error } = await client.from('staff_profile_reports').insert({
     id: reportId,
     profile_id: input.profileId,

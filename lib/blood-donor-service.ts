@@ -15,6 +15,7 @@
 'use client';
 
 import { isSupabaseConfigured, createClient } from './supabase/client';
+import { safeUUID } from './safe';
 import { toCamelObject } from './supabase/transform';
 import { notifyCustomer, notifyAdminHub } from './notification-service';
 import { areaNameKey } from './area-names';
@@ -198,7 +199,7 @@ export async function createBloodDonorReport(input: {
   if (!isSupabaseConfigured) return mockCreateBloodDonorReport(input);
   const client = createClient();
   if (!client) return { success: false, error: 'Supabase সংযুক্ত নয়' };
-  const reportId = crypto.randomUUID();
+  const reportId = safeUUID();
   const { data: user } = await client.auth.getUser();
   const { error } = await client.from('blood_donor_reports').insert({
     id: reportId,

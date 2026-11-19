@@ -35,7 +35,7 @@
  *
  * Privacy contract — the one thing this file must never do
  * -------------------------------------------------------
- * `authorPhone` and `whatsappNumber` are left undefined on all ten rows, and
+ * `phone` and `whatsappNumber` are left undefined on all ten rows, and
  * that is not an oversight. A marketplace buyer genuinely has to be able to
  * call the seller, so unlike a blood donor's number this one is meant to be
  * public — but only after an admin approves the post, and only through the
@@ -324,7 +324,7 @@ export const DEMO_MARKET_POSTS: MarketDemoPost[] = SEEDS.map((seed, index) => {
     authorId: `demo-seller-${index + 1}`,
     authorName: seed.seller,
     // Deliberately undefined — see the privacy contract at the top of this file.
-    authorPhone: undefined,
+    phone: undefined,
     whatsappNumber: undefined,
     titleBn: seed.title,
     summaryBn: seed.summary,

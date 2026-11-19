@@ -76,7 +76,7 @@ export function ToletDetailHeader({
         </span>
       </nav>
 
-      <div className="mt-2 flex items-start justify-between gap-3 sm:mt-3">
+      <div className="mt-2.5 flex items-start justify-between gap-3 rounded-xl border border-brand-100 bg-white p-3 shadow-sm sm:mt-3 sm:p-4">
         <div className="min-w-0 flex-1">
           {/* Type + status chips. A live listing gets no status chip — a
               "প্রকাশিত" badge on a published listing is noise. */}
@@ -101,23 +101,12 @@ export function ToletDetailHeader({
             {listing.title}
           </h1>
 
-          <div className="mt-2.5 flex max-w-2xl items-start gap-2.5 rounded-xl border border-brand-200 bg-brand-50 px-3 py-2.5 shadow-sm sm:mt-3 sm:px-4 sm:py-3">
-            <span className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-700 text-white sm:h-9 sm:w-9">
-              <MapPin className="h-4.5 w-4.5 sm:h-5 sm:w-5" aria-hidden="true" />
-            </span>
-            <div className="min-w-0">
-              <p className="text-xs font-bold text-brand-700 sm:text-sm">
-                বাসার অবস্থান
-              </p>
-              <p className="mt-0.5 text-[14px] font-extrabold leading-snug text-ink-900 sm:text-[16px]">
-                {listing.specificAddress}
-              </p>
-              {area?.nameBn && (
-                <p className="mt-1 text-sm font-semibold text-brand-800">
-                  {area.nameBn} — ময়মনসিংহ
-                </p>
-              )}
-            </div>
+          <div className="mt-2 flex min-w-0 items-start gap-1.5 text-[12px] leading-relaxed text-ink-600 sm:text-sm">
+            <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand-700" aria-hidden="true" />
+            <p className="min-w-0">
+              <span className="font-semibold text-ink-800">{listing.specificAddress}</span>
+              {area?.nameBn && <span className="text-ink-500"> · {area.nameBn}, ময়মনসিংহ</span>}
+            </p>
           </div>
         </div>
 

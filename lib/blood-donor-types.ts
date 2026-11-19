@@ -165,11 +165,11 @@ export function formatLastDonation(date?: string): string {
 const RECOVERY_MONTHS = 4;
 
 /** How many whole months ago a donation happened; `null` if there isn't one. */
-function monthsSinceDonation(date?: string): number | null {
+function monthsSinceDonation(date: string | undefined, now: number): number | null {
   if (!date) return null;
   const then = new Date(date).getTime();
   if (!Number.isFinite(then)) return null;
-  return Math.max(0, Math.floor((Date.now() - then) / (1000 * 60 * 60 * 24 * 30)));
+  return Math.max(0, Math.floor((now - then) / (1000 * 60 * 60 * 24 * 30)));
 }
 
 export type DonorRecoveryState = 'ready' | 'due-soon' | 'recovering' | 'on-break';
@@ -186,7 +186,7 @@ export interface DonorRecovery {
   canRequest: boolean;
 }
 
-export function donorRecovery(donor: BloodDonorProfile): DonorRecovery {
+export function donorRecovery(donor: BloodDonorProfile, now: number): DonorRecovery {
   if (!donor.isAvailable) {
     return {
       state: 'on-break',
@@ -196,7 +196,7 @@ export function donorRecovery(donor: BloodDonorProfile): DonorRecovery {
       canRequest: false,
     };
   }
-  const months = monthsSinceDonation(donor.lastDonationDate);
+  const months = monthsSinceDonation(donor.lastDonationDate, now);
   if (months === null) {
     return {
       state: 'ready',

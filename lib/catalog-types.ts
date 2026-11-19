@@ -401,9 +401,10 @@ export interface CommunityPost {
    * Not a free-for-all: it is returned only for approved jobs and available
    * marketplace items by `fetchMarketContact`; news-author numbers stay private.
    */
-  authorPhone?: string;
+  phone?: string;
   /** Separate WhatsApp number when it differs from the call number. */
   whatsappNumber?: string;
+  needsPhone?: boolean;
   titleBn: string;
   summaryBn?: string;
   bodyBn?: string;
@@ -448,7 +449,7 @@ export interface CommunityPost {
 /**
  * What an author may write.
  *
- * `authorPhone` and `whatsappNumber` are re-declared as nullable because a
+ * `phone` and `whatsappNumber` are re-declared as nullable because a
  * seller has to be able to *withdraw* a number, not only set one: sending
  * `undefined` would skip the column and leave the old number stored on a post
  * the seller believes they have cleaned up. `null` writes SQL NULL; `undefined`
@@ -456,9 +457,9 @@ export interface CommunityPost {
  */
 export type CommunityPostInput = Omit<
   CommunityPost,
-  'id' | 'createdAt' | 'updatedAt' | 'authorPhone' | 'whatsappNumber'
+  'id' | 'createdAt' | 'updatedAt' | 'phone' | 'whatsappNumber'
 > & {
-  authorPhone?: string | null;
+  phone?: string | null;
   whatsappNumber?: string | null;
   rejectionReason?: string | null;
 };
@@ -1070,12 +1071,11 @@ export function bnDate(value?: string | null): string | undefined {
  * ago needs no more explanation than "১১ মাস আগে"; a listing from this morning
  * should not read "১৫ অক্টোবর ২০২৬" the same way it would in a news archive.
  *
- * `now` is injectable so the caller can pin it. Anything that renders on both
- * the server and the client must pass the server's clock, or the two renders
- * will disagree about whether a post is one day or two days old.
+ * `now` is injectable so the caller can pin it. Client-rendered callers should
+ * supply a clock after hydration; without one, no relative label is rendered.
  */
-export function bnRelativeTime(value?: string | null, now: number = Date.now()): string | undefined {
-  if (!value) return undefined;
+export function bnRelativeTime(value?: string | null, now?: number): string | undefined {
+  if (!value || now == null || now === 0) return undefined;
   const then = new Date(value).getTime();
   if (Number.isNaN(then)) return undefined;
 

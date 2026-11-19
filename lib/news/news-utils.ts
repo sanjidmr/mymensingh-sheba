@@ -138,7 +138,7 @@ export function formatNewsTimestamp(
   if (Number.isNaN(parsed.getTime())) return {};
   const dhaka = new Date(parsed.getTime() + 6 * 60 * 60 * 1000);
   return {
-    relative: now == null ? undefined : bnRelativeTime(value, now),
+    relative: now == null || now === 0 ? undefined : bnRelativeTime(value, now),
     exact: `${toBn(dhaka.getUTCDate())} ${BN_MONTHS[dhaka.getUTCMonth()]} ${toBn(
       dhaka.getUTCFullYear()
     )}, ${bnClock(dhaka)}`,

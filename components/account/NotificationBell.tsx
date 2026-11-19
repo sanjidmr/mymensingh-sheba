@@ -6,6 +6,7 @@ import { createPortal } from 'react-dom';
 import { Bell, CheckCircle2, Info, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { bnRelativeTime } from '@/lib/catalog-types';
+import { useClientNow } from '@/hooks/use-client-now';
 
 const RECENT_LIMIT = 5;
 
@@ -25,6 +26,7 @@ function typeIcon(type: string) {
  * its target link when one exists.
  */
 export default function NotificationBell() {
+  const now = useClientNow();
   const { notifications, notificationsError, markNotificationRead, markNotificationsReadAll } =
     useAuth();
   const [open, setOpen] = useState(false);
@@ -94,7 +96,7 @@ export default function NotificationBell() {
         aria-label={
           unreadCount > 0 ? `নোটিফিকেশন, ${unreadCount}টি অপঠিত` : 'নোটিফিকেশন'
         }
-        className="relative flex h-10 w-10 items-center justify-center border border-brand-100 bg-white text-ink-700 hover:bg-brand-50"
+        className="relative flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-ink-600 transition-colors hover:bg-brand-50 hover:text-brand-900"
       >
         <Bell className="h-5 w-5" />
         {unreadCount > 0 && (
@@ -150,7 +152,7 @@ export default function NotificationBell() {
                         {notification.body}
                       </span>
                       <span className="mt-0.5 block text-[10.5px] text-ink-400">
-                        {bnRelativeTime(notification.createdAt) ?? ''}
+                        {bnRelativeTime(notification.createdAt, now) ?? ''}
                       </span>
                     </span>
                   </>

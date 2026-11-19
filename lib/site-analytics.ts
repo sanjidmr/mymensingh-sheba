@@ -40,6 +40,7 @@
 'use client';
 
 import { getVisitorId, hasPersistentVisitorId } from './tolet-tracking';
+import { safeStorage, safeUUID } from './safe';
 import { apiFetch } from './api-fetch';
 
 // Reuse the same visitor key the To-Let tracker writes, so the two systems
@@ -195,18 +196,15 @@ export function classifyPath(path: string): {
 let memorySessionId: string | null = null;
 
 function randomId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `a-${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
+  return safeUUID();
 }
 
 function getSessionId(): string {
   try {
-    const existing = window.sessionStorage.getItem(SESSION_KEY);
+    const existing = safeStorage.get(SESSION_KEY, 'session');
     if (existing) return existing;
     const created = randomId();
-    window.sessionStorage.setItem(SESSION_KEY, created);
+    safeStorage.set(SESSION_KEY, created, 'session');
     return created;
   } catch {
     if (!memorySessionId) memorySessionId = randomId();
@@ -293,13 +291,7 @@ let lastActiveVisitorAt = 0;
 const profileViewsInMemory = new Set<string>();
 
 function randomEventId(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (digit) => {
-    const value = Math.floor(Math.random() * 16);
-    return (digit === 'x' ? value : (value & 0x3) | 0x8).toString(16);
-  });
+  return safeUUID();
 }
 
 /**
@@ -312,8 +304,8 @@ export function trackPageView(path: string): void {
   if (!shouldTrackPath(path)) return;
   let firstInSession = false;
   try {
-    firstInSession = !window.sessionStorage.getItem(SESSION_STARTED_KEY);
-    if (firstInSession) window.sessionStorage.setItem(SESSION_STARTED_KEY, '1');
+    firstInSession = !safeStorage.get(SESSION_STARTED_KEY, 'session');
+    if (firstInSession) safeStorage.set(SESSION_STARTED_KEY, '1', 'session');
   } catch {
     firstInSession = true;
   }
@@ -331,11 +323,11 @@ export function trackProfileView(profileId: string, category: 'blood-donor'): vo
   if (profileViewsInMemory.has(key)) return;
   try {
     const storageKey = `mms_profile_view:${key}`;
-    if (window.sessionStorage.getItem(storageKey)) {
+    if (safeStorage.get(storageKey, 'session')) {
       profileViewsInMemory.add(key);
       return;
     }
-    window.sessionStorage.setItem(storageKey, '1');
+    safeStorage.set(storageKey, '1', 'session');
   } catch {
     // The in-memory guard still limits this tab to one impression per profile.
   }

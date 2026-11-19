@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { Mail, MessageCircle, Send } from 'lucide-react';
 import { useAuth } from '@/lib/auth-context';
 import { createClient, isSupabaseConfigured } from '@/lib/supabase/client';
+import { safeUUID } from '@/lib/safe';
 
 export type SupportMode = 'messages' | 'complaints';
 
@@ -215,14 +216,14 @@ export default function SupportCenter({ mode }: { mode: SupportMode }) {
     try {
       if (attachment) {
         const extension = ATTACHMENT_TYPES[attachment.type];
-        attachmentPath = `${user.id}/${crypto.randomUUID()}.${extension}`;
+        attachmentPath = `${user.id}/${safeUUID()}.${extension}`;
         const { error: uploadError } = await client.storage
           .from('support-attachments')
           .upload(attachmentPath, attachment, { contentType: attachment.type, upsert: false });
         if (uploadError) throw new Error(`সংযুক্তি আপলোড করা যায়নি: ${uploadError.message}`);
       }
 
-      const messageId = crypto.randomUUID();
+      const messageId = safeUUID();
       const { error: insertError } = await client.from('contact_messages').insert({
         id: messageId,
         name: user.fullName,
